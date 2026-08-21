@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local/cn-iseakai/world-state.schema.json",
+  "title": "CarolingianEstateWorldState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "player",
+    "holdings",
+    "resources",
+    "custom_resources",
+    "population",
+    "labour",
+    "market",
+    "projects",
+    "modifiers",
+    "standing_orders",
+    "npcs",
+    "known_techniques",
+    "flags",
+    "trade",
+    "merchant"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["year", "season", "turn", "region"],
+      "properties": {
+        "year": { "type": "integer" },
+        "season": { "enum": ["spring", "summer", "autumn", "winter"] },
+        "turn": { "type": "integer", "minimum": 1 },
+        "region": { "type": "string" },
+        "eraNote": { "type": "string" }
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "rank"],
+      "properties": {
+        "name": { "type": "string" },
+        "rank": { "enum": ["minor_noble"] }
+      }
+    },
+    "holdings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/holding" }
+    },
+    "resources": { "$ref": "#/$defs/resourceMap" },
+    "custom_resources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/customResource" }
+    },
+    "population": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["households", "adult_men", "adult_women", "youths"],
+      "properties": {
+        "households": { "type": "integer", "minimum": 0 },
+        "adult_men": { "type": "integer", "minimum": 0 },
+        "adult_women": { "type": "integer", "minimum": 0 },
+        "youths": { "type": "integer", "minimum": 0 },
+        "mancipia": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "labour": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assigned", "harvest_risk"],
+      "properties": {
+        "assigned": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/labourAssignment" }
+        },
+        "harvest_risk": { "type": "boolean" }
+      }
+    },
+    "market": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/priceRange" }
+    },
+    "projects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/project" }
+    },
+    "modifiers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/modifier" }
+    },
+    "standing_orders": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/standingOrder" }
+    },
+    "npcs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/npc" }
+    },
+    "known_techniques": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/technique" }
+    },
+    "flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["merchant_present", "active_threat", "monastery_nearby", "hunger"],
+      "properties": {
+        "merchant_present": { "type": "boolean" },
+        "active_threat": { "type": "boolean" },
+        "monastery_nearby": { "type": "boolean" },
+        "hunger": { "type": "boolean" }
+      }
+    },
+    "trade": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "major_river": { "type": "boolean" },
+        "major_road": { "type": "boolean" },
+        "known_surplus": { "type": "boolean" },
+        "remote": { "type": "boolean" }
+      }
+    },
+    "merchant": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "present": { "type": "boolean" },
+        "name": { "type": "string" },
+        "last_chance": { "type": "number" },
+        "stock": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["resource", "amount"],
+            "properties": {
+              "resource": { "type": "string" },
+              "amount": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "season": { "enum": ["spring", "summer", "autumn", "winter"] },
+    "priceRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+    "resourceMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "denarii",
+        "wheat",
+        "rye",
+        "barley",
+        "oats",
+        "cattle",
+        "sheep",
+        "pigs",
+        "horses",
+        "poultry",
+        "bees",
+        "wine",
+        "cheese",
+        "honey",
+        "wool",
+        "linen",
+        "softwood",
+        "hardwood",
+        "charcoal",
+        "iron",
+        "copper",
+        "tin",
+        "salt",
+        "stone",
+        "hides",
+        "beeswax",
+        "trade_goods"
+      ],
+      "properties": {
+        "denarii": { "type": "number" },
+        "wheat": { "type": "number" },
+        "rye": { "type": "number" },
+        "barley": { "type": "number" },
+        "oats": { "type": "number" },
+        "cattle": { "type": "number" },
+        "sheep": { "type": "number" },
+        "pigs": { "type": "number" },
+        "horses": { "type": "number" },
+        "poultry": { "type": "number" },
+        "bees": { "type": "number" },
+        "wine": { "type": "number" },
+        "cheese": { "type": "number" },
+        "honey": { "type": "number" },
+        "wool": { "type": "number" },
+        "linen": { "type": "number" },
+        "softwood": { "type": "number" },
+        "hardwood": { "type": "number" },
+        "charcoal": { "type": "number" },
+        "iron": { "type": "number" },
+        "copper": { "type": "number" },
+        "tin": { "type": "number" },
+        "salt": { "type": "number" },
+        "stone": { "type": "number" },
+        "hides": { "type": "number" },
+        "beeswax": { "type": "number" },
+        "trade_goods": { "type": "number" }
+      }
+    },
+    "holding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "land", "sown", "households", "features"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "land": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fertile_arable",
+            "meadow",
+            "vineyard",
+            "orchard",
+            "woodland",
+            "scrub",
+            "waste",
+            "swamp"
+          ],
+          "properties": {
+            "fertile_arable": { "type": "number" },
+            "meadow": { "type": "number" },
+            "vineyard": { "type": "number" },
+            "orchard": { "type": "number" },
+            "woodland": { "type": "number" },
+            "scrub": { "type": "number" },
+            "waste": { "type": "number" },
+            "swamp": { "type": "number" }
+          }
+        },
+        "sown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["wheat", "rye", "barley", "oats"],
+          "properties": {
+            "wheat": { "type": "number" },
+            "rye": { "type": "number" },
+            "barley": { "type": "number" },
+            "oats": { "type": "number" }
+          }
+        },
+        "households": { "type": "integer", "minimum": 0 },
+        "features": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "customResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "unit", "amount", "priceMin", "priceMax"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "unit": { "type": "string" },
+        "amount": { "type": "number" },
+        "priceMin": { "type": "number" },
+        "priceMax": { "type": "number" },
+        "notes": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "labourAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId", "men", "women", "youths"],
+      "properties": {
+        "projectId": { "type": "string" },
+        "men": { "type": "number" },
+        "women": { "type": "number" },
+        "youths": { "type": "number" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "key",
+        "name",
+        "holdingId",
+        "labourDaysRequired",
+        "labourDaysDone",
+        "materials",
+        "materialsReserved",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "key": { "type": "string" },
+        "name": { "type": "string" },
+        "holdingId": { "type": "string" },
+        "labourDaysRequired": { "type": "number" },
+        "labourDaysDone": { "type": "number" },
+        "materials": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lumber", "iron", "stone"],
+          "properties": {
+            "lumber": { "type": "number" },
+            "iron": { "type": "number" },
+            "stone": { "type": "number" }
+          }
+        },
+        "materialsReserved": { "type": "boolean" },
+        "status": { "enum": ["active", "completed", "cancelled"] },
+        "rush": { "type": "boolean" },
+        "tag": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "modifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "target", "kind", "effect", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "target": {
+          "enum": [
+            "grain_yield",
+            "labour_efficiency",
+            "spoilage",
+            "project_speed",
+            "specific_resource_output",
+            "accident_risk",
+            "mood",
+            "market_price",
+            "livestock_yield",
+            "harvest_risk",
+            "custom"
+          ]
+        },
+        "kind": { "enum": ["temporary", "permanent"] },
+        "seasons_remaining": { "type": ["integer", "null"] },
+        "promote_on_expire": { "type": "boolean" },
+        "effect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": { "enum": ["multiply", "add", "set"] },
+            "value": { "type": "number" }
+          }
+        },
+        "source": { "type": "string" },
+        "risks": { "type": "array", "items": { "type": "string" } },
+        "holdingId": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "customNote": { "type": "string" }
+      }
+    },
+    "standingOrder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "active"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "active": { "type": "boolean" }
+      }
+    },
+    "npc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "role", "location"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "technique": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "discoveredTurn"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "discoveredTurn": { "type": "integer" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

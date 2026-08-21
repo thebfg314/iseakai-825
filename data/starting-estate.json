@@ -1,0 +1,155 @@
+{
+  "meta": {
+    "year": 825,
+    "season": "spring",
+    "turn": 1,
+    "region": "Villa of Fontenay, pagus of Autun (inland Burgundy)",
+    "eraNote": "Year 825, under Emperor Louis the Pious. Inland estate; Viking activity is rare."
+  },
+  "player": {
+    "name": "the lord of Fontenay",
+    "rank": "minor_noble"
+  },
+  "holdings": [
+    {
+      "id": "fontenay",
+      "name": "Fontenay",
+      "land": {
+        "fertile_arable": 80,
+        "meadow": 22,
+        "vineyard": 3,
+        "orchard": 2,
+        "woodland": 40,
+        "scrub": 10,
+        "waste": 15,
+        "swamp": 5
+      },
+      "sown": {
+        "wheat": 12,
+        "rye": 16,
+        "barley": 0,
+        "oats": 0
+      },
+      "households": 10,
+      "features": ["manor_hall", "barn", "forge", "chapel", "monastery"]
+    }
+  ],
+  "resources": {
+    "denarii": 480,
+    "wheat": 36,
+    "rye": 58,
+    "barley": 24,
+    "oats": 20,
+    "cattle": 8,
+    "sheep": 20,
+    "pigs": 12,
+    "horses": 2,
+    "poultry": 0,
+    "bees": 2,
+    "wine": 4,
+    "cheese": 18,
+    "honey": 6,
+    "wool": 24,
+    "linen": 8,
+    "softwood": 4,
+    "hardwood": 2,
+    "charcoal": 2,
+    "iron": 28,
+    "copper": 0,
+    "tin": 0,
+    "salt": 16,
+    "stone": 3,
+    "hides": 6,
+    "beeswax": 3,
+    "trade_goods": 4
+  },
+  "custom_resources": [],
+  "population": {
+    "households": 10,
+    "adult_men": 12,
+    "adult_women": 13,
+    "youths": 9,
+    "mancipia": 0
+  },
+  "labour": {
+    "assigned": [],
+    "harvest_risk": false
+  },
+  "market": {
+    "wheat": { "min": 4, "max": 8 },
+    "rye": { "min": 3, "max": 6 },
+    "barley": { "min": 2, "max": 4 },
+    "oats": { "min": 1, "max": 3 },
+    "cattle": { "min": 20, "max": 60 },
+    "sheep": { "min": 6, "max": 15 },
+    "pigs": { "min": 8, "max": 20 },
+    "horses": { "min": 60, "max": 200 },
+    "poultry": { "min": 1, "max": 3 },
+    "bees": { "min": 10, "max": 30 },
+    "wine": { "min": 15, "max": 40 },
+    "cheese": { "min": 1, "max": 3 },
+    "honey": { "min": 2, "max": 5 },
+    "wool": { "min": 1, "max": 3 },
+    "linen": { "min": 2, "max": 5 },
+    "softwood": { "min": 5, "max": 15 },
+    "hardwood": { "min": 8, "max": 20 },
+    "charcoal": { "min": 10, "max": 25 },
+    "iron": { "min": 3, "max": 8 },
+    "copper": { "min": 8, "max": 20 },
+    "tin": { "min": 12, "max": 30 },
+    "salt": { "min": 1, "max": 3 },
+    "stone": { "min": 2, "max": 8 },
+    "hides": { "min": 4, "max": 12 },
+    "beeswax": { "min": 3, "max": 8 },
+    "trade_goods": { "min": 10, "max": 10 }
+  },
+  "projects": [],
+  "modifiers": [],
+  "standing_orders": [
+    {
+      "id": "so-default-agriculture",
+      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay. Maintain the forge with charcoal as needed. Render the tithe to the cell of Saint-Martin and keep Sundays.",
+      "active": true
+    }
+  ],
+  "npcs": [
+    {
+      "id": "steward",
+      "name": "Aldric",
+      "role": "steward",
+      "location": "fontenay",
+      "notes": "Long-serving steward of Fontenay. Speaks plainly, counts carefully, distrusts novelties until they work twice."
+    },
+    {
+      "id": "smith",
+      "name": "Bernard",
+      "role": "smith",
+      "location": "fontenay",
+      "notes": "Estate smith at the timber forge. Knows bloom iron, shoes, tools, and nails. Will not pretend to rule the fields."
+    },
+    {
+      "id": "chaplain",
+      "name": "Ermenald",
+      "role": "chaplain",
+      "location": "fontenay",
+      "notes": "Priest and prior of the small cell of Saint-Martin at Fontenay (four monks, a timber oratory). Serves as the lord's capellanus: mass, letters, canon, and a wary eye on novelty. In practice he answers to the bishop of Autun as much as to the villa."
+    }
+  ],
+  "known_techniques": [],
+  "flags": {
+    "merchant_present": false,
+    "active_threat": false,
+    "monastery_nearby": true,
+    "hunger": false
+  },
+  "trade": {
+    "major_river": false,
+    "major_road": false,
+    "known_surplus": false,
+    "remote": false
+  },
+  "merchant": {
+    "present": false,
+    "stock": []
+  }
+}
