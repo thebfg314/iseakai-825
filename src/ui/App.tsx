@@ -6,10 +6,10 @@ import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import type { AldricEmotion } from "../engine/emotion";
 import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
+import { DEFAULT_MODELS, LLM_PROVIDERS, PROVIDER_META, type AppSettings, type LlmProvider } from "../llm/types";
+import { defaultAppSettings } from "../llm/settings";
 
-type Settings = { apiKey: string; model: string; masterVolume: number; musicVolume: number };
-
-function musicGain(s: Pick<Settings, "masterVolume" | "musicVolume">): number {
+function musicGain(s: Pick<AppSettings, "masterVolume" | "musicVolume">): number {
   return Math.min(1, Math.max(0, (s.masterVolume ?? 1) * (s.musicVolume ?? 0.55)));
 }
 type Screen = "title" | "game";
@@ -21,7 +21,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState<Settings>({ apiKey: "", model: "", masterVolume: 1, musicVolume: 0.55 });
+  const [settings, setSettings] = useState<AppSettings>(defaultAppSettings);
   const [models, setModels] = useState<{ id: string }[]>([]);
   const [displayEmotion, setDisplayEmotion] = useState<AldricEmotion>("neutral");
   const scroller = useRef<HTMLDivElement>(null);
@@ -49,13 +49,7 @@ export function App() {
   useEffect(() => {
     void (async () => {
       try {
-        const s = (await window.api.getSettings()) as Partial<Settings>;
-        setSettings({
-          apiKey: s.apiKey ?? "",
-          model: s.model ?? "",
-          masterVolume: s.masterVolume ?? 1,
-          musicVolume: s.musicVolume ?? 0.55,
-        });
+        setSettings((await window.api.getSettings()) as AppSettings);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -196,23 +190,11 @@ export function App() {
         setModels(list);
       }}
       onSave={async (s) => {
-        const next = (await window.api.setSettings(s)) as Settings;
-        setSettings({
-          apiKey: next.apiKey,
-          model: next.model,
-          masterVolume: next.masterVolume ?? 1,
-          musicVolume: next.musicVolume ?? 0.55,
-        });
+        setSettings((await window.api.setSettings(s)) as AppSettings);
         setSettingsOpen(false);
       }}
       onVolume={async (patch) => {
-        const next = (await window.api.setSettings(patch)) as Settings;
-        setSettings({
-          apiKey: next.apiKey,
-          model: next.model,
-          masterVolume: next.masterVolume ?? 1,
-          musicVolume: next.musicVolume ?? 0.55,
-        });
+        setSettings((await window.api.setSettings(patch)) as AppSettings);
       }}
     />
   );
@@ -560,28 +542,61 @@ function SettingsModal({
   onLoadModels,
   onVolume,
 }: {
-  settings: Settings;
+  settings: AppSettings;
   models: { id: string }[];
   onClose: () => void;
-  onSave: (s: Settings) => Promise<void>;
+  onSave: (s: AppSettings) => Promise<void>;
   onLoadModels: () => Promise<void>;
   onVolume: (patch: { masterVolume?: number; musicVolume?: number }) => Promise<void>;
 }) {
-  const [apiKey, setApiKey] = useState(settings.apiKey);
-  const [model, setModel] = useState(settings.model);
+  const [provider, setProvider] = useState<LlmProvider>(settings.provider);
+  const [providers, setProviders] = useState(settings.providers);
   const [masterVolume, setMasterVolume] = useState(settings.masterVolume);
   const [musicVolume, setMusicVolume] = useState(settings.musicVolume);
+  const [catalogProvider, setCatalogProvider] = useState<LlmProvider | null>(null);
+  const [listing, setListing] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const current = providers[provider];
+  const meta = PROVIDER_META[provider];
   const uniqueModels = useMemo(() => {
+    if (catalogProvider !== provider) return current.model ? [current.model] : [];
     const ids = new Set(models.map((m) => m.id));
-    if (model) ids.add(model);
+    if (current.model) ids.add(current.model);
     return [...ids];
-  }, [models, model]);
+  }, [models, current.model, catalogProvider, provider]);
+
+  function patchActive(next: Partial<{ apiKey: string; model: string }>) {
+    setProviders((prev) => ({
+      ...prev,
+      [provider]: { ...prev[provider], ...next },
+    }));
+  }
+
+  function snapshot(): AppSettings {
+    return { provider, providers, masterVolume, musicVolume };
+  }
 
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Settings</h2>
-        <p>Models are called through Reality Fabricator (<code>api.rfab.ai</code>). Create a key at rfab.ai → Settings → Developer API.</p>
+        <label>
+          Provider
+          <select
+            value={provider}
+            onChange={(e) => {
+              setProvider(e.target.value as LlmProvider);
+              setListError(null);
+            }}
+          >
+            {LLM_PROVIDERS.map((id) => (
+              <option key={id} value={id}>
+                {PROVIDER_META[id].label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="settings-help">{meta.help}</p>
         <label>
           Master volume
           <span className="volume-row">{Math.round(masterVolume * 100)}%</span>
@@ -614,26 +629,46 @@ function SettingsModal({
         </label>
         <label>
           API key
-          <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="rfab_…" />
+          <input
+            type="password"
+            value={current.apiKey}
+            onChange={(e) => patchActive({ apiKey: e.target.value })}
+            placeholder={meta.keyPlaceholder}
+          />
         </label>
         <label>
           Model id
-          <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="grok:grok-4.5" />
+          <input
+            value={current.model}
+            onChange={(e) => patchActive({ model: e.target.value })}
+            placeholder={DEFAULT_MODELS[provider]}
+          />
         </label>
         <div className="p-actions">
           <button
+            disabled={listing || !current.apiKey}
             onClick={async () => {
-              await window.api.setSettings({ apiKey, model });
-              await onLoadModels();
+              setListing(true);
+              setListError(null);
+              try {
+                await window.api.setSettings(snapshot());
+                await onLoadModels();
+                setCatalogProvider(provider);
+              } catch (e) {
+                setListError(e instanceof Error ? e.message : String(e));
+              } finally {
+                setListing(false);
+              }
             }}
           >
-            List models
+            {listing ? "Listing…" : "List models"}
           </button>
         </div>
-        {uniqueModels.length > 0 && (
+        {listError && <p className="settings-error">{listError}</p>}
+        {uniqueModels.length > 0 && catalogProvider === provider && (
           <label>
             Catalog
-            <select value={model} onChange={(e) => setModel(e.target.value)}>
+            <select value={current.model} onChange={(e) => patchActive({ model: e.target.value })}>
               {uniqueModels.map((id) => (
                 <option key={id} value={id}>
                   {id}
@@ -643,7 +678,7 @@ function SettingsModal({
           </label>
         )}
         <div className="p-actions">
-          <button className="primary" onClick={() => onSave({ apiKey, model, masterVolume, musicVolume })}>
+          <button className="primary" onClick={() => onSave(snapshot())}>
             Save
           </button>
           <button onClick={onClose}>Close</button>

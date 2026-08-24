@@ -163,6 +163,8 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 }
 .modal {
   width: min(32rem, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
   background: var(--bg-2);
   border: 1px solid var(--accent);
   padding: 1.2rem;
@@ -180,6 +182,16 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   justify-content: space-between;
   color: var(--muted);
   font-size: 0.82rem;
+}
+.settings-help {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0.2rem 0 0.6rem;
+}
+.settings-error {
+  color: #c45c4a;
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0;
 }
 
 @media (max-width: 900px) {

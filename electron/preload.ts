@@ -11,8 +11,12 @@ const api = {
   rejectProposal: (id: string) => ipcRenderer.invoke("game:rejectProposal", id),
   advanceSeason: () => ipcRenderer.invoke("game:advanceSeason"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
-  setSettings: (patch: { apiKey?: string; model?: string; masterVolume?: number; musicVolume?: number }) =>
-    ipcRenderer.invoke("settings:set", patch),
+  setSettings: (patch: {
+    provider?: string;
+    providers?: Record<string, { apiKey?: string; model?: string }>;
+    masterVolume?: number;
+    musicVolume?: number;
+  }) => ipcRenderer.invoke("settings:set", patch),
   listModels: () => ipcRenderer.invoke("settings:listModels"),
   quit: () => ipcRenderer.invoke("app:quit"),
 };

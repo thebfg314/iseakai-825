@@ -12,7 +12,7 @@ import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
 import { parseLlmResponse } from "../llm/parse";
-import { rfabChat, type RfabSettings } from "../llm/rfab";
+import { llmChat, type AppSettings } from "../llm";
 import {
   npcUserPrompt,
   npcSystemPrompt,
@@ -29,7 +29,7 @@ export class GameController {
   messages: ChatMessage[] = [];
   sceneNpcId = "steward";
   saveDir: string;
-  settings: RfabSettings;
+  settings: AppSettings;
   historyTail: string[] = [];
   npcEmotions: Record<string, AldricEmotion> = {
     steward: "respectful",
@@ -37,7 +37,7 @@ export class GameController {
     chaplain: "neutral",
   };
 
-  constructor(state: WorldState, saveDir: string, settings: RfabSettings) {
+  constructor(state: WorldState, saveDir: string, settings: AppSettings) {
     this.state = state;
     this.saveDir = saveDir;
     this.settings = settings;
@@ -338,10 +338,10 @@ export class GameController {
     messages: { role: "system" | "user" | "assistant"; content: string }[],
     maxTokens: number,
   ): Promise<{ speech: string; chronicle?: string; proposals: MechanicalProposal[]; raw: string; emotion?: AldricEmotion }> {
-    const raw1 = await rfabChat(this.settings, messages, { maxTokens });
+    const raw1 = await llmChat(this.settings, messages, { maxTokens });
     let parsed = parseLlmResponse(raw1);
     if (parsed.parseErrors.length && parsed.proposals.length === 0 && !looksLikeSpeechOnly(parsed.response.speech, raw1)) {
-      const raw2 = await rfabChat(this.settings, [...messages, { role: "assistant", content: raw1 }, repairPrompt(raw1, parsed.parseErrors)], {
+      const raw2 = await llmChat(this.settings, [...messages, { role: "assistant", content: raw1 }, repairPrompt(raw1, parsed.parseErrors)], {
         maxTokens,
         temperature: 0.2,
       });

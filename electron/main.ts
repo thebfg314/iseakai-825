@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import startingEstate from "../data/starting-estate.json";
 import { WorldStateSchema, type WorldState } from "../src/engine/schema";
 import { saveWorldState, loadWorldState } from "../src/engine/state";
-import { DEFAULT_MODEL, listRfabModels, type RfabSettings } from "../src/llm/rfab";
+import { listLlmModels } from "../src/llm/chat";
+import { mergeSettings, normalizeSettings, type SettingsPatch } from "../src/llm/settings";
+import type { AppSettings } from "../src/llm/types";
 import { GameController } from "../src/session/game";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -25,31 +27,20 @@ function defaultSaveDir() {
   return path.join(app.getPath("userData"), "save");
 }
 
-function clampVolume(n: unknown, fallback: number): number {
-  if (typeof n !== "number" || !Number.isFinite(n)) return fallback;
-  return Math.min(1, Math.max(0, n));
-}
-
-function loadSettings(): RfabSettings {
+function loadSettings(): AppSettings {
   try {
-    const raw = JSON.parse(fs.readFileSync(settingsPath(), "utf8")) as Partial<RfabSettings>;
-    return {
-      apiKey: raw.apiKey ?? "",
-      model: raw.model ?? DEFAULT_MODEL,
-      masterVolume: clampVolume(raw.masterVolume, 1),
-      musicVolume: clampVolume(raw.musicVolume, 0.55),
-    };
+    const raw = JSON.parse(fs.readFileSync(settingsPath(), "utf8")) as unknown;
+    const next = normalizeSettings(raw);
+    if (!raw || typeof raw !== "object" || !("providers" in (raw as object))) {
+      persistSettings(next);
+    }
+    return next;
   } catch {
-    return {
-      apiKey: process.env.RFAB_API_KEY ?? "",
-      model: DEFAULT_MODEL,
-      masterVolume: 1,
-      musicVolume: 0.55,
-    };
+    return normalizeSettings(null);
   }
 }
 
-function persistSettings(s: RfabSettings) {
+function persistSettings(s: AppSettings) {
   fs.mkdirSync(app.getPath("userData"), { recursive: true });
   fs.writeFileSync(settingsPath(), JSON.stringify(s, null, 2), "utf8");
 }
@@ -149,17 +140,15 @@ ipcMain.handle("game:advanceSeason", async () => requireGame().advanceSeason());
 
 ipcMain.handle("settings:get", () => loadSettings());
 
-ipcMain.handle("settings:set", (_e, patch: Partial<RfabSettings>) => {
-  const next = { ...loadSettings(), ...patch };
+ipcMain.handle("settings:set", (_e, patch: SettingsPatch) => {
+  const next = mergeSettings(loadSettings(), patch);
   persistSettings(next);
   if (controller) controller.settings = next;
   return next;
 });
 
 ipcMain.handle("settings:listModels", async () => {
-  const s = loadSettings();
-  if (!s.apiKey) return [];
-  return listRfabModels(s.apiKey);
+  return listLlmModels(loadSettings());
 });
 
 ipcMain.handle("app:quit", () => {
