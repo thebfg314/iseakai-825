@@ -15,18 +15,18 @@
       "id": "fontenay",
       "name": "Fontenay",
       "land": {
-        "fertile_arable": 80,
-        "meadow": 22,
-        "vineyard": 3,
-        "orchard": 2,
+        "fertile_arable": 32,
+        "meadow": 8,
+        "vineyard": 1,
+        "orchard": 1,
         "woodland": 40,
-        "scrub": 10,
-        "waste": 15,
-        "swamp": 5
+        "scrub": 40,
+        "waste": 40,
+        "swamp": 15
       },
       "sown": {
-        "wheat": 12,
-        "rye": 16,
+        "wheat": 6,
+        "rye": 7,
         "barley": 0,
         "oats": 0
       },
@@ -35,33 +35,33 @@
     }
   ],
   "resources": {
-    "denarii": 480,
-    "wheat": 36,
-    "rye": 58,
-    "barley": 24,
-    "oats": 20,
-    "cattle": 8,
-    "sheep": 20,
-    "pigs": 12,
+    "denarii": 96,
+    "wheat": 5,
+    "rye": 8,
+    "barley": 4,
+    "oats": 3,
+    "cattle": 5,
+    "sheep": 14,
+    "pigs": 4,
     "horses": 2,
     "poultry": 0,
-    "bees": 2,
-    "wine": 4,
-    "cheese": 18,
-    "honey": 6,
-    "wool": 24,
-    "linen": 8,
-    "softwood": 4,
-    "hardwood": 2,
-    "charcoal": 2,
-    "iron": 28,
+    "bees": 0,
+    "wine": 1,
+    "cheese": 4,
+    "honey": 2,
+    "wool": 6,
+    "linen": 2,
+    "softwood": 2,
+    "hardwood": 1,
+    "charcoal": 1,
+    "iron": 8,
     "copper": 0,
     "tin": 0,
-    "salt": 16,
-    "stone": 3,
-    "hides": 6,
-    "beeswax": 3,
-    "trade_goods": 4
+    "salt": 4,
+    "stone": 1,
+    "hides": 2,
+    "beeswax": 1,
+    "trade_goods": 1
   },
   "custom_resources": [],
   "population": {
@@ -108,7 +108,7 @@
   "standing_orders": [
     {
       "id": "so-default-agriculture",
-      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay. Maintain the forge with charcoal as needed. Render the tithe to the cell of Saint-Martin and keep Sundays.",
+      "text": "Keep the two-field rotation on the arable that is still in tillage. Sow barley and oats in spring on the remaining sown share. Much of the holding is overgrown — waste, scrub, and swamp that can be brought back in time. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the grain tithe and a pound of wool to the cell of Saint-Martin when stores allow. After the autumn herd increase, give the cell one sheep (the year's increase). Keep Sundays.",
       "active": true
     }
   ],
@@ -118,14 +118,14 @@
       "name": "Aldric",
       "role": "steward",
       "location": "fontenay",
-      "notes": "Long-serving steward of Fontenay. Speaks plainly, counts carefully, distrusts novelties until they work twice."
+      "notes": "Long-serving steward of Fontenay. The villa is thin: a short chest, no hives, and much of the old holding gone to waste and scrub, though the acres are still theirs to clear. Speaks plainly, counts carefully, distrusts novelties until they work twice."
     },
     {
       "id": "smith",
       "name": "Bernard",
       "role": "smith",
       "location": "fontenay",
-      "notes": "Estate smith at the timber forge. Knows bloom iron, shoes, tools, and nails. Will not pretend to rule the fields."
+      "notes": "Estate smith at a timber forge short of iron and charcoal. Knows bloom iron, shoes, tools, and nails. Will not pretend to rule the fields."
     },
     {
       "id": "chaplain",

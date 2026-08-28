@@ -73,7 +73,7 @@ Spring of a new game: autumn-sown wheat and rye are already in the ground from t
 ### 3.4 Livestock (prototype)
 
 Each Spring: sheep may add wool (`sheep * 2` pounds, modified).  
-Each Autumn: pigs +10% (rounded down) if woodland ≥ 10 (pannage); cattle/sheep/horses +5% if winter was not lethal.  
+Each Autumn: pigs +10% (rounded down) if woodland ≥ 10 (pannage); cattle/sheep/horses +5% if winter was not lethal (the +5% is added as sheep). If a holding has `monastery`, **after** that autumn increase consume **1 sheep** (the year's increase) when the flock is at least 1; skip if sheep are 0 (no crash, no hunger). Chapel-only estates do not pay the sheep. Do not take a sheep in other seasons.  
 Each Winter: lose 5% of cattle and horses (rounded down, minimum 0) if meadow acres < (cattle + horses); else lose 0–1 animal on a 1-in-6. Pigs/sheep 2% if stores of oats+barley are empty.
 
 Poultry and household smallstock remain untracked as lordly herds except the demesne `poultry` resource.
@@ -87,9 +87,11 @@ Each season the lordly household and retainers consume a modest grain tithe from
 
 This is a playable simplification, not a claim about Carolingian rations.
 
-### 3.6 Tithe of an on-estate cell
+### 3.6 Tithe of an on-estate chapel or cell
 
-If a holding has `chapel` or `monastery`, each season also consumes **0.15 modius of grain per household** as tithe to the house, plus **0.5 lb beeswax** when stores allow (lights for the oratory). Short tithe can cause hunger the same as household shortfall.
+If a holding has `chapel` or `monastery`, each season also consumes **0.15 modius of grain per household** as tithe to the house, plus **1 lb wool** when stores allow (customary render to the oratory or cell). Short grain tithe can cause hunger the same as household shortfall. A short wool year simply skips the wool render; it does not crash or set hunger.
+
+If a holding has `monastery` (not chapel alone), once per year in Autumn the cell also takes **1 sheep** after the §3.4 herd increase — the year's animal-increase tithe. Skip if the flock is empty.
 
 Religious events are more frequent when a monastery stands on the estate (weight 3).
 
