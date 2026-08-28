@@ -22,7 +22,7 @@ import bernardNeutral from "../../art assets/NPC Images/Bernard Blacksmith/Berna
 import bernardConcerned from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Concerned.png";
 import bernardDispleased from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Displeased.png";
 import bernardHappy from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Happy.png";
-import bernardThoughtful from "../../art assets/NPC Images/Bernard Blacksmith/Bernard thoughtful.png";
+import bernardThoughtful from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Thoughtful.png";
 
 import ermenaldNeutral from "../../art assets/NPC Images/Ermenald Priest/Ermenald Neutral .png";
 import ermenaldConcerned from "../../art assets/NPC Images/Ermenald Priest/Ermenald Concerned.png";
