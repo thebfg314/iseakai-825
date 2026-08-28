@@ -19,10 +19,10 @@
         "meadow": 8,
         "vineyard": 1,
         "orchard": 1,
-        "woodland": 14,
-        "scrub": 20,
-        "waste": 24,
-        "swamp": 8
+        "woodland": 40,
+        "scrub": 40,
+        "waste": 40,
+        "swamp": 15
       },
       "sown": {
         "wheat": 6,
@@ -108,7 +108,7 @@
   "standing_orders": [
     {
       "id": "so-default-agriculture",
-      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the grain tithe and a pound of wool to the cell of Saint-Martin when stores allow. After the autumn herd increase, give the cell one sheep (the year's increase). Keep Sundays.",
+      "text": "Keep the two-field rotation on the arable that is still in tillage. Sow barley and oats in spring on the remaining sown share. Much of the holding is overgrown — waste, scrub, and swamp that can be brought back in time. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the grain tithe and a pound of wool to the cell of Saint-Martin when stores allow. After the autumn herd increase, give the cell one sheep (the year's increase). Keep Sundays.",
       "active": true
     }
   ],
@@ -118,7 +118,7 @@
       "name": "Aldric",
       "role": "steward",
       "location": "fontenay",
-      "notes": "Long-serving steward of Fontenay. The villa is thin: much waste and scrub, a short chest, no hives. Speaks plainly, counts carefully, distrusts novelties until they work twice."
+      "notes": "Long-serving steward of Fontenay. The villa is thin: a short chest, no hives, and much of the old holding gone to waste and scrub, though the acres are still theirs to clear. Speaks plainly, counts carefully, distrusts novelties until they work twice."
     },
     {
       "id": "smith",

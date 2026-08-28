@@ -377,7 +377,7 @@ function openingSpeech(state: WorldState): string {
   const h = state.holdings[0];
   const land = h?.land;
   const features = h?.features ?? [];
-  const scrubWaste = (land?.scrub ?? 0) + (land?.waste ?? 0);
+  const overgrown = (land?.scrub ?? 0) + (land?.waste ?? 0) + (land?.swamp ?? 0);
   const sownCap = (land?.fertile_arable ?? 0) * 0.5;
   const sownNow = h ? h.sown.wheat + h.sown.rye + h.sown.barley + h.sown.oats : 0;
   const sowing =
@@ -392,7 +392,7 @@ function openingSpeech(state: WorldState): string {
     : features.includes("chapel")
       ? " Father Ermenald serves as your chaplain at a small timber oratory. There is no monastic house on the villa."
       : "";
-  return `My lord. It is ${state.meta.season} in the year ${state.meta.year}, at ${state.meta.region}. The villa holds ${land?.fertile_arable ?? 0} acres of arable — and ${scrubWaste} acres of scrub and waste beside it — ${state.population.households} households, and ${state.resources.denarii} denarii in the chest. ${sowing} The hall is timber, and tired; the barn beside it is sound enough.${forge}${church} I am Aldric, your steward. Say how you would have the land kept, or I will keep it as custom requires. When you wish the season to turn, give the word.`;
+  return `My lord. It is ${state.meta.season} in the year ${state.meta.year}, at ${state.meta.region}. The villa holds ${land?.fertile_arable ?? 0} acres of arable — and ${overgrown} acres of scrub, waste, and swamp beside it, still yours to clear — ${state.population.households} households, and ${state.resources.denarii} denarii in the chest. ${sowing} The hall is timber, and tired; the barn beside it is sound enough.${forge}${church} I am Aldric, your steward. Say how you would have the land kept, or I will keep it as custom requires. When you wish the season to turn, give the word.`;
 }
 
 export function snapshotState(controller: GameController): WorldState {
