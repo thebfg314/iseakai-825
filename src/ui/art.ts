@@ -6,7 +6,7 @@ import springOnTheStone from "../../art assets/Music/Spring on the Stone.mp3";
 import sunlitSteelAndLute from "../../art assets/Music/Sunlit Steel and Lute.mp3";
 import harvestsGoldenSong from "../../art assets/Music/The Harvest's Golden Song.mp3";
 import theQuietMarch from "../../art assets/Music/The Quiet March.mp3";
-import buttonClick from "../../art assets/Sound fx/Old School Pc Button Click (1.99x).mp3";
+import buttonClick from "../../art assets/Sound fx/ui-click.wav";
 
 import aldricNeutral from "../../art assets/NPC Images/Aldrec Steward/Aldric neutral nobg.png";
 import aldricRespectful from "../../art assets/NPC Images/Aldrec Steward/Aldrec respectful nobg.png";
