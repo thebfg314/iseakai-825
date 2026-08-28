@@ -1,4 +1,4 @@
-import type { WorldState } from "./schema";
+import type { CanonicalResource, WorldState } from "./schema";
 import { EVENT_CATALOG, type CatalogEvent, type EventPolarity } from "./eventCatalog";
 
 export type RolledEvent = CatalogEvent & {
@@ -107,19 +107,45 @@ export function rollSeasonEvents(state: WorldState): SeasonRoll {
   return { weather, other };
 }
 
-export function defaultEventStub(ev: RolledEvent): { resource?: string; amount?: number; direction?: "gain" | "consume"; moodDelta?: number } {
+export function defaultEventStub(
+  ev: RolledEvent,
+  state?: WorldState,
+): { resource?: string; amount?: number; direction?: "gain" | "consume"; moodDelta?: number } {
+  const grain = pickAffordableGrain(state, ev.crop, ev.polarity === "positive" ? 0 : 4);
   if (ev.polarity === "negative") {
     if (ev.crop && (ev.category === "weather" || ev.id.startsWith("w-"))) {
-      return { resource: ev.crop, amount: 4, direction: "consume" };
+      if (grain) return { resource: grain.resource, amount: grain.amount, direction: "consume", moodDelta: -1 };
+      return { moodDelta: -1 };
     }
     if (ev.livestock && ev.text.includes("animal")) {
-      return { resource: ev.livestock, amount: 1, direction: "consume" };
+      const have = state ? Number(state.resources[ev.livestock as CanonicalResource] ?? 0) : 1;
+      if (have >= 1) return { resource: ev.livestock, amount: 1, direction: "consume", moodDelta: -1 };
+      return { moodDelta: -1 };
     }
-    return { moodDelta: -1, resource: "rye", amount: 2, direction: "consume" };
+    if (grain) return { moodDelta: -1, resource: grain.resource, amount: grain.amount, direction: "consume" };
+    return { moodDelta: -1 };
   }
   if (ev.polarity === "positive") {
     if (ev.crop) return { resource: ev.crop, amount: 4, direction: "gain", moodDelta: 1 };
     return { moodDelta: 1, resource: "trade_goods", amount: 1, direction: "gain" };
   }
-  return { moodDelta: 0, resource: ev.crop ?? "rye", amount: 1, direction: "consume" };
+  if (grain) return { moodDelta: 0, resource: grain.resource, amount: Math.min(1, grain.amount), direction: "consume" };
+  return { moodDelta: 0 };
+}
+
+function pickAffordableGrain(
+  state: WorldState | undefined,
+  preferred: string | undefined,
+  want: number,
+): { resource: string; amount: number } | null {
+  if (!state || want <= 0) {
+    if (!state && preferred) return { resource: preferred, amount: want || 2 };
+    return preferred ? { resource: preferred, amount: want || 2 } : { resource: "rye", amount: want || 2 };
+  }
+  const order = [preferred, "rye", "wheat", "barley", "oats"].filter(Boolean) as string[];
+  for (const g of order) {
+    const have = Number(state.resources[g as CanonicalResource] ?? 0);
+    if (have >= 0.5) return { resource: g, amount: Math.min(want || 2, have) };
+  }
+  return null;
 }

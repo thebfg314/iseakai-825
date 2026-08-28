@@ -126,12 +126,17 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 .bubble.system .text { background: #2a241c; color: var(--muted); }
 .chronicle { margin-top: 0.4rem; font-style: italic; color: var(--muted); font-size: 0.92rem; }
 
-.proposals { border-top: 1px solid var(--line); padding: 0.75rem 1rem; max-height: 28vh; overflow: auto; background: #221e18; }
-.proposals h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
-.proposal { border: 1px solid var(--line); padding: 0.6rem; margin-bottom: 0.5rem; }
+.banner.pending { background: #4a3418; color: var(--parchment); border-bottom: 1px solid var(--accent); }
+.proposals { border-top: 2px solid var(--accent); padding: 0.75rem 1rem; max-height: 36vh; overflow: auto; background: #2a2214; }
+.proposals h3 { margin: 0 0 0.35rem; font-size: 0.95rem; color: var(--parchment); }
+.proposal-help { margin: 0 0 0.6rem; font-size: 0.82rem; color: var(--muted); }
+.proposal { border: 1px solid var(--accent); padding: 0.6rem; margin-bottom: 0.5rem; background: #1c1812; }
 .p-type { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); }
+.p-sum { font-weight: 600; margin: 0.15rem 0; }
+.p-blurb { font-size: 0.88rem; color: var(--parchment); margin-bottom: 0.35rem; }
 .p-json { font-size: 0.7rem; color: var(--muted); max-height: 6rem; overflow: auto; }
 .p-actions { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+.proposal details { margin-top: 0.25rem; color: var(--muted); font-size: 0.8rem; }
 
 .composer { display: flex; gap: 0.5rem; padding: 0.75rem; border-top: 1px solid var(--line); align-items: stretch; }
 .composer textarea {

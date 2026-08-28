@@ -288,6 +288,12 @@ export const WorldStateSchema = z.object({
       stock: z.array(z.object({ resource: z.string(), amount: z.number() })).default([]),
     })
     .default({ present: false, stock: [] }),
+  agriculture: z
+    .object({
+      springBarleyShare: z.number().min(0).max(1).default(0.6),
+      autumnWheatShare: z.number().min(0).max(1).default(0.45),
+    })
+    .default({ springBarleyShare: 0.6, autumnWheatShare: 0.45 }),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 
@@ -296,6 +302,7 @@ export const PROPOSAL_TYPES = [
   "set_standing_order",
   "start_project",
   "adjust_project",
+  "adjust_sowing",
   "transfer_resources",
   "add_modifier",
   "remove_modifier",
@@ -331,7 +338,7 @@ export const SetStandingOrderProposalSchema = ProposalBase.extend({
 export const StartProjectProposalSchema = ProposalBase.extend({
   type: z.literal("start_project"),
   projectKey: z.string(),
-  holdingId: z.string(),
+  holdingId: z.string().optional(),
   name: z.string().optional(),
   customCosts: z
     .object({
@@ -357,6 +364,17 @@ export const AdjustProjectProposalSchema = ProposalBase.extend({
       youths: z.coerce.number().nonnegative(),
     })
     .optional(),
+});
+
+export const AdjustSowingProposalSchema = ProposalBase.extend({
+  type: z.literal("adjust_sowing"),
+  holdingId: z.string().optional(),
+  springBarleyShare: z.coerce.number().min(0).max(1).optional(),
+  autumnWheatShare: z.coerce.number().min(0).max(1).optional(),
+  wheat: z.coerce.number().nonnegative().optional(),
+  rye: z.coerce.number().nonnegative().optional(),
+  barley: z.coerce.number().nonnegative().optional(),
+  oats: z.coerce.number().nonnegative().optional(),
 });
 
 export const TransferResourcesProposalSchema = ProposalBase.extend({
@@ -432,6 +450,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   SetStandingOrderProposalSchema,
   StartProjectProposalSchema,
   AdjustProjectProposalSchema,
+  AdjustSowingProposalSchema,
   TransferResourcesProposalSchema,
   AddModifierProposalSchema,
   RemoveModifierProposalSchema,
@@ -445,6 +464,7 @@ export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
 export type SetStandingOrderProposal = z.infer<typeof SetStandingOrderProposalSchema>;
 export type StartProjectProposal = z.infer<typeof StartProjectProposalSchema>;
 export type AdjustProjectProposal = z.infer<typeof AdjustProjectProposalSchema>;
+export type AdjustSowingProposal = z.infer<typeof AdjustSowingProposalSchema>;
 export type TransferResourcesProposal = z.infer<typeof TransferResourcesProposalSchema>;
 export type AddModifierProposal = z.infer<typeof AddModifierProposalSchema>;
 export type RemoveModifierProposal = z.infer<typeof RemoveModifierProposalSchema>;
@@ -458,6 +478,7 @@ export type MechanicalProposal =
   | SetStandingOrderProposal
   | StartProjectProposal
   | AdjustProjectProposal
+  | AdjustSowingProposal
   | TransferResourcesProposal
   | AddModifierProposal
   | RemoveModifierProposal

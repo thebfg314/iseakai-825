@@ -2,7 +2,6 @@ import {
   type ApplyResult,
   type CanonicalResource,
   CANONICAL_RESOURCES,
-  MechanicalProposalSchema,
   type MechanicalProposal,
   type WorldState,
 } from "./schema";
@@ -11,6 +10,7 @@ import { labourPool, labourRemaining, refreshHarvestRisk } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { newId, round1 } from "./util";
+import { parseProposal } from "../llm/parse";
 
 const SMITH_TRANSFER = new Set([
   "iron",
@@ -204,6 +204,8 @@ export function applyProposal(
       return startProject(state, proposal);
     case "adjust_project":
       return adjustProject(state, proposal);
+    case "adjust_sowing":
+      return adjustSowing(state, proposal);
     case "transfer_resources":
       return transferResources(state, proposal);
     case "add_modifier":
@@ -282,7 +284,7 @@ function startProject(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "start_project" }>,
 ): ApplyResult {
-  const holding = state.holdings.find((h) => h.id === p.holdingId);
+  const holding = (p.holdingId ? state.holdings.find((h) => h.id === p.holdingId) : undefined) ?? state.holdings[0];
   if (!holding) return fail(state, "Unknown holding.", p.summary);
   const catalog = lookupProject(p.projectKey);
   if (!catalog && !p.customCosts) {
@@ -310,7 +312,7 @@ function startProject(
     id,
     key: catalog?.key ?? p.projectKey,
     name: p.name ?? catalog?.name ?? p.projectKey,
-    holdingId: p.holdingId,
+    holdingId: holding.id,
     labourDaysRequired: labourDays,
     labourDaysDone: 0,
     materials: { lumber, iron, stone },
@@ -351,6 +353,63 @@ function adjustProject(
     });
   }
   return ok(state, `Adjusted project ${proj.name}.`);
+}
+
+function adjustSowing(
+  state: WorldState,
+  p: Extract<MechanicalProposal, { type: "adjust_sowing" }>,
+): ApplyResult {
+  const holding = state.holdings.find((h) => h.id === p.holdingId) ?? state.holdings[0];
+  if (!holding) return fail(state, "Unknown holding.", p.summary);
+  if (
+    p.springBarleyShare == null &&
+    p.autumnWheatShare == null &&
+    p.wheat == null &&
+    p.rye == null &&
+    p.barley == null &&
+    p.oats == null
+  ) {
+    return fail(state, "adjust_sowing needs a crop mix or acre figures.", p.summary);
+  }
+
+  const notes: string[] = [];
+  if (!state.agriculture) {
+    state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
+  }
+  if (p.springBarleyShare != null) {
+    state.agriculture.springBarleyShare = p.springBarleyShare;
+    notes.push(`spring barley share ${Math.round(p.springBarleyShare * 100)}% of remaining`);
+  }
+  if (p.autumnWheatShare != null) {
+    state.agriculture.autumnWheatShare = p.autumnWheatShare;
+    notes.push(`autumn wheat share ${Math.round(p.autumnWheatShare * 100)}%`);
+  }
+
+  const sownCap = holding.land.fertile_arable * 0.5;
+  const next = { ...holding.sown };
+  if (p.wheat != null) next.wheat = p.wheat;
+  if (p.rye != null) next.rye = p.rye;
+  if (p.barley != null) next.barley = p.barley;
+  if (p.oats != null) next.oats = p.oats;
+
+  if (state.meta.season === "spring" && p.springBarleyShare != null) {
+    const already = next.wheat + next.rye;
+    const remaining = Math.max(0, sownCap - already);
+    next.barley = round1(remaining * state.agriculture.springBarleyShare);
+    next.oats = round1(remaining - next.barley);
+    notes.push(`this spring: ${next.barley} acres barley, ${next.oats} acres oats on the remaining ${round1(remaining)} acres`);
+  }
+
+  const totalSown = next.wheat + next.rye + next.barley + next.oats;
+  if (totalSown > sownCap + 0.05) {
+    return fail(
+      state,
+      `Sown acres (${round1(totalSown)}) would exceed the two-field cap (${round1(sownCap)} of ${holding.land.fertile_arable} arable).`,
+      p.summary,
+    );
+  }
+  holding.sown = next;
+  return ok(state, `Sowing plan: ${notes.join("; ") || p.summary}`);
 }
 
 function transferResources(
@@ -493,8 +552,8 @@ function eventEffect(
       direction: p.direction,
       reason: p.eventId,
     });
-    if (!inner.ok) return inner;
-    lines.push(inner.logLine);
+    if (inner.ok) lines.push(inner.logLine);
+    else lines.push(`resource skipped: ${inner.reason}`);
   }
   if (p.moodDelta) {
     const existing = state.modifiers.find((m) => m.source === `event:${p.eventId}:mood`);
@@ -512,10 +571,13 @@ function eventEffect(
   }
   if (p.nested) {
     for (const raw of p.nested) {
-      const parsed = MechanicalProposalSchema.safeParse(raw);
-      if (!parsed.success) continue;
-      if (parsed.data.type === "event_effect") continue;
-      const r = applyProposal(state, parsed.data, actor);
+      const parsed = parseProposal(raw);
+      if (!parsed.proposal) {
+        lines.push(`nested dropped: ${parsed.error}`);
+        continue;
+      }
+      if (parsed.proposal.type === "event_effect") continue;
+      const r = applyProposal(state, parsed.proposal, actor);
       lines.push(r.ok ? r.logLine : `nested reject: ${r.reason}`);
     }
   }
