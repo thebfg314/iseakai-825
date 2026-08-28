@@ -375,7 +375,24 @@ function looksLikeSpeechOnly(speech: string, raw: string): boolean {
 
 function openingSpeech(state: WorldState): string {
   const h = state.holdings[0];
-  return `My lord. It is ${state.meta.season} in the year ${state.meta.year}, at ${state.meta.region}. The villa holds ${h?.land.fertile_arable ?? 0} acres of arable, ${state.population.households} households, and ${state.resources.denarii} denarii in the chest. Wheat and rye already stand from last autumn's sowing. A small cell of Saint-Martin stands by the hall — four monks and an oratory — and Father Ermenald serves as your chaplain. I am Aldric, your steward. Say how you would have the land kept, or I will keep it as custom requires. When you wish the season to turn, give the word.`;
+  const land = h?.land;
+  const features = h?.features ?? [];
+  const scrubWaste = (land?.scrub ?? 0) + (land?.waste ?? 0);
+  const sownCap = (land?.fertile_arable ?? 0) * 0.5;
+  const sownNow = h ? h.sown.wheat + h.sown.rye + h.sown.barley + h.sown.oats : 0;
+  const sowing =
+    sownNow + 0.05 < sownCap
+      ? "Wheat and rye already stand from last autumn's sowing, though the sown share is not full."
+      : "Wheat and rye already stand from last autumn's sowing.";
+  const forge = features.some((f) => f === "forge" || f === "mill_forge" || f === "bloomery")
+    ? ` Bernard keeps a forge, but charcoal is down to ${state.resources.charcoal} cart-load${state.resources.charcoal === 1 ? "" : "s"} and iron to ${state.resources.iron} pounds.`
+    : "";
+  const church = features.includes("monastery")
+    ? " A monastic cell stands by the hall, and Father Ermenald serves as your chaplain."
+    : features.includes("chapel")
+      ? " Father Ermenald serves as your chaplain at a small timber oratory. There is no monastic house on the villa."
+      : "";
+  return `My lord. It is ${state.meta.season} in the year ${state.meta.year}, at ${state.meta.region}. The villa holds ${land?.fertile_arable ?? 0} acres of arable — and ${scrubWaste} acres of scrub and waste beside it — ${state.population.households} households, and ${state.resources.denarii} denarii in the chest. ${sowing} The hall is timber, and tired; the barn beside it is sound enough.${forge}${church} I am Aldric, your steward. Say how you would have the land kept, or I will keep it as custom requires. When you wish the season to turn, give the word.`;
 }
 
 export function snapshotState(controller: GameController): WorldState {

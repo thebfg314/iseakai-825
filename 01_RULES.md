@@ -87,7 +87,7 @@ Each season the lordly household and retainers consume a modest grain tithe from
 
 This is a playable simplification, not a claim about Carolingian rations.
 
-### 3.6 Tithe of an on-estate cell
+### 3.6 Tithe of an on-estate chapel or cell
 
 If a holding has `chapel` or `monastery`, each season also consumes **0.15 modius of grain per household** as tithe to the house, plus **0.5 lb beeswax** when stores allow (lights for the oratory). Short tithe can cause hunger the same as household shortfall.
 
@@ -198,7 +198,7 @@ The smith scene may only emit: `transfer_resources` (iron, charcoal, copper, tin
 
 ### 7.2 Chaplain allow-list
 
-The chaplain (capellanus / prior of an on-estate cell) may only emit: `transfer_resources` (denarii, grain, wine, honey, beeswax, linen, salt, timber, stone, custom tagged church|liturgy|alms), `start_project` / `adjust_project` / `assign_labour` for `timber_chapel`, `stone_chapel`, `small_cell`, or `tag: church`, `set_standing_order` (tithe, Sunday, burial, clerical hospitality), `add_modifier` on `mood`, `custom`, or `accident_risk`, `register_feature` (`chapel`, `monastery`), `register_npc` with role chaplain|priest|monk|novice|bishop. Anything else is rejected with reason `npc_not_authorized`. He does not run the demesne.
+The chaplain (capellanus of the estate oratory; prior only if a monastic cell stands) may only emit: `transfer_resources` (denarii, grain, wine, honey, beeswax, linen, salt, timber, stone, custom tagged church|liturgy|alms), `start_project` / `adjust_project` / `assign_labour` for `timber_chapel`, `stone_chapel`, `small_cell`, or `tag: church`, `set_standing_order` (tithe, Sunday, burial, clerical hospitality), `add_modifier` on `mood`, `custom`, or `accident_risk`, `register_feature` (`chapel`, `monastery`), `register_npc` with role chaplain|priest|monk|novice|bishop. Anything else is rejected with reason `npc_not_authorized`. He does not run the demesne.
 
 ### 7.3 Merchant allow-list
 

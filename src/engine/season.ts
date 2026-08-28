@@ -183,7 +183,10 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   state.flags.hunger = false;
   add(consumeGrain(state, round1(households * 0.5), "Households"));
   if (state.holdings.some((h) => h.features.includes("monastery") || h.features.includes("chapel"))) {
-    add(consumeGrain(state, round1(households * 0.15), "Tithe to the cell of Saint-Martin"));
+    const titheHouse = state.holdings.some((h) => h.features.includes("monastery"))
+      ? "Tithe to the cell"
+      : "Tithe to the oratory";
+    add(consumeGrain(state, round1(households * 0.15), titheHouse));
     if (state.resources.beeswax >= 0.5) {
       state.resources.beeswax = round1(state.resources.beeswax - 0.5);
       add("Liturgy: 0.5 lb beeswax for the oratory.");
