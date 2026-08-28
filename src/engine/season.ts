@@ -187,9 +187,10 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
       ? "Tithe to the cell"
       : "Tithe to the oratory";
     add(consumeGrain(state, round1(households * 0.15), titheHouse));
-    if (state.resources.beeswax >= 0.5) {
-      state.resources.beeswax = round1(state.resources.beeswax - 0.5);
-      add("Liturgy: 0.5 lb beeswax for the oratory.");
+    const woolRender = 1;
+    if (state.resources.wool >= woolRender) {
+      state.resources.wool = round1(state.resources.wool - woolRender);
+      add(`Tithe: ${woolRender} lb wool to the oratory.`);
     }
   }
 

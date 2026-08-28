@@ -89,7 +89,7 @@ This is a playable simplification, not a claim about Carolingian rations.
 
 ### 3.6 Tithe of an on-estate chapel or cell
 
-If a holding has `chapel` or `monastery`, each season also consumes **0.15 modius of grain per household** as tithe to the house, plus **0.5 lb beeswax** when stores allow (lights for the oratory). Short tithe can cause hunger the same as household shortfall.
+If a holding has `chapel` or `monastery`, each season also consumes **0.15 modius of grain per household** as tithe to the house, plus **1 lb wool** when stores allow (customary render to the oratory). Short grain tithe can cause hunger the same as household shortfall. A short wool year simply skips the wool render; it does not crash or set hunger.
 
 Religious events are more frequent when a monastery stands on the estate (weight 3).
 

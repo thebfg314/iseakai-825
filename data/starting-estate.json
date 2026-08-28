@@ -108,7 +108,7 @@
   "standing_orders": [
     {
       "id": "so-default-agriculture",
-      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the tithe to the oratory and keep Sundays.",
+      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the grain tithe and a pound of wool to the oratory when stores allow, and keep Sundays.",
       "active": true
     }
   ],
