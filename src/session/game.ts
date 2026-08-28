@@ -11,7 +11,7 @@ import { labourPool, labourRemaining } from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
-import { parseLlmResponse } from "../llm/parse";
+import { parseLlmResponse, eventEffectHasMechanics } from "../llm/parse";
 import { llmChat, type AppSettings } from "../llm";
 import {
   npcUserPrompt,
@@ -20,6 +20,7 @@ import {
   repairPrompt,
   seasonUserPrompt,
 } from "../llm/prompts";
+import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -41,6 +42,9 @@ export class GameController {
     this.state = state;
     this.saveDir = saveDir;
     this.settings = settings;
+    if (!this.state.agriculture) {
+      this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
+    }
     this.messages.push({
       id: newId("msg"),
       role: "npc",
@@ -135,26 +139,30 @@ export class GameController {
         ? `The merchant's carts hold: ${this.state.merchant.stock.map((s) => `${s.amount} ${s.resource}`).join(", ") || "nothing left"}. Buy only from that stock. Sell any estate resource except denarii.`
         : undefined;
     const user = npcUserPrompt(this.state, npcId, playerText, extra);
+    const order = looksLikeMechanicalOrder(playerText);
     try {
-      const { speech, chronicle, proposals, raw, emotion } = await this.callLlm(
+      const parsed = await this.callLlm(
         [{ role: "system", content: system }, { role: "user", content: user }],
         1600,
+        {
+          requireProposals: order,
+          repairHint: order
+            ? "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, or set_standing_order) with real numbers."
+            : undefined,
+        },
       );
-      if (emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = emotion;
+      if (parsed.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = parsed.emotion;
       this.messages.push({
         id: newId("msg"),
         role: "npc",
         npcId,
         npcName: this.npcName(npcId),
-        text: speech,
-        chronicle,
-        emotion: PORTRAIT_NPCS.has(npcId) ? emotion ?? this.npcEmotions[npcId] : undefined,
+        text: parsed.speech,
+        chronicle: parsed.chronicle,
+        emotion: PORTRAIT_NPCS.has(npcId) ? parsed.emotion ?? this.npcEmotions[npcId] : undefined,
         at: new Date().toISOString(),
       });
-      for (const p of proposals) this.queueProposal(npcId, p);
-      if (!proposals.length && /proposal/i.test(raw) === false) {
-        /* chat only */
-      }
+      this.ingestParsedDialogue(npcId, parsed, playerText);
       return this.view();
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
@@ -169,11 +177,60 @@ export class GameController {
   }
 
   queueProposal(npcId: string, proposal: MechanicalProposal) {
+    const filled = fillProposalDefaults(this.state, proposal);
     this.pending.push({
-      id: proposal.id ?? newId("prop"),
+      id: filled.id ?? newId("prop"),
       npcId,
-      proposal: { ...proposal, id: proposal.id },
+      proposal: { ...filled, id: filled.id },
       status: "pending",
+    });
+  }
+
+  /** Testable: parse result → pending queue and ledger notes. Does not call the model. */
+  ingestParsedDialogue(
+    npcId: string,
+    parsed: { proposals: MechanicalProposal[]; parseErrors: string[] },
+    playerText: string,
+  ) {
+    let proposals = parsed.proposals.map(ensureSummary);
+    let fromEngine = false;
+    if (!proposals.length) {
+      const inferred = inferOrderProposals(this.state, npcId, playerText);
+      if (inferred.length) {
+        proposals = inferred;
+        fromEngine = true;
+      }
+    }
+    for (const p of proposals) this.queueProposal(npcId, p);
+    if (proposals.length) {
+      const n = proposals.length;
+      this.ledgerNote(
+        fromEngine
+          ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm to write the world-state file.`
+          : `${n} proposed ledger change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
+      );
+      return;
+    }
+    if (parsed.parseErrors.length) {
+      this.ledgerNote(`No mechanical change was applied (${parsed.parseErrors[0]}). The books are unchanged.`);
+      return;
+    }
+    if (looksLikeMechanicalOrder(playerText)) {
+      const why = cannotFulfillReason(this.state, npcId, playerText);
+      this.ledgerNote(
+        why
+          ? `No mechanical change was proposed. ${why}`
+          : "No mechanical change was proposed. The reply was speech only; the ledger is unchanged. Give a concrete order (sow, start a work, give stores, assign labour, blessing) or Advance season.",
+      );
+    }
+  }
+
+  private ledgerNote(text: string) {
+    this.messages.push({
+      id: newId("msg"),
+      role: "system",
+      text,
+      at: new Date().toISOString(),
     });
   }
 
@@ -230,7 +287,7 @@ export class GameController {
 
     const engineLines = effects.map((e) => e.text);
     try {
-      const { speech, chronicle, proposals, emotion } = await this.callLlm(
+      const parsed = await this.callLlm(
         [
           { role: "system", content: refereeSystemPrompt() },
           {
@@ -244,83 +301,33 @@ export class GameController {
           },
         ],
         2000,
+        {
+          requireProposals: true,
+          repairHint:
+            "Each rolled event MUST have an event_effect that changes numbers (resource+amount+direction, moodDelta, or nested proposals). Flavour-only event_effect is not enough.",
+        },
       );
-      const covered = new Set<string>();
-      for (const p of proposals) {
-        if (p.type !== "event_effect") {
-          const wrapped: MechanicalProposal = {
-            type: "event_effect",
-            eventId: roll.weather.id,
-            summary: p.summary,
-            nested: [p],
-          };
-          const r = applyProposal(this.state, wrapped, "referee");
-          this.state = r.state;
-          effects.push({ kind: r.ok ? "apply" : "reject", text: r.ok ? r.logLine : r.reason ?? r.logLine });
-          this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
-          continue;
-        }
-        covered.add(p.eventId);
-        const r = applyProposal(this.state, p, "referee");
-        this.state = r.state;
-        effects.push({ kind: r.ok ? "apply" : "reject", text: r.ok ? r.logLine : r.reason ?? r.logLine });
-        this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
-      }
-      for (const ev of rolled) {
-        if (covered.has(ev.id)) continue;
-        const stub = defaultEventStub(ev);
-        const r = applyProposal(
-          this.state,
-          {
-            type: "event_effect",
-            eventId: ev.id,
-            summary: `Stub for ${ev.id}`,
-            resource: stub.resource,
-            amount: stub.amount,
-            direction: stub.direction,
-            moodDelta: stub.moodDelta,
-          },
-          "referee",
-        );
-        this.state = r.state;
-        effects.push({ kind: r.ok ? "apply" : "reject", text: `Default effect: ${r.logLine}` });
-      }
+      this.applySeasonProposals(parsed.proposals, rolled, effects);
 
       const clock = finishSeasonClock(this.state);
       effects.push(...clock);
       this.log("engine", "SEASON", `Now ${this.state.meta.season} ${this.state.meta.year}`);
-      if (emotion) this.npcEmotions.steward = emotion;
+      if (parsed.emotion) this.npcEmotions.steward = parsed.emotion;
       this.messages.push({
         id: newId("msg"),
         role: "npc",
         npcId: "steward",
         npcName: this.npcName("steward"),
-        text: speech,
-        chronicle,
-        emotion: emotion ?? this.npcEmotions.steward,
+        text: parsed.speech,
+        chronicle: parsed.chronicle,
+        emotion: parsed.emotion ?? this.npcEmotions.steward,
         at: new Date().toISOString(),
       });
+      this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
       return { ...this.view(), effects };
     } catch (err) {
-      for (const ev of rolled) {
-        const stub = defaultEventStub(ev);
-        const r = applyProposal(
-          this.state,
-          {
-            type: "event_effect",
-            eventId: ev.id,
-            summary: `Stub for ${ev.id}`,
-            resource: stub.resource,
-            amount: stub.amount,
-            direction: stub.direction,
-            moodDelta: stub.moodDelta,
-          },
-          "referee",
-        );
-        this.state = r.state;
-        effects.push({ kind: "apply", text: `Default effect (no model): ${r.logLine}` });
-      }
+      for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
       effects.push(...finishSeasonClock(this.state));
       const error = err instanceof Error ? err.message : String(err);
       this.messages.push({
@@ -330,21 +337,99 @@ export class GameController {
         chronicle: effects.map((e) => e.text).join("\n"),
         at: new Date().toISOString(),
       });
+      this.pushSeasonLedger(effects);
       return { ...this.view(), effects, error };
     }
+  }
+
+  /** Testable: referee JSON → auto-applied event effects + stubs for anything without numbers. */
+  applySeasonProposals(proposals: MechanicalProposal[], rolled: RolledEvent[], effects: SeasonEffectLine[]) {
+    const covered = new Set<string>();
+    for (const p of proposals.map(ensureSummary)) {
+      if (p.type !== "event_effect") {
+        const wrapped: MechanicalProposal = {
+          type: "event_effect",
+          eventId: rolled[0]?.id ?? "season",
+          summary: p.summary,
+          nested: [p],
+        };
+        const r = applyProposal(this.state, wrapped, "referee");
+        this.state = r.state;
+        effects.push({ kind: r.ok ? "apply" : "reject", text: r.ok ? r.logLine : r.reason ?? r.logLine });
+        this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
+        continue;
+      }
+      if (!eventEffectHasMechanics(p)) {
+        effects.push({ kind: "info", text: `Flavour only for ${p.eventId}; using the default numeric effect.` });
+        continue;
+      }
+      covered.add(p.eventId);
+      const r = applyProposal(this.state, p, "referee");
+      this.state = r.state;
+      effects.push({ kind: r.ok ? "apply" : "reject", text: r.ok ? r.logLine : r.reason ?? r.logLine });
+      this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
+    }
+    for (const ev of rolled) {
+      if (covered.has(ev.id)) continue;
+      this.applyEventStub(ev, effects, "Default effect");
+    }
+  }
+
+  private applyEventStub(ev: RolledEvent, effects: SeasonEffectLine[], label: string) {
+    const stub = defaultEventStub(ev, this.state);
+    const r = applyProposal(
+      this.state,
+      {
+        type: "event_effect",
+        eventId: ev.id,
+        summary: `Stub for ${ev.id}`,
+        resource: stub.resource,
+        amount: stub.amount,
+        direction: stub.direction,
+        moodDelta: stub.moodDelta,
+      },
+      "referee",
+    );
+    this.state = r.state;
+    effects.push({ kind: r.ok ? "apply" : "reject", text: `${label}: ${r.logLine}` });
+    this.log("referee", r.ok ? "APPLY" : "REJECT", `${label}: ${r.logLine}`);
+  }
+
+  private pushSeasonLedger(effects: SeasonEffectLine[], parseErrors?: string[]) {
+    const lines = effects.filter((e) => e.kind === "apply" || e.kind === "info" || e.kind === "event").map((e) => e.text);
+    const extra = parseErrors?.length ? `\nChronicler parse: ${parseErrors[0]}` : "";
+    this.ledgerNote(`Season written to the books:\n${lines.join("\n")}${extra}`);
   }
 
   private async callLlm(
     messages: { role: "system" | "user" | "assistant"; content: string }[],
     maxTokens: number,
-  ): Promise<{ speech: string; chronicle?: string; proposals: MechanicalProposal[]; raw: string; emotion?: AldricEmotion }> {
+    opts?: { requireProposals?: boolean; repairHint?: string },
+  ): Promise<{
+    speech: string;
+    chronicle?: string;
+    proposals: MechanicalProposal[];
+    raw: string;
+    emotion?: AldricEmotion;
+    parseErrors: string[];
+  }> {
     const raw1 = await llmChat(this.settings, messages, { maxTokens });
     let parsed = parseLlmResponse(raw1);
-    if (parsed.parseErrors.length && parsed.proposals.length === 0 && !looksLikeSpeechOnly(parsed.response.speech, raw1)) {
-      const raw2 = await llmChat(this.settings, [...messages, { role: "assistant", content: raw1 }, repairPrompt(raw1, parsed.parseErrors)], {
-        maxTokens,
-        temperature: 0.2,
-      });
+    const needsRepair =
+      (parsed.parseErrors.length > 0 && parsed.proposals.length === 0) ||
+      (Boolean(opts?.requireProposals) && parsed.proposals.length === 0);
+    if (needsRepair) {
+      const errors = parsed.parseErrors.length
+        ? parsed.parseErrors
+        : ["proposals was empty but this turn must change the ledger."];
+      const raw2 = await llmChat(
+        this.settings,
+        [...messages, { role: "assistant", content: raw1 }, repairPrompt(raw1, errors, opts?.repairHint)],
+        {
+          maxTokens,
+          temperature: 0.2,
+        },
+      );
       parsed = parseLlmResponse(raw2);
       return {
         speech: parsed.response.speech,
@@ -352,6 +437,7 @@ export class GameController {
         proposals: parsed.proposals.map(ensureSummary),
         raw: raw2,
         emotion: parsed.emotion,
+        parseErrors: parsed.parseErrors,
       };
     }
     return {
@@ -360,6 +446,7 @@ export class GameController {
       proposals: parsed.proposals.map(ensureSummary),
       raw: raw1,
       emotion: parsed.emotion,
+      parseErrors: parsed.parseErrors,
     };
   }
 }
@@ -369,8 +456,11 @@ function ensureSummary(p: MechanicalProposal): MechanicalProposal {
   return { ...p, summary: p.type };
 }
 
-function looksLikeSpeechOnly(speech: string, raw: string): boolean {
-  return Boolean(speech) && !raw.includes('"proposals"') && parseLlmResponse(raw).parseErrors.length === 0;
+function fillProposalDefaults(state: WorldState, p: MechanicalProposal): MechanicalProposal {
+  if ((p.type === "start_project" || p.type === "adjust_sowing") && !p.holdingId) {
+    return { ...p, holdingId: state.holdings[0]?.id };
+  }
+  return p;
 }
 
 function openingSpeech(state: WorldState): string {

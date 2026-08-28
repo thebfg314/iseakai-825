@@ -60,6 +60,20 @@ export function tickModifiers(state: WorldState): string[] {
   return notes;
 }
 
+/** +1 mood add ≈ +3% yield/labour, clamped. Multiply ops apply directly. */
+export function moodFactor(state: WorldState): number {
+  let add = 0;
+  let mult = 1;
+  let set: number | undefined;
+  for (const m of modifiersFor(state, "mood")) {
+    if (m.effect.op === "add") add += m.effect.value;
+    else if (m.effect.op === "multiply") mult *= m.effect.value;
+    else set = m.effect.value;
+  }
+  if (set !== undefined) return clamp(set, 0.85, 1.15);
+  return clamp((1 + add * 0.03) * mult, 0.85, 1.15);
+}
+
 export function yieldMultiplier(state: WorldState, crop?: string): number {
   const grain = applyMultiplyAdd(1, modifiersFor(state, "grain_yield"), { lo: 0.4, hi: 2.5 });
   const specific = crop
@@ -70,5 +84,5 @@ export function yieldMultiplier(state: WorldState, crop?: string): number {
   const hr = maxRisk(state, "harvest_risk");
   if (hr > 0) harvest *= clamp(1 - hr, 0.4, 1);
   if (state.flags.hunger) harvest *= 0.9;
-  return grain * specific * harvest;
+  return grain * specific * harvest * moodFactor(state);
 }

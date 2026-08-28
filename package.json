@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
+    "test": "vitest run",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "start": "vite",
@@ -23,6 +24,7 @@
     "electron": "^34.0.2",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
-    "vite-plugin-electron": "^0.29.0"
+    "vite-plugin-electron": "^0.29.0",
+    "vitest": "^4.1.11"
   }
 }

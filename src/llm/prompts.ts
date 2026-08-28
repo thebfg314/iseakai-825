@@ -13,6 +13,7 @@ function sliceState(state: WorldState) {
     custom_resources: state.custom_resources,
     population: state.population,
     labour: { pool, remaining, assigned: state.labour.assigned, harvest_risk: state.labour.harvest_risk },
+    agriculture: state.agriculture ?? { springBarleyShare: 0.6, autumnWheatShare: 0.45 },
     market: state.market,
     projects: state.projects.filter((p) => p.status !== "cancelled"),
     modifiers: state.modifiers,
@@ -33,14 +34,19 @@ const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markd
   "proposals": [ ... ]
 }
 Proposal objects MUST include "type", "summary", and the fields for that type.
-Types: assign_labour, set_standing_order, start_project, adjust_project, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect.
+Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect.
 Rules:
 - Never silently invent geography, named people, or goods. Use register_* with isNew: true.
-- Do not apply numbers yourself; proposals are suggestions for the engine.
+- Do not apply numbers yourself; proposals are suggestions for the engine. The player must Confirm mid-season proposals before the world-state file changes.
+- A player ORDER is not chat. If they sow, assign labour, start a project, give/gift stores, buy/sell, bless, or change mood, you MUST emit at least one proposal. Speech without proposals does not change the ledger.
+- Empty proposals [] only when the player is greeting, asking a question, or requesting a report with no instruction.
+- If you cannot fulfill an order, still emit nothing mechanical and say so in speech — the engine will tell the player the books are unchanged.
 - Innovations (modern knowledge) are never instant: prefer a project and/or a temporary modifier (kind: temporary, seasonsRemaining 3-8, promoteOnExpire true if it should become custom). Judge materials, tools, teachability, time, labour, accident, and social/religious suspicion.
 - Modifier targets: grain_yield, labour_efficiency, spoilage, project_speed, specific_resource_output, accident_risk, mood, market_price, livestock_yield, harvest_risk, custom.
-- transfer_resources.direction: buy | sell | consume | gain. buy and sell require a visiting merchant this season; buy is limited to merchant.stock. consume and gain are estate-internal and do not need a merchant.
-- start_project.projectKey must be a catalogue key or you must supply customCosts { labourDays, lumber, iron, stone }.
+- add_modifier on mood: effect.op "add" and value 1 is a modest blessing (~3% yield and callable labour while it lasts). These persist across seasons until seasonsRemaining runs out.
+- transfer_resources.direction: buy | sell | consume | gain. buy and sell require a visiting merchant this season; buy is limited to merchant.stock. consume and gain are estate-internal and do not need a merchant. Gifts and tithes use consume.
+- start_project.projectKey must be a catalogue key or you must supply customCosts { labourDays, lumber, iron, stone }. Always set holdingId to the estate holding id from the world state slice.
+- adjust_sowing: change the crop mix. springBarleyShare (0-1 of remaining spring capacity; rest oats), autumnWheatShare (0-1; rest rye). Mid-spring this also fills remaining unsown acres now so the ledger moves before the season turns.
 - If the player is only chatting or asking, proposals may be [].
 - For portrait NPCs (Aldric, Bernard, Ermenald) you MUST set "emotion" to match your bearing. Never mention emotion, portraits, or the JSON field in speech. If you must, you may also hide a tag the game will strip: [[emotion:pleased]]`;
 
@@ -54,6 +60,7 @@ Coin for goods: you may propose transfer_resources buy/sell ONLY while a merchan
 You are NOT the owner of canonical facts. The JSON world state is truth.
 ${OUTPUT_CONTRACT}
 assign_labour.projectId is a project id or "unassigned" to clear.
+adjust_sowing is how crop mix changes (not standing-order flavour). "Sow more barley" → adjust_sowing with springBarleyShare near 1. "Start clearing scrub" → start_project clear_scrub plus assign_labour if you also put people on it. "Give the cell grain" → transfer_resources consume on a grain.
 Known project keys (use these or customCosts): ${PROJECT_CATALOG.map((p) => p.key).join(", ")}.`;
 }
 
@@ -97,7 +104,7 @@ Write a seasonal report in steward Aldric's voice (speech) plus an optional chro
 Set "emotion" for Aldric's portrait. Do not mention emotion in speech.
 If the estate has a monastery or chapel, the chronicle may note tithe (grain and wool; if a monastery, one sheep a year after the autumn increase), the cell, or Ermenald — without inventing new clergy. Do not invent beeswax lights or hives.
 A merchant visit is rolled separately from weather and other events. If the engine notes say a merchant arrived or did not, report that in speech. Do NOT emit event_effect for the merchant visit itself; trading happens mid-season by buy/sell proposals.
-You receive events that already rolled. You MUST attach event_effect proposals so the ledger changes (grain, livestock, mood modifiers, project delays, prices). Flavour without a proposal is not a mechanical effect.
+You receive events that already rolled. You MUST attach event_effect proposals so the ledger changes (grain, livestock, mood modifiers, project delays, prices). Flavour without a proposal is not a mechanical effect. If you cannot judge amounts, still emit moodDelta or a small resource swing — the engine will stub any event you skip.
 event_effect fields: eventId, summary, optional resource+amount+direction, optional moodDelta, optional nested mechanical proposals.
 Do not invent new geography. Do not skip costs.
 ${OUTPUT_CONTRACT}`;
@@ -130,9 +137,16 @@ export function seasonUserPrompt(
   ].join("\n\n");
 }
 
-export function repairPrompt(broken: string, errors: string[]): { role: "user"; content: string } {
+export function repairPrompt(broken: string, errors: string[], extraHint?: string): { role: "user"; content: string } {
   return {
     role: "user",
-    content: `Your previous reply was not valid JSON for this game.\nErrors:\n- ${errors.join("\n- ")}\n\nPrevious text:\n${broken.slice(0, 4000)}\n\nReply again with ONLY a valid JSON object { speech, chronicle?, proposals }.`,
+    content: `Your previous reply was not valid JSON for this game, or it omitted required ledger proposals.
+Errors:
+- ${errors.join("\n- ")}
+${extraHint ? `\n${extraHint}\n` : ""}
+Previous text:
+${broken.slice(0, 4000)}
+
+Reply again with ONLY a valid JSON object { speech, chronicle?, emotion?, proposals }. Mid-season orders and season events MUST include proposals that change numbers.`,
   };
 }

@@ -1,7 +1,7 @@
 import type { SeasonEffectLine, WorldState } from "./schema";
 import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
 import { labourDaysFromAssignment } from "./labour";
-import { tickModifiers, yieldMultiplier } from "./modifiers";
+import { modifiersFor, applyMultiplyAdd, moodFactor, tickModifiers, yieldMultiplier } from "./modifiers";
 import { projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { syncTradeFromFeatures } from "./merchant";
 import { nextSeason, round0, round1 } from "./util";
@@ -38,8 +38,17 @@ function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats
   return `Harvested ${amount} modii of ${crop} from ${acres} acres.`;
 }
 
+function springBarleyShare(state: WorldState): number {
+  return state.agriculture?.springBarleyShare ?? 0.6;
+}
+
+function autumnWheatShare(state: WorldState): number {
+  return state.agriculture?.autumnWheatShare ?? 0.45;
+}
+
 function sowSpring(state: WorldState): string[] {
   const notes: string[] = [];
+  const barleyShare = springBarleyShare(state);
   for (const h of state.holdings) {
     const sownCap = h.land.fertile_arable * 0.5;
     const already = h.sown.wheat + h.sown.rye;
@@ -48,7 +57,7 @@ function sowSpring(state: WorldState): string[] {
       notes.push(`${h.name}: no spring sowing capacity (autumn crops occupy the sown half).`);
       continue;
     }
-    const barley = round1(remaining * 0.6);
+    const barley = round1(remaining * barleyShare);
     const oats = round1(remaining - barley);
     h.sown.barley = barley;
     h.sown.oats = oats;
@@ -59,9 +68,10 @@ function sowSpring(state: WorldState): string[] {
 
 function sowAutumn(state: WorldState): string[] {
   const notes: string[] = [];
+  const wheatShare = autumnWheatShare(state);
   for (const h of state.holdings) {
     const sownCap = h.land.fertile_arable * 0.5;
-    const wheat = round1(sownCap * 0.45);
+    const wheat = round1(sownCap * wheatShare);
     const rye = round1(sownCap - wheat);
     h.sown.wheat = wheat;
     h.sown.rye = rye;
@@ -75,7 +85,8 @@ function sowAutumn(state: WorldState): string[] {
 function livestockSeason(state: WorldState): string[] {
   const notes: string[] = [];
   const season = state.meta.season;
-  const livestockYield = yieldMultiplier(state);
+  const livestockYield =
+    applyMultiplyAdd(1, modifiersFor(state, "livestock_yield"), { lo: 0.4, hi: 2.5 }) * moodFactor(state) * (state.flags.hunger ? 0.9 : 1);
   if (season === "spring") {
     const wool = round0(resourceOutputBonus(state, "wool", state.resources.sheep * 2 * livestockYield));
     state.resources.wool += wool;

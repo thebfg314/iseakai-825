@@ -183,6 +183,7 @@ Proposal `type` values:
 | `set_standing_order` | steward; chaplain (religious custom) | persisted instruction |
 | `start_project` | steward; smith if forge-related; chaplain if church-related | costs from catalogue or declared custom |
 | `adjust_project` | steward; smith if that project is forge-related; chaplain if church-related | rush, cancel, labour this season |
+| `adjust_sowing` | steward | Crop mix. `springBarleyShare` (0–1 of remaining spring capacity; rest oats), `autumnWheatShare` (0–1; rest rye). Mid-spring also fills remaining unsown acres so the ledger moves before Advance season. |
 | `transfer_resources` | steward; merchant (buy/sell only); smith (metal/fuel/hides/trade_goods only); chaplain (alms, grain, wine, wax, linen, timber, stone) | buy / sell require a visiting merchant; consume / gain do not |
 | `add_modifier` | steward; smith (forge targets only); chaplain (mood, custom, accident_risk) | temporary or permanent |
 | `remove_modifier` | steward | |
@@ -193,6 +194,10 @@ Proposal `type` values:
 
 Mid-season proposals wait for explicit player Confirm or Reject.  
 Rejected proposals are logged and not applied.
+
+If the model returns speech with no valid proposal, the engine repairs once, then may draft a conservative proposal from a clear order (sow / clear scrub / give grain / blessing). The player still Confirms. If nothing can be drafted, the UI shows a system line that the books are unchanged.
+
+Flavour-only `event_effect` (id and summary, no resource/mood/nested) does **not** count as covering an event. The engine then applies the default numeric stub. Stubs pick a grain the estate actually holds so consume cannot silently fail.
 
 ### 7.1 Smith allow-list
 
@@ -229,6 +234,7 @@ Escape hatch: `custom` — stored and shown in the ledger and injected into prom
 - `add` effects: add (labour_efficiency add is extra fraction of pool).
 - `set`: last applied wins (avoid except for market_price).
 - `accident_risk` and `harvest_risk`: use the maximum of competing values.
+- `mood`: `add` of +1 is about +3% grain yield and callable labour (clamped 0.85–1.15) until `seasons_remaining` runs out. Blessings and event mood swings therefore change later seasons, not only the chat log.
 
 ---
 

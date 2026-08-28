@@ -60,6 +60,11 @@ export function App() {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [view?.messages.length]);
 
+  useEffect(() => {
+    if (!view?.pending.length) return;
+    document.getElementById("pending-proposals")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [view?.pending.length]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const volumeRef = useRef(musicGain(settings));
   const masterRef = useRef(settings.masterVolume ?? 1);
@@ -255,7 +260,12 @@ export function App() {
             Save
           </button>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
-          <button className="primary" onClick={() => withBusy(() => window.api.advanceSeason())} disabled={busy}>
+          <button
+            className="primary"
+            onClick={() => withBusy(() => window.api.advanceSeason())}
+            disabled={busy}
+            title={view.pending.length ? "Unconfirmed orders will lapse if you advance." : "Resolve the season and write events to the ledger"}
+          >
             Advance season
           </button>
         </div>
@@ -263,6 +273,12 @@ export function App() {
 
       {error && <div className="banner">{error}</div>}
       {busy && <div className="banner muted">Waiting on the court…</div>}
+      {view.pending.length > 0 && (
+        <div className="banner pending">
+          {view.pending.length} proposed ledger change{view.pending.length === 1 ? "" : "s"} — Confirm writes world-state.json.
+          Advancing the season will lapse unconfirmed orders.
+        </div>
+      )}
 
       <div className="layout">
         <section className="dialogue">
@@ -317,8 +333,9 @@ export function App() {
           </div>
 
           {view.pending.length > 0 && (
-            <div className="proposals">
-              <h3>Proposed changes — confirm to write the ledger</h3>
+            <div className="proposals" id="pending-proposals">
+              <h3>Proposed changes — Confirm writes the ledger</h3>
+              <p className="proposal-help">Speech does not change stores. Only Confirm applies numbers to world-state.json.</p>
               {view.pending.map((p) => (
                 <ProposalCard
                   key={p.id}
@@ -399,7 +416,11 @@ function ProposalCard({
     <div className="proposal">
       <div className="p-type">{p.proposal.type.replaceAll("_", " ")}</div>
       <div className="p-sum">{p.proposal.summary}</div>
-      <pre className="p-json">{JSON.stringify(p.proposal, null, 2)}</pre>
+      <div className="p-blurb">{proposalBlurb(p.proposal)}</div>
+      <details>
+        <summary>Ledger delta</summary>
+        <pre className="p-json">{JSON.stringify(p.proposal, null, 2)}</pre>
+      </details>
       <div className="p-actions">
         <button className="primary" disabled={busy} onClick={onConfirm}>
           Confirm
@@ -410,6 +431,32 @@ function ProposalCard({
       </div>
     </div>
   );
+}
+
+function proposalBlurb(p: PendingProposal["proposal"]): string {
+  switch (p.type) {
+    case "adjust_sowing": {
+      const bits = [];
+      if (p.springBarleyShare != null) bits.push(`spring barley ${Math.round(p.springBarleyShare * 100)}% of remaining`);
+      if (p.autumnWheatShare != null) bits.push(`autumn wheat ${Math.round(p.autumnWheatShare * 100)}%`);
+      if (p.barley != null) bits.push(`${p.barley} acres barley`);
+      return bits.join(" · ") || "Change the sowing mix";
+    }
+    case "start_project":
+      return `Start ${p.name ?? p.projectKey} on ${p.holdingId ?? "the holding"}`;
+    case "transfer_resources":
+      return `${p.direction} ${p.amount} ${p.resource}${p.reason ? ` (${p.reason})` : ""}`;
+    case "add_modifier":
+      return `${p.target} ${p.effect.op} ${p.effect.value} · ${p.kind}${p.seasonsRemaining != null ? ` · ${p.seasonsRemaining} seasons` : ""}`;
+    case "assign_labour":
+      return `${p.men} men, ${p.women} women, ${p.youths} youths → ${p.projectId}`;
+    case "set_standing_order":
+      return p.text;
+    case "event_effect":
+      return `${p.eventId}${p.resource ? ` · ${p.direction} ${p.amount} ${p.resource}` : ""}${p.moodDelta ? ` · mood ${p.moodDelta}` : ""}`;
+    default:
+      return p.summary;
+  }
 }
 
 function Ledger({ view }: { view: GameView }) {
@@ -446,6 +493,11 @@ function Ledger({ view }: { view: GameView }) {
           {Object.entries(holding.sown).map(([k, v]) => (
             <Row key={k} k={label(k)} v={`${v} acres`} />
           ))}
+          <Row
+            k="Spring barley share"
+            v={`${Math.round((s.agriculture?.springBarleyShare ?? 0.6) * 100)}% of remaining (rest oats)`}
+          />
+          <Row k="Autumn wheat share" v={`${Math.round((s.agriculture?.autumnWheatShare ?? 0.45) * 100)}% (rest rye)`} />
           <h3>Features</h3>
           <p>{holding.features.map(label).join(", ") || "none"}</p>
         </>
