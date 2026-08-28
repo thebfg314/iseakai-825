@@ -93,6 +93,10 @@ function livestockSeason(state: WorldState): string[] {
       state.resources.sheep += breed;
       notes.push(`Herd increase: +${breed} sheep (young stock).`);
     }
+    if (state.holdings.some((h) => h.features.includes("monastery")) && state.resources.sheep >= 1) {
+      state.resources.sheep -= 1;
+      notes.push("Tithe: 1 sheep to the cell (the year's increase).");
+    }
     const wineAcres = state.holdings.reduce((s, h) => s + h.land.vineyard, 0);
     if (wineAcres > 0) {
       const wine = round1(resourceOutputBonus(state, "wine", wineAcres * 0.6 * livestockYield));
@@ -183,14 +187,13 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   state.flags.hunger = false;
   add(consumeGrain(state, round1(households * 0.5), "Households"));
   if (state.holdings.some((h) => h.features.includes("monastery") || h.features.includes("chapel"))) {
-    const titheHouse = state.holdings.some((h) => h.features.includes("monastery"))
-      ? "Tithe to the cell"
-      : "Tithe to the oratory";
-    add(consumeGrain(state, round1(households * 0.15), titheHouse));
+    const hasMonastery = state.holdings.some((h) => h.features.includes("monastery"));
+    const house = hasMonastery ? "cell" : "oratory";
+    add(consumeGrain(state, round1(households * 0.15), `Tithe to the ${house}`));
     const woolRender = 1;
     if (state.resources.wool >= woolRender) {
       state.resources.wool = round1(state.resources.wool - woolRender);
-      add(`Tithe: ${woolRender} lb wool to the oratory.`);
+      add(`Tithe: ${woolRender} lb wool to the ${house}.`);
     }
   }
 

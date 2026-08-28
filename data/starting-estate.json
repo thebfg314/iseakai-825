@@ -16,7 +16,7 @@
       "name": "Fontenay",
       "land": {
         "fertile_arable": 32,
-        "meadow": 6,
+        "meadow": 8,
         "vineyard": 1,
         "orchard": 1,
         "woodland": 14,
@@ -31,7 +31,7 @@
         "oats": 0
       },
       "households": 10,
-      "features": ["manor_hall", "barn", "forge", "chapel"]
+      "features": ["manor_hall", "barn", "forge", "chapel", "monastery"]
     }
   ],
   "resources": {
@@ -40,10 +40,10 @@
     "rye": 8,
     "barley": 4,
     "oats": 3,
-    "cattle": 3,
-    "sheep": 8,
+    "cattle": 5,
+    "sheep": 14,
     "pigs": 4,
-    "horses": 1,
+    "horses": 2,
     "poultry": 0,
     "bees": 0,
     "wine": 1,
@@ -108,7 +108,7 @@
   "standing_orders": [
     {
       "id": "so-default-agriculture",
-      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the grain tithe and a pound of wool to the oratory when stores allow, and keep Sundays.",
+      "text": "Keep the two-field rotation. Sow barley and oats in spring on the remaining sown share. Do not neglect the meadow hay — winter fodder is thin. Spare charcoal and iron at the forge; do not spend them without need. Render the grain tithe and a pound of wool to the cell of Saint-Martin when stores allow. After the autumn herd increase, give the cell one sheep (the year's increase). Keep Sundays.",
       "active": true
     }
   ],
@@ -132,14 +132,14 @@
       "name": "Ermenald",
       "role": "chaplain",
       "location": "fontenay",
-      "notes": "Priest of the small timber oratory at Fontenay and the lord's capellanus: mass, letters, canon, and a wary eye on novelty. There is no monastic cell here. In practice he answers to the bishop of Autun as much as to the villa."
+      "notes": "Priest and prior of the small cell of Saint-Martin at Fontenay (four monks, a timber oratory). Serves as the lord's capellanus: mass, letters, canon, and a wary eye on novelty. In practice he answers to the bishop of Autun as much as to the villa."
     }
   ],
   "known_techniques": [],
   "flags": {
     "merchant_present": false,
     "active_threat": false,
-    "monastery_nearby": false,
+    "monastery_nearby": true,
     "hunger": false
   },
   "trade": {

@@ -388,7 +388,7 @@ function openingSpeech(state: WorldState): string {
     ? ` Bernard keeps a forge, but charcoal is down to ${state.resources.charcoal} cart-load${state.resources.charcoal === 1 ? "" : "s"} and iron to ${state.resources.iron} pounds.`
     : "";
   const church = features.includes("monastery")
-    ? " A monastic cell stands by the hall, and Father Ermenald serves as your chaplain."
+    ? " A small cell of Saint-Martin stands by the hall — four monks and an oratory — and Father Ermenald serves as your chaplain."
     : features.includes("chapel")
       ? " Father Ermenald serves as your chaplain at a small timber oratory. There is no monastic house on the villa."
       : "";
