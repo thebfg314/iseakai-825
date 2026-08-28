@@ -25,7 +25,7 @@ const PEDDLER_WARES = [
   "softwood",
 ] as const;
 
-const NAMES = ["Gero", "Odo", "Liutward", "Isaac", "Boso", "Theudo", "Salamon", "Wichard"];
+export const MERCHANT_NAMES = ["Gero", "Odo", "Liutward", "Isaac", "Boso", "Theudo", "Salamon", "Wichard"] as const;
 
 export type MerchantChanceBreakdown = {
   base: number;
@@ -96,10 +96,6 @@ export function rollMerchantVisit(
   return { ...rolled, arrived: Math.random() < rolled.chance };
 }
 
-function pick<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 export function generateMerchantStock(): { resource: string; amount: number }[] {
   const count = 4 + Math.floor(Math.random() * 4);
   const pool = [...PEDDLER_WARES];
@@ -123,14 +119,18 @@ export function applyMerchantRoll(
     state.flags.merchant_present = false;
     state.merchant.present = false;
     state.merchant.name = undefined;
+    state.merchant.face = undefined;
     state.merchant.stock = [];
     const pct = Math.round(result.chance * 100);
     return `No merchant on the incoming season (chance ${pct}%: base ${Math.round(result.base * 100)}%${result.notes.length ? "; " + result.notes.join("; ") : ""}).`;
   }
-  const name = pick(NAMES);
+  const idx = Math.floor(Math.random() * MERCHANT_NAMES.length);
+  const name = MERCHANT_NAMES[idx];
+  const face = idx + 1;
   state.flags.merchant_present = true;
   state.merchant.present = true;
   state.merchant.name = name;
+  state.merchant.face = face;
   state.merchant.stock = generateMerchantStock();
   state.npcs.push({
     id: "merchant",

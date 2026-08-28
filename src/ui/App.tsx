@@ -241,7 +241,7 @@ export function App() {
     );
   }
 
-  const portraitSrc = npcPortrait(view.sceneNpcId, displayEmotion);
+  const portraitSrc = npcPortrait(view.sceneNpcId, displayEmotion, view.state.merchant.face);
 
   return (
     <div className="app">

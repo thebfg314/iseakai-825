@@ -11,7 +11,7 @@ export const ALDRIC_EMOTIONS = [
 
 export type AldricEmotion = (typeof ALDRIC_EMOTIONS)[number];
 
-export const PORTRAIT_NPCS = new Set(["steward", "smith", "chaplain"]);
+export const PORTRAIT_NPCS = new Set(["steward", "smith", "chaplain", "merchant"]);
 
 const ALIASES: Record<string, AldricEmotion> = {
   neutral: "neutral",

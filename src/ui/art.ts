@@ -22,13 +22,22 @@ import bernardNeutral from "../../art assets/NPC Images/Bernard Blacksmith/Berna
 import bernardConcerned from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Concerned.png";
 import bernardDispleased from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Displeased.png";
 import bernardHappy from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Happy.png";
-import bernardThoughtful from "../../art assets/NPC Images/Bernard Blacksmith/Bernard thoughtful.png";
+import bernardThoughtful from "../../art assets/NPC Images/Bernard Blacksmith/Bernard Thoughtful.png";
 
 import ermenaldNeutral from "../../art assets/NPC Images/Ermenald Priest/Ermenald Neutral .png";
 import ermenaldConcerned from "../../art assets/NPC Images/Ermenald Priest/Ermenald Concerned.png";
 import ermenaldDispleased from "../../art assets/NPC Images/Ermenald Priest/Ermenald Displeased.png";
 import ermenaldHappy from "../../art assets/NPC Images/Ermenald Priest/Ermenald Happy.png";
 import ermenaldThoughtful from "../../art assets/NPC Images/Ermenald Priest/Ermenald Thoughtful.png";
+
+import merchant1 from "../../art assets/NPC Images/Merchants/Merchant 1.png";
+import merchant2 from "../../art assets/NPC Images/Merchants/Merchant 2.png";
+import merchant3 from "../../art assets/NPC Images/Merchants/Merchant 3.png";
+import merchant4 from "../../art assets/NPC Images/Merchants/Merchant 4.png";
+import merchant5 from "../../art assets/NPC Images/Merchants/Merchant 5.png";
+import merchant6 from "../../art assets/NPC Images/Merchants/Merchant 6.png";
+import merchant7 from "../../art assets/NPC Images/Merchants/Merchant 7.png";
+import merchant8 from "../../art assets/NPC Images/Merchants/Merchant 8.png";
 
 import type { AldricEmotion } from "../engine/emotion";
 
@@ -85,6 +94,17 @@ const ERMENALD: Record<SparsePose, string> = {
   thoughtful: ermenaldThoughtful,
 };
 
+const MERCHANT_FACES: Record<number, string> = {
+  1: merchant1,
+  2: merchant2,
+  3: merchant3,
+  4: merchant4,
+  5: merchant5,
+  6: merchant6,
+  7: merchant7,
+  8: merchant8,
+};
+
 function sparsePortrait(table: Record<SparsePose, string>, emotion: AldricEmotion | undefined): string {
   const pose = emotion ? SPARSE_FROM_EMOTION[emotion] : "neutral";
   return table[pose] ?? table.neutral;
@@ -95,9 +115,10 @@ export function aldricPortrait(emotion: AldricEmotion | undefined): string {
   return ALDRIC[emotion] ?? aldricFallback;
 }
 
-export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined): string | undefined {
+export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, face?: number): string | undefined {
   if (npcId === "steward") return aldricPortrait(emotion);
   if (npcId === "smith") return sparsePortrait(BERNARD, emotion);
   if (npcId === "chaplain") return sparsePortrait(ERMENALD, emotion);
+  if (npcId === "merchant") return face != null ? MERCHANT_FACES[face] : undefined;
   return undefined;
 }

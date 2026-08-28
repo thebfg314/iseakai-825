@@ -284,6 +284,7 @@ export const WorldStateSchema = z.object({
     .object({
       present: z.boolean().default(false),
       name: z.string().optional(),
+      face: z.number().int().min(1).max(8).optional(),
       last_chance: z.number().optional(),
       stock: z.array(z.object({ resource: z.string(), amount: z.number() })).default([]),
     })
