@@ -30,7 +30,7 @@
         "barley": 0,
         "oats": 0
       },
-      "households": 6,
+      "households": 10,
       "features": ["manor_hall", "barn", "forge", "chapel"]
     }
   ],
@@ -45,7 +45,7 @@
     "pigs": 4,
     "horses": 1,
     "poultry": 0,
-    "bees": 1,
+    "bees": 0,
     "wine": 1,
     "cheese": 4,
     "honey": 2,
@@ -65,10 +65,10 @@
   },
   "custom_resources": [],
   "population": {
-    "households": 6,
-    "adult_men": 7,
-    "adult_women": 8,
-    "youths": 5,
+    "households": 10,
+    "adult_men": 12,
+    "adult_women": 13,
+    "youths": 9,
     "mancipia": 0
   },
   "labour": {
@@ -118,7 +118,7 @@
       "name": "Aldric",
       "role": "steward",
       "location": "fontenay",
-      "notes": "Long-serving steward of Fontenay. The villa is thin: few households, much waste and scrub, a short chest. Speaks plainly, counts carefully, distrusts novelties until they work twice."
+      "notes": "Long-serving steward of Fontenay. The villa is thin: much waste and scrub, a short chest, no hives. Speaks plainly, counts carefully, distrusts novelties until they work twice."
     },
     {
       "id": "smith",
