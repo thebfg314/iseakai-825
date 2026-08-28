@@ -130,7 +130,7 @@ export function App() {
       const button = (event.target as HTMLElement | null)?.closest("button");
       if (!(button instanceof HTMLButtonElement) || button.disabled) return;
       const fx = new Audio(BUTTON_CLICK);
-      fx.volume = Math.min(1, Math.max(0, masterRef.current));
+      fx.volume = Math.min(1, Math.max(0, masterRef.current * 0.6));
       void fx.play().catch(() => {
         /* click may be blocked until a gesture */
       });
