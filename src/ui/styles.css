@@ -71,7 +71,11 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
   display: block;
   transition: opacity 0.25s ease;
 }
-.portrait.smith img {
+.portrait.smith img,
+.portrait.quarry_master img,
+.portrait.carpenter img,
+.portrait.mason img,
+.portrait.potter img {
   transform: scale(1.7);
   transform-origin: center 82%;
 }
@@ -109,7 +113,7 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 
 .layout { display: grid; grid-template-columns: 1.45fr 0.85fr; min-height: 0; flex: 1; }
 .dialogue { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
-.scene-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); }
+.scene-tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); }
 .scene-tabs button { flex: 1; border: 0; border-right: 1px solid var(--line); padding: 0.5rem 0.35rem; background: transparent; font-size: 0.88rem; }
 .scene-tabs button.active { background: #2e281f; }
 

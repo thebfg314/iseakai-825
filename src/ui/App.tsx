@@ -3,6 +3,7 @@ import type { GameView } from "../shared/types";
 import type { ChatMessage, PendingProposal } from "../engine/schema";
 import { CANONICAL_RESOURCES, RESOURCE_UNITS } from "../engine/schema";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
+import { isCoreHouseholdId, matchHireableSpecialist } from "../engine/specialists";
 import type { AldricEmotion } from "../engine/emotion";
 import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
@@ -305,6 +306,18 @@ export function App() {
             >
               Chaplain · Ermenald
             </button>
+            {view.state.npcs
+              .filter((n) => !isCoreHouseholdId(n.id))
+              .map((n) => (
+                <button
+                  key={n.id}
+                  className={view.sceneNpcId === n.id ? "active" : ""}
+                  title={`Speak with ${n.name}`}
+                  onClick={() => withBusy(() => window.api.setScene(n.id))}
+                >
+                  {cap(n.role.replaceAll("_", " "))} · {n.name}
+                </button>
+              ))}
             <button
               className={view.sceneNpcId === "merchant" ? "active" : ""}
               disabled={!view.merchantAvailable}
@@ -362,15 +375,7 @@ export function App() {
             <textarea
               value={draft}
               disabled={busy}
-              placeholder={
-                view.sceneNpcId === "smith"
-                  ? "Tell Bernard what you want of the forge…"
-                  : view.sceneNpcId === "chaplain"
-                    ? "Speak with Father Ermenald of the cell…"
-                    : view.sceneNpcId === "merchant"
-                      ? `Haggle with ${view.state.merchant.name ?? "the merchant"} over the carts…`
-                      : "Tell Aldric how the land and stores should be kept…"
-              }
+              placeholder={composerPlaceholder(view)}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -456,6 +461,11 @@ function proposalBlurb(p: PendingProposal["proposal"]): string {
       return `${p.men} men, ${p.women} women, ${p.youths} youths → ${p.projectId}`;
     case "set_standing_order":
       return p.text;
+    case "register_npc": {
+      const spec = matchHireableSpecialist(p.npc);
+      const gift = spec ? ` · ${spec.hireCostDenarii} denarii hiring gift` : "";
+      return `Record ${p.npc.name} as ${p.npc.role.replaceAll("_", " ")}${gift}`;
+    }
     case "event_effect":
       return `${p.eventId}${p.resource ? ` · ${p.direction} ${p.amount} ${p.resource}` : ""}${p.moodDelta ? ` · mood ${p.moodDelta}` : ""}`;
     default:
@@ -487,6 +497,11 @@ function Ledger({ view }: { view: GameView }) {
         k="Callable labour left (days)"
         v={`m ${view.labour.remaining.men}/${view.labour.pool.men} · w ${view.labour.remaining.women}/${view.labour.pool.women} · y ${view.labour.remaining.youths}/${view.labour.pool.youths}`}
       />
+      {s.npcs
+        .filter((n) => n.id !== "merchant")
+        .map((n) => (
+          <Row key={n.id} k={n.name} v={label(n.role)} />
+        ))}
 
       <h3>Land — {holding?.name}</h3>
       {holding &&
@@ -742,6 +757,27 @@ function SettingsModal({
       </div>
     </div>
   );
+}
+
+function composerPlaceholder(view: GameView): string {
+  switch (view.sceneNpcId) {
+    case "smith":
+      return "Tell Bernard what you want of the forge…";
+    case "chaplain":
+      return "Speak with Father Ermenald of the cell…";
+    case "merchant":
+      return `Haggle with ${view.state.merchant.name ?? "the merchant"} over the carts…`;
+    case "quarry_master":
+      return "Speak with Colman of the stone…";
+    case "carpenter":
+      return "Speak with Haimo of the timber…";
+    case "mason":
+      return "Speak with Gerold of the masonry…";
+    case "potter":
+      return "Speak with Hugo of the kiln…";
+    default:
+      return "Tell Aldric how the land and stores should be kept…";
+  }
 }
 
 function cap(s: string) {

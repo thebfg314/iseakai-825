@@ -9,6 +9,14 @@ import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEY
 import { labourPool, labourRemaining, refreshHarvestRisk } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
+import {
+  hireSummary,
+  matchHireableSpecialist,
+  specialistAllowed,
+  specialistAlreadyPresent,
+  specialistById,
+  specialistNpc,
+} from "./specialists";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 
@@ -193,6 +201,11 @@ export function applyProposal(
   if (actor === "merchant") {
     const blocked = merchantAllowed(state, proposal);
     if (blocked) return fail(state, blocked, `REJECT merchant ${proposal.type}: ${blocked}`);
+  }
+  const specialistActor = specialistById(actor);
+  if (specialistActor) {
+    const blocked = specialistAllowed(state, proposal, specialistActor);
+    if (blocked) return fail(state, blocked, `REJECT ${actor} ${proposal.type}: ${blocked}`);
   }
 
   switch (proposal.type) {
@@ -532,9 +545,30 @@ function registerNpc(
   p: Extract<MechanicalProposal, { type: "register_npc" }>,
 ): ApplyResult {
   if (!p.isNew) return fail(state, "register_npc must declare isNew: true.", p.summary);
-  if (state.npcs.some((n) => n.id === p.npc.id)) return fail(state, "NPC id already exists.", p.summary);
-  state.npcs.push(p.npc);
-  return ok(state, `New person recorded: ${p.npc.name} (${p.npc.role}).`);
+  const spec = matchHireableSpecialist(p.npc);
+  const npc = spec ? specialistNpc(spec, p.npc.location || state.holdings[0]?.id || "fontenay") : p.npc;
+  if (state.npcs.some((n) => n.id === npc.id)) return fail(state, "NPC id already exists.", p.summary);
+  if (spec && specialistAlreadyPresent(state, spec)) {
+    return fail(state, `${spec.name} already serves this house.`, p.summary);
+  }
+  if (spec) {
+    const cost = spec.hireCostDenarii;
+    if (state.resources.denarii < cost) {
+      return fail(
+        state,
+        `Need ${cost} denarii hiring gift; have ${state.resources.denarii}.`,
+        p.summary || hireSummary(spec),
+      );
+    }
+    state.resources.denarii = round1(state.resources.denarii - cost);
+    state.npcs.push(npc);
+    return ok(
+      state,
+      `Hired ${npc.name} as ${npc.role.replaceAll("_", " ")}. ${cost} denarii taken from the chest.`,
+    );
+  }
+  state.npcs.push(npc);
+  return ok(state, `New person recorded: ${npc.name} (${npc.role}).`);
 }
 
 function eventEffect(

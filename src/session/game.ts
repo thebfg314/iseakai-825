@@ -21,6 +21,7 @@ import {
   seasonUserPrompt,
 } from "../llm/prompts";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
+import { hireSummary, matchHireableSpecialist, specialistById, specialistNpc } from "../engine/specialists";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -105,6 +106,8 @@ export class GameController {
     if (npcId === "smith" && !this.smithAvailable()) return this.view();
     if (npcId === "chaplain" && !this.chaplainAvailable()) return this.view();
     if (npcId === "merchant" && !this.merchantAvailable()) return this.view();
+    if (specialistById(npcId) && !this.state.npcs.some((n) => n.id === npcId)) return this.view();
+    if (!this.state.npcs.some((n) => n.id === npcId) && npcId !== "merchant") return this.view();
     this.sceneNpcId = npcId;
     return this.view();
   }
@@ -122,6 +125,10 @@ export class GameController {
     if (npcId === "merchant" && !this.merchantAvailable()) {
       this.sceneNpcId = "steward";
       return { ...this.view(), error: "The merchant has left the district." };
+    }
+    if (specialistById(npcId) && !this.state.npcs.some((n) => n.id === npcId)) {
+      this.sceneNpcId = "steward";
+      return { ...this.view(), error: "That craftsman is not of this house." };
     }
     this.sceneNpcId = npcId;
     this.messages.push({
@@ -147,7 +154,7 @@ export class GameController {
         {
           requireProposals: order,
           repairHint: order
-            ? "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, or set_standing_order) with real numbers."
+            ? "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers."
             : undefined,
         },
       );
@@ -187,7 +194,7 @@ export class GameController {
     parsed: { proposals: MechanicalProposal[]; parseErrors: string[] },
     playerText: string,
   ) {
-    let proposals = parsed.proposals.map(ensureSummary);
+    let proposals = dropHireFeeDuplicates(parsed.proposals.map(ensureSummary));
     let fromEngine = false;
     if (!proposals.length) {
       const inferred = inferOrderProposals(this.state, npcId, playerText);
@@ -216,7 +223,7 @@ export class GameController {
       this.ledgerNote(
         why
           ? `No mechanical change was proposed. ${why}`
-          : "No mechanical change was proposed. The reply was speech only; the ledger is unchanged. Give a concrete order (sow, start a work, give stores, assign labour, blessing) or Advance season.",
+          : "No mechanical change was proposed. The reply was speech only; the ledger is unchanged. Give a concrete order (sow, start a work, give stores, assign labour, blessing, hire a craftsman) or Advance season.",
         npcId,
       );
     }
@@ -239,6 +246,10 @@ export class GameController {
     this.state = result.state;
     item.status = result.ok ? "applied" : "rejected";
     item.rejectReason = result.reason;
+    if (result.ok && item.proposal.type === "register_npc") {
+      const spec = matchHireableSpecialist(item.proposal.npc);
+      if (spec) this.npcEmotions[spec.id] = this.npcEmotions[spec.id] ?? "neutral";
+    }
     this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? result.logLine : result.reason ?? result.logLine);
     this.ledgerNote(result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
     return this.view();
@@ -455,7 +466,30 @@ function fillProposalDefaults(state: WorldState, p: MechanicalProposal): Mechani
   if ((p.type === "start_project" || p.type === "adjust_sowing") && !p.holdingId) {
     return { ...p, holdingId: state.holdings[0]?.id };
   }
+  if (p.type === "register_npc") {
+    const spec = matchHireableSpecialist(p.npc);
+    if (spec) {
+      return {
+        ...p,
+        npc: specialistNpc(spec, p.npc.location || state.holdings[0]?.id || "fontenay"),
+        summary: p.summary && p.summary !== p.type ? p.summary : hireSummary(spec),
+      };
+    }
+  }
   return p;
+}
+
+function dropHireFeeDuplicates(proposals: MechanicalProposal[]): MechanicalProposal[] {
+  const hiring = proposals.some((p) => p.type === "register_npc" && matchHireableSpecialist(p.npc));
+  if (!hiring) return proposals;
+  return proposals.filter(
+    (p) =>
+      !(
+        p.type === "transfer_resources" &&
+        p.resource === "denarii" &&
+        (p.direction === "consume" || p.direction === "buy")
+      ),
+  );
 }
 
 function openingSpeech(state: WorldState): string {
