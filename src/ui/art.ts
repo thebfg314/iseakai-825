@@ -48,6 +48,12 @@ import geroldDispleased from "../../art assets/NPC Images/Gerold Mason/Gerold Di
 import geroldHappy from "../../art assets/NPC Images/Gerold Mason/Gerold Happy.png";
 import geroldThoughtful from "../../art assets/NPC Images/Gerold Mason/Gerold Thoughtful.png";
 
+import hugoNeutral from "../../art assets/NPC Images/Hugo Potter/Hugo Neutral.png";
+import hugoConcerned from "../../art assets/NPC Images/Hugo Potter/Hugo Concerned.png";
+import hugoDispleased from "../../art assets/NPC Images/Hugo Potter/Hugo Displeased.png";
+import hugoHappy from "../../art assets/NPC Images/Hugo Potter/Hugo Happy.png";
+import hugoThoughtful from "../../art assets/NPC Images/Hugo Potter/Hugo Thoughtful.png";
+
 import merchant1 from "../../art assets/NPC Images/Merchants/Merchant 1.png";
 import merchant2 from "../../art assets/NPC Images/Merchants/Merchant 2.png";
 import merchant3 from "../../art assets/NPC Images/Merchants/Merchant 3.png";
@@ -136,6 +142,14 @@ const GEROLD: Record<SparsePose, string> = {
   thoughtful: geroldThoughtful,
 };
 
+const HUGO: Record<SparsePose, string> = {
+  neutral: hugoNeutral,
+  concerned: hugoConcerned,
+  disappointed: hugoDispleased,
+  pleased: hugoHappy,
+  thoughtful: hugoThoughtful,
+};
+
 const MERCHANT_FACES: Record<number, string> = {
   1: merchant1,
   2: merchant2,
@@ -164,6 +178,7 @@ export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, f
   if (npcId === "quarry_master") return sparsePortrait(COLMAN, emotion);
   if (npcId === "carpenter") return sparsePortrait(HAIMO, emotion);
   if (npcId === "mason") return sparsePortrait(GEROLD, emotion);
+  if (npcId === "potter") return sparsePortrait(HUGO, emotion);
   if (npcId === "merchant") return face != null ? MERCHANT_FACES[face] : undefined;
   return undefined;
 }
