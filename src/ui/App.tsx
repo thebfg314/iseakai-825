@@ -58,7 +58,7 @@ export function App() {
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [view?.messages.length]);
+  }, [view?.messages.length, view?.sceneNpcId]);
 
   useEffect(() => {
     if (!view?.pending.length) return;
@@ -326,9 +326,13 @@ export function App() {
               </aside>
             )}
             <div className="log" ref={scroller}>
-              {view.messages.map((m) => (
-                <MessageBubble key={m.id} m={m} />
-              ))}
+              {view.messages.length === 0 ? (
+                <p className="muted empty-log">
+                  {view.sceneNpcId === "merchant" && !view.merchantAvailable ? "No one here." : "No words yet."}
+                </p>
+              ) : (
+                view.messages.map((m) => <MessageBubble key={m.id} m={m} />)
+              )}
             </div>
           </div>
 

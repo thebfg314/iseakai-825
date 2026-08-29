@@ -64,7 +64,7 @@ export class GameController {
     return {
       state: this.state,
       pending: this.pending.filter((p) => p.status === "pending"),
-      messages: this.messages,
+      messages: messagesForScene(this.messages, this.sceneNpcId),
       sceneNpcId: this.sceneNpcId,
       labour: { pool: labourPool(this.state), remaining: labourRemaining(this.state) },
       smithAvailable: this.smithAvailable(),
@@ -166,12 +166,7 @@ export class GameController {
       return this.view();
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      this.messages.push({
-        id: newId("msg"),
-        role: "system",
-        text: `${this.npcName(npcId)} cannot be heard (${error})`,
-        at: new Date().toISOString(),
-      });
+      this.ledgerNote(`${this.npcName(npcId)} cannot be heard (${error})`, npcId);
       return { ...this.view(), error };
     }
   }
@@ -208,11 +203,12 @@ export class GameController {
         fromEngine
           ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm to write the world-state file.`
           : `${n} proposed ledger change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
+        npcId,
       );
       return;
     }
     if (parsed.parseErrors.length) {
-      this.ledgerNote(`No mechanical change was applied (${parsed.parseErrors[0]}). The books are unchanged.`);
+      this.ledgerNote(`No mechanical change was applied (${parsed.parseErrors[0]}). The books are unchanged.`, npcId);
       return;
     }
     if (looksLikeMechanicalOrder(playerText)) {
@@ -221,14 +217,16 @@ export class GameController {
         why
           ? `No mechanical change was proposed. ${why}`
           : "No mechanical change was proposed. The reply was speech only; the ledger is unchanged. Give a concrete order (sow, start a work, give stores, assign labour, blessing) or Advance season.",
+        npcId,
       );
     }
   }
 
-  private ledgerNote(text: string) {
+  private ledgerNote(text: string, npcId: string) {
     this.messages.push({
       id: newId("msg"),
       role: "system",
+      npcId,
       text,
       at: new Date().toISOString(),
     });
@@ -242,12 +240,7 @@ export class GameController {
     item.status = result.ok ? "applied" : "rejected";
     item.rejectReason = result.reason;
     this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? result.logLine : result.reason ?? result.logLine);
-    this.messages.push({
-      id: newId("msg"),
-      role: "system",
-      text: result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`,
-      at: new Date().toISOString(),
-    });
+    this.ledgerNote(result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
     return this.view();
   }
 
@@ -257,12 +250,7 @@ export class GameController {
       item.status = "rejected";
       item.rejectReason = "Player rejected";
       this.log(item.npcId, "REJECT", item.proposal.summary);
-      this.messages.push({
-        id: newId("msg"),
-        role: "system",
-        text: `You declined: ${item.proposal.summary}`,
-        at: new Date().toISOString(),
-      });
+      this.ledgerNote(`You declined: ${item.proposal.summary}`, item.npcId);
     }
     return this.view();
   }
@@ -333,11 +321,13 @@ export class GameController {
       this.messages.push({
         id: newId("msg"),
         role: "system",
+        npcId: "steward",
         text: `Season advanced with engine defaults only. ${error}`,
         chronicle: effects.map((e) => e.text).join("\n"),
         at: new Date().toISOString(),
       });
       this.pushSeasonLedger(effects);
+      this.sceneNpcId = "steward";
       return { ...this.view(), effects, error };
     }
   }
@@ -398,7 +388,7 @@ export class GameController {
   private pushSeasonLedger(effects: SeasonEffectLine[], parseErrors?: string[]) {
     const lines = effects.filter((e) => e.kind === "apply" || e.kind === "info" || e.kind === "event").map((e) => e.text);
     const extra = parseErrors?.length ? `\nChronicler parse: ${parseErrors[0]}` : "";
-    this.ledgerNote(`Season written to the books:\n${lines.join("\n")}${extra}`);
+    this.ledgerNote(`Season written to the books:\n${lines.join("\n")}${extra}`, "steward");
   }
 
   private async callLlm(
@@ -449,6 +439,11 @@ export class GameController {
       parseErrors: parsed.parseErrors,
     };
   }
+}
+
+/** Full store stays on the controller; the view only shows the active scene. */
+export function messagesForScene(messages: ChatMessage[], sceneNpcId: string): ChatMessage[] {
+  return messages.filter((m) => m.npcId === sceneNpcId);
 }
 
 function ensureSummary(p: MechanicalProposal): MechanicalProposal {
