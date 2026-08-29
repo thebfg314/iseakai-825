@@ -1,5 +1,6 @@
 import { LlmResponseSchema, MechanicalProposalSchema, PROPOSAL_TYPES, type LlmResponse, type MechanicalProposal } from "../engine/schema";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
+import { matchHireableSpecialist, specialistNpc } from "../engine/specialists";
 import { stripEmotionCommands, normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 
 export type ParseLlmResult = {
@@ -70,6 +71,11 @@ const TYPE_ALIASES: Record<string, (typeof PROPOSAL_TYPES)[number]> = {
   blessing: "add_modifier",
   event: "event_effect",
   eventeffect: "event_effect",
+  hire: "register_npc",
+  retain: "register_npc",
+  employ: "register_npc",
+  registernpc: "register_npc",
+  new_npc: "register_npc",
 };
 
 const DIRECTION_ALIASES: Record<string, "buy" | "sell" | "consume" | "gain"> = {
@@ -113,6 +119,7 @@ function guessType(obj: Record<string, unknown>): string | undefined {
   if (obj.resource && (obj.amount != null || obj.direction)) return "transfer_resources";
   if (obj.target && (obj.effect || obj.source)) return "add_modifier";
   if (obj.text && obj.active != null) return "set_standing_order";
+  if (obj.npc || (obj.name && obj.role && (obj.isNew != null || obj.type === "register_npc"))) return "register_npc";
   return undefined;
 }
 
@@ -188,6 +195,32 @@ function coerceIsNew(obj: Record<string, unknown>): void {
   }
 }
 
+function coerceRegisterNpc(obj: Record<string, unknown>): void {
+  const nested = asRecord(obj.npc) ?? obj;
+  const spec = matchHireableSpecialist({
+    id: typeof nested.id === "string" ? nested.id : typeof obj.id === "string" ? obj.id : undefined,
+    name: typeof nested.name === "string" ? nested.name : typeof obj.name === "string" ? obj.name : undefined,
+    role: typeof nested.role === "string" ? nested.role : typeof obj.role === "string" ? obj.role : undefined,
+  });
+  if (spec) {
+    const location =
+      (typeof nested.location === "string" && nested.location) ||
+      (typeof obj.location === "string" && obj.location) ||
+      "fontenay";
+    obj.npc = specialistNpc(spec, location);
+    return;
+  }
+  if (!asRecord(obj.npc) && typeof nested.name === "string" && typeof nested.role === "string") {
+    obj.npc = {
+      id: typeof nested.id === "string" ? nested.id : String(nested.role).toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+      name: nested.name,
+      role: nested.role,
+      location: typeof nested.location === "string" ? nested.location : "fontenay",
+      notes: typeof nested.notes === "string" ? nested.notes : undefined,
+    };
+  }
+}
+
 /** Best-effort shape so Zod is less likely to drop a real order. */
 export function coerceProposalInput(raw: unknown): unknown {
   const obj = asRecord(raw);
@@ -224,6 +257,9 @@ export function coerceProposalInput(raw: unknown): unknown {
   }
   if (next.type === "register_resource" || next.type === "register_feature" || next.type === "register_npc") {
     coerceIsNew(next);
+  }
+  if (next.type === "register_npc") {
+    coerceRegisterNpc(next);
   }
   if (next.type === "event_effect") {
     const dir = coerceDirection(next.direction);

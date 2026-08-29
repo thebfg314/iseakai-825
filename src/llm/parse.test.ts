@@ -93,4 +93,18 @@ describe("parseLlmResponse", () => {
     expect(parsed.parseErrors).toEqual([]);
     expect(parsed.proposals).toEqual([]);
   });
+
+  it("coerces hire / flat fields into register_npc for a catalog specialist", () => {
+    const parsed = parseProposal({
+      type: "hire",
+      summary: "Bring in Haimo",
+      name: "Haimo",
+      role: "carpenter",
+    });
+    expect(parsed.proposal).toMatchObject({
+      type: "register_npc",
+      isNew: true,
+      npc: { id: "carpenter", name: "Haimo", role: "carpenter", location: "fontenay" },
+    });
+  });
 });

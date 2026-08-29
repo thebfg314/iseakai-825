@@ -30,6 +30,30 @@ import ermenaldDispleased from "../../art assets/NPC Images/Ermenald Priest/Erme
 import ermenaldHappy from "../../art assets/NPC Images/Ermenald Priest/Ermenald Happy.png";
 import ermenaldThoughtful from "../../art assets/NPC Images/Ermenald Priest/Ermenald Thoughtful.png";
 
+import colmanNeutral from "../../art assets/NPC Images/Colman Quarry Master/Colman Neutral.png";
+import colmanConcerned from "../../art assets/NPC Images/Colman Quarry Master/Colman Concerned.png";
+import colmanDispleased from "../../art assets/NPC Images/Colman Quarry Master/Colman Displeased.png";
+import colmanHappy from "../../art assets/NPC Images/Colman Quarry Master/Colman Happy.png";
+import colmanThoughtful from "../../art assets/NPC Images/Colman Quarry Master/Colman Thoughtful.png";
+
+import haimoNeutral from "../../art assets/NPC Images/Haimo Carpenter/Haimo Neutral.png";
+import haimoConcerned from "../../art assets/NPC Images/Haimo Carpenter/Haimo Concerned.png";
+import haimoDispleased from "../../art assets/NPC Images/Haimo Carpenter/Haimo Displeased.png";
+import haimoHappy from "../../art assets/NPC Images/Haimo Carpenter/Haimo Happy.png";
+import haimoThoughtful from "../../art assets/NPC Images/Haimo Carpenter/Haimo Thoughtful.png";
+
+import geroldNeutral from "../../art assets/NPC Images/Gerold Mason/Gerold Neutral.png";
+import geroldConcerned from "../../art assets/NPC Images/Gerold Mason/Gerold Concerned.png";
+import geroldDispleased from "../../art assets/NPC Images/Gerold Mason/Gerold Displeased.png";
+import geroldHappy from "../../art assets/NPC Images/Gerold Mason/Gerold Happy.png";
+import geroldThoughtful from "../../art assets/NPC Images/Gerold Mason/Gerold Thoughtful.png";
+
+import hugoNeutral from "../../art assets/NPC Images/Hugo Potter/Hugo Neutral.png";
+import hugoConcerned from "../../art assets/NPC Images/Hugo Potter/Hugo Concerned.png";
+import hugoDispleased from "../../art assets/NPC Images/Hugo Potter/Hugo Displeased.png";
+import hugoHappy from "../../art assets/NPC Images/Hugo Potter/Hugo Happy.png";
+import hugoThoughtful from "../../art assets/NPC Images/Hugo Potter/Hugo Thoughtful.png";
+
 import merchant1 from "../../art assets/NPC Images/Merchants/Merchant 1.png";
 import merchant2 from "../../art assets/NPC Images/Merchants/Merchant 2.png";
 import merchant3 from "../../art assets/NPC Images/Merchants/Merchant 3.png";
@@ -94,6 +118,38 @@ const ERMENALD: Record<SparsePose, string> = {
   thoughtful: ermenaldThoughtful,
 };
 
+const COLMAN: Record<SparsePose, string> = {
+  neutral: colmanNeutral,
+  concerned: colmanConcerned,
+  disappointed: colmanDispleased,
+  pleased: colmanHappy,
+  thoughtful: colmanThoughtful,
+};
+
+const HAIMO: Record<SparsePose, string> = {
+  neutral: haimoNeutral,
+  concerned: haimoConcerned,
+  disappointed: haimoDispleased,
+  pleased: haimoHappy,
+  thoughtful: haimoThoughtful,
+};
+
+const GEROLD: Record<SparsePose, string> = {
+  neutral: geroldNeutral,
+  concerned: geroldConcerned,
+  disappointed: geroldDispleased,
+  pleased: geroldHappy,
+  thoughtful: geroldThoughtful,
+};
+
+const HUGO: Record<SparsePose, string> = {
+  neutral: hugoNeutral,
+  concerned: hugoConcerned,
+  disappointed: hugoDispleased,
+  pleased: hugoHappy,
+  thoughtful: hugoThoughtful,
+};
+
 const MERCHANT_FACES: Record<number, string> = {
   1: merchant1,
   2: merchant2,
@@ -119,6 +175,10 @@ export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, f
   if (npcId === "steward") return aldricPortrait(emotion);
   if (npcId === "smith") return sparsePortrait(BERNARD, emotion);
   if (npcId === "chaplain") return sparsePortrait(ERMENALD, emotion);
+  if (npcId === "quarry_master") return sparsePortrait(COLMAN, emotion);
+  if (npcId === "carpenter") return sparsePortrait(HAIMO, emotion);
+  if (npcId === "mason") return sparsePortrait(GEROLD, emotion);
+  if (npcId === "potter") return sparsePortrait(HUGO, emotion);
   if (npcId === "merchant") return face != null ? MERCHANT_FACES[face] : undefined;
   return undefined;
 }

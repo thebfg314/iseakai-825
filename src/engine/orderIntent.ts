@@ -1,14 +1,16 @@
 import type { MechanicalProposal, WorldState } from "./schema";
 import { lookupProject } from "./projectCatalog";
+import { hireFulfillReason, inferHireProposals, looksLikeHireOrder, specialistById } from "./specialists";
 
 const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
 const ORDER_VERB =
-  /\b(sow|sowing|plant|assign|labour|labor|start|begin|clear|scrub|drain|give|gift|grant|tithe|alms|bless|blessing|mood|morale|buy|sell|build|project|transfer|send (the )?(men|hands|labour|labor)|more barley|more oats|more wheat|more rye)\b/i;
-const ORDER_OVERRIDE = /\b(sow|assign|start|give|clear|build|bless|gift|tithe)\b/i;
+  /\b(sow|sowing|plant|assign|labour|labor|start|begin|clear|scrub|drain|give|gift|grant|tithe|alms|bless|blessing|mood|morale|buy|sell|build|project|transfer|hire|retain|employ|send (the )?(men|hands|labour|labor)|more barley|more oats|more wheat|more rye)\b/i;
+const ORDER_OVERRIDE = /\b(sow|assign|start|give|clear|build|bless|gift|tithe|hire|retain|employ)\b/i;
 
 export function looksLikeMechanicalOrder(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
+  if (looksLikeHireOrder(t)) return true;
   if (QUESTION_PREFIX.test(t) && !ORDER_OVERRIDE.test(t)) return false;
   return ORDER_VERB.test(t);
 }
@@ -41,8 +43,13 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
     return [];
   }
 
-  if (npcId === "smith") {
+  if (npcId === "smith" || specialistById(npcId)) {
     return [];
+  }
+
+  if (looksLikeHireOrder(playerText)) {
+    if (npcId !== "steward") return [];
+    return inferHireProposals(state, playerText);
   }
 
   if (npcId === "chaplain") {
@@ -162,8 +169,13 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
 
 export function cannotFulfillReason(state: WorldState, npcId: string, playerText: string): string | null {
   const t = playerText.toLowerCase();
+  const hireWhy = hireFulfillReason(state, npcId, playerText);
+  if (hireWhy) return hireWhy;
   if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor)\b/.test(t)) {
     return "Bernard does not keep the fields. Speak to Aldric the steward.";
+  }
+  if (specialistById(npcId) && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor|hire)\b/.test(t)) {
+    return "This craft does not keep the household books. Speak to Aldric the steward.";
   }
   if (npcId === "chaplain" && /\b(sow|clear scrub|assign labour|assign labor)\b/.test(t)) {
     return "Father Ermenald does not run the ploughland. Speak to Aldric the steward.";

@@ -244,3 +244,141 @@ describe("per-NPC dialogue logs", () => {
     expect(merchant.messages.some((m) => opening.test(m.text))).toBe(false);
   });
 });
+
+describe("hire specialists via Aldric Confirm", () => {
+  it("starts Fontenay with only Aldric, Bernard, and Ermenald", () => {
+    const state = WorldStateSchema.parse(structuredClone(startingEstate));
+    expect(state.npcs.map((n) => n.id).sort()).toEqual(["chaplain", "smith", "steward"]);
+    expect(state.npcs.map((n) => n.name)).toEqual(["Aldric", "Bernard", "Ermenald"]);
+    expect(state.npcs.some((n) => /colman|haimo|gerold|hugo/i.test(n.name))).toBe(false);
+    expect(state.npcs.some((n) => /quarry|carpenter|mason|potter/i.test(n.role))).toBe(false);
+  });
+
+  it("does not hire on speech-only talk about needing a carpenter", () => {
+    const game = tempGame();
+    const before = cloneState(game.state);
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The rye stands well, my lord.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "How fares the rye?");
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.resources.denarii).toBe(before.resources.denarii);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+  });
+
+  it("drafts a carpenter hire from Aldric, Confirm writes Haimo and takes a solidus", () => {
+    const game = tempGame();
+    expect(game.setScene("carpenter").sceneNpcId).toBe("steward");
+    const denariiBefore = game.state.resources.denarii;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "I can send for a carpenter, my lord.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire a carpenter full-time for the villa.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal.type).toBe("register_npc");
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.resources.denarii).toBe(denariiBefore);
+
+    const result = game.confirmProposal(pending[0].id);
+    expect(result.error).toBeUndefined();
+    const haimo = game.state.npcs.find((n) => n.id === "carpenter");
+    expect(haimo).toMatchObject({ name: "Haimo", role: "carpenter", location: "fontenay" });
+    expect(game.state.npcs).toHaveLength(4);
+    expect(game.state.resources.denarii).toBe(denariiBefore - 12);
+    const saved = worldFile(game);
+    expect(saved.npcs.some((n: { id: string }) => n.id === "carpenter")).toBe(true);
+    expect(saved.resources.denarii).toBe(denariiBefore - 12);
+
+    expect(game.setScene("carpenter").sceneNpcId).toBe("carpenter");
+    expect(game.view().messages.every((m) => m.npcId === "carpenter")).toBe(true);
+    expect(game.setScene("steward").messages.some((m) => /I am Aldric/.test(m.text))).toBe(true);
+  });
+
+  it("does not take the hiring gift twice when the model also spends denarii", () => {
+    const game = tempGame();
+    const denariiBefore = game.state.resources.denarii;
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Haimo will come.",
+        proposals: [
+          {
+            type: "register_npc",
+            summary: "Hire Haimo",
+            npc: { id: "carpenter", name: "Haimo", role: "carpenter", location: "fontenay" },
+            isNew: true,
+          },
+          { type: "transfer_resources", summary: "Hiring gift", resource: "denarii", amount: 12, direction: "consume" },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Hire a carpenter.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
+    game.confirmProposal(game.pending[0].id);
+    expect(game.state.resources.denarii).toBe(denariiBefore - 12);
+    expect(game.state.npcs.some((n) => n.id === "carpenter")).toBe(true);
+  });
+
+  it("does not add the specialist until Confirm", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Colman can be brought in.",
+        proposals: [
+          {
+            type: "register_npc",
+            summary: "Hire Colman",
+            npc: { id: "quarry_master", name: "Colman", role: "quarry_master", location: "fontenay" },
+            isNew: true,
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Find me a quarry master.");
+    expect(game.state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain"]);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
+  });
+
+  it("refuses a hiring gift the chest cannot spare", () => {
+    const game = tempGame();
+    game.state.resources.denarii = 5;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The chest is too thin.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire a mason for the villa.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.messages.some((m) => /chest cannot spare|denarii/i.test(m.text))).toBe(true);
+  });
+
+  it("does not hire twice, and Bernard cannot hire for the house", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Aye.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire Gerold the mason.");
+    game.confirmProposal(game.pending[0].id);
+    expect(game.state.npcs.filter((n) => n.role === "mason")).toHaveLength(1);
+
+    game.ingestParsedDialogue("steward", parsed, "Hire a mason full-time.");
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "register_npc")).toHaveLength(0);
+    expect(game.messages.some((m) => /already serves/i.test(m.text))).toBe(true);
+
+    const smithParsed = parseLlmResponse(JSON.stringify({ speech: "That is Aldric's business.", proposals: [] }));
+    game.ingestParsedDialogue("smith", smithParsed, "Hire a potter for the villa.");
+    expect(game.state.npcs.some((n) => n.id === "potter")).toBe(false);
+  });
+
+  it("canonicalizes a named hire from messy LLM JSON and keeps a separate potter log", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Hugo will come, if the gift is paid.",
+        proposals: [{ type: "hire", summary: "Take on Hugo", name: "Hugo", role: "potter", isNew: true }],
+      }),
+    );
+    expect(parsed.proposals[0]).toMatchObject({
+      type: "register_npc",
+      npc: { id: "potter", name: "Hugo", role: "potter" },
+    });
+    game.ingestParsedDialogue("steward", parsed, "Hire Hugo the potter.");
+    game.confirmProposal(game.pending[0].id);
+    expect(game.state.npcs.some((n) => n.id === "potter" && n.name === "Hugo")).toBe(true);
+    const potter = game.setScene("potter");
+    expect(potter.sceneNpcId).toBe("potter");
+    expect(potter.messages).toHaveLength(0);
+    expect(potter.messages.some((m) => /I am Aldric/.test(m.text))).toBe(false);
+  });
+});
