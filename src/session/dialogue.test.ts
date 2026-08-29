@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
 import { cloneState } from "../engine/state";
@@ -165,5 +165,82 @@ describe("season events and persistent buffs", () => {
     const after = game.state.modifiers.find((m) => m.source === "Ermenald's blessing");
     expect(after?.seasons_remaining).toBe(3);
     expect(yieldMultiplier(game.state, "rye")).toBeGreaterThan(base);
+  });
+});
+
+describe("per-NPC dialogue logs", () => {
+  const opening = /I am Aldric/;
+
+  function stubTalk(
+    game: GameController,
+    speech: string,
+    extra: { chronicle?: string; emotion?: string; proposals?: unknown[] } = {},
+  ) {
+    return vi.spyOn(game as unknown as { callLlm: (...args: unknown[]) => Promise<unknown> }, "callLlm").mockResolvedValue({
+      speech,
+      chronicle: extra.chronicle,
+      emotion: extra.emotion ?? "neutral",
+      proposals: extra.proposals ?? [],
+      raw: "{}",
+      parseErrors: [],
+    });
+  }
+
+  it("does not show the steward opening on the smith log", () => {
+    const game = tempGame();
+    expect(game.view().messages.some((m) => opening.test(m.text))).toBe(true);
+    const smith = game.setScene("smith");
+    expect(smith.sceneNpcId).toBe("smith");
+    expect(smith.messages.some((m) => opening.test(m.text))).toBe(false);
+    expect(smith.messages.every((m) => m.npcId === "smith")).toBe(true);
+  });
+
+  it("does not show a smith reply on the steward log", async () => {
+    const game = tempGame();
+    stubTalk(game, "The charcoal is nearly gone, my lord.");
+    await game.sendDialogue("smith", "How fares the forge?");
+    const steward = game.setScene("steward");
+    expect(steward.messages.some((m) => /charcoal is nearly gone/.test(m.text))).toBe(false);
+    expect(steward.messages.some((m) => opening.test(m.text))).toBe(true);
+    const smith = game.setScene("smith");
+    expect(smith.messages.some((m) => /charcoal is nearly gone/.test(m.text))).toBe(true);
+    expect(smith.messages.some((m) => opening.test(m.text))).toBe(false);
+  });
+
+  it("keeps the steward thread when switching back from the smith", async () => {
+    const game = tempGame();
+    const first = game.view().messages.map((m) => m.text);
+    stubTalk(game, "Nails I can make, if the iron holds.");
+    await game.sendDialogue("smith", "Make nails.");
+    game.setScene("smith");
+    const back = game.setScene("steward");
+    expect(back.messages.map((m) => m.text)).toEqual(first);
+    expect(back.messages.some((m) => /Nails I can make/.test(m.text))).toBe(false);
+  });
+
+  it("puts the season report on the steward log only", async () => {
+    const game = tempGame();
+    game.setScene("smith");
+    stubTalk(game, "The harvest is gathered, my lord.", { chronicle: "Grain to the barn.", emotion: "respectful" });
+    await game.advanceSeason();
+    expect(game.sceneNpcId).toBe("steward");
+    const steward = game.view();
+    expect(steward.messages.some((m) => /harvest is gathered/.test(m.text))).toBe(true);
+    expect(steward.messages.some((m) => /Season written to the books/.test(m.text))).toBe(true);
+    const smith = game.setScene("smith");
+    expect(smith.messages.some((m) => /harvest is gathered|Season written/.test(m.text))).toBe(false);
+    expect(smith.messages.some((m) => opening.test(m.text))).toBe(false);
+  });
+
+  it("does not leak steward chat onto an empty merchant tab", () => {
+    const game = tempGame();
+    game.state.flags.merchant_present = true;
+    game.state.merchant.present = true;
+    game.state.merchant.name = "Gero";
+    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay" });
+    const merchant = game.setScene("merchant");
+    expect(merchant.sceneNpcId).toBe("merchant");
+    expect(merchant.messages).toHaveLength(0);
+    expect(merchant.messages.some((m) => opening.test(m.text))).toBe(false);
   });
 });
