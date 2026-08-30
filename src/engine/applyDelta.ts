@@ -9,13 +9,16 @@ import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEY
 import { labourPool, labourRemaining, refreshHarvestRisk } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
+import { consumeGrain, grainOnHand } from "./grain";
 import {
   hireSummary,
+  isEstateSmithNpc,
   matchHireableSpecialist,
   specialistAllowed,
   specialistAlreadyPresent,
   specialistById,
   specialistHireBlocked,
+  specialistHireGrainRation,
   specialistNpc,
 } from "./specialists";
 import { newId, round1 } from "./util";
@@ -548,6 +551,9 @@ function registerNpc(
   if (!p.isNew) return fail(state, "register_npc must declare isNew: true.", p.summary);
   const spec = matchHireableSpecialist(p.npc);
   const npc = spec ? specialistNpc(spec, p.npc.location || state.holdings[0]?.id || "fontenay") : p.npc;
+  if (!spec && isEstateSmithNpc(npc)) {
+    return fail(state, "Bernard already keeps the forge. He is not for hire.", p.summary);
+  }
   if (state.npcs.some((n) => n.id === npc.id)) return fail(state, "NPC id already exists.", p.summary);
   if (spec && specialistAlreadyPresent(state, spec)) {
     return fail(state, `${spec.name} already serves this house.`, p.summary);
@@ -560,6 +566,7 @@ function registerNpc(
   }
   if (spec) {
     const cost = spec.hireCostDenarii;
+    const ration = specialistHireGrainRation(spec);
     if (state.resources.denarii < cost) {
       return fail(
         state,
@@ -567,11 +574,19 @@ function registerNpc(
         p.summary || hireSummary(spec),
       );
     }
+    if (ration > 0 && grainOnHand(state) < ration) {
+      return fail(
+        state,
+        `Need ${ration} modii grain for ${spec.name}'s house; granary is thin.`,
+        p.summary || hireSummary(spec),
+      );
+    }
     state.resources.denarii = round1(state.resources.denarii - cost);
+    const rationNote = ration > 0 ? ` ${consumeGrain(state, ration, `${spec.name}'s house`)}` : "";
     state.npcs.push(npc);
     return ok(
       state,
-      `Hired ${npc.name} as ${npc.role.replaceAll("_", " ")}. ${cost} denarii taken from the chest.`,
+      `Hired ${npc.name} as ${npc.role.replaceAll("_", " ")}. ${cost} denarii taken from the chest.${rationNote}`,
     );
   }
   state.npcs.push(npc);
