@@ -118,4 +118,17 @@ describe("expansion hire unlocks", () => {
       ["Ambrosius", "Eberhard", "Hildegard", "Lorenzo", "Otto"].sort(),
     );
   });
+
+  it("stores signed-off notes and copies them onto a hired NPC", () => {
+    const haimo = specialistById("carpenter")!;
+    expect(haimo.notes).toMatch(/Meticulous/);
+    expect(haimo.notes).not.toMatch(/Meticulus/);
+    expect(specialistById("copper_smith")!.notes).toMatch(/sycophant/);
+    expect(specialistById("copper_smith")!.notes).not.toMatch(/syncophant/);
+    expect(specialistById("mason")!.notes).toMatch(/Treats raw stone/);
+    expect(specialistById("vinedresser")!.notes).toMatch(/a lot of sensory/);
+    const state = boot();
+    const hired = inferHireProposals(state, "Hire Haimo the carpenter.")[0];
+    expect(hired).toMatchObject({ type: "register_npc", npc: { name: "Haimo", notes: haimo.notes } });
+  });
 });
