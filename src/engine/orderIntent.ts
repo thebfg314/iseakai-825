@@ -6,13 +6,17 @@ const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|exp
 const ORDER_VERB =
   /\b(sow|sowing|plant|assign|labour|labor|start|begin|clear|scrub|drain|give|gift|grant|tithe|alms|bless|blessing|mood|morale|buy|sell|build|project|transfer|hire|retain|employ|send (the )?(men|hands|labour|labor)|more barley|more oats|more wheat|more rye)\b/i;
 const ORDER_OVERRIDE = /\b(sow|assign|start|give|clear|build|bless|gift|tithe|hire|retain|employ)\b/i;
+/** Lord instructions to change rotation / fallow / legumes / manure / seed-keeping — even without sow/plant. */
+const HUSBANDRY_ORDER =
+  /\b(rotation|fallow|legumes?|peas?\b|manure|muck|seed[- ]?(keep|keeping|selection|saving|kept)|three[- ]field|split (?:our |the )?(?:farming )?fields)\b/i;
 
 export function looksLikeMechanicalOrder(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
   if (looksLikeHireOrder(t)) return true;
+  // Pure questions stay reports — even if they mention manure or peas.
   if (QUESTION_PREFIX.test(t) && !ORDER_OVERRIDE.test(t)) return false;
-  return ORDER_VERB.test(t);
+  return ORDER_VERB.test(t) || HUSBANDRY_ORDER.test(t);
 }
 
 function mostPlentifulGrain(state: WorldState): { resource: "wheat" | "rye" | "barley" | "oats"; amount: number } | null {

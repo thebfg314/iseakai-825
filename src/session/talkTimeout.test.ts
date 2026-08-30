@@ -68,9 +68,12 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     llmChatMock.mockResolvedValueOnce(speechJson("The rye stands well, my lord."));
     await game.sendDialogue("steward", "How fares the rye?");
     expect(llmChatMock).toHaveBeenCalledTimes(1);
+    const system = String((llmChatMock.mock.calls[0][1] as { content: string }[])[0].content);
     const user = String((llmChatMock.mock.calls[0][1] as { content: string }[])[1].content);
-    expect(user).toMatch(/This pass is speech only/);
-    expect(user).toMatch(/proposals may be \[\]/);
+    expect(system).toMatch(/speech-only reply/i);
+    expect(system).not.toMatch(/You MUST reply with a single JSON object only/);
+    expect(user).toMatch(/spoken words only/i);
+    expect(user).toMatch(/No proposals array/);
     expect(game.messages.some((m) => m.role === "npc" && /rye stands well/.test(m.text))).toBe(true);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
@@ -100,6 +103,50 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     expect(game.messages.some((m) => m.role === "npc" && /I hear you/.test(m.text))).toBe(true);
     expect(playerFacing(game)).toContain(HOLD_AT_ONCE_APOLOGY);
     expect(playerFacing(game)).not.toMatch(/RFAB|Grok|PROVIDER_ERROR|502|world-state/i);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+  });
+
+  it("strips leftover JSON when the speech pass is truncated mid-proposals", async () => {
+    const speech =
+      "It makes good sense, my lord. We shall keep a three-field rotation, legumes and peas on the rest year, manure on the tired acres, and the best seed set aside.";
+    const truncated = `{ "speech": "${speech}",
+  "chronicle": "The lord ordered a three-field rotation.",
+  "emotion": "thoughtful",
+  "proposals": [
+    {
+      "type": "set_standing_order",
+      "summary": "Begin tracking peas (field legumes) in the estate stores",
+      "text": "Three-field rotation with legumes",
+      "active": true }`;
+    const order =
+      "ok. Id like us to split our farming fields into a three-field rotation, rest one year under legumes (peas), put manure on the tired acres, and keep the best seed-selection back for sowing.";
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce(truncated);
+    llmChatMock.mockResolvedValueOnce(sowingJson());
+    await game.sendDialogue("steward", order);
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    const npc = game.messages.find((m) => m.role === "npc");
+    expect(npc?.text).toBe(speech);
+    expect(npc?.text).not.toMatch(/\{|"proposals"/);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
+  });
+
+  it("keeps clean speech and the apology when the books pass 502s after a truncated speech dump", async () => {
+    const speech = "It makes good sense, my lord. We shall keep a three-field rotation.";
+    const truncated = `{ "speech": "${speech}",
+  "emotion": "thoughtful",
+  "proposals": [ { "type": "set_standing_order", "summary": "Begin tracking peas", "active": true }`;
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce(truncated);
+    llmChatMock.mockRejectedValueOnce(new Error(RFAB_502));
+    await game.sendDialogue(
+      "steward",
+      "ok. Id like us to split our farming fields into a three-field rotation with legumes and manure.",
+    );
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    expect(game.messages.some((m) => m.role === "npc" && m.text === speech)).toBe(true);
+    expect(playerFacing(game)).toContain(HOLD_AT_ONCE_APOLOGY);
+    expect(playerFacing(game)).not.toMatch(/"proposals"|Begin tracking peas/);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 

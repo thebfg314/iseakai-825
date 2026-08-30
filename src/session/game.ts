@@ -12,7 +12,7 @@ import { labourPool, labourRemaining } from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
-import { parseLlmResponse, eventEffectHasMechanics } from "../llm/parse";
+import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from "../llm/parse";
 import { llmChat, type AppSettings } from "../llm";
 import {
   npcBooksFollowUp,
@@ -158,6 +158,7 @@ export class GameController {
     });
     this.log("player", "CHAT", `${npcId}: ${playerText.slice(0, 120)}`);
 
+    const speechSystem = npcSystemPrompt(npcId, this.state, { speechOnly: true });
     const system = npcSystemPrompt(npcId, this.state);
     const extra =
       npcId === "merchant"
@@ -167,7 +168,7 @@ export class GameController {
     const order = looksLikeMechanicalOrder(playerText);
     try {
       const spoken = await this.callLlm(
-        [{ role: "system", content: system }, { role: "user", content: `${user}\n\n${SPEECH_PASS_HINT}` }],
+        [{ role: "system", content: speechSystem }, { role: "user", content: `${user}\n\n${SPEECH_PASS_HINT}` }],
         800,
         { requireProposals: false, allowRepair: false },
       );
@@ -549,7 +550,7 @@ export class GameController {
       );
       parsed = parseLlmResponse(raw2);
       return {
-        speech: parsed.response.speech,
+        speech: playerFacingNpcSpeech(raw2, parsed.response.speech),
         chronicle: parsed.response.chronicle,
         proposals: parsed.proposals.map(ensureSummary),
         raw: raw2,
@@ -558,7 +559,7 @@ export class GameController {
       };
     }
     return {
-      speech: parsed.response.speech,
+      speech: playerFacingNpcSpeech(raw1, parsed.response.speech),
       chronicle: parsed.response.chronicle,
       proposals: parsed.proposals.map(ensureSummary),
       raw: raw1,
