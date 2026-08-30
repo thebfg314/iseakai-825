@@ -71,7 +71,6 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
   display: block;
   transition: opacity 0.25s ease;
 }
-.portrait.smith img,
 .portrait.quarry_master img,
 .portrait.carpenter img,
 .portrait.mason img,
