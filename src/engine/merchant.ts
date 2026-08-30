@@ -25,7 +25,7 @@ const PEDDLER_WARES = [
   "softwood",
 ] as const;
 
-export const MERCHANT_NAMES = ["Gero", "Odo", "Liutward", "Isaac", "Boso", "Theudo", "Salamon", "Wichard"] as const;
+export const MERCHANT_NAMES = ["Gero", "Odo", "Liutward", "Theudo", "Boso", "Isaac", "Salamon", "Wichard"] as const;
 
 export type MerchantChanceBreakdown = {
   base: number;
