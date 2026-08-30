@@ -125,7 +125,7 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     llmChatMock.mockResolvedValueOnce(sowingJson());
     await game.sendDialogue("steward", order);
     expect(llmChatMock).toHaveBeenCalledTimes(2);
-    const npc = game.messages.find((m) => m.role === "npc");
+    const npc = [...game.messages].reverse().find((m) => m.role === "npc");
     expect(npc?.text).toBe(speech);
     expect(npc?.text).not.toMatch(/\{|"proposals"/);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
