@@ -9,6 +9,7 @@ export * from "./events";
 export * from "./merchant";
 export * from "./grain";
 export * from "./season";
+export * from "./seasonDeltas";
 export * from "./history";
 export * from "./state";
 export * from "./orderIntent";

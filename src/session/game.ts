@@ -4,6 +4,7 @@ import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
+import { snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
@@ -224,7 +225,7 @@ export class GameController {
       const n = proposals.length;
       this.ledgerNote(
         fromEngine
-          ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm to write the world-state file.`
+          ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm writes them in the books.`
           : `${n} proposed ledger change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
         npcId,
       );
@@ -343,6 +344,7 @@ export class GameController {
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
 
     const beforeSeason = cloneState(this.state);
+    const ledgerBefore = snapshotSeasonLedger(beforeSeason);
     effects.push(...resolveAgricultureAndProjects(this.state));
     syncTradeFromFeatures(this.state);
     const roll = rollSeasonEvents(this.state);
@@ -385,6 +387,7 @@ export class GameController {
 
       const clock = finishSeasonClock(this.state);
       effects.push(...clock);
+      writeLastSeasonDeltas(this.state, ledgerBefore);
       this.log("engine", "SEASON", `Now ${this.state.meta.season} ${this.state.meta.year}`);
       if (parsed.emotion) this.npcEmotions.steward = parsed.emotion;
       this.messages.push({
@@ -404,6 +407,7 @@ export class GameController {
     } catch (err) {
       for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
       effects.push(...finishSeasonClock(this.state));
+      writeLastSeasonDeltas(this.state, ledgerBefore);
       const error = err instanceof Error ? err.message : String(err);
       this.messages.push({
         id: newId("msg"),

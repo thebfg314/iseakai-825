@@ -306,6 +306,8 @@ export const WorldStateSchema = z.object({
       autumnWheatShare: z.number().min(0).max(1).default(0.45),
     })
     .default({ springBarleyShare: 0.6, autumnWheatShare: 0.45 }),
+  /** Signed store / sown / household changes from the last Advance season. Empty on a fresh game. */
+  last_season_deltas: z.record(z.string(), z.number()).default({}),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 
