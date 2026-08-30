@@ -60,6 +60,9 @@ describe("dialogue parse → queue → confirm → world-state", () => {
     const saved = worldFile(game);
     expect(saved.agriculture.springBarleyShare).toBe(0.85);
     expect(saved.holdings[0].sown.barley).toBe(game.state.holdings[0].sown.barley);
+    expect(game.state.npcs.find((n) => n.id === "steward")?.memories).toHaveLength(1);
+    expect(saved.npcs.find((n: { id: string }) => n.id === "steward").memories).toHaveLength(1);
+    expect(saved.npcs.find((n: { id: string }) => n.id === "steward").memories[0].summary).toMatch(/barley|sowing/i);
   });
 
   it("does not mutate resources on speech-only replies", () => {
@@ -71,6 +74,7 @@ describe("dialogue parse → queue → confirm → world-state", () => {
     expect(game.state.resources).toEqual(before.resources);
     expect(game.state.holdings[0].sown).toEqual(before.holdings[0].sown);
     expect(game.state.modifiers).toEqual(before.modifiers);
+    expect(game.state.npcs.every((n) => n.memories.length === 0)).toBe(true);
   });
 
   it("drafts a pending clear-scrub project when the model returns speech and no proposal", () => {
@@ -237,11 +241,49 @@ describe("per-NPC dialogue logs", () => {
     game.state.flags.merchant_present = true;
     game.state.merchant.present = true;
     game.state.merchant.name = "Gero";
-    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay" });
+    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay", memories: [] });
     const merchant = game.setScene("merchant");
     expect(merchant.sceneNpcId).toBe("merchant");
     expect(merchant.messages).toHaveLength(0);
     expect(merchant.messages.some((m) => opening.test(m.text))).toBe(false);
+  });
+});
+
+describe("npc transaction memories", () => {
+  it("writes Isaac's bargain to world-state by name and does not write on speech", () => {
+    const game = tempGame();
+    game.state.flags.merchant_present = true;
+    game.state.merchant.present = true;
+    game.state.merchant.name = "Isaac";
+    game.state.merchant.stock = [{ resource: "salt", amount: 8 }];
+    game.state.npcs.push({
+      id: "merchant",
+      name: "Isaac",
+      role: "merchant",
+      location: "fontenay",
+      memories: [],
+    });
+    game.state.resources.denarii = 200;
+
+    const chat = parseLlmResponse(JSON.stringify({ speech: "Salt I have, if the price is fair.", proposals: [] }));
+    game.ingestParsedDialogue("merchant", chat, "What wares do you carry?");
+    expect(game.state.merchant_memories).toEqual({});
+    expect(game.state.npcs.find((n) => n.id === "merchant")?.memories).toEqual([]);
+
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Four pounds of salt, then.",
+        proposals: [{ type: "transfer_resources", summary: "Buy salt", resource: "salt", amount: 4, direction: "buy" }],
+      }),
+    );
+    game.ingestParsedDialogue("merchant", parsed, "Buy four pounds of salt.");
+    expect(game.state.npcs.find((n) => n.id === "merchant")?.memories).toEqual([]);
+    game.confirmProposal(game.pending[0].id);
+    expect(game.state.merchant_memories.Isaac).toHaveLength(1);
+    expect(game.state.merchant_memories.Isaac[0].summary).toMatch(/salt/i);
+    const saved = worldFile(game);
+    expect(saved.merchant_memories.Isaac[0].summary).toMatch(/salt/i);
+    expect(saved.npcs.find((n: { id: string }) => n.id === "smith").memories ?? []).toEqual([]);
   });
 });
 
@@ -280,6 +322,10 @@ describe("hire specialists via Aldric Confirm", () => {
     expect(result.error).toBeUndefined();
     const haimo = game.state.npcs.find((n) => n.id === "carpenter");
     expect(haimo).toMatchObject({ name: "Haimo", role: "carpenter", location: "fontenay" });
+    expect(haimo?.memories.some((m) => /Haimo|carpenter/i.test(m.summary))).toBe(true);
+    expect(game.state.npcs.find((n) => n.id === "steward")?.memories.some((m) => /Haimo|carpenter/i.test(m.summary))).toBe(
+      true,
+    );
     expect(game.state.npcs).toHaveLength(4);
     expect(game.state.resources.denarii).toBe(denariiBefore - 12);
     const saved = worldFile(game);

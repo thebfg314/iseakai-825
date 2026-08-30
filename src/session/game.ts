@@ -20,6 +20,7 @@ import {
   repairPrompt,
   seasonUserPrompt,
 } from "../llm/prompts";
+import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
   hireSummary,
@@ -313,7 +314,10 @@ export class GameController {
     }
     this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? result.logLine : result.reason ?? result.logLine);
     this.ledgerNote(result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
-    if (result.ok) this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+    if (result.ok) {
+      recordConfirmedTransaction(this.state, item.npcId, item.proposal, result.logLine);
+      this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+    }
     return this.view();
   }
 

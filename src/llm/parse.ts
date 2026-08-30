@@ -217,6 +217,7 @@ function coerceRegisterNpc(obj: Record<string, unknown>): void {
       role: nested.role,
       location: typeof nested.location === "string" ? nested.location : "fontenay",
       notes: typeof nested.notes === "string" ? nested.notes : undefined,
+      memories: [],
     };
   }
 }
