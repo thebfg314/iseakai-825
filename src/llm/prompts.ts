@@ -1,6 +1,7 @@
 import type { WorldState } from "../engine/schema";
 import { labourPool, labourRemaining } from "../engine/labour";
 import { merchantVisitorByName } from "../engine/merchant";
+import { npcWithoutMemories, withSpeakerMemories } from "../engine/memory";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { stewardHirePrompt } from "../engine/specialists";
 
@@ -20,7 +21,7 @@ function sliceState(state: WorldState) {
     projects: state.projects.filter((p) => p.status !== "cancelled"),
     modifiers: state.modifiers,
     standing_orders: state.standing_orders.filter((o) => o.active),
-    npcs: state.npcs,
+    npcs: state.npcs.map(npcWithoutMemories),
     known_techniques: state.known_techniques,
     flags: state.flags,
     trade: state.trade,
@@ -171,10 +172,15 @@ ${OUTPUT_CONTRACT}`;
 }
 
 export function npcSystemPrompt(npcId: string, state?: WorldState): string {
-  if (npcId === "smith") return smithSystemPrompt();
-  if (npcId === "chaplain") return chaplainSystemPrompt();
-  if (npcId === "merchant") return merchantSystemPrompt(state);
-  return specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state);
+  const voice =
+    npcId === "smith"
+      ? smithSystemPrompt()
+      : npcId === "chaplain"
+        ? chaplainSystemPrompt()
+        : npcId === "merchant"
+          ? merchantSystemPrompt(state)
+          : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
+  return withSpeakerMemories(voice, npcId, state);
 }
 
 export function refereeSystemPrompt(): string {

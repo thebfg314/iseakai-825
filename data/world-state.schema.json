@@ -144,6 +144,13 @@
         }
       }
     },
+    "merchant_memories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/npcMemory" }
+      }
+    },
     "agriculture": {
       "type": "object",
       "additionalProperties": false,
@@ -386,6 +393,17 @@
         "active": { "type": "boolean" }
       }
     },
+    "npcMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["turn", "year", "season", "summary"],
+      "properties": {
+        "turn": { "type": "integer" },
+        "year": { "type": "integer" },
+        "season": { "enum": ["spring", "summer", "autumn", "winter"] },
+        "summary": { "type": "string" }
+      }
+    },
     "npc": {
       "type": "object",
       "additionalProperties": false,
@@ -395,7 +413,11 @@
         "name": { "type": "string" },
         "role": { "type": "string" },
         "location": { "type": "string" },
-        "notes": { "type": "string" }
+        "notes": { "type": "string" },
+        "memories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/npcMemory" }
+        }
       }
     },
     "technique": {

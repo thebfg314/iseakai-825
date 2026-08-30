@@ -7,6 +7,7 @@ import {
   chaplainSystemPrompt,
   merchantSystemPrompt,
   npcSystemPrompt,
+  npcUserPrompt,
   refereeSystemPrompt,
   smithSystemPrompt,
   stewardSystemPrompt,
@@ -29,6 +30,7 @@ function withMerchant(name: (typeof MERCHANT_VISITORS)[number]["name"]): WorldSt
     role: "merchant",
     location: "fontenay",
     notes: visitor.notes,
+    memories: [],
   });
   return state;
 }
@@ -142,6 +144,63 @@ describe("signed-off NPC personalities", () => {
       expect(prompt).not.toContain(generic);
       expect(npcSystemPrompt("merchant", withMerchant(visitor.name))).toBe(prompt);
     }
+  });
+
+  it("feeds only that NPC's memories into their system prompt", () => {
+    const state = boot();
+    state.npcs.find((n) => n.id === "steward")!.memories.push({
+      turn: 1,
+      year: 825,
+      season: "spring",
+      summary: "The lord ordered more barley sown on the remaining spring acres.",
+    });
+    state.npcs.find((n) => n.id === "smith")!.memories.push({
+      turn: 1,
+      year: 825,
+      season: "spring",
+      summary: "The lord asked for nails and confirmed the iron spend.",
+    });
+
+    const aldric = npcSystemPrompt("steward", state);
+    expect(aldric).toMatch(/count first and talk second/i);
+    expect(aldric).toContain("You remember these past dealings");
+    expect(aldric).toContain("The lord ordered more barley sown");
+    expect(aldric).not.toContain("asked for nails");
+    expect(aldric).not.toMatch(/memory array/i);
+
+    const bernard = npcSystemPrompt("smith", state);
+    expect(bernard).toMatch(/proud of what the forge can do/i);
+    expect(bernard).toContain("asked for nails");
+    expect(bernard).not.toContain("more barley sown");
+
+    const user = npcUserPrompt(state, "steward", "How fares the rye?");
+    expect(user).not.toMatch(/"memories"/);
+    expect(user).not.toMatch(/merchant_memories/);
+  });
+
+  it("tells Isaac of his own bargains, not Aldric's estate orders", () => {
+    const state = withMerchant("Isaac");
+    state.merchant_memories.Isaac = [
+      {
+        turn: 1,
+        year: 825,
+        season: "spring",
+        summary: "The lord bought four pounds of salt from your carts.",
+      },
+    ];
+    state.npcs.find((n) => n.id === "steward")!.memories.push({
+      turn: 1,
+      year: 825,
+      season: "spring",
+      summary: "The lord ordered more barley sown on the remaining spring acres.",
+    });
+
+    const isaac = npcSystemPrompt("merchant", state);
+    expect(isaac).toContain("You are Isaac");
+    expect(isaac).toContain("four pounds of salt");
+    expect(isaac).not.toContain("more barley sown");
+    expect(isaac).not.toMatch(/memory array|world-state\.json/i);
+    expect(merchantSystemPrompt(state)).not.toContain("four pounds of salt");
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {

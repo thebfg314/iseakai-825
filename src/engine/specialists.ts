@@ -178,6 +178,7 @@ export function specialistNpc(spec: HireableSpecialist, location = "fontenay"): 
     role: spec.role,
     location,
     notes: spec.notes,
+    memories: [],
   };
 }
 

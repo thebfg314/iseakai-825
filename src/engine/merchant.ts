@@ -1,4 +1,5 @@
 import type { Season, WorldState } from "./schema";
+import { memoriesForMerchantName, persistMerchantVisitorMemories } from "./memory";
 import { clamp, round1 } from "./util";
 
 export const MERCHANT_BASE_RANGE: Record<Season, { lo: number; hi: number }> = {
@@ -184,6 +185,8 @@ export function applyMerchantRoll(
   result: MerchantChanceBreakdown & { arrived: boolean },
 ): string {
   state.merchant.last_chance = round1(result.chance * 100) / 100;
+  const leaving = state.npcs.find((n) => n.id === "merchant");
+  if (leaving?.name) persistMerchantVisitorMemories(state, leaving.name, leaving.memories ?? []);
   state.npcs = state.npcs.filter((n) => n.id !== "merchant");
   if (!result.arrived) {
     state.flags.merchant_present = false;
@@ -209,6 +212,7 @@ export function applyMerchantRoll(
     role: "merchant",
     location: state.holdings[0]?.id ?? "fontenay",
     notes: visitor.notes,
+    memories: [...memoriesForMerchantName(state, name)],
   });
   const goods = state.merchant.stock.map((s) => `${s.amount} ${s.resource}`).join(", ");
   const pct = Math.round(result.chance * 100);

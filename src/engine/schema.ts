@@ -217,12 +217,21 @@ export const StandingOrderSchema = z.object({
 });
 export type StandingOrder = z.infer<typeof StandingOrderSchema>;
 
+export const NpcMemorySchema = z.object({
+  turn: z.number().int(),
+  year: z.number().int(),
+  season: z.enum(SEASONS),
+  summary: z.string(),
+});
+export type NpcMemory = z.infer<typeof NpcMemorySchema>;
+
 export const NpcSchema = z.object({
   id: z.string(),
   name: z.string(),
   role: z.string(),
   location: z.string(),
   notes: z.string().optional(),
+  memories: z.array(NpcMemorySchema).default([]),
 });
 export type Npc = z.infer<typeof NpcSchema>;
 
@@ -289,6 +298,8 @@ export const WorldStateSchema = z.object({
       stock: z.array(z.object({ resource: z.string(), amount: z.number() })).default([]),
     })
     .default({ present: false, stock: [] }),
+  /** Visiting merchants leave npcs[]; bargains persist here by visitor name (Isaac, Gero, …). */
+  merchant_memories: z.record(z.string(), z.array(NpcMemorySchema)).default({}),
   agriculture: z
     .object({
       springBarleyShare: z.number().min(0).max(1).default(0.6),
