@@ -250,8 +250,8 @@ describe("hire specialists via Aldric Confirm", () => {
     const state = WorldStateSchema.parse(structuredClone(startingEstate));
     expect(state.npcs.map((n) => n.id).sort()).toEqual(["chaplain", "smith", "steward"]);
     expect(state.npcs.map((n) => n.name)).toEqual(["Aldric", "Bernard", "Ermenald"]);
-    expect(state.npcs.some((n) => /colman|haimo|gerold|hugo/i.test(n.name))).toBe(false);
-    expect(state.npcs.some((n) => /quarry|carpenter|mason|potter/i.test(n.role))).toBe(false);
+    expect(state.npcs.some((n) => /colman|haimo|gerold|hugo|otto|ambrosius|hildegard|lorenzo|eberhard/i.test(n.name))).toBe(false);
+    expect(state.npcs.some((n) => /quarry|carpenter|mason|potter|reeve|vinedresser|seamstress|copper|captain/i.test(n.role))).toBe(false);
   });
 
   it("does not hire on speech-only talk about needing a carpenter", () => {
@@ -380,5 +380,187 @@ describe("hire specialists via Aldric Confirm", () => {
     expect(potter.sceneNpcId).toBe("potter");
     expect(potter.messages).toHaveLength(0);
     expect(potter.messages.some((m) => /I am Aldric/.test(m.text))).toBe(false);
+  });
+});
+
+describe("expansion hires via Aldric after unlock", () => {
+  function unlockOtto(game: GameController) {
+    game.state.population.households = 15;
+    game.state.holdings[0].households = 15;
+  }
+
+  it("does not unlock or recommend the five at boot, and speech-only does not hire them", () => {
+    const game = tempGame();
+    const before = cloneState(game.state);
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The rye stands well, my lord.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "How fares the rye?");
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain"]);
+    expect(game.messages.some((m) => /Otto|Ambrosius|Hildegard|Lorenzo|Eberhard/.test(m.text))).toBe(false);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.resources).toEqual(before.resources);
+  });
+
+  it("refuses Otto before the village grows, even if the model emits register_npc", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Otto can be brought in.",
+        proposals: [
+          {
+            type: "register_npc",
+            summary: "Hire Otto",
+            npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay" },
+            isNew: true,
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Hire Otto the reeve.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.messages.some((m) => /still small|households/i.test(m.text))).toBe(true);
+  });
+
+  it("recommends Otto after households reach 15, and Confirm writes him with his own tab", () => {
+    const game = tempGame();
+    expect(game.setScene("village_reeve").sceneNpcId).toBe("steward");
+    unlockOtto(game);
+    const denariiBefore = game.state.resources.denarii;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The village has grown.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "How fares the village?");
+    expect(game.messages.some((m) => m.npcId === "steward" && /Otto/.test(m.text))).toBe(true);
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.resources.denarii).toBe(denariiBefore);
+    expect(worldFile(game).npcs).toHaveLength(3);
+
+    const hire = parseLlmResponse(JSON.stringify({ speech: "I can send for Otto.", proposals: [] }));
+    game.ingestParsedDialogue("steward", hire, "Hire Otto the reeve.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal.type).toBe("register_npc");
+    expect(game.state.npcs).toHaveLength(3);
+
+    const result = game.confirmProposal(pending[0].id);
+    expect(result.error).toBeUndefined();
+    const otto = game.state.npcs.find((n) => n.id === "village_reeve");
+    expect(otto).toMatchObject({ name: "Otto", role: "village_reeve", location: "fontenay" });
+    expect(game.state.resources.denarii).toBe(denariiBefore - 12);
+    expect(worldFile(game).npcs.some((n: { id: string }) => n.id === "village_reeve")).toBe(true);
+    expect(game.setScene("village_reeve").sceneNpcId).toBe("village_reeve");
+    expect(game.view().messages.every((m) => m.npcId === "village_reeve")).toBe(true);
+  });
+
+  it("does not hire on speech-only talk after unlock", () => {
+    const game = tempGame();
+    unlockOtto(game);
+    const before = cloneState(game.state);
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Otto would keep the dues.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Tell me of the village.");
+    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.resources.denarii).toBe(before.resources.denarii);
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "register_npc")).toHaveLength(0);
+  });
+
+  it("hires each expansion person after their own condition, and Bernard cannot hire them", () => {
+    const cases: { id: string; name: string; order: string; unlock: (g: GameController) => void }[] = [
+      {
+        id: "vinedresser",
+        name: "Ambrosius",
+        order: "Hire Ambrosius the vinedresser.",
+        unlock: (g) => {
+          g.state.holdings[0].land.vineyard = 2;
+        },
+      },
+      {
+        id: "head_seamstress",
+        name: "Hildegard",
+        order: "Hire Hildegard the seamstress.",
+        unlock: (g) => {
+          g.state.holdings[0].features.push("textile_workshop");
+        },
+      },
+      {
+        id: "copper_smith",
+        name: "Lorenzo",
+        order: "Hire Lorenzo the copper smith.",
+        unlock: (g) => {
+          g.state.holdings[0].features.push("bloomery");
+        },
+      },
+      {
+        id: "captain",
+        name: "Eberhard",
+        order: "Hire Eberhard the captain.",
+        unlock: (g) => {
+          g.state.holdings[0].features.push("watch_post");
+        },
+      },
+    ];
+
+    for (const row of cases) {
+      const game = tempGame();
+      const parsed = parseLlmResponse(JSON.stringify({ speech: "Aye.", proposals: [] }));
+      game.ingestParsedDialogue("steward", parsed, row.order);
+      expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+      expect(game.state.npcs.some((n) => n.id === row.id)).toBe(false);
+
+      row.unlock(game);
+      game.ingestParsedDialogue("steward", parsed, row.order);
+      expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
+      game.confirmProposal(game.pending[0].id);
+      expect(game.state.npcs.some((n) => n.id === row.id && n.name === row.name)).toBe(true);
+      expect(game.setScene(row.id).sceneNpcId).toBe(row.id);
+
+      const smith = parseLlmResponse(JSON.stringify({ speech: "That is Aldric's business.", proposals: [] }));
+      const other = tempGame();
+      row.unlock(other);
+      other.ingestParsedDialogue("smith", smith, row.order);
+      expect(other.state.npcs.some((n) => n.id === row.id)).toBe(false);
+      other.ingestParsedDialogue("chaplain", smith, row.order);
+      expect(other.state.npcs.some((n) => n.id === row.id)).toBe(false);
+    }
+  });
+
+  it("does not auto-hire from a season report register_npc", () => {
+    const game = tempGame();
+    unlockOtto(game);
+    game.applySeasonProposals(
+      [
+        {
+          type: "register_npc",
+          summary: "Hire Otto",
+          isNew: true,
+          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay" },
+        },
+      ],
+      [],
+      [],
+    );
+    expect(game.state.npcs.some((n) => n.id === "village_reeve")).toBe(false);
+    expect(game.state.npcs).toHaveLength(3);
+  });
+
+  it("recommends Hildegard when a textile workshop is confirmed, without inserting her", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "We can raise a textile workshop.",
+        proposals: [
+          {
+            type: "register_feature",
+            summary: "Record the textile workshop",
+            holdingId: "fontenay",
+            feature: "textile_workshop",
+            isNew: true,
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Record the textile workshop on the holding.");
+    game.confirmProposal(game.pending[0].id);
+    expect(game.state.holdings[0].features).toContain("textile_workshop");
+    expect(game.messages.some((m) => /Hildegard/.test(m.text))).toBe(true);
+    expect(game.state.npcs.some((n) => n.id === "head_seamstress")).toBe(false);
   });
 });

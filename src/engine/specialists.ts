@@ -3,12 +3,26 @@ import type { MechanicalProposal, Npc, WorldState } from "./schema";
 /** One solidus (12 denarii): a poor villa's hiring gift / earnest, plus board thereafter. */
 export const SPECIALIST_HIRE_COST = 12;
 
+/** Fontenay start: 10 households. A reeve is sought at half again that number. */
+export const STARTING_HOUSEHOLDS = 10;
+export const REEVE_HOUSEHOLD_THRESHOLD = Math.ceil(STARTING_HOUSEHOLDS * 1.5);
+
+/** Starting demesne already has one vineyard acre; that alone does not unlock a vinedresser. */
+export const STARTING_VINEYARD_ACRES = 1;
+
+const METAL_EXPANSION_FEATURES = new Set(["bloomery", "mill_forge"]);
+const DEFENSE_FEATURES = new Set(["palisade", "tower", "wooden_tower", "gatehouse", "watch_post"]);
+
 export type HireableSpecialist = {
   id: string;
   name: string;
   role: string;
   notes: string;
   hireCostDenarii: number;
+  /** False for the four craftsmen (hireable from boot). True for expansion hires. */
+  requiresExpansion: boolean;
+  unlockHint: string;
+  recommendSpeech: string;
 };
 
 export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
@@ -17,6 +31,9 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     name: "Colman",
     role: "quarry_master",
     hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: false,
+    unlockHint: "",
+    recommendSpeech: "",
     notes:
       "Quarry master. Knows stone-winning, wedges, packing cart-loads, and the danger of a bad face. Will not pretend to rule the fields.",
   },
@@ -25,6 +42,9 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     name: "Haimo",
     role: "carpenter",
     hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: false,
+    unlockHint: "",
+    recommendSpeech: "",
     notes:
       "Carpenter. Timber joints, carts, doors, and the carpenter's bench. Will not pretend to rule the fields.",
   },
@@ -33,6 +53,9 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     name: "Gerold",
     role: "mason",
     hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: false,
+    unlockHint: "",
+    recommendSpeech: "",
     notes: "Mason. Dressed stone, lime, and walls that stand. Will not pretend to rule the fields.",
   },
   {
@@ -40,7 +63,73 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     name: "Hugo",
     role: "potter",
     hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: false,
+    unlockHint: "",
+    recommendSpeech: "",
     notes: "Potter. Clay, wheel, and kiln. Will not pretend to rule the fields.",
+  },
+  {
+    id: "village_reeve",
+    name: "Otto",
+    role: "village_reeve",
+    hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: true,
+    unlockHint: `The village is still small for a reeve. When the households reach ${REEVE_HOUSEHOLD_THRESHOLD} (half again the start), Otto can be sought.`,
+    recommendSpeech:
+      "The village has grown, my lord — more hearths than we began with. Otto the reeve would keep the hides and dues, and name who is shirking. He is the peasants' man, loyal to the village more than the hall. Twelve denarii from the chest if you would have him: ask me, and Confirm.",
+    notes:
+      "Village reeve. The peasants' man. Speaks of hides, dues, and who is shirking. Loyal to the village more than the hall.",
+  },
+  {
+    id: "vinedresser",
+    name: "Ambrosius",
+    role: "vinedresser",
+    hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: true,
+    unlockHint:
+      "The old acre of vines is not yet a vintage worth a vinedresser. Expand the vineyard beyond the starting acre, then Ambrosius can be sought.",
+    recommendSpeech:
+      "The vines are more than the old acre now. Ambrosius the vinedresser would keep the slope and the barrels — a bit learned, a bit vain of the lie of the land, and he will talk weather before grain. Twelve denarii hiring gift, if you ask it and Confirm.",
+    notes:
+      "Vinedresser. Vines over grain. A bit learned, a bit vain about the slope. Talks weather and barrels.",
+  },
+  {
+    id: "head_seamstress",
+    name: "Hildegard",
+    role: "head_seamstress",
+    hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: true,
+    unlockHint: "There is no textile workshop yet. When that work stands, Hildegard the head seamstress can be sought.",
+    recommendSpeech:
+      "The textile workshop stands. Hildegard the head seamstress would keep the cloth as it should be kept — a sharp tongue, and she will notice a torn cuff before you do. She will not waste good linen on a bad idea. Twelve denarii, if you will have her: ask me, and Confirm.",
+    notes:
+      "Head seamstress. Sharp tongue; notices a torn cuff before you do. Cloth is status. Will not waste good linen on a bad idea.",
+  },
+  {
+    id: "copper_smith",
+    name: "Lorenzo",
+    role: "copper_smith",
+    hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: true,
+    unlockHint:
+      "Bernard's timber forge is not yet a copper shop. When a bloomery or trip-hammer mill stands, Lorenzo can be sought.",
+    recommendSpeech:
+      "The metal-work has gone beyond Bernard's timber hearth. Lorenzo the copper-smith — a Lombard, and proud of it — thinks copper cleaner work than iron, and will flirt with being indispensable. Twelve denarii hiring gift, if you ask and Confirm.",
+    notes:
+      "Copper smith. Lombard, proud; thinks copper is cleaner work than Bernard's iron. Flirts with being indispensable.",
+  },
+  {
+    id: "captain",
+    name: "Eberhard",
+    role: "captain",
+    hireCostDenarii: SPECIALIST_HIRE_COST,
+    requiresExpansion: true,
+    unlockHint:
+      "A tired hall is not a defence. When a palisade, tower, gatehouse, or watch post stands, Eberhard can be sought.",
+    recommendSpeech:
+      "We have a real defence now, not only a tired hall. Eberhard would captain the watch — he wants men, spears, and a reason to march, and he will tell you honestly how few fighters we have. Twelve denarii, should you want him: ask me, and Confirm.",
+    notes:
+      "Captain. Wants men, spears, and a reason to march. Bored at a poor villa. Honest about how few fighters you actually have.",
   },
 ];
 
@@ -99,8 +188,93 @@ export function specialistAlreadyPresent(state: WorldState, spec: HireableSpecia
   );
 }
 
+export function estateHouseholds(state: WorldState): number {
+  const fromHoldings = state.holdings.reduce((m, h) => Math.max(m, h.households), 0);
+  return Math.max(state.population.households, fromHoldings);
+}
+
+export function vineyardAcres(state: WorldState): number {
+  return state.holdings.reduce((s, h) => s + h.land.vineyard, 0);
+}
+
+function hasAnyFeature(state: WorldState, features: Set<string> | string[]): boolean {
+  const set = features instanceof Set ? features : new Set(features);
+  return state.holdings.some((h) => h.features.some((f) => set.has(f)));
+}
+
+function hasCompletedProject(state: WorldState, key: string): boolean {
+  return state.projects.some((p) => p.key === key && p.status === "completed");
+}
+
+export function specialistUnlocked(state: WorldState, spec: HireableSpecialist): boolean {
+  if (!spec.requiresExpansion) return true;
+  switch (spec.id) {
+    case "village_reeve":
+      return estateHouseholds(state) >= REEVE_HOUSEHOLD_THRESHOLD;
+    case "vinedresser":
+      return vineyardAcres(state) > STARTING_VINEYARD_ACRES || hasCompletedProject(state, "expand_vineyard");
+    case "head_seamstress":
+      return hasAnyFeature(state, ["textile_workshop"]);
+    case "copper_smith":
+      return hasAnyFeature(state, METAL_EXPANSION_FEATURES);
+    case "captain":
+      return hasAnyFeature(state, DEFENSE_FEATURES);
+    default:
+      return false;
+  }
+}
+
+export function unlockedHireableSpecialists(state: WorldState): HireableSpecialist[] {
+  return HIREABLE_SPECIALISTS.filter((s) => specialistUnlocked(state, s));
+}
+
+export function recommendableHires(state: WorldState): HireableSpecialist[] {
+  return HIREABLE_SPECIALISTS.filter(
+    (s) => s.requiresExpansion && specialistUnlocked(state, s) && !specialistAlreadyPresent(state, s),
+  );
+}
+
+export function newlyUnlockedHires(before: WorldState, after: WorldState): HireableSpecialist[] {
+  return HIREABLE_SPECIALISTS.filter((s) => {
+    if (!s.requiresExpansion) return false;
+    if (specialistAlreadyPresent(after, s)) return false;
+    return !specialistUnlocked(before, s) && specialistUnlocked(after, s);
+  });
+}
+
+export function specialistHireBlocked(state: WorldState, spec: HireableSpecialist): string | null {
+  if (specialistAlreadyPresent(state, spec)) {
+    return `${spec.name} the ${spec.role.replaceAll("_", " ")} already serves this house.`;
+  }
+  if (!specialistUnlocked(state, spec)) return spec.unlockHint;
+  if (state.resources.denarii < spec.hireCostDenarii) {
+    return `The chest cannot spare ${spec.hireCostDenarii} denarii for a hiring gift (one solidus). Fontenay is thin.`;
+  }
+  return null;
+}
+
 export function hireSummary(spec: HireableSpecialist): string {
   return `Hire ${spec.name} the ${spec.role.replaceAll("_", " ")} — ${spec.hireCostDenarii} denarii hiring gift from the chest.`;
+}
+
+/** Closed name list for Aldric / the referee. Marks who is available now. */
+export function stewardHirePrompt(state: WorldState): string {
+  const lines = HIREABLE_SPECIALISTS.map((s) => {
+    const hired = specialistAlreadyPresent(state, s);
+    const unlocked = specialistUnlocked(state, s);
+    const status = hired ? "already serving" : unlocked ? "available now" : "not yet — estate not ready";
+    const craft = s.notes.split(".")[0] ?? s.role;
+    return `- id ${s.id}, name ${s.name}, role ${s.role} — ${craft} [${status}]`;
+  });
+  const unlockedExpansion = recommendableHires(state);
+  const recommend =
+    unlockedExpansion.length > 0
+      ? `If the lord has not yet hired them, recommend by name (speech only, no register_npc until the lord asks): ${unlockedExpansion.map((s) => s.name).join(", ")}.`
+      : "Do not recommend Otto, Ambrosius, Hildegard, Lorenzo, or Eberhard until their line reads available now.";
+  return `Closed hire list (never invent another name). Emit register_npc only for a person marked available now, and only when the lord asks to hire:
+${lines.join("\n")}
+location is the holding id (fontenay). The engine takes a hiring gift of 12 denarii (one solidus) from the chest on Confirm; do NOT also emit transfer_resources for that gift. If that person is already on npcs, not yet available, or the chest cannot spare 12 denarii, say so in speech and emit no proposal. Speech without register_npc does not hire anyone.
+${recommend}`;
 }
 
 const CRAFT_PATTERNS: { id: string; re: RegExp }[] = [
@@ -111,6 +285,11 @@ const CRAFT_PATTERNS: { id: string; re: RegExp }[] = [
     id: "quarry_master",
     re: /\b(quarry|quarryman|stone.?cutter|stone.?master|winning stone)\b|\b(someone|man|hand|specialist).{0,28}\bstone\b|\bstone\b.{0,24}(work|cut|dig|quarry)/i,
   },
+  { id: "village_reeve", re: /\b(reeve|headman|village.?man)\b/i },
+  { id: "vinedresser", re: /\b(vinedresser|vine.?dresser|vintner|vigneron)\b/i },
+  { id: "head_seamstress", re: /\b(seamstress|tailor|clothier)\b/i },
+  { id: "copper_smith", re: /\b(copper.?smith|coppersmith)\b/i },
+  { id: "captain", re: /\b(captain|watch.?captain)\b/i },
 ];
 
 const HIRE_VERB =
@@ -147,7 +326,7 @@ export function inferHireProposals(state: WorldState, playerText: string): Mecha
   let reserved = 0;
   const location = state.holdings[0]?.id ?? "fontenay";
   for (const spec of specs) {
-    if (specialistAlreadyPresent(state, spec)) continue;
+    if (specialistHireBlocked(state, spec)) continue;
     if (state.resources.denarii < reserved + spec.hireCostDenarii) continue;
     reserved += spec.hireCostDenarii;
     proposals.push({
@@ -167,17 +346,12 @@ export function hireFulfillReason(state: WorldState, npcId: string, playerText: 
   }
   const specs = specialistsFromHireText(playerText);
   if (!specs.length) {
-    return "Say which craft — quarry and stone, carpentry, masonry, or pottery — and a named man can be sought.";
+    return "Say which craft or person — quarry and stone, carpentry, masonry, pottery, or a named hire from the closed list — and they can be sought if the estate is ready.";
   }
-  const already = specs.filter((s) => specialistAlreadyPresent(state, s));
-  const needed = specs.filter((s) => !specialistAlreadyPresent(state, s));
+  const blocked = specs.map((s) => specialistHireBlocked(state, s)).filter((x): x is string => Boolean(x));
+  const needed = specs.filter((s) => !specialistHireBlocked(state, s));
   if (!needed.length) {
-    const first = already[0];
-    return `${first.name} the ${first.role.replaceAll("_", " ")} already serves this house.`;
-  }
-  const cost = needed.reduce((sum, s) => sum + s.hireCostDenarii, 0);
-  if (state.resources.denarii < cost) {
-    return `The chest cannot spare ${cost} denarii for a hiring gift (one solidus per craftsman). Fontenay is thin.`;
+    return blocked[0] ?? `${specs[0].name} cannot be hired yet.`;
   }
   return null;
 }
@@ -205,6 +379,50 @@ const MASON_PROJECTS = new Set([
   "terracing",
 ]);
 const POTTER_PROJECTS = new Set(["pottery_kiln", "clay_pit"]);
+const REEVE_PROJECTS = new Set(["labourer_housing", "improve_waste", "clear_scrub"]);
+const VINEDRESSER_PROJECTS = new Set(["expand_vineyard"]);
+const SEAMSTRESS_PROJECTS = new Set(["textile_workshop", "fulling_mill"]);
+const COPPER_PROJECTS = new Set(["bloomery", "forge_mill"]);
+const CAPTAIN_PROJECTS = new Set(["palisade", "wooden_tower", "gatehouse", "watch_post"]);
+
+type CraftScope = {
+  projects: Set<string>;
+  tag?: string;
+  transfer: string[];
+  features: string[];
+};
+
+const CRAFT_SCOPES: Record<string, CraftScope> = {
+  quarry_master: { projects: QUARRY_PROJECTS, tag: "stone", transfer: ["stone", "iron", "charcoal"], features: ["quarry"] },
+  carpenter: {
+    projects: CARPENTER_PROJECTS,
+    tag: "timber",
+    transfer: ["softwood", "hardwood", "iron"],
+    features: ["carpenter_workshop"],
+  },
+  mason: { projects: MASON_PROJECTS, tag: "stone", transfer: ["stone", "iron"], features: ["quarry"] },
+  potter: { projects: POTTER_PROJECTS, tag: "pottery", transfer: ["trade_goods", "charcoal"], features: ["pottery_kiln", "clay_pit"] },
+  village_reeve: { projects: REEVE_PROJECTS, tag: "village", transfer: ["hides", "wool"], features: ["labourer_housing"] },
+  vinedresser: { projects: VINEDRESSER_PROJECTS, tag: "wine", transfer: ["wine"], features: [] },
+  head_seamstress: {
+    projects: SEAMSTRESS_PROJECTS,
+    tag: "textile",
+    transfer: ["linen", "wool"],
+    features: ["textile_workshop", "mill_fulling"],
+  },
+  copper_smith: {
+    projects: COPPER_PROJECTS,
+    tag: "forge",
+    transfer: ["copper", "tin", "charcoal", "iron"],
+    features: ["bloomery", "mill_forge"],
+  },
+  captain: {
+    projects: CAPTAIN_PROJECTS,
+    tag: "defense",
+    transfer: ["iron"],
+    features: ["palisade", "tower", "gatehouse", "watch_post"],
+  },
+};
 
 function projectAllowed(p: MechanicalProposal, keys: Set<string>, tag?: string): boolean {
   if (p.type === "start_project") return keys.has(p.projectKey) || (tag != null && p.tag === tag);
@@ -221,23 +439,13 @@ export function specialistAllowed(
   p: MechanicalProposal,
   spec: HireableSpecialist,
 ): string | null {
-  const keys =
-    spec.id === "quarry_master"
-      ? QUARRY_PROJECTS
-      : spec.id === "carpenter"
-        ? CARPENTER_PROJECTS
-        : spec.id === "mason"
-          ? MASON_PROJECTS
-          : POTTER_PROJECTS;
-  const tag =
-    spec.id === "quarry_master" ? "stone" : spec.id === "potter" ? "pottery" : spec.id === "mason" ? "stone" : "timber";
+  const scope = CRAFT_SCOPES[spec.id];
+  if (!scope) return "npc_not_authorized";
+  const { projects: keys, tag, transfer, features } = scope;
 
   switch (p.type) {
     case "transfer_resources": {
-      if (spec.id === "quarry_master" && ["stone", "iron", "charcoal"].includes(p.resource)) return null;
-      if (spec.id === "carpenter" && ["softwood", "hardwood", "iron"].includes(p.resource)) return null;
-      if (spec.id === "mason" && ["stone", "iron"].includes(p.resource)) return null;
-      if (spec.id === "potter" && ["trade_goods", "charcoal"].includes(p.resource)) return null;
+      if (transfer.includes(p.resource)) return null;
       const custom = state.custom_resources.find((c) => c.id === p.resource);
       if (custom?.tags?.some((t) => t === tag || t === "craft")) return null;
       return "npc_not_authorized";
@@ -261,6 +469,7 @@ export function specialistAllowed(
       if (p.target === "accident_risk" || p.target === "project_speed" || p.target === "specific_resource_output") {
         return null;
       }
+      if (spec.id === "village_reeve" && (p.target === "mood" || p.target === "harvest_risk")) return null;
       return "npc_not_authorized";
     }
     case "register_resource": {
@@ -269,14 +478,6 @@ export function specialistAllowed(
       return "npc_not_authorized";
     }
     case "register_feature": {
-      const features =
-        spec.id === "quarry_master"
-          ? ["quarry"]
-          : spec.id === "carpenter"
-            ? ["carpenter_workshop"]
-            : spec.id === "mason"
-              ? ["quarry"]
-              : ["pottery_kiln", "clay_pit"];
       if (features.includes(p.feature)) return null;
       return "npc_not_authorized";
     }

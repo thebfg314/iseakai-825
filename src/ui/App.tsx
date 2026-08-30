@@ -775,6 +775,16 @@ function composerPlaceholder(view: GameView): string {
       return "Speak with Gerold of the masonry…";
     case "potter":
       return "Speak with Hugo of the kiln…";
+    case "village_reeve":
+      return "Speak with Otto of the village…";
+    case "vinedresser":
+      return "Speak with Ambrosius of the vines…";
+    case "head_seamstress":
+      return "Speak with Hildegard of the cloth…";
+    case "copper_smith":
+      return "Speak with Lorenzo of the copper…";
+    case "captain":
+      return "Speak with Eberhard of the watch…";
     default:
       return "Tell Aldric how the land and stores should be kept…";
   }

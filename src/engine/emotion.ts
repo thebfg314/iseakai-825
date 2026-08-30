@@ -20,6 +20,11 @@ export const PORTRAIT_NPCS = new Set([
   "carpenter",
   "mason",
   "potter",
+  "village_reeve",
+  "vinedresser",
+  "head_seamstress",
+  "copper_smith",
+  "captain",
 ]);
 
 const ALIASES: Record<string, AldricEmotion> = {
