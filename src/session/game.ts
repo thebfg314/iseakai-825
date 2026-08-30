@@ -15,12 +15,15 @@ import path from "node:path";
 import { parseLlmResponse, eventEffectHasMechanics } from "../llm/parse";
 import { llmChat, type AppSettings } from "../llm";
 import {
+  npcBooksFollowUp,
   npcUserPrompt,
   npcSystemPrompt,
   refereeSystemPrompt,
   repairPrompt,
   seasonUserPrompt,
+  SPEECH_PASS_HINT,
 } from "../llm/prompts";
+import { booksHearFailureLine, HOLD_AT_ONCE_APOLOGY, isProviderTimeoutError } from "../llm/providerErrors";
 import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
@@ -163,34 +166,60 @@ export class GameController {
     const user = npcUserPrompt(this.state, npcId, playerText, extra);
     const order = looksLikeMechanicalOrder(playerText);
     try {
-      const parsed = await this.callLlm(
-        [{ role: "system", content: system }, { role: "user", content: user }],
-        1600,
-        {
-          requireProposals: order,
-          repairHint: order
-            ? "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers."
-            : undefined,
-        },
+      const spoken = await this.callLlm(
+        [{ role: "system", content: system }, { role: "user", content: `${user}\n\n${SPEECH_PASS_HINT}` }],
+        800,
+        { requireProposals: false, allowRepair: false },
       );
-      if (parsed.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = parsed.emotion;
+      if (spoken.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = spoken.emotion;
       this.messages.push({
         id: newId("msg"),
         role: "npc",
         npcId,
         npcName: this.npcName(npcId),
-        text: parsed.speech,
-        chronicle: parsed.chronicle,
-        emotion: PORTRAIT_NPCS.has(npcId) ? parsed.emotion ?? this.npcEmotions[npcId] : undefined,
+        text: spoken.speech,
+        chronicle: spoken.chronicle,
+        emotion: PORTRAIT_NPCS.has(npcId) ? spoken.emotion ?? this.npcEmotions[npcId] : undefined,
         at: new Date().toISOString(),
       });
-      this.ingestParsedDialogue(npcId, parsed, playerText);
-      return this.view();
+      if (npcId === "steward") this.flushHireRecommendations();
+      if (!order) return this.view();
+
+      try {
+        const books = await this.callLlm(
+          [
+            { role: "system", content: system },
+            { role: "user", content: user },
+            { role: "assistant", content: spoken.raw },
+            { role: "user", content: npcBooksFollowUp(playerText) },
+          ],
+          900,
+          {
+            requireProposals: true,
+            allowRepair: true,
+            repairHint:
+              "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers.",
+          },
+        );
+        this.ingestParsedDialogue(npcId, books, playerText);
+        return this.view();
+      } catch (err) {
+        this.noteTalkFailure(err, npcId);
+        return this.view();
+      }
     } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      this.ledgerNote(`${this.npcName(npcId)} cannot be heard (${error})`, npcId);
-      return { ...this.view(), error };
+      this.noteTalkFailure(err, npcId);
+      return this.view();
     }
+  }
+
+  /** Engine string only — never call the model to apologize. */
+  private noteTalkFailure(err: unknown, npcId: string) {
+    if (isProviderTimeoutError(err)) {
+      this.ledgerNote(HOLD_AT_ONCE_APOLOGY, npcId);
+      return;
+    }
+    this.ledgerNote(booksHearFailureLine(this.npcName(npcId)), npcId);
   }
 
   queueProposal(npcId: string, proposal: MechanicalProposal) {
@@ -408,19 +437,21 @@ export class GameController {
       for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
       effects.push(...finishSeasonClock(this.state));
       writeLastSeasonDeltas(this.state, ledgerBefore);
-      const error = err instanceof Error ? err.message : String(err);
+      const seasonNote = isProviderTimeoutError(err)
+        ? HOLD_AT_ONCE_APOLOGY
+        : "Season advanced with the engine's own figures. The chronicler could not be heard.";
       this.messages.push({
         id: newId("msg"),
         role: "system",
         npcId: "steward",
-        text: `Season advanced with engine defaults only. ${error}`,
+        text: seasonNote,
         chronicle: effects.map((e) => e.text).join("\n"),
         at: new Date().toISOString(),
       });
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
-      return { ...this.view(), effects, error };
+      return { ...this.view(), effects };
     }
   }
 
@@ -488,7 +519,7 @@ export class GameController {
   private async callLlm(
     messages: { role: "system" | "user" | "assistant"; content: string }[],
     maxTokens: number,
-    opts?: { requireProposals?: boolean; repairHint?: string },
+    opts?: { requireProposals?: boolean; repairHint?: string; allowRepair?: boolean },
   ): Promise<{
     speech: string;
     chronicle?: string;
@@ -499,9 +530,11 @@ export class GameController {
   }> {
     const raw1 = await llmChat(this.settings, messages, { maxTokens });
     let parsed = parseLlmResponse(raw1);
+    const allowRepair = opts?.allowRepair !== false;
     const needsRepair =
-      (parsed.parseErrors.length > 0 && parsed.proposals.length === 0) ||
-      (Boolean(opts?.requireProposals) && parsed.proposals.length === 0);
+      allowRepair &&
+      ((parsed.parseErrors.length > 0 && parsed.proposals.length === 0) ||
+        (Boolean(opts?.requireProposals) && parsed.proposals.length === 0));
     if (needsRepair) {
       const errors = parsed.parseErrors.length
         ? parsed.parseErrors

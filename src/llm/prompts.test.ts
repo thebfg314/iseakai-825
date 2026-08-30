@@ -176,6 +176,12 @@ describe("signed-off NPC personalities", () => {
     const user = npcUserPrompt(state, "steward", "How fares the rye?");
     expect(user).not.toMatch(/"memories"/);
     expect(user).not.toMatch(/merchant_memories/);
+    expect(user).not.toMatch(/"market"/);
+    expect(user).not.toMatch(/"trade"/);
+    expect(user).not.toMatch(/"poultry"/);
+    expect(user).not.toMatch(/last_chance/);
+    expect(user).toMatch(/"fertile_arable"/);
+    expect(user).toMatch(/"denarii"/);
   });
 
   it("tells Isaac of his own bargains, not Aldric's estate orders", () => {
