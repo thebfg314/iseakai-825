@@ -148,7 +148,7 @@ describe("world-state.json save and load restores memories", () => {
     const file = path.join(dir, "world-state.json");
     saveWorldState(file, state);
     const raw = JSON.parse(fs.readFileSync(file, "utf8")) as {
-      npcs: { id: string; memories?: { summary: string }[] };
+      npcs: { id: string; memories?: { summary: string }[] }[];
       merchant_memories: Record<string, { summary: string }[]>;
     };
     expect(raw.npcs.find((n) => n.id === "steward")?.memories?.[0].summary).toMatch(/barley/i);

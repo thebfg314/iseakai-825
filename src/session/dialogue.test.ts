@@ -577,7 +577,7 @@ describe("expansion hires via Aldric after unlock", () => {
           type: "register_npc",
           summary: "Hire Otto",
           isNew: true,
-          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay" },
+          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay", memories: [] },
         },
       ],
       [],
