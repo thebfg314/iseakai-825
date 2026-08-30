@@ -353,7 +353,5 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return p.summary && p.summary !== p.type ? p.summary : "Lift a custom from the books.";
     case "event_effect":
       return p.summary && p.summary !== p.type && p.summary !== "event_effect" ? p.summary : "A season's change.";
-    default:
-      return p.summary;
   }
 }
