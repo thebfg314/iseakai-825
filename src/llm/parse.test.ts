@@ -148,41 +148,40 @@ describe("parseLlmResponse", () => {
 });
 
 describe("salvageSpeechFromLlmText", () => {
-  it("pulls the steward paragraph from a truncated dump cut after the first proposal }", () => {
-    const salvaged = salvageSpeechFromLlmText(TRUNCATED_AFTER_FIRST_PROPOSAL);
-    expect(salvaged).toBe(STEWARD_HUSBANDRY);
-    expect(salvaged).not.toMatch(/\{|"proposals"/);
+  it("does not salvage speech from a truncated dump cut after the first proposal }", () => {
+    expect(salvageSpeechFromLlmText(TRUNCATED_AFTER_FIRST_PROPOSAL)).toBeNull();
+    expect(salvageSpeechFromLlmText(TRUNCATED_MID_SPEECH)).toBeNull();
+    expect(salvageSpeechFromLlmText('{ "proposals": [ { "type": "adjust_sowing" }')).toBeNull();
   });
 
-  it("handles escaped quotes and newlines inside speech", () => {
-    const raw = `{ "speech": "Aye, my lord.\\nWe shall keep the \\"best\\" seed.", "proposals": [`;
+  it("extracts speech from complete JSON, including escaped quotes and newlines", () => {
+    const raw = JSON.stringify({
+      speech: "Aye, my lord.\nWe shall keep the \"best\" seed.",
+      emotion: "thoughtful",
+      proposals: [],
+    });
     expect(salvageSpeechFromLlmText(raw)).toBe("Aye, my lord.\nWe shall keep the \"best\" seed.");
   });
 
-  it("cuts an unclosed speech string at chronicle / emotion / proposals", () => {
-    expect(salvageSpeechFromLlmText(`${TRUNCATED_MID_SPEECH}",\n  "chronicle": "cut off`)).toContain(
-      "It makes good sense, my lord",
-    );
-    expect(salvageSpeechFromLlmText(`${TRUNCATED_MID_SPEECH}\n  "proposals": [`)).toContain("three-field rotation");
-  });
-
-  it("returns null for a dump with no salvageable prose", () => {
-    expect(salvageSpeechFromLlmText('{ "proposals": [ { "type": "adjust_sowing" }')).toBeNull();
+  it("returns plain speech when the payload is complete prose with no JSON", () => {
+    expect(salvageSpeechFromLlmText("The rye stands well, my lord.")).toBe("The rye stands well, my lord.");
   });
 });
 
 describe("parseLlmResponse never shows JSON to the player", () => {
-  it("parses the playtest truncated dump as the steward paragraph", () => {
+  it("treats the playtest truncated dump as incomplete — apology, no salvaged paragraph, no proposals", () => {
     const parsed = parseLlmResponse(TRUNCATED_AFTER_FIRST_PROPOSAL);
-    expect(parsed.response.speech).toBe(STEWARD_HUSBANDRY);
-    expect(parsed.response.speech).not.toContain("{");
-    expect(parsed.response.speech).not.toContain('"proposals"');
-    expect(parsed.response.speech).not.toContain("Begin tracking peas");
+    expect(parsed.incomplete).toBe(true);
+    expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(parsed.response.speech).not.toContain("It makes good sense");
+    expect(parsed.proposals).toEqual([]);
+    expect(playerFacingNpcSpeech(TRUNCATED_AFTER_FIRST_PROPOSAL, STEWARD_HUSBANDRY)).toBe(HOLD_AT_ONCE_APOLOGY);
     expect(looksLikeJsonDump(parsed.response.speech)).toBe(false);
   });
 
-  it("uses the engine apology when nothing can be salvaged", () => {
+  it("uses the engine apology for any incomplete JSON blob", () => {
     const parsed = parseLlmResponse('{ "proposals": [ { "summary": "Begin tracking peas (field legumes) in the estate stores" }');
+    expect(parsed.incomplete).toBe(true);
     expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
     expect(playerFacingNpcSpeech('{ "speech": ', "")).toBe(HOLD_AT_ONCE_APOLOGY);
   });

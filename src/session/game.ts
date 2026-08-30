@@ -23,7 +23,12 @@ import {
   seasonUserPrompt,
   SPEECH_PASS_HINT,
 } from "../llm/prompts";
-import { booksHearFailureLine, HOLD_AT_ONCE_APOLOGY, isProviderTimeoutError } from "../llm/providerErrors";
+import {
+  booksHearFailureLine,
+  HOLD_AT_ONCE_APOLOGY,
+  INCOMPLETE_MODEL_JSON,
+  isHoldAtOnceFailure,
+} from "../llm/providerErrors";
 import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
@@ -216,7 +221,7 @@ export class GameController {
 
   /** Engine string only — never call the model to apologize. */
   private noteTalkFailure(err: unknown, npcId: string) {
-    if (isProviderTimeoutError(err)) {
+    if (isHoldAtOnceFailure(err)) {
       this.ledgerNote(HOLD_AT_ONCE_APOLOGY, npcId);
       return;
     }
@@ -236,9 +241,10 @@ export class GameController {
   /** Testable: parse result → pending queue and ledger notes. Does not call the model. */
   ingestParsedDialogue(
     npcId: string,
-    parsed: { proposals: MechanicalProposal[]; parseErrors: string[] },
+    parsed: { proposals: MechanicalProposal[]; parseErrors: string[]; incomplete?: boolean },
     playerText: string,
   ) {
+    if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
     let proposals = dropHireFeeDuplicates(parsed.proposals.map(ensureSummary));
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
@@ -438,7 +444,7 @@ export class GameController {
       for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
       effects.push(...finishSeasonClock(this.state));
       writeLastSeasonDeltas(this.state, ledgerBefore);
-      const seasonNote = isProviderTimeoutError(err)
+      const seasonNote = isHoldAtOnceFailure(err)
         ? HOLD_AT_ONCE_APOLOGY
         : "Season advanced with the engine's own figures. The chronicler could not be heard.";
       this.messages.push({
@@ -531,6 +537,9 @@ export class GameController {
   }> {
     const raw1 = await llmChat(this.settings, messages, { maxTokens });
     let parsed = parseLlmResponse(raw1);
+    if (parsed.incomplete) {
+      throw new Error(INCOMPLETE_MODEL_JSON);
+    }
     const allowRepair = opts?.allowRepair !== false;
     const needsRepair =
       allowRepair &&
@@ -549,6 +558,9 @@ export class GameController {
         },
       );
       parsed = parseLlmResponse(raw2);
+      if (parsed.incomplete) {
+        throw new Error(INCOMPLETE_MODEL_JSON);
+      }
       return {
         speech: playerFacingNpcSpeech(raw2, parsed.response.speech),
         chronicle: parsed.response.chronicle,

@@ -9,15 +9,48 @@ export type ParseLlmResult = {
   proposals: MechanicalProposal[];
   parseErrors: string[];
   emotion?: AldricEmotion;
+  /** True when the model blob was chopped / not a complete parseable contract. */
+  incomplete?: boolean;
 };
 
+/** First balanced `{...}` (strings and nested arrays respected). Null if braces never close. */
 export function extractJsonObject(text: string): string | null {
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fence ? fence[1] : text;
   const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  return candidate.slice(start, end + 1);
+  if (start < 0) return null;
+  let depthBrace = 0;
+  let depthBracket = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < candidate.length; i++) {
+    const ch = candidate[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depthBrace++;
+    else if (ch === "}") depthBrace--;
+    else if (ch === "[") depthBracket++;
+    else if (ch === "]") depthBracket--;
+    if (depthBrace < 0 || depthBracket < 0) return null;
+    if (depthBrace === 0 && depthBracket === 0 && i > start) {
+      return candidate.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 function stripTrailingCommas(json: string): string {
@@ -286,8 +319,6 @@ export function eventEffectHasMechanics(p: MechanicalProposal): boolean {
   return false;
 }
 
-const NEXT_CONTRACT_KEY = /"\s*(chronicle|emotion|proposals)"\s*:/;
-
 /** True when the player would see a contract dump instead of spoken words. */
 export function looksLikeJsonDump(text: string): boolean {
   const t = text.trim();
@@ -297,75 +328,43 @@ export function looksLikeJsonDump(text: string): boolean {
   return false;
 }
 
-function unescapeJsonFragment(s: string): string {
-  return s
-    .replace(/\\n/g, "\n")
-    .replace(/\\t/g, "\t")
-    .replace(/\\r/g, "\r")
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, "\\");
-}
-
-/** Walk a JSON string starting after the opening quote. */
-function readJsonString(src: string, start: number): { text: string; closed: boolean } {
-  let i = start;
-  let out = "";
-  while (i < src.length) {
-    const ch = src[i];
-    if (ch === "\\") {
-      const next = src[i + 1];
-      if (next === undefined) break;
-      if (next === "n") out += "\n";
-      else if (next === "t") out += "\t";
-      else if (next === "r") out += "\r";
-      else if (next === '"' || next === "\\" || next === "/") out += next;
-      else out += next;
-      i += 2;
-      continue;
-    }
-    if (ch === '"') return { text: out, closed: true };
-    out += ch;
-    i++;
-  }
-  return { text: out, closed: false };
+function looksLikeStartedJson(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (t.startsWith("{")) return true;
+  if (t.startsWith("```") && t.includes("{")) return true;
+  return looksLikeJsonDump(t);
 }
 
 /**
- * Pull spoken prose from model text. Handles a complete contract, a tiny
- * `{speech, emotion}` object, and a truncated dump whose last `}` is mid-proposals.
+ * Complete plain speech (no `{`), or a fully closed JSON object that parses
+ * and has a real `speech` string. Truncated slices (first nested `}`) are not complete.
  */
-export function salvageSpeechFromLlmText(raw: string): string | null {
+export function isCompleteLlmPayload(raw: string): boolean {
   const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  const extracted = extractJsonObject(trimmed);
-  if (extracted) {
-    const data = tryParseJson(extracted);
-    const rec = asRecord(data);
-    if (typeof rec?.speech === "string" && rec.speech.trim()) {
-      return rec.speech.trim();
-    }
-  }
-
-  const keyMatch = trimmed.match(/"speech"\s*:\s*"/);
-  if (keyMatch && keyMatch.index !== undefined) {
-    const start = keyMatch.index + keyMatch[0].length;
-    const pulled = readJsonString(trimmed, start);
-    if (pulled.closed && pulled.text.trim()) return pulled.text.trim();
-    const rest = pulled.closed ? pulled.text : trimmed.slice(start);
-    const cut = rest.search(NEXT_CONTRACT_KEY);
-    const slice = (cut >= 0 ? rest.slice(0, cut) : rest).replace(/\\+$/, "");
-    const unescaped = pulled.closed ? pulled.text.trim() : unescapeJsonFragment(slice).trim();
-    if (unescaped && !looksLikeJsonDump(unescaped)) return unescaped;
-    return null;
-  }
-
-  if (looksLikeJsonDump(trimmed)) return null;
-  return trimmed;
+  if (!trimmed) return false;
+  if (!looksLikeStartedJson(trimmed)) return true;
+  const balanced = extractJsonObject(trimmed);
+  if (!balanced) return false;
+  const data = tryParseJson(balanced);
+  const rec = asRecord(data);
+  return typeof rec?.speech === "string" && Boolean(rec.speech.trim());
 }
 
-/** Spoken words only — never a raw `{ "speech": ... }` blob. */
+/** Speech from a complete payload only. Incomplete JSON → null (never salvage a chopped blob). */
+export function salvageSpeechFromLlmText(raw: string): string | null {
+  if (!isCompleteLlmPayload(raw)) return null;
+  const trimmed = raw.trim();
+  if (!looksLikeStartedJson(trimmed)) return trimmed;
+  const data = tryParseJson(extractJsonObject(trimmed) ?? "");
+  const rec = asRecord(data);
+  if (typeof rec?.speech === "string" && rec.speech.trim()) return rec.speech.trim();
+  return null;
+}
+
+/** Spoken words only. Incomplete JSON → apology immediately, no salvaged paragraph. */
 export function playerFacingNpcSpeech(raw: string, parsedSpeech?: string): string {
+  if (!isCompleteLlmPayload(raw)) return HOLD_AT_ONCE_APOLOGY;
   const fromParse = parsedSpeech?.trim() ?? "";
   if (fromParse && !looksLikeJsonDump(fromParse)) return fromParse;
   const salvaged = salvageSpeechFromLlmText(raw);
@@ -373,29 +372,34 @@ export function playerFacingNpcSpeech(raw: string, parsedSpeech?: string): strin
   return HOLD_AT_ONCE_APOLOGY;
 }
 
+function incompleteParseResult(): ParseLlmResult {
+  return {
+    response: { speech: HOLD_AT_ONCE_APOLOGY, proposals: [] },
+    proposals: [],
+    parseErrors: ["Incomplete or unparseable model JSON."],
+    incomplete: true,
+  };
+}
+
 export function parseLlmResponse(raw: string): ParseLlmResult {
+  if (!raw.trim() || (looksLikeStartedJson(raw) && !isCompleteLlmPayload(raw))) {
+    return incompleteParseResult();
+  }
   const jsonText = extractJsonObject(raw);
   const parseErrors: string[] = [];
   if (!jsonText) {
-    const facing = playerFacingNpcSpeech(raw, looksLikeJsonDump(raw) ? "" : raw.trim());
+    const facing = playerFacingNpcSpeech(raw, raw.trim());
     const stripped = stripEmotionCommands(facing);
     return {
       response: { speech: stripped.speech, proposals: [] },
       proposals: [],
-      parseErrors: raw.trim() ? ["No JSON object in model output."] : ["Empty model output."],
+      parseErrors: ["No JSON object in model output."],
       emotion: stripped.emotion,
     };
   }
   const data = tryParseJson(jsonText);
   if (data === undefined) {
-    const facing = playerFacingNpcSpeech(raw);
-    const stripped = stripEmotionCommands(facing);
-    return {
-      response: { speech: stripped.speech, proposals: [] },
-      proposals: [],
-      parseErrors: ["JSON.parse failed after trailing-comma repair."],
-      emotion: stripped.emotion,
-    };
+    return incompleteParseResult();
   }
   const obj = asRecord(data) ?? {};
   const wrapped = LlmResponseSchema.safeParse(data);
