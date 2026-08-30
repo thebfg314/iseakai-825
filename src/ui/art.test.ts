@@ -74,3 +74,20 @@ describe("expansion NPC portraits", () => {
     expect(npcPortrait("quarry_master", "disappointed")).toMatch(/Colman Displeased/);
   });
 });
+
+const MERCHANT_FACE_FILES = [
+  [1, "Gero.png"],
+  [2, "Odo.png"],
+  [3, "Liutward.png"],
+  [4, "Theudo.png"],
+  [5, "Boso.png"],
+  [6, "Isaac.png"],
+  [7, "Salamon.png"],
+  [8, "Wichard.png"],
+] as const;
+
+describe("merchant portraits", () => {
+  it.each(MERCHANT_FACE_FILES)("face %s resolves to %s", (face, file) => {
+    expect(npcPortrait("merchant", "neutral", face)).toContain(file);
+  });
+});

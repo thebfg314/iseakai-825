@@ -84,14 +84,14 @@ import eberhardDispleased from "../../art assets/NPC Images/Eberhard Captain/Ebe
 import eberhardHappy from "../../art assets/NPC Images/Eberhard Captain/Eberhard Happy.png";
 import eberhardThoughtful from "../../art assets/NPC Images/Eberhard Captain/Eberhard Thoughtful .png";
 
-import merchant1 from "../../art assets/NPC Images/Merchants/Merchant 1.png";
-import merchant2 from "../../art assets/NPC Images/Merchants/Merchant 2.png";
-import merchant3 from "../../art assets/NPC Images/Merchants/Merchant 3.png";
-import merchant4 from "../../art assets/NPC Images/Merchants/Merchant 4.png";
-import merchant5 from "../../art assets/NPC Images/Merchants/Merchant 5.png";
-import merchant6 from "../../art assets/NPC Images/Merchants/Merchant 6.png";
-import merchant7 from "../../art assets/NPC Images/Merchants/Merchant 7.png";
-import merchant8 from "../../art assets/NPC Images/Merchants/Merchant 8.png";
+import gero from "../../art assets/NPC Images/Merchants/Gero.png";
+import odo from "../../art assets/NPC Images/Merchants/Odo.png";
+import liutward from "../../art assets/NPC Images/Merchants/Liutward.png";
+import theudo from "../../art assets/NPC Images/Merchants/Theudo.png";
+import boso from "../../art assets/NPC Images/Merchants/Boso.png";
+import isaac from "../../art assets/NPC Images/Merchants/Isaac.png";
+import salamon from "../../art assets/NPC Images/Merchants/Salamon.png";
+import wichard from "../../art assets/NPC Images/Merchants/Wichard.png";
 
 import type { AldricEmotion } from "../engine/emotion";
 
@@ -221,14 +221,14 @@ const EBERHARD: Record<SparsePose, string> = {
 };
 
 const MERCHANT_FACES: Record<number, string> = {
-  1: merchant1,
-  2: merchant2,
-  3: merchant3,
-  4: merchant4,
-  5: merchant5,
-  6: merchant6,
-  7: merchant7,
-  8: merchant8,
+  1: gero,
+  2: odo,
+  3: liutward,
+  4: theudo,
+  5: boso,
+  6: isaac,
+  7: salamon,
+  8: wichard,
 };
 
 function sparsePortrait(table: Record<SparsePose, string>, emotion: AldricEmotion | undefined): string {
