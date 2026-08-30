@@ -306,8 +306,9 @@ describe("hire specialists via Aldric Confirm", () => {
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
-  it("drafts a carpenter hire from Aldric, Confirm writes Haimo and takes a solidus", () => {
+  it("drafts a carpenter hire from Aldric, Confirm writes Haimo and takes 110 denarii", () => {
     const game = tempGame();
+    game.state.resources.denarii = 200;
     expect(game.setScene("carpenter").sceneNpcId).toBe("steward");
     const denariiBefore = game.state.resources.denarii;
     const parsed = parseLlmResponse(JSON.stringify({ speech: "I can send for a carpenter, my lord.", proposals: [] }));
@@ -327,10 +328,10 @@ describe("hire specialists via Aldric Confirm", () => {
       true,
     );
     expect(game.state.npcs).toHaveLength(4);
-    expect(game.state.resources.denarii).toBe(denariiBefore - 12);
+    expect(game.state.resources.denarii).toBe(denariiBefore - 110);
     const saved = worldFile(game);
     expect(saved.npcs.some((n: { id: string }) => n.id === "carpenter")).toBe(true);
-    expect(saved.resources.denarii).toBe(denariiBefore - 12);
+    expect(saved.resources.denarii).toBe(denariiBefore - 110);
 
     expect(game.setScene("carpenter").sceneNpcId).toBe("carpenter");
     expect(game.view().messages.every((m) => m.npcId === "carpenter")).toBe(true);
@@ -339,6 +340,7 @@ describe("hire specialists via Aldric Confirm", () => {
 
   it("does not take the hiring gift twice when the model also spends denarii", () => {
     const game = tempGame();
+    game.state.resources.denarii = 200;
     const denariiBefore = game.state.resources.denarii;
     const parsed = parseLlmResponse(
       JSON.stringify({
@@ -350,19 +352,20 @@ describe("hire specialists via Aldric Confirm", () => {
             npc: { id: "carpenter", name: "Haimo", role: "carpenter", location: "fontenay" },
             isNew: true,
           },
-          { type: "transfer_resources", summary: "Hiring gift", resource: "denarii", amount: 12, direction: "consume" },
+          { type: "transfer_resources", summary: "Hiring gift", resource: "denarii", amount: 110, direction: "consume" },
         ],
       }),
     );
     game.ingestParsedDialogue("steward", parsed, "Hire a carpenter.");
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
     game.confirmProposal(game.pending[0].id);
-    expect(game.state.resources.denarii).toBe(denariiBefore - 12);
+    expect(game.state.resources.denarii).toBe(denariiBefore - 110);
     expect(game.state.npcs.some((n) => n.id === "carpenter")).toBe(true);
   });
 
   it("does not add the specialist until Confirm", () => {
     const game = tempGame();
+    game.state.resources.denarii = 150;
     const parsed = parseLlmResponse(
       JSON.stringify({
         speech: "Colman can be brought in.",
@@ -391,8 +394,60 @@ describe("hire specialists via Aldric Confirm", () => {
     expect(game.messages.some((m) => /chest cannot spare|denarii/i.test(m.text))).toBe(true);
   });
 
+  it("hires Hugo for 80 denarii from the start chest and leaves 16", () => {
+    const game = tempGame();
+    expect(game.state.resources.denarii).toBe(96);
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Hugo will come.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire Hugo the potter.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    const result = game.confirmProposal(pending[0].id);
+    expect(result.error).toBeUndefined();
+    expect(game.state.npcs.some((n) => n.id === "potter" && n.name === "Hugo")).toBe(true);
+    expect(game.state.resources.denarii).toBe(16);
+    expect(worldFile(game).resources.denarii).toBe(16);
+  });
+
+  it("refuses Gerold at boot because 200 denarii is more than the start chest", () => {
+    const game = tempGame();
+    expect(game.state.resources.denarii).toBe(96);
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The chest is too thin for a mason.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire Gerold the mason.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs.some((n) => n.id === "mason")).toBe(false);
+    expect(game.state.resources.denarii).toBe(96);
+    expect(game.messages.some((m) => /chest cannot spare 200 denarii/i.test(m.text))).toBe(true);
+  });
+
+  it("does not hire Bernard, who already keeps the forge", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Bernard is already ours.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire Bernard the smith.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs.filter((n) => n.id === "smith" || n.name === "Bernard")).toHaveLength(1);
+    expect(game.messages.some((m) => /not for hire|already keeps the forge/i.test(m.text))).toBe(true);
+
+    const forced = parseLlmResponse(
+      JSON.stringify({
+        speech: "I will write Bernard again.",
+        proposals: [
+          {
+            type: "register_npc",
+            summary: "Hire Bernard",
+            npc: { id: "bernard", name: "Bernard", role: "smith", location: "fontenay" },
+            isNew: true,
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", forced, "Hire Bernard.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs.filter((n) => /bernard/i.test(n.name))).toHaveLength(1);
+  });
+
   it("does not hire twice, and Bernard cannot hire for the house", () => {
     const game = tempGame();
+    game.state.resources.denarii = 200;
     const parsed = parseLlmResponse(JSON.stringify({ speech: "Aye.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "Hire Gerold the mason.");
     game.confirmProposal(game.pending[0].id);
@@ -422,6 +477,7 @@ describe("hire specialists via Aldric Confirm", () => {
     game.ingestParsedDialogue("steward", parsed, "Hire Hugo the potter.");
     game.confirmProposal(game.pending[0].id);
     expect(game.state.npcs.some((n) => n.id === "potter" && n.name === "Hugo")).toBe(true);
+    expect(game.state.resources.denarii).toBe(16);
     const potter = game.setScene("potter");
     expect(potter.sceneNpcId).toBe("potter");
     expect(potter.messages).toHaveLength(0);
@@ -487,14 +543,43 @@ describe("expansion hires via Aldric after unlock", () => {
     expect(pending[0].proposal.type).toBe("register_npc");
     expect(game.state.npcs).toHaveLength(3);
 
+    const ryeBefore = game.state.resources.rye;
     const result = game.confirmProposal(pending[0].id);
     expect(result.error).toBeUndefined();
     const otto = game.state.npcs.find((n) => n.id === "village_reeve");
     expect(otto).toMatchObject({ name: "Otto", role: "village_reeve", location: "fontenay" });
-    expect(game.state.resources.denarii).toBe(denariiBefore - 12);
+    expect(game.state.resources.denarii).toBe(denariiBefore - 20);
+    expect(game.state.resources.rye).toBe(ryeBefore - 0.5);
     expect(worldFile(game).npcs.some((n: { id: string }) => n.id === "village_reeve")).toBe(true);
     expect(game.setScene("village_reeve").sceneNpcId).toBe("village_reeve");
     expect(game.view().messages.every((m) => m.npcId === "village_reeve")).toBe(true);
+  });
+
+  it("refuses Otto after unlock if the chest cannot spare 20 denarii", () => {
+    const game = tempGame();
+    unlockOtto(game);
+    game.state.resources.denarii = 19;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The chest is thin.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire Otto the reeve.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs.some((n) => n.id === "village_reeve")).toBe(false);
+    expect(game.messages.some((m) => /chest cannot spare 20 denarii/i.test(m.text))).toBe(true);
+  });
+
+  it("refuses Otto after unlock if the granary cannot spare his house ration", () => {
+    const game = tempGame();
+    unlockOtto(game);
+    game.state.resources.denarii = 20;
+    game.state.resources.rye = 0;
+    game.state.resources.wheat = 0;
+    game.state.resources.barley = 0;
+    game.state.resources.oats = 0;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The granary is thin.", proposals: [] }));
+    game.ingestParsedDialogue("steward", parsed, "Hire Otto the reeve.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs.some((n) => n.id === "village_reeve")).toBe(false);
+    expect(game.state.resources.denarii).toBe(20);
+    expect(game.messages.some((m) => /granary cannot spare|household ration/i.test(m.text))).toBe(true);
   });
 
   it("does not hire on speech-only talk after unlock", () => {
@@ -546,6 +631,7 @@ describe("expansion hires via Aldric after unlock", () => {
 
     for (const row of cases) {
       const game = tempGame();
+      game.state.resources.denarii = 300;
       const parsed = parseLlmResponse(JSON.stringify({ speech: "Aye.", proposals: [] }));
       game.ingestParsedDialogue("steward", parsed, row.order);
       expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);

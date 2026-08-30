@@ -7,6 +7,7 @@ export * from "./labour";
 export * from "./applyDelta";
 export * from "./events";
 export * from "./merchant";
+export * from "./grain";
 export * from "./season";
 export * from "./history";
 export * from "./state";

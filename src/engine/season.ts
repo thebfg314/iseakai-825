@@ -3,28 +3,9 @@ import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
 import { labourDaysFromAssignment } from "./labour";
 import { modifiersFor, applyMultiplyAdd, moodFactor, tickModifiers, yieldMultiplier } from "./modifiers";
 import { projectSpeed, resourceOutputBonus } from "./applyDelta";
+import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { nextSeason, round0, round1 } from "./util";
-
-function consumeGrain(state: WorldState, amount: number, label = "Households"): string {
-  let left = amount;
-  const order = ["rye", "wheat", "barley", "oats"] as const;
-  const taken: string[] = [];
-  for (const g of order) {
-    if (left <= 0) break;
-    const use = Math.min(state.resources[g], left);
-    if (use > 0) {
-      state.resources[g] = round1(state.resources[g] - use);
-      left = round1(left - use);
-      taken.push(`${round1(use)} ${g}`);
-    }
-  }
-  if (left > 0.1) {
-    state.flags.hunger = true;
-    return `${label} needed ${amount} modii; short ${left}. Hunger begins.`;
-  }
-  return `${label} consumed ${taken.join(", ") || "nothing"}.`;
-}
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -196,7 +177,7 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
 
   const households = state.population.households;
   state.flags.hunger = false;
-  add(consumeGrain(state, round1(households * 0.5), "Households"));
+  add(consumeGrain(state, round1(households * HOUSEHOLD_SEASON_GRAIN), "Households"));
   if (state.holdings.some((h) => h.features.includes("monastery") || h.features.includes("chapel"))) {
     const hasMonastery = state.holdings.some((h) => h.features.includes("monastery"));
     const house = hasMonastery ? "cell" : "oratory";

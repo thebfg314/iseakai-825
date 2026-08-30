@@ -463,7 +463,11 @@ function proposalBlurb(p: PendingProposal["proposal"]): string {
       return p.text;
     case "register_npc": {
       const spec = matchHireableSpecialist(p.npc);
-      const gift = spec ? ` · ${spec.hireCostDenarii} denarii hiring gift` : "";
+      const gift = spec
+        ? spec.hireGrainRation
+          ? ` · ${spec.hireCostDenarii} denarii and a household grain ration`
+          : ` · ${spec.hireCostDenarii} denarii hiring gift`
+        : "";
       return `Record ${p.npc.name} as ${p.npc.role.replaceAll("_", " ")}${gift}`;
     }
     case "event_effect":

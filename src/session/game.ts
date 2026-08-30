@@ -24,12 +24,14 @@ import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
   hireSummary,
+  isEstateSmithNpc,
   matchHireableSpecialist,
   newlyUnlockedHires,
   recommendableHires,
   specialistAlreadyPresent,
   specialistById,
   specialistHireBlocked,
+  specialistHireGrainRation,
   specialistNpc,
 } from "../engine/specialists";
 
@@ -269,6 +271,10 @@ export class GameController {
     for (const p of proposals) {
       if (p.type !== "register_npc") {
         kept.push(p);
+        continue;
+      }
+      if (isEstateSmithNpc(p.npc)) {
+        this.ledgerNote("Bernard already keeps the forge. He is not for hire.", npcId);
         continue;
       }
       const spec = matchHireableSpecialist(p.npc);
@@ -584,16 +590,31 @@ function hireRecommendationNote(fresh: ReturnType<typeof newlyUnlockedHires>): s
 }
 
 function dropHireFeeDuplicates(proposals: MechanicalProposal[]): MechanicalProposal[] {
-  const hiring = proposals.some((p) => p.type === "register_npc" && matchHireableSpecialist(p.npc));
-  if (!hiring) return proposals;
-  return proposals.filter(
-    (p) =>
-      !(
-        p.type === "transfer_resources" &&
-        p.resource === "denarii" &&
-        (p.direction === "consume" || p.direction === "buy")
-      ),
-  );
+  const hires = proposals.filter((p) => p.type === "register_npc" && matchHireableSpecialist(p.npc));
+  if (!hires.length) return proposals;
+  const grainHire = hires.some((p) => {
+    if (p.type !== "register_npc") return false;
+    const spec = matchHireableSpecialist(p.npc);
+    return Boolean(spec && specialistHireGrainRation(spec) > 0);
+  });
+  return proposals.filter((p) => {
+    if (
+      p.type === "transfer_resources" &&
+      p.resource === "denarii" &&
+      (p.direction === "consume" || p.direction === "buy")
+    ) {
+      return false;
+    }
+    if (
+      grainHire &&
+      p.type === "transfer_resources" &&
+      (p.resource === "rye" || p.resource === "wheat" || p.resource === "barley" || p.resource === "oats") &&
+      p.direction === "consume"
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function openingSpeech(state: WorldState): string {
