@@ -54,6 +54,36 @@ import hugoDispleased from "../../art assets/NPC Images/Hugo Potter/Hugo Displea
 import hugoHappy from "../../art assets/NPC Images/Hugo Potter/Hugo Happy.png";
 import hugoThoughtful from "../../art assets/NPC Images/Hugo Potter/Hugo Thoughtful.png";
 
+import ottoNeutral from "../../art assets/NPC Images/Otto Village Reeve/Otto Neutral.png";
+import ottoConcerned from "../../art assets/NPC Images/Otto Village Reeve/Otto Concerned.png";
+import ottoDispleased from "../../art assets/NPC Images/Otto Village Reeve/Otto Displeased.png";
+import ottoHappy from "../../art assets/NPC Images/Otto Village Reeve/Otto Happy.png";
+import ottoThoughtful from "../../art assets/NPC Images/Otto Village Reeve/Otto Thoughtful.png";
+
+import ambrosiusNeutral from "../../art assets/NPC Images/Ambrosius the Vinedresser/ambrosius Neutral.png";
+import ambrosiusConcerned from "../../art assets/NPC Images/Ambrosius the Vinedresser/Ambrosius Concerned.png";
+import ambrosiusDispleased from "../../art assets/NPC Images/Ambrosius the Vinedresser/Ambrosius Displeased.png";
+import ambrosiusHappy from "../../art assets/NPC Images/Ambrosius the Vinedresser/Ambrosius Happy.png";
+import ambrosiusThoughtful from "../../art assets/NPC Images/Ambrosius the Vinedresser/Ambrosius Thoughful.png";
+
+import hildegardNeutral from "../../art assets/NPC Images/Hildegard head seamstress/Hildegard  Neutral.png";
+import hildegardConcerned from "../../art assets/NPC Images/Hildegard head seamstress/Hildegard Concerned.png";
+import hildegardDispleased from "../../art assets/NPC Images/Hildegard head seamstress/Hildegard Displeased.png";
+import hildegardHappy from "../../art assets/NPC Images/Hildegard head seamstress/Hildegard Happy.png";
+import hildegardThoughtful from "../../art assets/NPC Images/Hildegard head seamstress/Hildegard Thoughtful.png";
+
+import lorenzoNeutral from "../../art assets/NPC Images/Lorenzo Copper Smith/Lorenzo Neutral.png";
+import lorenzoConcerned from "../../art assets/NPC Images/Lorenzo Copper Smith/Lorenzo Concerned.png";
+import lorenzoDispleased from "../../art assets/NPC Images/Lorenzo Copper Smith/Lorenzo displeased.png";
+import lorenzoHappy from "../../art assets/NPC Images/Lorenzo Copper Smith/Lorenzo Happy.png";
+import lorenzoThoughtful from "../../art assets/NPC Images/Lorenzo Copper Smith/Lorenzo Thoightful.png";
+
+import eberhardNeutral from "../../art assets/NPC Images/Eberhard Captain/Eberhard Neutral.png";
+import eberhardConcerned from "../../art assets/NPC Images/Eberhard Captain/Eberhard Concerned.jpg";
+import eberhardDispleased from "../../art assets/NPC Images/Eberhard Captain/Eberhard Displeased.png";
+import eberhardHappy from "../../art assets/NPC Images/Eberhard Captain/Eberhard Happy.png";
+import eberhardThoughtful from "../../art assets/NPC Images/Eberhard Captain/Eberhard Thoughtful .png";
+
 import merchant1 from "../../art assets/NPC Images/Merchants/Merchant 1.png";
 import merchant2 from "../../art assets/NPC Images/Merchants/Merchant 2.png";
 import merchant3 from "../../art assets/NPC Images/Merchants/Merchant 3.png";
@@ -150,6 +180,46 @@ const HUGO: Record<SparsePose, string> = {
   thoughtful: hugoThoughtful,
 };
 
+const OTTO: Record<SparsePose, string> = {
+  neutral: ottoNeutral,
+  concerned: ottoConcerned,
+  disappointed: ottoDispleased,
+  pleased: ottoHappy,
+  thoughtful: ottoThoughtful,
+};
+
+const AMBROSIUS: Record<SparsePose, string> = {
+  neutral: ambrosiusNeutral,
+  concerned: ambrosiusConcerned,
+  disappointed: ambrosiusDispleased,
+  pleased: ambrosiusHappy,
+  thoughtful: ambrosiusThoughtful,
+};
+
+const HILDEGARD: Record<SparsePose, string> = {
+  neutral: hildegardNeutral,
+  concerned: hildegardConcerned,
+  disappointed: hildegardDispleased,
+  pleased: hildegardHappy,
+  thoughtful: hildegardThoughtful,
+};
+
+const LORENZO: Record<SparsePose, string> = {
+  neutral: lorenzoNeutral,
+  concerned: lorenzoConcerned,
+  disappointed: lorenzoDispleased,
+  pleased: lorenzoHappy,
+  thoughtful: lorenzoThoughtful,
+};
+
+const EBERHARD: Record<SparsePose, string> = {
+  neutral: eberhardNeutral,
+  concerned: eberhardConcerned,
+  disappointed: eberhardDispleased,
+  pleased: eberhardHappy,
+  thoughtful: eberhardThoughtful,
+};
+
 const MERCHANT_FACES: Record<number, string> = {
   1: merchant1,
   2: merchant2,
@@ -179,6 +249,11 @@ export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, f
   if (npcId === "carpenter") return sparsePortrait(HAIMO, emotion);
   if (npcId === "mason") return sparsePortrait(GEROLD, emotion);
   if (npcId === "potter") return sparsePortrait(HUGO, emotion);
+  if (npcId === "village_reeve") return sparsePortrait(OTTO, emotion);
+  if (npcId === "vinedresser") return sparsePortrait(AMBROSIUS, emotion);
+  if (npcId === "head_seamstress") return sparsePortrait(HILDEGARD, emotion);
+  if (npcId === "copper_smith") return sparsePortrait(LORENZO, emotion);
+  if (npcId === "captain") return sparsePortrait(EBERHARD, emotion);
   if (npcId === "merchant") return face != null ? MERCHANT_FACES[face] : undefined;
   return undefined;
 }

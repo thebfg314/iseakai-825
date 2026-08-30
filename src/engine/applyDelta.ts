@@ -15,6 +15,7 @@ import {
   specialistAllowed,
   specialistAlreadyPresent,
   specialistById,
+  specialistHireBlocked,
   specialistNpc,
 } from "./specialists";
 import { newId, round1 } from "./util";
@@ -550,6 +551,12 @@ function registerNpc(
   if (state.npcs.some((n) => n.id === npc.id)) return fail(state, "NPC id already exists.", p.summary);
   if (spec && specialistAlreadyPresent(state, spec)) {
     return fail(state, `${spec.name} already serves this house.`, p.summary);
+  }
+  if (spec) {
+    const blocked = specialistHireBlocked(state, spec);
+    if (blocked && !specialistAlreadyPresent(state, spec)) {
+      return fail(state, blocked, p.summary || hireSummary(spec));
+    }
   }
   if (spec) {
     const cost = spec.hireCostDenarii;

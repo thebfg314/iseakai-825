@@ -6,6 +6,17 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"],
   },
+  plugins: [
+    {
+      name: "asset-stub",
+      enforce: "pre",
+      load(id) {
+        if (/\.(png|jpe?g|gif|webp|mp3|wav)$/i.test(id)) {
+          return `export default ${JSON.stringify(id)};`;
+        }
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

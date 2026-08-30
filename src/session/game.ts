@@ -21,7 +21,16 @@ import {
   seasonUserPrompt,
 } from "../llm/prompts";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
-import { hireSummary, matchHireableSpecialist, specialistById, specialistNpc } from "../engine/specialists";
+import {
+  hireSummary,
+  matchHireableSpecialist,
+  newlyUnlockedHires,
+  recommendableHires,
+  specialistAlreadyPresent,
+  specialistById,
+  specialistHireBlocked,
+  specialistNpc,
+} from "../engine/specialists";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -33,6 +42,8 @@ export class GameController {
   saveDir: string;
   settings: AppSettings;
   historyTail: string[] = [];
+  /** In-memory: expansion hires already recommended this session. Does not write world-state. */
+  recommendedHireIds = new Set<string>();
   npcEmotions: Record<string, AldricEmotion> = {
     steward: "respectful",
     smith: "neutral",
@@ -140,7 +151,7 @@ export class GameController {
     });
     this.log("player", "CHAT", `${npcId}: ${playerText.slice(0, 120)}`);
 
-    const system = npcSystemPrompt(npcId);
+    const system = npcSystemPrompt(npcId, this.state);
     const extra =
       npcId === "merchant"
         ? `The merchant's carts hold: ${this.state.merchant.stock.map((s) => `${s.amount} ${s.resource}`).join(", ") || "nothing left"}. Buy only from that stock. Sell any estate resource except denarii.`
@@ -194,7 +205,9 @@ export class GameController {
     parsed: { proposals: MechanicalProposal[]; parseErrors: string[] },
     playerText: string,
   ) {
+    if (npcId === "steward") this.flushHireRecommendations();
     let proposals = dropHireFeeDuplicates(parsed.proposals.map(ensureSummary));
+    proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
     let fromEngine = false;
     if (!proposals.length) {
       const inferred = inferOrderProposals(this.state, npcId, playerText);
@@ -229,6 +242,53 @@ export class GameController {
     }
   }
 
+  /** Engine-authored Aldric lines when an expansion hire first unlocks. Chat only; does not write the ledger. */
+  flushHireRecommendations(fresh?: ReturnType<typeof recommendableHires>) {
+    const toSpeak = (fresh ?? recommendableHires(this.state)).filter(
+      (s) => !this.recommendedHireIds.has(s.id) && !specialistAlreadyPresent(this.state, s),
+    );
+    for (const spec of toSpeak) {
+      if (this.recommendedHireIds.has(spec.id)) continue;
+      this.recommendedHireIds.add(spec.id);
+      this.npcEmotions.steward = "thoughtful";
+      this.messages.push({
+        id: newId("msg"),
+        role: "npc",
+        npcId: "steward",
+        npcName: this.npcName("steward"),
+        text: spec.recommendSpeech,
+        emotion: "thoughtful",
+        at: new Date().toISOString(),
+      });
+    }
+  }
+
+  private dropLockedOrUnauthorizedHires(npcId: string, proposals: MechanicalProposal[]): MechanicalProposal[] {
+    const kept: MechanicalProposal[] = [];
+    for (const p of proposals) {
+      if (p.type !== "register_npc") {
+        kept.push(p);
+        continue;
+      }
+      const spec = matchHireableSpecialist(p.npc);
+      if (!spec) {
+        kept.push(p);
+        continue;
+      }
+      if (npcId !== "steward") {
+        this.ledgerNote("Aldric the steward keeps the household books and seeks craftsmen. Speak to him of hiring.", npcId);
+        continue;
+      }
+      const blocked = specialistHireBlocked(this.state, spec);
+      if (blocked) {
+        this.ledgerNote(blocked, npcId);
+        continue;
+      }
+      kept.push(p);
+    }
+    return kept;
+  }
+
   private ledgerNote(text: string, npcId: string) {
     this.messages.push({
       id: newId("msg"),
@@ -242,6 +302,7 @@ export class GameController {
   confirmProposal(id: string): GameView & { error?: string } {
     const item = this.pending.find((p) => p.id === id && p.status === "pending");
     if (!item) return { ...this.view(), error: "No such pending proposal." };
+    const before = cloneState(this.state);
     const result = applyProposal(this.state, item.proposal, item.npcId);
     this.state = result.state;
     item.status = result.ok ? "applied" : "rejected";
@@ -252,6 +313,7 @@ export class GameController {
     }
     this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? result.logLine : result.reason ?? result.logLine);
     this.ledgerNote(result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
+    if (result.ok) this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
     return this.view();
   }
 
@@ -270,6 +332,7 @@ export class GameController {
     const effects: SeasonEffectLine[] = [];
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
 
+    const beforeSeason = cloneState(this.state);
     effects.push(...resolveAgricultureAndProjects(this.state));
     syncTradeFromFeatures(this.state);
     const roll = rollSeasonEvents(this.state);
@@ -285,6 +348,7 @@ export class GameController {
     }
 
     const engineLines = effects.map((e) => e.text);
+    const hireNote = hireRecommendationNote(newlyUnlockedHires(beforeSeason, this.state));
     try {
       const parsed = await this.callLlm(
         [
@@ -296,6 +360,7 @@ export class GameController {
               rolled.map((e) => ({ id: e.id, resolvedText: e.resolvedText, polarity: e.polarity, category: e.category })),
               engineLines,
               merchantNote,
+              hireNote,
             ),
           },
         ],
@@ -322,6 +387,7 @@ export class GameController {
         emotion: parsed.emotion ?? this.npcEmotions.steward,
         at: new Date().toISOString(),
       });
+      this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
       return { ...this.view(), effects };
@@ -337,6 +403,7 @@ export class GameController {
         chronicle: effects.map((e) => e.text).join("\n"),
         at: new Date().toISOString(),
       });
+      this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
       return { ...this.view(), effects, error };
@@ -346,7 +413,9 @@ export class GameController {
   /** Testable: referee JSON → auto-applied event effects + stubs for anything without numbers. */
   applySeasonProposals(proposals: MechanicalProposal[], rolled: RolledEvent[], effects: SeasonEffectLine[]) {
     const covered = new Set<string>();
-    for (const p of proposals.map(ensureSummary)) {
+    for (const raw of proposals.map(ensureSummary)) {
+      const p = stripSeasonHires(raw, effects);
+      if (!p) continue;
       if (p.type !== "event_effect") {
         const wrapped: MechanicalProposal = {
           type: "event_effect",
@@ -477,6 +546,37 @@ function fillProposalDefaults(state: WorldState, p: MechanicalProposal): Mechani
     }
   }
   return p;
+}
+
+function isSpecialistHireProposal(p: MechanicalProposal | unknown): boolean {
+  if (!p || typeof p !== "object") return false;
+  const rec = p as { type?: string; npc?: { id?: string; name?: string; role?: string } };
+  return rec.type === "register_npc" && Boolean(matchHireableSpecialist(rec.npc ?? {}));
+}
+
+function stripSeasonHires(p: MechanicalProposal, effects: SeasonEffectLine[]): MechanicalProposal | null {
+  if (isSpecialistHireProposal(p)) {
+    effects.push({
+      kind: "info",
+      text: "Hiring waits on Confirm with Aldric; the season report cannot take a person into the household.",
+    });
+    return null;
+  }
+  if (p.type === "event_effect" && p.nested?.some(isSpecialistHireProposal)) {
+    effects.push({
+      kind: "info",
+      text: "Hiring waits on Confirm with Aldric; the season report cannot take a person into the household.",
+    });
+    const nested = p.nested.filter((n) => !isSpecialistHireProposal(n));
+    return { ...p, nested };
+  }
+  return p;
+}
+
+function hireRecommendationNote(fresh: ReturnType<typeof newlyUnlockedHires>): string | undefined {
+  if (!fresh.length) return undefined;
+  const names = fresh.map((s) => `${s.name} the ${s.role.replaceAll("_", " ")}`).join("; ");
+  return `HIRE RECOMMENDATION (speech only; do NOT emit register_npc): ${names}. The lord must ask Aldric and Confirm.`;
 }
 
 function dropHireFeeDuplicates(proposals: MechanicalProposal[]): MechanicalProposal[] {
