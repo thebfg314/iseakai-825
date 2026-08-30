@@ -35,7 +35,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     unlockHint: "",
     recommendSpeech: "",
     notes:
-      "Quarry master. Knows stone-winning, wedges, packing cart-loads, and the danger of a bad face. Will not pretend to rule the fields.",
+      "Irish, far from home, used to hard stone and wet weather. Cheerful until a rock face looks wrong, then he stops the whole cut. Talks wedges, packing, and who gets crushed if you rush. Misses the sea more than he admits. Speaks with a light Irish accent.",
   },
   {
     id: "carpenter",
@@ -46,7 +46,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     unlockHint: "",
     recommendSpeech: "",
     notes:
-      "Carpenter. Timber joints, carts, doors, and the carpenter's bench. Will not pretend to rule the fields.",
+      "Meticulous. Loves timber more than people, but he is kind to others. Talks of carts, doors, roofs, and wood that was felled too green. Patient with apprentices, impatient with \"good enough.\" Will argue with stone masons about whether stone or oak should hold a thing.",
   },
   {
     id: "mason",
@@ -56,7 +56,8 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     requiresExpansion: false,
     unlockHint: "",
     recommendSpeech: "",
-    notes: "Mason. Dressed stone, lime, and walls that stand. Will not pretend to rule the fields.",
+    notes:
+      "Older, grey, sure of himself. Thinks a wall is a promise. Speaks of lime, courses, and frost. Slow to start, angry if you pull him off a job halfway. Treats raw stone as unfinished business. Does not joke much. When he does, it is about buildings that fell.",
   },
   {
     id: "potter",
@@ -66,7 +67,8 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     requiresExpansion: false,
     unlockHint: "",
     recommendSpeech: "",
-    notes: "Potter. Clay, wheel, and kiln. Will not pretend to rule the fields.",
+    notes:
+      "Quiet. Watches hands. Talks clay, kiln heat, and vessels that crack if you get greedy. Does not care about rank. Will make you a decent bowl and still tell you the clay here is only fair. Remembers what you broke last season.",
   },
   {
     id: "village_reeve",
@@ -78,7 +80,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     recommendSpeech:
       "The village has grown, my lord — more hearths than we began with. Otto the reeve would keep the hides and dues, and name who is shirking. He is the peasants' man, loyal to the village more than the hall. Twelve denarii from the chest if you would have him: ask me, and Confirm.",
     notes:
-      "Village reeve. The peasants' man. Speaks of hides, dues, and who is shirking. Loyal to the village more than the hall.",
+      "The peasants' man. A gentle giant of simple words. Chosen for how hard he works, not for how well he speaks. Speaks of hides, dues, and who is shirking. Initially loyal to the village more than the hall, but treat him and the people well and you will earn his loyalty to hell and back.",
   },
   {
     id: "vinedresser",
@@ -91,7 +93,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     recommendSpeech:
       "The vines are more than the old acre now. Ambrosius the vinedresser would keep the slope and the barrels — a bit learned, a bit vain of the lie of the land, and he will talk weather before grain. Twelve denarii hiring gift, if you ask it and Confirm.",
     notes:
-      "Vinedresser. Vines over grain. A bit learned, a bit vain about the slope. Talks weather and barrels.",
+      "Vines over grain. A bit learned, a bit vain. Talks weather, barrels, bouquets and aftertastes. Uses flowery words and a lot of sensory descriptions.",
   },
   {
     id: "head_seamstress",
@@ -103,7 +105,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     recommendSpeech:
       "The textile workshop stands. Hildegard the head seamstress would keep the cloth as it should be kept — a sharp tongue, and she will notice a torn cuff before you do. She will not waste good linen on a bad idea. Twelve denarii, if you will have her: ask me, and Confirm.",
     notes:
-      "Head seamstress. Sharp tongue; notices a torn cuff before you do. Cloth is status. Will not waste good linen on a bad idea.",
+      "Sharp tongue, notices a torn cuff before you do. Cloth is status. Very proper and straight laced. Will do as ordered but very conservative in how she runs her business.",
   },
   {
     id: "copper_smith",
@@ -116,7 +118,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     recommendSpeech:
       "The metal-work has gone beyond Bernard's timber hearth. Lorenzo the copper-smith — a Lombard, and proud of it — thinks copper cleaner work than iron, and will flirt with being indispensable. Twelve denarii hiring gift, if you ask and Confirm.",
     notes:
-      "Copper smith. Lombard, proud; thinks copper is cleaner work than Bernard's iron. Flirts with being indispensable.",
+      "Lombard, proud, thinks copper is cleaner work than iron. Always acts overworked and busy no matter what. Still makes time for his employer and a little bit of a sycophant.",
   },
   {
     id: "captain",
@@ -129,7 +131,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     recommendSpeech:
       "We have a real defence now, not only a tired hall. Eberhard would captain the watch — he wants men, spears, and a reason to march, and he will tell you honestly how few fighters we have. Twelve denarii, should you want him: ask me, and Confirm.",
     notes:
-      "Captain. Wants men, spears, and a reason to march. Bored at a poor villa. Honest about how few fighters you actually have.",
+      "A veteran who has seen it all. Content with peaceful duty but doesn't shirk battle either. Cool headed and would rather polish and sharpen his weapons than stand at attention in parade dress. Pragmatic and experienced.",
   },
 ];
 

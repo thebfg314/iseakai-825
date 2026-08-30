@@ -118,21 +118,21 @@
       "name": "Aldric",
       "role": "steward",
       "location": "fontenay",
-      "notes": "Long-serving steward of Fontenay. The villa is thin: a short chest, no hives, and much of the old holding gone to waste and scrub, though the acres are still theirs to clear. Speaks plainly, counts carefully, distrusts novelties until they work twice."
+      "notes": "Counts first, talks second. Loyal to the villa, and used to running everything up till the start of the game. Prepared to humor a witless noble who doesn't know how to run things but will be pleasantly surprised and very loyal if you do well. Gets very nervous when the treasury chest is low. Sends you to the right craftsman instead of pretending he can shoe a horse."
     },
     {
       "id": "smith",
       "name": "Bernard",
       "role": "smith",
       "location": "fontenay",
-      "notes": "Estate smith at a timber forge short of iron and charcoal. Knows bloom iron, shoes, tools, and nails. Will not pretend to rule the fields."
+      "notes": "Proud of what the forge can do, honest about what it cannot but also enjoys technical challenges that stretch his skills. Iron and charcoal are usually short, so he hoards both. Speaks in short sentences but gets excited about new projects that he thinks will work."
     },
     {
       "id": "chaplain",
       "name": "Ermenald",
       "role": "chaplain",
       "location": "fontenay",
-      "notes": "Priest and prior of the small cell of Saint-Martin at Fontenay (four monks, a timber oratory). Serves as the lord's capellanus: mass, letters, canon, and a wary eye on novelty. In practice he answers to the bishop of Autun as much as to the villa."
+      "notes": "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands."
     }
   ],
   "known_techniques": [],
