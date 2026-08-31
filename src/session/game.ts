@@ -177,19 +177,10 @@ export class GameController {
         800,
         { requireProposals: false, allowRepair: false },
       );
-      if (spoken.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = spoken.emotion;
-      this.messages.push({
-        id: newId("msg"),
-        role: "npc",
-        npcId,
-        npcName: this.npcName(npcId),
-        text: spoken.speech,
-        chronicle: spoken.chronicle,
-        emotion: PORTRAIT_NPCS.has(npcId) ? spoken.emotion ?? this.npcEmotions[npcId] : undefined,
-        at: new Date().toISOString(),
-      });
-      if (npcId === "steward") this.flushHireRecommendations();
-      if (!order) return this.view();
+      if (!order) {
+        this.pushNpcSpeech(npcId, spoken);
+        return this.view();
+      }
 
       try {
         const books = await this.callLlm(
@@ -207,6 +198,7 @@ export class GameController {
               "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers.",
           },
         );
+        this.pushNpcSpeech(npcId, spoken);
         this.ingestParsedDialogue(npcId, books, playerText);
         return this.view();
       } catch (err) {
@@ -217,6 +209,24 @@ export class GameController {
       this.noteTalkFailure(err, npcId);
       return this.view();
     }
+  }
+
+  private pushNpcSpeech(
+    npcId: string,
+    spoken: { speech: string; chronicle?: string; emotion?: AldricEmotion },
+  ) {
+    if (spoken.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = spoken.emotion;
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId,
+      npcName: this.npcName(npcId),
+      text: spoken.speech,
+      chronicle: spoken.chronicle,
+      emotion: PORTRAIT_NPCS.has(npcId) ? spoken.emotion ?? this.npcEmotions[npcId] : undefined,
+      at: new Date().toISOString(),
+    });
+    if (npcId === "steward") this.flushHireRecommendations();
   }
 
   /** Engine string only — never call the model to apologize. */

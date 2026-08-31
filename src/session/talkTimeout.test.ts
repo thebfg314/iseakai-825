@@ -47,6 +47,12 @@ function playerFacing(game: GameController) {
   return game.messages.map((m) => m.text).join("\n");
 }
 
+/** Messages from the last player line onward (one turn). */
+function lastTurn(game: GameController) {
+  const idx = game.messages.map((m) => m.role).lastIndexOf("player");
+  return idx < 0 ? [] : game.messages.slice(idx);
+}
+
 describe("mid-season talk timeouts and two-phase NPC calls", () => {
   beforeEach(() => {
     llmChatMock.mockReset();
@@ -58,6 +64,10 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     const result = await game.sendDialogue("steward", "Sow barley, start clearing scrub, and give the cell grain.");
     expect(result.error).toBeUndefined();
     expect(llmChatMock).toHaveBeenCalledTimes(1);
+    const turn = lastTurn(game);
+    expect(turn.map((m) => m.role)).toEqual(["player", "system"]);
+    expect(turn[1].text).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(turn.some((m) => m.role === "npc")).toBe(false);
     expect(playerFacing(game)).toContain(HOLD_AT_ONCE_APOLOGY);
     expect(playerFacing(game)).not.toMatch(/RFAB|Grok|PROVIDER_ERROR|502|world-state|success/i);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
@@ -74,7 +84,11 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     expect(system).not.toMatch(/You MUST reply with a single JSON object only/);
     expect(user).toMatch(/spoken words only/i);
     expect(user).toMatch(/No proposals array/);
-    expect(game.messages.some((m) => m.role === "npc" && /rye stands well/.test(m.text))).toBe(true);
+    const turn = lastTurn(game);
+    expect(turn[0].role).toBe("player");
+    expect(turn.some((m) => m.role === "npc" && /rye stands well/.test(m.text))).toBe(true);
+    expect(turn.some((m) => m.role === "system")).toBe(false);
+    expect(playerFacing(game)).not.toContain(HOLD_AT_ONCE_APOLOGY);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
@@ -86,22 +100,27 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     expect(llmChatMock).toHaveBeenCalledTimes(2);
     const booksUser = String((llmChatMock.mock.calls[1][1] as { content: string }[])[3].content);
     expect(booksUser).toMatch(/proposals/);
-    expect(game.messages.some((m) => m.role === "npc" && /Barley on the remaining/.test(m.text))).toBe(true);
+    const turn = lastTurn(game);
+    expect(turn.some((m) => m.role === "npc" && /Barley on the remaining/.test(m.text))).toBe(true);
+    expect(turn.some((m) => m.text === HOLD_AT_ONCE_APOLOGY)).toBe(false);
     const pending = game.pending.filter((p) => p.status === "pending");
     expect(pending).toHaveLength(1);
     expect(pending[0].proposal.type).toBe("adjust_sowing");
     expect(game.state.holdings[0].sown.barley).toBe(0);
   });
 
-  it("keeps NPC speech and the apology when the books pass times out, with nothing pending", async () => {
+  it("replaces the turn with the system apology when the books pass times out — no NPC bubble", async () => {
     const game = tempGame();
     llmChatMock.mockResolvedValueOnce(speechJson("I hear you. Barley, then."));
     llmChatMock.mockRejectedValueOnce(new Error(RFAB_502));
     const result = await game.sendDialogue("steward", "Sow more barley on the remaining acres.");
     expect(result.error).toBeUndefined();
     expect(llmChatMock).toHaveBeenCalledTimes(2);
-    expect(game.messages.some((m) => m.role === "npc" && /I hear you/.test(m.text))).toBe(true);
-    expect(playerFacing(game)).toContain(HOLD_AT_ONCE_APOLOGY);
+    const turn = lastTurn(game);
+    expect(turn.map((m) => m.role)).toEqual(["player", "system"]);
+    expect(turn[1].text).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(turn.some((m) => m.role === "npc")).toBe(false);
+    expect(game.messages.some((m) => m.role === "npc" && /I hear you/.test(m.text))).toBe(false);
     expect(playerFacing(game)).not.toMatch(/RFAB|Grok|PROVIDER_ERROR|502|world-state/i);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
@@ -126,14 +145,16 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     llmChatMock.mockResolvedValueOnce(sowingJson());
     await game.sendDialogue("steward", order);
     expect(llmChatMock).toHaveBeenCalledTimes(1);
+    const turn = lastTurn(game);
+    expect(turn.map((m) => m.role)).toEqual(["player", "system"]);
+    expect(turn[1].text).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(turn.some((m) => m.role === "npc")).toBe(false);
     expect(game.messages.some((m) => m.role === "npc" && /It makes good sense/.test(m.text))).toBe(false);
-    expect(playerFacing(game)).toContain(HOLD_AT_ONCE_APOLOGY);
-    expect(game.messages.filter((m) => m.text === HOLD_AT_ONCE_APOLOGY && m.role === "system")).toHaveLength(1);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.state.resources).toEqual(resourcesBefore);
   });
 
-  it("keeps complete speech and the apology when the books pass is chopped, with nothing pending", async () => {
+  it("shows only the system apology when the books pass is chopped — no NPC speech from that turn", async () => {
     const speech = "I hear you. Barley, then.";
     const truncated = `{ "speech": "The barley share is written.",
   "emotion": "thoughtful",
@@ -143,9 +164,12 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     llmChatMock.mockResolvedValueOnce(truncated);
     await game.sendDialogue("steward", "Sow more barley on the remaining acres.");
     expect(llmChatMock).toHaveBeenCalledTimes(2);
-    expect(game.messages.some((m) => m.role === "npc" && m.text === speech)).toBe(true);
+    const turn = lastTurn(game);
+    expect(turn.map((m) => m.role)).toEqual(["player", "system"]);
+    expect(turn[1].text).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(turn.some((m) => m.role === "npc")).toBe(false);
+    expect(game.messages.some((m) => m.role === "npc" && m.text === speech)).toBe(false);
     expect(game.messages.some((m) => /The barley share is written/.test(m.text))).toBe(false);
-    expect(playerFacing(game)).toContain(HOLD_AT_ONCE_APOLOGY);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
