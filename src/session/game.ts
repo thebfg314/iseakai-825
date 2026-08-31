@@ -232,10 +232,23 @@ export class GameController {
   /** Engine string only — never call the model to apologize. */
   private noteTalkFailure(err: unknown, npcId: string) {
     if (isHoldAtOnceFailure(err)) {
-      this.ledgerNote(HOLD_AT_ONCE_APOLOGY, npcId);
+      this.pushHoldAtOnceApology(npcId);
       return;
     }
     this.ledgerNote(booksHearFailureLine(this.npcName(npcId)), npcId);
+  }
+
+  /** Spoken by the NPC they were talking to — not a Books line. */
+  private pushHoldAtOnceApology(npcId: string) {
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId,
+      npcName: this.npcName(npcId),
+      text: HOLD_AT_ONCE_APOLOGY,
+      emotion: PORTRAIT_NPCS.has(npcId) ? this.npcEmotions[npcId] : undefined,
+      at: new Date().toISOString(),
+    });
   }
 
   queueProposal(npcId: string, proposal: MechanicalProposal) {
@@ -454,17 +467,18 @@ export class GameController {
       for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
       effects.push(...finishSeasonClock(this.state));
       writeLastSeasonDeltas(this.state, ledgerBefore);
-      const seasonNote = isHoldAtOnceFailure(err)
-        ? HOLD_AT_ONCE_APOLOGY
-        : "Season advanced with the engine's own figures. The chronicler could not be heard.";
-      this.messages.push({
-        id: newId("msg"),
-        role: "system",
-        npcId: "steward",
-        text: seasonNote,
-        chronicle: effects.map((e) => e.text).join("\n"),
-        at: new Date().toISOString(),
-      });
+      if (isHoldAtOnceFailure(err)) {
+        this.pushHoldAtOnceApology("steward");
+      } else {
+        this.messages.push({
+          id: newId("msg"),
+          role: "system",
+          npcId: "steward",
+          text: "Season advanced with the engine's own figures. The chronicler could not be heard.",
+          chronicle: effects.map((e) => e.text).join("\n"),
+          at: new Date().toISOString(),
+        });
+      }
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
