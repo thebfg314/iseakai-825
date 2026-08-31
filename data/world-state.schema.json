@@ -158,6 +158,11 @@
         "springBarleyShare": { "type": "number", "minimum": 0, "maximum": 1 },
         "autumnWheatShare": { "type": "number", "minimum": 0, "maximum": 1 }
       }
+    },
+    "last_season_deltas": {
+      "type": "object",
+      "additionalProperties": { "type": "number" },
+      "description": "Signed store, sown, and household changes from the last resolved season. Empty until the first Advance season."
     }
   },
   "$defs": {

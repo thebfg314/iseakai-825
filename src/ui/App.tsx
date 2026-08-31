@@ -1,14 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameView } from "../shared/types";
 import type { ChatMessage, PendingProposal } from "../engine/schema";
-import { CANONICAL_RESOURCES, RESOURCE_UNITS } from "../engine/schema";
+import { CANONICAL_RESOURCES } from "../engine/schema";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
-import { isCoreHouseholdId, matchHireableSpecialist } from "../engine/specialists";
+import { isCoreHouseholdId } from "../engine/specialists";
 import type { AldricEmotion } from "../engine/emotion";
 import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
 import { DEFAULT_MODELS, LLM_PROVIDERS, PROVIDER_META, type AppSettings, type LlmProvider } from "../llm/types";
 import { defaultAppSettings } from "../llm/settings";
+import {
+  BOOKS_TITLE,
+  CONFIRM_HELP,
+  HARVEST_RISK_LINE,
+  HUNGER_LINE,
+  confirmBanner,
+  featuresSentence,
+  formatLedgerNumber,
+  formatSignedDelta,
+  labourSentence,
+  landName,
+  marketLine,
+  merchantPresentLine,
+  modifierLine,
+  peopleSentence,
+  projectProgressLine,
+  proposalBlurb,
+  proposalTypeName,
+  resourceName,
+  resourceUnit,
+  roleName,
+  sowingShareLine,
+} from "./ledgerCopy";
 
 function musicGain(s: Pick<AppSettings, "masterVolume" | "musicVolume">): number {
   return Math.min(1, Math.max(0, (s.masterVolume ?? 1) * (s.musicVolume ?? 0.55)));
@@ -276,8 +299,7 @@ export function App() {
       {busy && <div className="banner muted">Waiting on the court…</div>}
       {view.pending.length > 0 && (
         <div className="banner pending">
-          {view.pending.length} proposed ledger change{view.pending.length === 1 ? "" : "s"} — Confirm writes world-state.json.
-          Advancing the season will lapse unconfirmed orders.
+          {confirmBanner(view.pending.length)}
         </div>
       )}
 
@@ -315,7 +337,7 @@ export function App() {
                   title={`Speak with ${n.name}`}
                   onClick={() => withBusy(() => window.api.setScene(n.id))}
                 >
-                  {cap(n.role.replaceAll("_", " "))} · {n.name}
+                  {cap(roleName(n.role))} · {n.name}
                 </button>
               ))}
             <button
@@ -351,12 +373,13 @@ export function App() {
 
           {view.pending.length > 0 && (
             <div className="proposals" id="pending-proposals">
-              <h3>Proposed changes — Confirm writes the ledger</h3>
-              <p className="proposal-help">Speech does not change stores. Only Confirm applies numbers to world-state.json.</p>
+              <h3>Proposed changes — Confirm writes the books</h3>
+              <p className="proposal-help">{CONFIRM_HELP}</p>
               {view.pending.map((p) => (
                 <ProposalCard
                   key={p.id}
                   p={p}
+                  state={view.state}
                   busy={busy}
                   onConfirm={() => withBusy(() => window.api.confirmProposal(p.id))}
                   onReject={() => withBusy(() => window.api.rejectProposal(p.id))}
@@ -400,7 +423,7 @@ export function App() {
 
 function MessageBubble({ m }: { m: ChatMessage }) {
   const who =
-    m.role === "player" ? "You" : m.role === "system" ? "Ledger" : m.npcName ?? "Voice";
+    m.role === "player" ? "You" : m.role === "system" ? "The books" : m.npcName ?? "Voice";
   return (
     <article className={`bubble ${m.role}`}>
       <div className="who">{who}</div>
@@ -412,24 +435,22 @@ function MessageBubble({ m }: { m: ChatMessage }) {
 
 function ProposalCard({
   p,
+  state,
   busy,
   onConfirm,
   onReject,
 }: {
   p: PendingProposal;
+  state: GameView["state"];
   busy: boolean;
   onConfirm: () => void;
   onReject: () => void;
 }) {
   return (
     <div className="proposal">
-      <div className="p-type">{p.proposal.type.replaceAll("_", " ")}</div>
+      <div className="p-type">{proposalTypeName(p.proposal.type)}</div>
       <div className="p-sum">{p.proposal.summary}</div>
-      <div className="p-blurb">{proposalBlurb(p.proposal)}</div>
-      <details>
-        <summary>Ledger delta</summary>
-        <pre className="p-json">{JSON.stringify(p.proposal, null, 2)}</pre>
-      </details>
+      <div className="p-blurb">{proposalBlurb(p.proposal, state)}</div>
       <div className="p-actions">
         <button className="primary" disabled={busy} onClick={onConfirm}>
           Confirm
@@ -442,126 +463,98 @@ function ProposalCard({
   );
 }
 
-function proposalBlurb(p: PendingProposal["proposal"]): string {
-  switch (p.type) {
-    case "adjust_sowing": {
-      const bits = [];
-      if (p.springBarleyShare != null) bits.push(`spring barley ${Math.round(p.springBarleyShare * 100)}% of remaining`);
-      if (p.autumnWheatShare != null) bits.push(`autumn wheat ${Math.round(p.autumnWheatShare * 100)}%`);
-      if (p.barley != null) bits.push(`${p.barley} acres barley`);
-      return bits.join(" · ") || "Change the sowing mix";
-    }
-    case "start_project":
-      return `Start ${p.name ?? p.projectKey} on ${p.holdingId ?? "the holding"}`;
-    case "transfer_resources":
-      return `${p.direction} ${p.amount} ${p.resource}${p.reason ? ` (${p.reason})` : ""}`;
-    case "add_modifier":
-      return `${p.target} ${p.effect.op} ${p.effect.value} · ${p.kind}${p.seasonsRemaining != null ? ` · ${p.seasonsRemaining} seasons` : ""}`;
-    case "assign_labour":
-      return `${p.men} men, ${p.women} women, ${p.youths} youths → ${p.projectId}`;
-    case "set_standing_order":
-      return p.text;
-    case "register_npc": {
-      const spec = matchHireableSpecialist(p.npc);
-      const gift = spec
-        ? spec.hireGrainRation
-          ? ` · ${spec.hireCostDenarii} denarii and a household grain ration`
-          : ` · ${spec.hireCostDenarii} denarii hiring gift`
-        : "";
-      return `Record ${p.npc.name} as ${p.npc.role.replaceAll("_", " ")}${gift}`;
-    }
-    case "event_effect":
-      return `${p.eventId}${p.resource ? ` · ${p.direction} ${p.amount} ${p.resource}` : ""}${p.moodDelta ? ` · mood ${p.moodDelta}` : ""}`;
-    default:
-      return p.summary;
-  }
-}
-
 function Ledger({ view }: { view: GameView }) {
   const s = view.state;
   const holding = s.holdings[0];
+  const deltas = s.last_season_deltas ?? {};
+  const d = (id: string) => deltas[id];
   return (
     <aside className="ledger">
-      <h2>Estate ledger</h2>
+      <h2>{BOOKS_TITLE}</h2>
       <p className="muted">{s.meta.region}</p>
       {s.flags.merchant_present && s.merchant.present && (
-        <p className="flag">
-          Merchant {s.merchant.name ?? "unknown"} is in the district
-          {s.merchant.last_chance != null ? ` (rolled ${Math.round(s.merchant.last_chance * 100)}%).` : "."}
-        </p>
+        <p className="flag">{merchantPresentLine(s.merchant.name)}</p>
       )}
-      {s.flags.hunger && <p className="flag warn">Hunger on the estate.</p>}
-      {s.labour.harvest_risk && <p className="flag warn">Harvest at risk — too much male labour drawn off.</p>}
+      {s.flags.hunger && <p className="flag warn">{HUNGER_LINE}</p>}
+      {s.labour.harvest_risk && <p className="flag warn">{HARVEST_RISK_LINE}</p>}
 
-      <h3>Coin & people</h3>
-      <Row k="Denarii" v={fmt(s.resources.denarii)} />
-      <Row k="Households / manses" v={String(s.population.households)} />
-      <Row k="Adult men / women / youths" v={`${s.population.adult_men} / ${s.population.adult_women} / ${s.population.youths}`} />
-      <Row
-        k="Callable labour left (days)"
-        v={`m ${view.labour.remaining.men}/${view.labour.pool.men} · w ${view.labour.remaining.women}/${view.labour.pool.women} · y ${view.labour.remaining.youths}/${view.labour.pool.youths}`}
-      />
+      <h3>Chest and people</h3>
+      <Row k="Denarii" v={formatLedgerNumber(s.resources.denarii)} delta={d("denarii")} />
+      <Row k="Manses" v={String(s.population.households)} delta={d("households")} />
+      <p className="ledger-note">{peopleSentence(s.population)}</p>
+      <p className="ledger-note">{labourSentence(view.labour.pool, view.labour.remaining)}</p>
       {s.npcs
         .filter((n) => n.id !== "merchant")
         .map((n) => (
-          <Row key={n.id} k={n.name} v={label(n.role)} />
+          <Row key={n.id} k={n.name} v={roleName(n.role)} />
         ))}
 
       <h3>Land — {holding?.name}</h3>
       {holding &&
-        Object.entries(holding.land).map(([k, v]) => <Row key={k} k={label(k)} v={`${v} acres`} />)}
+        Object.entries(holding.land).map(([k, v]) => <Row key={k} k={landName(k)} v={`${v} acres`} />)}
       {holding && (
         <>
           <h3>Sown</h3>
           {Object.entries(holding.sown).map(([k, v]) => (
-            <Row key={k} k={label(k)} v={`${v} acres`} />
+            <Row key={k} k={resourceName(k)} v={`${v} acres`} delta={d(`sown_${k}`)} />
           ))}
-          <Row
-            k="Spring barley share"
-            v={`${Math.round((s.agriculture?.springBarleyShare ?? 0.6) * 100)}% of remaining (rest oats)`}
-          />
-          <Row k="Autumn wheat share" v={`${Math.round((s.agriculture?.autumnWheatShare ?? 0.45) * 100)}% (rest rye)`} />
-          <h3>Features</h3>
-          <p>{holding.features.map(label).join(", ") || "none"}</p>
+          <p className="ledger-note">{sowingShareLine("spring", s.agriculture?.springBarleyShare ?? 0.6)}</p>
+          <p className="ledger-note">{sowingShareLine("autumn", s.agriculture?.autumnWheatShare ?? 0.45)}</p>
+          <h3>On the holding</h3>
+          <p className="ledger-note">{featuresSentence(holding.features)}</p>
         </>
       )}
 
       {s.merchant.present && (
         <>
-          <h3>Merchant stall · {s.merchant.name ?? "Peddler"}</h3>
+          <h3>{s.merchant.name ? `${s.merchant.name}'s carts` : "The merchant's carts"}</h3>
           {s.merchant.stock.length === 0 && <p className="muted">The carts are empty.</p>}
           {s.merchant.stock.map((w) => {
             const range = s.market[w.resource];
-            const price = range ? `${range.min}–${range.max} d.` : "price unset";
-            return <Row key={w.resource} k={label(w.resource)} v={`${w.amount} on the carts · ${price}`} />;
+            const price = range ? marketLine(w.resource, range.min, range.max) : "price not set";
+            return (
+              <Row
+                key={w.resource}
+                k={resourceName(w.resource)}
+                v={`${formatLedgerNumber(w.amount)} on the carts · ${price}`}
+              />
+            );
           })}
         </>
       )}
 
       <h3>Stores</h3>
       {CANONICAL_RESOURCES.filter((r) => r !== "denarii").map((r) => (
-        <Row key={r} k={label(r)} v={`${fmt(s.resources[r])} ${RESOURCE_UNITS[r]}`} hideZero={s.resources[r] === 0} />
+        <Row
+          key={r}
+          k={resourceName(r)}
+          v={`${formatLedgerNumber(s.resources[r])} ${resourceUnit(r)}`}
+          delta={d(r)}
+          hideZero={s.resources[r] === 0 && d(r) == null}
+        />
       ))}
       {s.custom_resources.map((c) => (
-        <Row key={c.id} k={c.name} v={`${fmt(c.amount)} ${c.unit}`} />
+        <Row key={c.id} k={c.name} v={`${formatLedgerNumber(c.amount)} ${c.unit}`} />
       ))}
 
-      <h3>Market (denarii)</h3>
+      <h3>Prices</h3>
       {Object.entries(s.market)
         .slice(0, 16)
         .map(([k, p]) => (
-          <Row key={k} k={label(k)} v={`${p.min}–${p.max}`} />
+          <p key={k} className="ledger-note">
+            {marketLine(k, p.min, p.max)}.
+          </p>
         ))}
 
-      <h3>Projects</h3>
+      <h3>Works</h3>
       {s.projects.filter((p) => p.status === "active").length === 0 && <p className="muted">None underway.</p>}
       {s.projects
         .filter((p) => p.status === "active")
         .map((p) => (
-          <Row key={p.id} k={p.name} v={`${p.labourDaysDone}/${p.labourDaysRequired} days`} />
+          <Row key={p.id} k={p.name} v={projectProgressLine(p.labourDaysDone, p.labourDaysRequired)} />
         ))}
       <details>
-        <summary>Known works (catalogue)</summary>
+        <summary>Known works</summary>
         <ul className="tiny">
           {PROJECT_CATALOG.map((p) => (
             <li key={p.key}>
@@ -571,14 +564,10 @@ function Ledger({ view }: { view: GameView }) {
         </ul>
       </details>
 
-      <h3>Modifiers</h3>
-      {s.modifiers.length === 0 && <p className="muted">No special techniques or buffs.</p>}
+      <h3>Customs in force</h3>
+      {s.modifiers.length === 0 && <p className="muted">None that I am watching.</p>}
       {s.modifiers.map((m) => (
-        <Row
-          key={m.id}
-          k={m.source}
-          v={`${m.target} ${m.effect.op} ${m.effect.value} (${m.kind}${m.seasons_remaining != null ? `, ${m.seasons_remaining} seasons` : ""})`}
-        />
+        <Row key={m.id} k={m.source} v={modifierLine(m)} />
       ))}
 
       <h3>Standing orders</h3>
@@ -590,21 +579,29 @@ function Ledger({ view }: { view: GameView }) {
           </p>
         ))}
 
-      <h3>Techniques</h3>
+      <h3>Known crafts</h3>
       {s.known_techniques.length === 0 && <p className="muted">None recorded.</p>}
       {s.known_techniques.map((t) => (
-        <Row key={t.id} k={t.name} v={`turn ${t.discoveredTurn}`} />
+        <p key={t.id} className="ledger-note">
+          {t.name}
+        </p>
       ))}
     </aside>
   );
 }
 
-function Row({ k, v, hideZero }: { k: string; v: string; hideZero?: boolean }) {
+function Row({ k, v, hideZero, delta }: { k: string; v: string; hideZero?: boolean; delta?: number }) {
   if (hideZero) return null;
+  const showDelta = delta != null && delta !== 0;
   return (
     <div className="row">
       <span>{k}</span>
-      <span>{v}</span>
+      <span>
+        {v}
+        {showDelta && (
+          <span className={`delta ${delta > 0 ? "gain" : "loss"}`}>{formatSignedDelta(delta)}</span>
+        )}
+      </span>
     </div>
   );
 }
@@ -798,10 +795,3 @@ function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function label(s: string) {
-  return s.replaceAll("_", " ");
-}
-
-function fmt(n: number) {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
-}

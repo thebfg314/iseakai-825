@@ -4,6 +4,7 @@ import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
+import { snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
@@ -11,15 +12,23 @@ import { labourPool, labourRemaining } from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
-import { parseLlmResponse, eventEffectHasMechanics } from "../llm/parse";
+import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from "../llm/parse";
 import { llmChat, type AppSettings } from "../llm";
 import {
+  npcBooksFollowUp,
   npcUserPrompt,
   npcSystemPrompt,
   refereeSystemPrompt,
   repairPrompt,
   seasonUserPrompt,
+  SPEECH_PASS_HINT,
 } from "../llm/prompts";
+import {
+  booksHearFailureLine,
+  HOLD_AT_ONCE_APOLOGY,
+  INCOMPLETE_MODEL_JSON,
+  isHoldAtOnceFailure,
+} from "../llm/providerErrors";
 import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
@@ -154,6 +163,7 @@ export class GameController {
     });
     this.log("player", "CHAT", `${npcId}: ${playerText.slice(0, 120)}`);
 
+    const speechSystem = npcSystemPrompt(npcId, this.state, { speechOnly: true });
     const system = npcSystemPrompt(npcId, this.state);
     const extra =
       npcId === "merchant"
@@ -162,34 +172,83 @@ export class GameController {
     const user = npcUserPrompt(this.state, npcId, playerText, extra);
     const order = looksLikeMechanicalOrder(playerText);
     try {
-      const parsed = await this.callLlm(
-        [{ role: "system", content: system }, { role: "user", content: user }],
-        1600,
-        {
-          requireProposals: order,
-          repairHint: order
-            ? "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers."
-            : undefined,
-        },
+      const spoken = await this.callLlm(
+        [{ role: "system", content: speechSystem }, { role: "user", content: `${user}\n\n${SPEECH_PASS_HINT}` }],
+        800,
+        { requireProposals: false, allowRepair: false },
       );
-      if (parsed.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = parsed.emotion;
-      this.messages.push({
-        id: newId("msg"),
-        role: "npc",
-        npcId,
-        npcName: this.npcName(npcId),
-        text: parsed.speech,
-        chronicle: parsed.chronicle,
-        emotion: PORTRAIT_NPCS.has(npcId) ? parsed.emotion ?? this.npcEmotions[npcId] : undefined,
-        at: new Date().toISOString(),
-      });
-      this.ingestParsedDialogue(npcId, parsed, playerText);
-      return this.view();
+      if (!order) {
+        this.pushNpcSpeech(npcId, spoken);
+        return this.view();
+      }
+
+      try {
+        const books = await this.callLlm(
+          [
+            { role: "system", content: system },
+            { role: "user", content: user },
+            { role: "assistant", content: spoken.raw },
+            { role: "user", content: npcBooksFollowUp(playerText) },
+          ],
+          900,
+          {
+            requireProposals: true,
+            allowRepair: true,
+            repairHint:
+              "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers.",
+          },
+        );
+        this.pushNpcSpeech(npcId, spoken);
+        this.ingestParsedDialogue(npcId, books, playerText);
+        return this.view();
+      } catch (err) {
+        this.noteTalkFailure(err, npcId);
+        return this.view();
+      }
     } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      this.ledgerNote(`${this.npcName(npcId)} cannot be heard (${error})`, npcId);
-      return { ...this.view(), error };
+      this.noteTalkFailure(err, npcId);
+      return this.view();
     }
+  }
+
+  private pushNpcSpeech(
+    npcId: string,
+    spoken: { speech: string; chronicle?: string; emotion?: AldricEmotion },
+  ) {
+    if (spoken.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = spoken.emotion;
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId,
+      npcName: this.npcName(npcId),
+      text: spoken.speech,
+      chronicle: spoken.chronicle,
+      emotion: PORTRAIT_NPCS.has(npcId) ? spoken.emotion ?? this.npcEmotions[npcId] : undefined,
+      at: new Date().toISOString(),
+    });
+    if (npcId === "steward") this.flushHireRecommendations();
+  }
+
+  /** Engine string only — never call the model to apologize. */
+  private noteTalkFailure(err: unknown, npcId: string) {
+    if (isHoldAtOnceFailure(err)) {
+      this.pushHoldAtOnceApology(npcId);
+      return;
+    }
+    this.ledgerNote(booksHearFailureLine(this.npcName(npcId)), npcId);
+  }
+
+  /** Spoken by the NPC they were talking to — not a Books line. */
+  private pushHoldAtOnceApology(npcId: string) {
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId,
+      npcName: this.npcName(npcId),
+      text: HOLD_AT_ONCE_APOLOGY,
+      emotion: PORTRAIT_NPCS.has(npcId) ? this.npcEmotions[npcId] : undefined,
+      at: new Date().toISOString(),
+    });
   }
 
   queueProposal(npcId: string, proposal: MechanicalProposal) {
@@ -205,9 +264,10 @@ export class GameController {
   /** Testable: parse result → pending queue and ledger notes. Does not call the model. */
   ingestParsedDialogue(
     npcId: string,
-    parsed: { proposals: MechanicalProposal[]; parseErrors: string[] },
+    parsed: { proposals: MechanicalProposal[]; parseErrors: string[]; incomplete?: boolean },
     playerText: string,
   ) {
+    if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
     let proposals = dropHireFeeDuplicates(parsed.proposals.map(ensureSummary));
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
@@ -224,7 +284,7 @@ export class GameController {
       const n = proposals.length;
       this.ledgerNote(
         fromEngine
-          ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm to write the world-state file.`
+          ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm writes them in the books.`
           : `${n} proposed ledger change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
         npcId,
       );
@@ -343,6 +403,7 @@ export class GameController {
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
 
     const beforeSeason = cloneState(this.state);
+    const ledgerBefore = snapshotSeasonLedger(beforeSeason);
     effects.push(...resolveAgricultureAndProjects(this.state));
     syncTradeFromFeatures(this.state);
     const roll = rollSeasonEvents(this.state);
@@ -385,6 +446,7 @@ export class GameController {
 
       const clock = finishSeasonClock(this.state);
       effects.push(...clock);
+      writeLastSeasonDeltas(this.state, ledgerBefore);
       this.log("engine", "SEASON", `Now ${this.state.meta.season} ${this.state.meta.year}`);
       if (parsed.emotion) this.npcEmotions.steward = parsed.emotion;
       this.messages.push({
@@ -404,19 +466,23 @@ export class GameController {
     } catch (err) {
       for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
       effects.push(...finishSeasonClock(this.state));
-      const error = err instanceof Error ? err.message : String(err);
-      this.messages.push({
-        id: newId("msg"),
-        role: "system",
-        npcId: "steward",
-        text: `Season advanced with engine defaults only. ${error}`,
-        chronicle: effects.map((e) => e.text).join("\n"),
-        at: new Date().toISOString(),
-      });
+      writeLastSeasonDeltas(this.state, ledgerBefore);
+      if (isHoldAtOnceFailure(err)) {
+        this.pushHoldAtOnceApology("steward");
+      } else {
+        this.messages.push({
+          id: newId("msg"),
+          role: "system",
+          npcId: "steward",
+          text: "Season advanced with the engine's own figures. The chronicler could not be heard.",
+          chronicle: effects.map((e) => e.text).join("\n"),
+          at: new Date().toISOString(),
+        });
+      }
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
-      return { ...this.view(), effects, error };
+      return { ...this.view(), effects };
     }
   }
 
@@ -484,7 +550,7 @@ export class GameController {
   private async callLlm(
     messages: { role: "system" | "user" | "assistant"; content: string }[],
     maxTokens: number,
-    opts?: { requireProposals?: boolean; repairHint?: string },
+    opts?: { requireProposals?: boolean; repairHint?: string; allowRepair?: boolean },
   ): Promise<{
     speech: string;
     chronicle?: string;
@@ -495,9 +561,14 @@ export class GameController {
   }> {
     const raw1 = await llmChat(this.settings, messages, { maxTokens });
     let parsed = parseLlmResponse(raw1);
+    if (parsed.incomplete) {
+      throw new Error(INCOMPLETE_MODEL_JSON);
+    }
+    const allowRepair = opts?.allowRepair !== false;
     const needsRepair =
-      (parsed.parseErrors.length > 0 && parsed.proposals.length === 0) ||
-      (Boolean(opts?.requireProposals) && parsed.proposals.length === 0);
+      allowRepair &&
+      ((parsed.parseErrors.length > 0 && parsed.proposals.length === 0) ||
+        (Boolean(opts?.requireProposals) && parsed.proposals.length === 0));
     if (needsRepair) {
       const errors = parsed.parseErrors.length
         ? parsed.parseErrors
@@ -511,8 +582,11 @@ export class GameController {
         },
       );
       parsed = parseLlmResponse(raw2);
+      if (parsed.incomplete) {
+        throw new Error(INCOMPLETE_MODEL_JSON);
+      }
       return {
-        speech: parsed.response.speech,
+        speech: playerFacingNpcSpeech(raw2, parsed.response.speech),
         chronicle: parsed.response.chronicle,
         proposals: parsed.proposals.map(ensureSummary),
         raw: raw2,
@@ -521,7 +595,7 @@ export class GameController {
       };
     }
     return {
-      speech: parsed.response.speech,
+      speech: playerFacingNpcSpeech(raw1, parsed.response.speech),
       chronicle: parsed.response.chronicle,
       proposals: parsed.proposals.map(ensureSummary),
       raw: raw1,

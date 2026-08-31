@@ -71,7 +71,6 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
   display: block;
   transition: opacity 0.25s ease;
 }
-.portrait.smith img,
 .portrait.quarry_master img,
 .portrait.carpenter img,
 .portrait.mason img,
@@ -167,7 +166,12 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 .flag { color: var(--accent); }
 .flag.warn { color: #d98973; }
 .row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.92rem; border-bottom: 1px dotted #2e291f; padding: 0.15rem 0; }
-.row span:last-child { color: var(--parchment); text-align: right; }
+/* Child combinator: .row span:last-child also matched nested span.delta and beat .delta.gain. */
+.row > span:last-child { color: var(--parchment); text-align: right; }
+.delta { margin-left: 0.4rem; font-size: 1.2rem; font-weight: 700; }
+.row .delta.gain { color: #2f9e44; }
+.row .delta.loss { color: #c94c3a; }
+.ledger-note { font-size: 0.9rem; color: var(--parchment); margin: 0.2rem 0 0.45rem; line-height: 1.4; }
 .order { font-size: 0.88rem; color: var(--muted); }
 .tiny { font-size: 0.78rem; color: var(--muted); padding-left: 1rem; }
 .tiny li { margin-bottom: 0.2rem; }

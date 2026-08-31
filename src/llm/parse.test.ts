@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { eventEffectHasMechanics, parseLlmResponse, parseProposal } from "./parse";
+import { HOLD_AT_ONCE_APOLOGY } from "./providerErrors";
+import {
+  eventEffectHasMechanics,
+  looksLikeJsonDump,
+  parseLlmResponse,
+  parseProposal,
+  playerFacingNpcSpeech,
+  salvageSpeechFromLlmText,
+} from "./parse";
+
+const STEWARD_HUSBANDRY =
+  "It makes good sense, my lord. We shall keep a three-field rotation, legumes and peas on the rest year, manure on the tired acres, and the best seed set aside.";
+
+/** Playtest: speech complete, proposals cut after the first object's closing `}`. */
+const TRUNCATED_AFTER_FIRST_PROPOSAL = `{ "speech": "${STEWARD_HUSBANDRY}",
+  "chronicle": "The lord ordered a three-field rotation.",
+  "emotion": "thoughtful",
+  "proposals": [
+    {
+      "type": "set_standing_order",
+      "summary": "Begin tracking peas (field legumes) in the estate stores",
+      "text": "Three-field rotation with legumes",
+      "active": true }`;
+
+const TRUNCATED_MID_SPEECH = `{ "speech": "It makes good sense, my lord. We shall keep a three-field rotation`;
 
 describe("parseLlmResponse", () => {
   it("extracts proposals from a clean JSON object", () => {
@@ -120,5 +144,45 @@ describe("parseLlmResponse", () => {
       isNew: true,
       npc: { id: "carpenter", name: "Haimo", role: "carpenter", location: "fontenay" },
     });
+  });
+});
+
+describe("salvageSpeechFromLlmText", () => {
+  it("does not salvage speech from a truncated dump cut after the first proposal }", () => {
+    expect(salvageSpeechFromLlmText(TRUNCATED_AFTER_FIRST_PROPOSAL)).toBeNull();
+    expect(salvageSpeechFromLlmText(TRUNCATED_MID_SPEECH)).toBeNull();
+    expect(salvageSpeechFromLlmText('{ "proposals": [ { "type": "adjust_sowing" }')).toBeNull();
+  });
+
+  it("extracts speech from complete JSON, including escaped quotes and newlines", () => {
+    const raw = JSON.stringify({
+      speech: "Aye, my lord.\nWe shall keep the \"best\" seed.",
+      emotion: "thoughtful",
+      proposals: [],
+    });
+    expect(salvageSpeechFromLlmText(raw)).toBe("Aye, my lord.\nWe shall keep the \"best\" seed.");
+  });
+
+  it("returns plain speech when the payload is complete prose with no JSON", () => {
+    expect(salvageSpeechFromLlmText("The rye stands well, my lord.")).toBe("The rye stands well, my lord.");
+  });
+});
+
+describe("parseLlmResponse never shows JSON to the player", () => {
+  it("treats the playtest truncated dump as incomplete — apology, no salvaged paragraph, no proposals", () => {
+    const parsed = parseLlmResponse(TRUNCATED_AFTER_FIRST_PROPOSAL);
+    expect(parsed.incomplete).toBe(true);
+    expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(parsed.response.speech).not.toContain("It makes good sense");
+    expect(parsed.proposals).toEqual([]);
+    expect(playerFacingNpcSpeech(TRUNCATED_AFTER_FIRST_PROPOSAL, STEWARD_HUSBANDRY)).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(looksLikeJsonDump(parsed.response.speech)).toBe(false);
+  });
+
+  it("uses the engine apology for any incomplete JSON blob", () => {
+    const parsed = parseLlmResponse('{ "proposals": [ { "summary": "Begin tracking peas (field legumes) in the estate stores" }');
+    expect(parsed.incomplete).toBe(true);
+    expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(playerFacingNpcSpeech('{ "speech": ', "")).toBe(HOLD_AT_ONCE_APOLOGY);
   });
 });

@@ -2,21 +2,55 @@ import { LlmResponseSchema, MechanicalProposalSchema, PROPOSAL_TYPES, type LlmRe
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { matchHireableSpecialist, specialistNpc } from "../engine/specialists";
 import { stripEmotionCommands, normalizeEmotion, type AldricEmotion } from "../engine/emotion";
+import { HOLD_AT_ONCE_APOLOGY } from "./providerErrors";
 
 export type ParseLlmResult = {
   response: LlmResponse;
   proposals: MechanicalProposal[];
   parseErrors: string[];
   emotion?: AldricEmotion;
+  /** True when the model blob was chopped / not a complete parseable contract. */
+  incomplete?: boolean;
 };
 
+/** First balanced `{...}` (strings and nested arrays respected). Null if braces never close. */
 export function extractJsonObject(text: string): string | null {
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fence ? fence[1] : text;
   const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  return candidate.slice(start, end + 1);
+  if (start < 0) return null;
+  let depthBrace = 0;
+  let depthBracket = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < candidate.length; i++) {
+    const ch = candidate[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depthBrace++;
+    else if (ch === "}") depthBrace--;
+    else if (ch === "[") depthBracket++;
+    else if (ch === "]") depthBracket--;
+    if (depthBrace < 0 || depthBracket < 0) return null;
+    if (depthBrace === 0 && depthBracket === 0 && i > start) {
+      return candidate.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 function stripTrailingCommas(json: string): string {
@@ -285,11 +319,77 @@ export function eventEffectHasMechanics(p: MechanicalProposal): boolean {
   return false;
 }
 
+/** True when the player would see a contract dump instead of spoken words. */
+export function looksLikeJsonDump(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (t.startsWith("{") && /"(speech|proposals|chronicle|emotion)"\s*:/.test(t)) return true;
+  if (/"proposals"\s*:/.test(t) && t.includes("{")) return true;
+  return false;
+}
+
+function looksLikeStartedJson(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (t.startsWith("{")) return true;
+  if (t.startsWith("```") && t.includes("{")) return true;
+  return looksLikeJsonDump(t);
+}
+
+/**
+ * Complete plain speech (no `{`), or a fully closed JSON object that parses
+ * and has a real `speech` string. Truncated slices (first nested `}`) are not complete.
+ */
+export function isCompleteLlmPayload(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  if (!looksLikeStartedJson(trimmed)) return true;
+  const balanced = extractJsonObject(trimmed);
+  if (!balanced) return false;
+  const data = tryParseJson(balanced);
+  const rec = asRecord(data);
+  return typeof rec?.speech === "string" && Boolean(rec.speech.trim());
+}
+
+/** Speech from a complete payload only. Incomplete JSON → null (never salvage a chopped blob). */
+export function salvageSpeechFromLlmText(raw: string): string | null {
+  if (!isCompleteLlmPayload(raw)) return null;
+  const trimmed = raw.trim();
+  if (!looksLikeStartedJson(trimmed)) return trimmed;
+  const data = tryParseJson(extractJsonObject(trimmed) ?? "");
+  const rec = asRecord(data);
+  if (typeof rec?.speech === "string" && rec.speech.trim()) return rec.speech.trim();
+  return null;
+}
+
+/** Spoken words only. Incomplete JSON → apology immediately, no salvaged paragraph. */
+export function playerFacingNpcSpeech(raw: string, parsedSpeech?: string): string {
+  if (!isCompleteLlmPayload(raw)) return HOLD_AT_ONCE_APOLOGY;
+  const fromParse = parsedSpeech?.trim() ?? "";
+  if (fromParse && !looksLikeJsonDump(fromParse)) return fromParse;
+  const salvaged = salvageSpeechFromLlmText(raw);
+  if (salvaged && !looksLikeJsonDump(salvaged)) return salvaged;
+  return HOLD_AT_ONCE_APOLOGY;
+}
+
+function incompleteParseResult(): ParseLlmResult {
+  return {
+    response: { speech: HOLD_AT_ONCE_APOLOGY, proposals: [] },
+    proposals: [],
+    parseErrors: ["Incomplete or unparseable model JSON."],
+    incomplete: true,
+  };
+}
+
 export function parseLlmResponse(raw: string): ParseLlmResult {
+  if (!raw.trim() || (looksLikeStartedJson(raw) && !isCompleteLlmPayload(raw))) {
+    return incompleteParseResult();
+  }
   const jsonText = extractJsonObject(raw);
   const parseErrors: string[] = [];
   if (!jsonText) {
-    const stripped = stripEmotionCommands(raw.trim() || "(The steward is silent.)");
+    const facing = playerFacingNpcSpeech(raw, raw.trim());
+    const stripped = stripEmotionCommands(facing);
     return {
       response: { speech: stripped.speech, proposals: [] },
       proposals: [],
@@ -299,22 +399,17 @@ export function parseLlmResponse(raw: string): ParseLlmResult {
   }
   const data = tryParseJson(jsonText);
   if (data === undefined) {
-    const stripped = stripEmotionCommands(raw.trim());
-    return {
-      response: { speech: stripped.speech, proposals: [] },
-      proposals: [],
-      parseErrors: ["JSON.parse failed after trailing-comma repair."],
-      emotion: stripped.emotion,
-    };
+    return incompleteParseResult();
   }
   const obj = asRecord(data) ?? {};
   const wrapped = LlmResponseSchema.safeParse(data);
-  const speech =
+  const extractedSpeech =
     wrapped.success && wrapped.data.speech
       ? wrapped.data.speech
       : typeof obj.speech === "string"
         ? obj.speech
-        : raw.trim();
+        : "";
+  const speech = playerFacingNpcSpeech(raw, extractedSpeech);
   const chronicle = wrapped.success
     ? wrapped.data.chronicle
     : typeof obj.chronicle === "string"

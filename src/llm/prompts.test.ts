@@ -11,6 +11,7 @@ import {
   refereeSystemPrompt,
   smithSystemPrompt,
   stewardSystemPrompt,
+  SPEECH_ONLY_CONTRACT,
 } from "./prompts";
 
 function boot(): WorldState {
@@ -176,6 +177,12 @@ describe("signed-off NPC personalities", () => {
     const user = npcUserPrompt(state, "steward", "How fares the rye?");
     expect(user).not.toMatch(/"memories"/);
     expect(user).not.toMatch(/merchant_memories/);
+    expect(user).not.toMatch(/"market"/);
+    expect(user).not.toMatch(/"trade"/);
+    expect(user).not.toMatch(/"poultry"/);
+    expect(user).not.toMatch(/last_chance/);
+    expect(user).toMatch(/"fertile_arable"/);
+    expect(user).toMatch(/"denarii"/);
   });
 
   it("tells Isaac of his own bargains, not Aldric's estate orders", () => {
@@ -201,6 +208,17 @@ describe("signed-off NPC personalities", () => {
     expect(isaac).not.toContain("more barley sown");
     expect(isaac).not.toMatch(/memory array|world-state\.json/i);
     expect(merchantSystemPrompt(state)).not.toContain("four pounds of salt");
+  });
+
+  it("drops the full output contract on the speech pass", () => {
+    const speech = npcSystemPrompt("steward", boot(), { speechOnly: true });
+    const books = npcSystemPrompt("steward", boot());
+    expect(speech).toContain(SPEECH_ONLY_CONTRACT);
+    expect(speech).not.toMatch(/You MUST reply with a single JSON object only/);
+    expect(speech).not.toMatch(/"proposals": \[ \.\.\. \]/);
+    expect(books).toMatch(/You MUST reply with a single JSON object only/);
+    expect(books).toContain("count first and talk second");
+    expect(speech).toContain("count first and talk second");
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {

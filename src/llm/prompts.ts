@@ -5,6 +5,14 @@ import { npcWithoutMemories, withSpeakerMemories } from "../engine/memory";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { stewardHirePrompt } from "../engine/specialists";
 
+function nonzeroResources(state: WorldState): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, amount] of Object.entries(state.resources)) {
+    if (amount !== 0) out[id] = amount;
+  }
+  return out;
+}
+
 function sliceState(state: WorldState) {
   const pool = labourPool(state);
   const remaining = labourRemaining(state);
@@ -27,6 +35,47 @@ function sliceState(state: WorldState) {
     trade: state.trade,
     merchant: state.merchant,
   };
+}
+
+/** Mid-season chat only. Drops the market table, empty stores, trade flags, and cancelled works. */
+export function sliceStateForChat(state: WorldState) {
+  const remaining = labourRemaining(state);
+  return {
+    meta: state.meta,
+    player: state.player,
+    holdings: state.holdings.map((h) => ({
+      id: h.id,
+      name: h.name,
+      land: h.land,
+      sown: h.sown,
+      households: h.households,
+      features: h.features,
+    })),
+    resources: nonzeroResources(state),
+    custom_resources: state.custom_resources.filter((c) => c.amount !== 0),
+    population: state.population,
+    labour: { remaining, assigned: state.labour.assigned, harvest_risk: state.labour.harvest_risk },
+    agriculture: state.agriculture ?? { springBarleyShare: 0.6, autumnWheatShare: 0.45 },
+    projects: state.projects.filter((p) => p.status === "active"),
+    modifiers: state.modifiers,
+    standing_orders: state.standing_orders.filter((o) => o.active),
+    npcs: state.npcs.map(npcWithoutMemories),
+    known_techniques: state.known_techniques.map((t) => ({ id: t.id, name: t.name })),
+    flags: { merchant_present: state.flags.merchant_present, hunger: state.flags.hunger },
+    merchant: state.merchant.present
+      ? { present: true, name: state.merchant.name, stock: state.merchant.stock }
+      : { present: false },
+  };
+}
+
+/** Speech pass: spoken words only. Proposals belong on the books pass. */
+export const SPEECH_ONLY_CONTRACT = `This is a speech-only reply. Write this speaker's spoken words as the player hears them — plain text, or a tiny JSON object with only "speech" and optionally "emotion". Do not emit proposals, chronicle, or any other JSON keys. Do not wrap the reply in the full output contract.`;
+
+export const SPEECH_PASS_HINT =
+  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. Never mention providers, status codes, or JSON in speech.';
+
+export function npcBooksFollowUp(playerMessage: string): string {
+  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: [].\n\nORDER:\n${playerMessage}`;
 }
 
 const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markdown fences), shape:
@@ -171,7 +220,7 @@ ${OUTPUT_CONTRACT}`;
   return undefined;
 }
 
-export function npcSystemPrompt(npcId: string, state?: WorldState): string {
+export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { speechOnly?: boolean }): string {
   const voice =
     npcId === "smith"
       ? smithSystemPrompt()
@@ -180,7 +229,9 @@ export function npcSystemPrompt(npcId: string, state?: WorldState): string {
         : npcId === "merchant"
           ? merchantSystemPrompt(state)
           : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
-  return withSpeakerMemories(voice, npcId, state);
+  const withMem = withSpeakerMemories(voice, npcId, state);
+  if (!opts?.speechOnly) return withMem;
+  return withMem.replace(OUTPUT_CONTRACT, SPEECH_ONLY_CONTRACT);
 }
 
 export function refereeSystemPrompt(): string {
@@ -200,7 +251,7 @@ export function npcUserPrompt(state: WorldState, npcId: string, playerMessage: s
   const npc = state.npcs.find((n) => n.id === npcId);
   return [
     `NPC: ${npc?.name ?? npcId} (${npc?.role ?? "?"}). Notes: ${npc?.notes ?? ""}`,
-    `WORLD STATE SLICE:\n${JSON.stringify(sliceState(state), null, 2)}`,
+    `WORLD STATE SLICE:\n${JSON.stringify(sliceStateForChat(state))}`,
     extra ?? "",
     `PLAYER SAYS:\n${playerMessage}`,
   ]
