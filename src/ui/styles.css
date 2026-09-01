@@ -109,6 +109,12 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 }
 .title { font-size: 1.25rem; letter-spacing: 0.04em; }
 .sub { color: var(--muted); font-size: 0.9rem; }
+.ink-meter {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 0.18rem;
+  letter-spacing: 0.02em;
+}
 .top-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
 .banner { padding: 0.4rem 1rem; background: #3a2a18; color: var(--parchment); }
@@ -206,6 +212,17 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   color: var(--muted);
   font-size: 0.85rem;
   margin: 0.2rem 0 0.6rem;
+}
+.settings-ink {
+  margin: 0 0 0.7rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px dotted var(--line);
+  background: #1c1812;
+}
+.settings-ink p {
+  margin: 0.15rem 0;
+  font-size: 0.82rem;
+  color: var(--parchment);
 }
 .settings-error {
   color: #c45c4a;

@@ -1,4 +1,5 @@
 import type { ChatMessageParam, ChatOpts, LlmModel, ProviderConfig } from "./types";
+import { rememberChatResponse } from "./usage";
 
 const RFAB_BASE = "https://api.rfab.ai";
 
@@ -58,6 +59,7 @@ export async function rfabChat(
   } catch {
     throw new Error("RFAB returned non-JSON.");
   }
+  rememberChatResponse(data, res.headers);
   if (!data.content) throw new Error("RFAB response had no content.");
   return data.content;
 }

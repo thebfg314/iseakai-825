@@ -1,4 +1,5 @@
 import type { ChatMessageParam, ChatOpts, LlmModel, ProviderConfig } from "./types";
+import { rememberChatResponse } from "./usage";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -54,6 +55,7 @@ export async function anthropicChat(
   } catch {
     throw new Error("Anthropic returned non-JSON.");
   }
+  rememberChatResponse(data, res.headers);
   return extractText(data);
 }
 
