@@ -9,6 +9,7 @@ import { finishSeasonClock } from "../engine/season";
 import { yieldMultiplier } from "../engine/modifiers";
 import type { RolledEvent } from "../engine/events";
 import type { SeasonEffectLine } from "../engine/schema";
+import { MERCHANT_INTROS } from "../engine/intros";
 import { parseLlmResponse } from "../llm/parse";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
@@ -246,7 +247,8 @@ describe("per-NPC dialogue logs", () => {
     game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay", memories: [] });
     const merchant = game.setScene("merchant");
     expect(merchant.sceneNpcId).toBe("merchant");
-    expect(merchant.messages).toHaveLength(0);
+    expect(merchant.messages).toHaveLength(1);
+    expect(merchant.messages[0]).toMatchObject({ role: "npc", npcId: "merchant", text: MERCHANT_INTROS.Gero });
     expect(merchant.messages.some((m) => opening.test(m.text))).toBe(false);
   });
 });
@@ -482,7 +484,8 @@ describe("hire specialists via Aldric Confirm", () => {
     expect(game.state.resources.denarii).toBe(16);
     const potter = game.setScene("potter");
     expect(potter.sceneNpcId).toBe("potter");
-    expect(potter.messages).toHaveLength(0);
+    expect(potter.messages).toHaveLength(1);
+    expect(potter.messages[0]?.text).toMatch(/Hugo\. Potter/);
     expect(potter.messages.some((m) => /I am Aldric/.test(m.text))).toBe(false);
   });
 });

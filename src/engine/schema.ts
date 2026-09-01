@@ -232,6 +232,8 @@ export const NpcSchema = z.object({
   location: z.string(),
   notes: z.string().optional(),
   memories: z.array(NpcMemorySchema).default([]),
+  /** Engine first-meeting intro already shown this save. */
+  introSpoken: z.boolean().optional(),
 });
 export type Npc = z.infer<typeof NpcSchema>;
 
@@ -300,6 +302,8 @@ export const WorldStateSchema = z.object({
     .default({ present: false, stock: [] }),
   /** Visiting merchants leave npcs[]; bargains persist here by visitor name (Isaac, Gero, …). */
   merchant_memories: z.record(z.string(), z.array(NpcMemorySchema)).default({}),
+  /** First-meeting intro already shown, by visitor name, so Isaac does not re-introduce on a later visit. */
+  merchant_intro_spoken: z.record(z.string(), z.boolean()).default({}),
   agriculture: z
     .object({
       springBarleyShare: z.number().min(0).max(1).default(0.6),

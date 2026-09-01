@@ -187,6 +187,10 @@ export function applyMerchantRoll(
   state.merchant.last_chance = round1(result.chance * 100) / 100;
   const leaving = state.npcs.find((n) => n.id === "merchant");
   if (leaving?.name) persistMerchantVisitorMemories(state, leaving.name, leaving.memories ?? []);
+  if (leaving?.name && leaving.introSpoken) {
+    state.merchant_intro_spoken ??= {};
+    state.merchant_intro_spoken[leaving.name] = true;
+  }
   state.npcs = state.npcs.filter((n) => n.id !== "merchant");
   if (!result.arrived) {
     state.flags.merchant_present = false;
@@ -213,6 +217,7 @@ export function applyMerchantRoll(
     location: state.holdings[0]?.id ?? "fontenay",
     notes: visitor.notes,
     memories: [...memoriesForMerchantName(state, name)],
+    introSpoken: Boolean(state.merchant_intro_spoken?.[name]),
   });
   const goods = state.merchant.stock.map((s) => `${s.amount} ${s.resource}`).join(", ");
   const pct = Math.round(result.chance * 100);

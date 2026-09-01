@@ -151,6 +151,11 @@
         "items": { "$ref": "#/$defs/npcMemory" }
       }
     },
+    "merchant_intro_spoken": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "First-meeting intro already shown for a visiting merchant, keyed by visitor name."
+    },
     "agriculture": {
       "type": "object",
       "additionalProperties": false,
@@ -422,7 +427,8 @@
         "memories": {
           "type": "array",
           "items": { "$ref": "#/$defs/npcMemory" }
-        }
+        },
+        "introSpoken": { "type": "boolean" }
       }
     },
     "technique": {

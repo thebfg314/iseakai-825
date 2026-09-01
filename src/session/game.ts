@@ -41,6 +41,7 @@ import {
   INCOMPLETE_MODEL_JSON,
   isHoldAtOnceFailure,
 } from "../llm/providerErrors";
+import { introAlreadySpoken, introSpeechFor, markIntroSpoken } from "../engine/intros";
 import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
@@ -85,6 +86,7 @@ export class GameController {
     if (!this.state.agriculture) {
       this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
     }
+    this.speakIntroIfNeeded("steward");
     this.messages.push({
       id: newId("msg"),
       role: "npc",
@@ -192,6 +194,7 @@ export class GameController {
     if (specialistById(npcId) && !this.state.npcs.some((n) => n.id === npcId)) return this.view();
     if (!this.state.npcs.some((n) => n.id === npcId) && npcId !== "merchant") return this.view();
     this.sceneNpcId = npcId;
+    this.speakIntroIfNeeded(npcId);
     return this.view();
   }
 
@@ -204,6 +207,22 @@ export class GameController {
     return this.state.npcs.find((n) => n.id === id)?.name ?? id;
   }
 
+  /** Engine-authored first meeting. Once per save (merchants: once per visitor name). */
+  private speakIntroIfNeeded(npcId: string) {
+    const text = introSpeechFor(npcId, this.state);
+    if (!text || introAlreadySpoken(this.state, npcId)) return;
+    markIntroSpoken(this.state, npcId);
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId,
+      npcName: this.npcName(npcId),
+      text,
+      emotion: npcId === "steward" ? "respectful" : (this.npcEmotions[npcId] ?? "neutral"),
+      at: new Date().toISOString(),
+    });
+  }
+
   async sendDialogue(npcId: string, playerText: string): Promise<DialogueResult> {
     if (npcId === "merchant" && !this.merchantAvailable()) {
       this.sceneNpcId = "steward";
@@ -214,6 +233,7 @@ export class GameController {
       return { ...this.view(), error: "That craftsman is not of this house." };
     }
     this.sceneNpcId = npcId;
+    this.speakIntroIfNeeded(npcId);
     this.messages.push({
       id: newId("msg"),
       role: "player",
