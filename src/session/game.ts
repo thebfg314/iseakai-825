@@ -4,7 +4,7 @@ import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
-import { snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
+import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
@@ -16,6 +16,7 @@ import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from
 import { llmChat, type AppSettings } from "../llm";
 import {
   npcBooksFollowUp,
+  npcFactsFollowUp,
   npcUserPrompt,
   npcSystemPrompt,
   refereeSystemPrompt,
@@ -23,6 +24,14 @@ import {
   seasonUserPrompt,
   SPEECH_PASS_HINT,
 } from "../llm/prompts";
+import {
+  CHECK_RECORDS_LINE,
+  collectDrawers,
+  missingCitedDrawers,
+  parseToolRequest,
+  stripToolMarkers,
+  type ToolDrawer,
+} from "../llm/toolProtocol";
 import {
   booksHearFailureLine,
   HOLD_AT_ONCE_APOLOGY,
@@ -167,38 +176,89 @@ export class GameController {
     const system = npcSystemPrompt(npcId, this.state);
     const extra =
       npcId === "merchant"
-        ? `The merchant's carts hold: ${this.state.merchant.stock.map((s) => `${s.amount} ${s.resource}`).join(", ") || "nothing left"}. Buy only from that stock. Sell any estate resource except denarii.`
+        ? "You are visiting only this season. Request the merchant drawer if you need cart stock. Buy only from that stock. Sell any estate resource except denarii."
         : undefined;
-    const user = npcUserPrompt(this.state, npcId, playerText, extra);
+    const scrapUser = npcUserPrompt(this.state, npcId, playerText, extra);
     const order = looksLikeMechanicalOrder(playerText);
     try {
       const spoken = await this.callLlm(
-        [{ role: "system", content: speechSystem }, { role: "user", content: `${user}\n\n${SPEECH_PASS_HINT}` }],
+        [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
         800,
         { requireProposals: false, allowRepair: false },
       );
+
+      const tool = parseToolRequest(spoken.raw);
+      if (tool.malformed) {
+        throw new Error(INCOMPLETE_MODEL_JSON);
+      }
+
+      let fetched: ToolDrawer[] = [];
+      let drawers: Record<string, unknown> | undefined;
+      let answer = spoken;
+
+      if (tool.requested) {
+        this.pushCheckRecords(npcId);
+        fetched = tool.drawers;
+        drawers = collectDrawers(this.state, fetched, npcId);
+        try {
+          answer = await this.callLlm(
+            [
+              { role: "system", content: speechSystem },
+              { role: "user", content: scrapUser },
+              { role: "assistant", content: spoken.raw },
+              { role: "user", content: `${npcFactsFollowUp(playerText, drawers)}\n\n${SPEECH_PASS_HINT}` },
+            ],
+            800,
+            { requireProposals: false, allowRepair: false },
+          );
+          if (parseToolRequest(answer.raw).malformed) {
+            throw new Error(INCOMPLETE_MODEL_JSON);
+          }
+        } catch (err) {
+          this.noteTalkFailure(err, npcId);
+          return this.view();
+        }
+      }
+
       if (!order) {
-        this.pushNpcSpeech(npcId, spoken);
+        this.pushNpcSpeech(npcId, answer);
         return this.view();
       }
 
       try {
-        const books = await this.callLlm(
-          [
-            { role: "system", content: system },
-            { role: "user", content: user },
-            { role: "assistant", content: spoken.raw },
-            { role: "user", content: npcBooksFollowUp(playerText) },
-          ],
-          900,
-          {
-            requireProposals: true,
-            allowRepair: true,
-            repairHint:
-              "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers.",
-          },
-        );
-        this.pushNpcSpeech(npcId, spoken);
+        const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, drawers);
+        const booksMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
+          { role: "system", content: system },
+          { role: "user", content: booksUser },
+          { role: "assistant", content: answer.raw },
+          { role: "user", content: npcBooksFollowUp(playerText) },
+        ];
+        let books = await this.callLlm(booksMessages, 900, {
+          requireProposals: true,
+          allowRepair: true,
+          repairHint:
+            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers.",
+        });
+
+        const missing = missingCitedDrawers(books.proposals, fetched);
+        if (missing.length) {
+          const repairFacts = collectDrawers(this.state, missing, npcId);
+          books = await this.callLlm(
+            [
+              ...booksMessages,
+              { role: "assistant", content: books.raw },
+              repairPrompt(
+                books.raw,
+                ["Proposals cited stores or land that were not in the facts you were given."],
+                `The engine fetched these missing drawers. Use only these numbers. Do not emit tool markers.\n${JSON.stringify(repairFacts)}`,
+              ),
+            ],
+            900,
+            { requireProposals: true, allowRepair: false },
+          );
+        }
+
+        this.pushNpcSpeech(npcId, answer);
         this.ingestParsedDialogue(npcId, books, playerText);
         return this.view();
       } catch (err) {
@@ -221,12 +281,26 @@ export class GameController {
       role: "npc",
       npcId,
       npcName: this.npcName(npcId),
-      text: spoken.speech,
+      text: stripToolMarkers(spoken.speech),
       chronicle: spoken.chronicle,
       emotion: PORTRAIT_NPCS.has(npcId) ? spoken.emotion ?? this.npcEmotions[npcId] : undefined,
       at: new Date().toISOString(),
     });
     if (npcId === "steward") this.flushHireRecommendations();
+  }
+
+  /** Engine string in the NPC's mouth — never a Books line, never a model call. */
+  private pushCheckRecords(npcId: string) {
+    if (PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = "thoughtful";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId,
+      npcName: this.npcName(npcId),
+      text: CHECK_RECORDS_LINE,
+      emotion: PORTRAIT_NPCS.has(npcId) ? "thoughtful" : undefined,
+      at: new Date().toISOString(),
+    });
   }
 
   /** Engine string only — never call the model to apologize. */
@@ -432,6 +506,7 @@ export class GameController {
               engineLines,
               merchantNote,
               hireNote,
+              diffSeasonLedger(ledgerBefore, this.state),
             ),
           },
         ],

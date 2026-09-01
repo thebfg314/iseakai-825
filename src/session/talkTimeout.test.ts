@@ -102,8 +102,9 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     const game = tempGame();
     llmChatMock.mockResolvedValueOnce(speechJson("Barley on the remaining spring share, my lord."));
     llmChatMock.mockResolvedValueOnce(sowingJson());
+    llmChatMock.mockResolvedValueOnce(sowingJson());
     await game.sendDialogue("steward", "Sow more barley on the remaining acres.");
-    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    expect(llmChatMock).toHaveBeenCalledTimes(3);
     const booksUser = String((llmChatMock.mock.calls[1][1] as { content: string }[])[3].content);
     expect(booksUser).toMatch(/proposals/);
     const turn = lastTurn(game);

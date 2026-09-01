@@ -185,4 +185,20 @@ describe("parseLlmResponse never shows JSON to the player", () => {
     expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
     expect(playerFacingNpcSpeech('{ "speech": ', "")).toBe(HOLD_AT_ONCE_APOLOGY);
   });
+
+  it("strips a complete tool marker from spoken words", () => {
+    expect(playerFacingNpcSpeech("The rye stands well.\n<=-tool: grain -=>")).toBe("The rye stands well.");
+    const parsed = parseLlmResponse("Aye, my lord.\n<=-tool: grain, chest -=>");
+    expect(parsed.incomplete).toBeFalsy();
+    expect(parsed.response.speech).toBe("Aye, my lord.");
+    expect(parsed.response.speech).not.toMatch(/<=-tool:/);
+  });
+
+  it("treats a chopped tool marker like incomplete JSON", () => {
+    const parsed = parseLlmResponse("Let me see.\n<=-tool: grain, chest");
+    expect(parsed.incomplete).toBe(true);
+    expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
+    expect(parsed.proposals).toEqual([]);
+    expect(playerFacingNpcSpeech("<=-tool: grain")).toBe(HOLD_AT_ONCE_APOLOGY);
+  });
 });

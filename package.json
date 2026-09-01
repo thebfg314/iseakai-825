@@ -5,11 +5,10 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run && node --test test/*.test.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "start": "vite",
-    "test": "node --test test/*.test.mjs"
+    "start": "vite"
   },
   "dependencies": {
     "react": "^18.3.1",

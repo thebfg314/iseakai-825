@@ -3,6 +3,7 @@ import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { matchHireableSpecialist, specialistNpc } from "../engine/specialists";
 import { stripEmotionCommands, normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 import { HOLD_AT_ONCE_APOLOGY } from "./providerErrors";
+import { hasMalformedToolMarker, stripToolMarkers } from "./toolProtocol";
 
 export type ParseLlmResult = {
   response: LlmResponse;
@@ -362,13 +363,13 @@ export function salvageSpeechFromLlmText(raw: string): string | null {
   return null;
 }
 
-/** Spoken words only. Incomplete JSON → apology immediately, no salvaged paragraph. */
+/** Spoken words only. Incomplete JSON or a chopped tool marker → apology, no salvaged paragraph. */
 export function playerFacingNpcSpeech(raw: string, parsedSpeech?: string): string {
-  if (!isCompleteLlmPayload(raw)) return HOLD_AT_ONCE_APOLOGY;
+  if (!isCompleteLlmPayload(raw) || hasMalformedToolMarker(raw)) return HOLD_AT_ONCE_APOLOGY;
   const fromParse = parsedSpeech?.trim() ?? "";
-  if (fromParse && !looksLikeJsonDump(fromParse)) return fromParse;
+  if (fromParse && !looksLikeJsonDump(fromParse)) return stripToolMarkers(fromParse);
   const salvaged = salvageSpeechFromLlmText(raw);
-  if (salvaged && !looksLikeJsonDump(salvaged)) return salvaged;
+  if (salvaged && !looksLikeJsonDump(salvaged)) return stripToolMarkers(salvaged);
   return HOLD_AT_ONCE_APOLOGY;
 }
 
@@ -382,7 +383,7 @@ function incompleteParseResult(): ParseLlmResult {
 }
 
 export function parseLlmResponse(raw: string): ParseLlmResult {
-  if (!raw.trim() || (looksLikeStartedJson(raw) && !isCompleteLlmPayload(raw))) {
+  if (!raw.trim() || (looksLikeStartedJson(raw) && !isCompleteLlmPayload(raw)) || hasMalformedToolMarker(raw)) {
     return incompleteParseResult();
   }
   const jsonText = extractJsonObject(raw);
@@ -427,7 +428,7 @@ export function parseLlmResponse(raw: string): ParseLlmResult {
     if (result.proposal) proposals.push(result.proposal);
     else parseErrors.push(`Dropped proposal: ${result.error}`);
   }
-  const stripped = stripEmotionCommands(speech);
+  const stripped = stripEmotionCommands(stripToolMarkers(speech));
   return {
     response: { speech: stripped.speech, chronicle, proposals: rawProposals },
     proposals,
