@@ -18,6 +18,7 @@ const api = {
     musicVolume?: number;
   }) => ipcRenderer.invoke("settings:set", patch),
   listModels: () => ipcRenderer.invoke("settings:listModels"),
+  getLlmMeter: () => ipcRenderer.invoke("llm:getMeter"),
   quit: () => ipcRenderer.invoke("app:quit"),
 };
 

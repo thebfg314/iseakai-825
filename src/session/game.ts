@@ -12,8 +12,11 @@ import { labourPool, labourRemaining } from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
+import fs from "node:fs";
 import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from "../llm/parse";
 import { llmChat, type AppSettings } from "../llm";
+import { fetchProviderBalance } from "../llm/credits";
+import { consumeLastLlmCall, LlmMeterStore } from "../llm/usage";
 import {
   npcBooksFollowUp,
   npcFactsFollowUp,
@@ -70,11 +73,15 @@ export class GameController {
     smith: "neutral",
     chaplain: "neutral",
   };
+  meter = new LlmMeterStore("rfab");
 
-  constructor(state: WorldState, saveDir: string, settings: AppSettings) {
+  constructor(state: WorldState, saveDir: string, settings: AppSettings, opts?: { resetUsage?: boolean }) {
     this.state = state;
     this.saveDir = saveDir;
     this.settings = settings;
+    this.meter.setProvider(settings.provider);
+    if (opts?.resetUsage) this.meter.reset();
+    else this.loadUsage();
     if (!this.state.agriculture) {
       this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
     }
@@ -105,6 +112,7 @@ export class GameController {
       merchantAvailable: this.merchantAvailable(),
       sceneEmotion: this.npcEmotions[this.sceneNpcId] ?? "neutral",
       historyTail: this.historyTail.slice(-30),
+      llmMeter: this.meter.snapshot(),
     };
   }
 
@@ -114,6 +122,49 @@ export class GameController {
     } catch {
       /* ignore */
     }
+    this.persistUsage();
+  }
+
+  private usagePath() {
+    return path.join(this.saveDir, "llm-usage.json");
+  }
+
+  private loadUsage() {
+    try {
+      const file = this.usagePath();
+      if (!fs.existsSync(file)) return;
+      this.meter.loadSave(JSON.parse(fs.readFileSync(file, "utf8")) as unknown);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private persistUsage() {
+    try {
+      fs.mkdirSync(this.saveDir, { recursive: true });
+      fs.writeFileSync(this.usagePath(), JSON.stringify(this.meter.usedThisSave, null, 2), "utf8");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async refreshCredits(): Promise<void> {
+    this.meter.setProvider(this.settings.provider);
+    const report = await fetchProviderBalance(this.settings);
+    this.meter.setProvider(report.provider);
+    if (report.skipped || report.failed) return;
+    this.meter.applyBalance(report.remainingKnown ? report.remaining : undefined, report.provider);
+  }
+
+  private noteLlmUsage() {
+    this.meter.setProvider(this.settings.provider);
+    this.meter.applyCall(consumeLastLlmCall());
+    this.persistUsage();
+  }
+
+  private async finishTalk(): Promise<DialogueResult> {
+    await this.refreshCredits();
+    return this.view();
   }
 
   smithAvailable(): boolean {
@@ -216,13 +267,13 @@ export class GameController {
           }
         } catch (err) {
           this.noteTalkFailure(err, npcId);
-          return this.view();
+          return this.finishTalk();
         }
       }
 
       if (!order) {
         this.pushNpcSpeech(npcId, answer);
-        return this.view();
+        return this.finishTalk();
       }
 
       try {
@@ -260,14 +311,14 @@ export class GameController {
 
         this.pushNpcSpeech(npcId, answer);
         this.ingestParsedDialogue(npcId, books, playerText);
-        return this.view();
+        return this.finishTalk();
       } catch (err) {
         this.noteTalkFailure(err, npcId);
-        return this.view();
+        return this.finishTalk();
       }
     } catch (err) {
       this.noteTalkFailure(err, npcId);
-      return this.view();
+      return this.finishTalk();
     }
   }
 
@@ -537,6 +588,7 @@ export class GameController {
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
+      await this.refreshCredits();
       return { ...this.view(), effects };
     } catch (err) {
       for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
@@ -557,6 +609,7 @@ export class GameController {
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
+      await this.refreshCredits();
       return { ...this.view(), effects };
     }
   }
@@ -634,7 +687,7 @@ export class GameController {
     emotion?: AldricEmotion;
     parseErrors: string[];
   }> {
-    const raw1 = await llmChat(this.settings, messages, { maxTokens });
+    const raw1 = await this.llmRaw(messages, { maxTokens });
     let parsed = parseLlmResponse(raw1);
     if (parsed.incomplete) {
       throw new Error(INCOMPLETE_MODEL_JSON);
@@ -648,8 +701,7 @@ export class GameController {
       const errors = parsed.parseErrors.length
         ? parsed.parseErrors
         : ["proposals was empty but this turn must change the ledger."];
-      const raw2 = await llmChat(
-        this.settings,
+      const raw2 = await this.llmRaw(
         [...messages, { role: "assistant", content: raw1 }, repairPrompt(raw1, errors, opts?.repairHint)],
         {
           maxTokens,
@@ -677,6 +729,17 @@ export class GameController {
       emotion: parsed.emotion,
       parseErrors: parsed.parseErrors,
     };
+  }
+
+  private async llmRaw(
+    messages: { role: "system" | "user" | "assistant"; content: string }[],
+    opts?: { maxTokens?: number; temperature?: number },
+  ): Promise<string> {
+    try {
+      return await llmChat(this.settings, messages, opts);
+    } finally {
+      this.noteLlmUsage();
+    }
   }
 }
 

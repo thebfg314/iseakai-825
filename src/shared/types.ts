@@ -1,4 +1,5 @@
 import type { ChatMessage, PendingProposal, SeasonEffectLine, WorldState } from "../engine/schema";
+import type { LlmMeter } from "../llm/usage";
 
 export type LabourView = { men: number; women: number; youths: number };
 
@@ -13,6 +14,7 @@ export type GameView = {
   merchantAvailable: boolean;
   sceneEmotion: string;
   historyTail: string[];
+  llmMeter: LlmMeter;
 };
 
 export type DialogueResult = GameView & { error?: string };

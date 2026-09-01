@@ -1,4 +1,5 @@
 import type { ChatMessageParam, ChatOpts, LlmModel } from "./types";
+import { rememberChatResponse } from "./usage";
 
 function extractContent(data: unknown): string {
   const d = data as {
@@ -63,6 +64,7 @@ export async function openaiCompatibleChat(
   } catch {
     throw new Error(`${opts.providerLabel} returned non-JSON.`);
   }
+  rememberChatResponse(data, res.headers);
   try {
     return extractContent(data);
   } catch (e) {

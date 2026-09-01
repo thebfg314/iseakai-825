@@ -9,6 +9,9 @@ import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
 import { DEFAULT_MODELS, LLM_PROVIDERS, PROVIDER_META, type AppSettings, type LlmProvider } from "../llm/types";
 import { defaultAppSettings } from "../llm/settings";
+import { emptyMeter, type LlmMeter } from "../llm/usage";
+import { applyServerDialogueView, viewWithOptimisticPlayer } from "./chatSend";
+import { hudInkLine, hudInkTitle, settingsInkLines } from "./scribeInk";
 import {
   BOOKS_TITLE,
   CONFIRM_HELP,
@@ -49,6 +52,7 @@ export function App() {
   const [models, setModels] = useState<{ id: string }[]>([]);
   const [displayEmotion, setDisplayEmotion] = useState<AldricEmotion>("neutral");
   const scroller = useRef<HTMLDivElement>(null);
+  const sendLock = useRef(false);
 
   const poseCue = view
     ? ([...view.messages].reverse().find((m) => m.role === "npc" && m.npcId === view.sceneNpcId)?.id ?? `${view.sceneNpcId}:${view.sceneEmotion}`)
@@ -203,16 +207,32 @@ export function App() {
   }
 
   async function send() {
-    if (!view || !draft.trim()) return;
+    if (!view || !draft.trim() || busy || sendLock.current) return;
     const text = draft.trim();
+    const npcId = view.sceneNpcId;
+    sendLock.current = true;
     setDraft("");
-    await withBusy(() => window.api.sendDialogue(view.sceneNpcId, text));
+    const optimistic = viewWithOptimisticPlayer(view, text);
+    setView(optimistic);
+    setBusy(true);
+    setError(null);
+    try {
+      const result = (await window.api.sendDialogue(npcId, text)) as GameView & { error?: string };
+      if (result && "state" in result) setView(applyServerDialogueView(optimistic, result));
+      if (result && "error" in result && result.error) setError(result.error);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      sendLock.current = false;
+    }
   }
 
   const settingsModal = settingsOpen && (
     <SettingsModal
       settings={settings}
       models={models}
+      meter={view?.llmMeter}
       onClose={() => setSettingsOpen(false)}
       onLoadModels={async () => {
         const list = (await window.api.listModels()) as { id: string }[];
@@ -274,6 +294,9 @@ export function App() {
           <div className="title">Villa of Fontenay</div>
           <div className="sub">
             {cap(view.state.meta.season)} {view.state.meta.year} · turn {view.state.meta.turn} · {view.state.player.name}
+          </div>
+          <div className="ink-meter" title={hudInkTitle(view.llmMeter)}>
+            {hudInkLine(view.llmMeter)}
           </div>
         </div>
         <div className="top-actions">
@@ -407,7 +430,7 @@ export function App() {
                 }
               }}
             />
-            <button type="submit" className="primary" disabled={busy || !draft.trim()}>
+            <button type="submit" className="primary" disabled={busy || sendLock.current || !draft.trim()}>
               Speak to {npc?.name ?? "them"}
             </button>
           </form>
@@ -609,6 +632,7 @@ function Row({ k, v, hideZero, delta }: { k: string; v: string; hideZero?: boole
 function SettingsModal({
   settings,
   models,
+  meter,
   onClose,
   onSave,
   onLoadModels,
@@ -616,6 +640,7 @@ function SettingsModal({
 }: {
   settings: AppSettings;
   models: { id: string }[];
+  meter?: LlmMeter;
   onClose: () => void;
   onSave: (s: AppSettings) => Promise<void>;
   onLoadModels: () => Promise<void>;
@@ -628,6 +653,7 @@ function SettingsModal({
   const [catalogProvider, setCatalogProvider] = useState<LlmProvider | null>(null);
   const [listing, setListing] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [ink, setInk] = useState<LlmMeter>(meter ?? emptyMeter(settings.provider));
   const current = providers[provider];
   const meta = PROVIDER_META[provider];
   const uniqueModels = useMemo(() => {
@@ -636,6 +662,21 @@ function SettingsModal({
     if (current.model) ids.add(current.model);
     return [...ids];
   }, [models, current.model, catalogProvider, provider]);
+
+  useEffect(() => {
+    if (meter) setInk(meter);
+  }, [meter]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const next = (await window.api.getLlmMeter()) as LlmMeter;
+        if (next) setInk(next);
+      } catch {
+        /* meter is optional on the title screen */
+      }
+    })();
+  }, [provider]);
 
   function patchActive(next: Partial<{ apiKey: string; model: string }>) {
     setProviders((prev) => ({
@@ -669,6 +710,11 @@ function SettingsModal({
           </select>
         </label>
         <p className="settings-help">{meta.help}</p>
+        <div className="settings-ink" title={hudInkTitle({ ...ink, provider })}>
+          {settingsInkLines({ ...ink, provider }, provider).map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
         <label>
           Master volume
           <span className="volume-row">{Math.round(masterVolume * 100)}%</span>

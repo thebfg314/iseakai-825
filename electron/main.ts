@@ -6,6 +6,7 @@ import startingEstate from "../data/starting-estate.json";
 import { WorldStateSchema, type WorldState } from "../src/engine/schema";
 import { saveWorldState, loadWorldState } from "../src/engine/state";
 import { listLlmModels } from "../src/llm/chat";
+import { emptyMeter } from "../src/llm/usage";
 import { mergeSettings, normalizeSettings, type SettingsPatch } from "../src/llm/settings";
 import type { AppSettings } from "../src/llm/types";
 import { GameController } from "../src/session/game";
@@ -45,9 +46,9 @@ function persistSettings(s: AppSettings) {
   fs.writeFileSync(settingsPath(), JSON.stringify(s, null, 2), "utf8");
 }
 
-function newController(state: WorldState, saveDir: string): GameController {
+function newController(state: WorldState, saveDir: string, opts?: { resetUsage?: boolean }): GameController {
   const settings = loadSettings();
-  const c = new GameController(state, saveDir, settings);
+  const c = new GameController(state, saveDir, settings, opts);
   fs.mkdirSync(saveDir, { recursive: true });
   saveWorldState(path.join(saveDir, "world-state.json"), c.state);
   return c;
@@ -95,7 +96,7 @@ function requireGame(): GameController {
 ipcMain.handle("game:getView", () => requireGame().view());
 
 ipcMain.handle("game:new", () => {
-  controller = newController(WorldStateSchema.parse(startingEstate), defaultSaveDir());
+  controller = newController(WorldStateSchema.parse(startingEstate), defaultSaveDir(), { resetUsage: true });
   return controller.view();
 });
 
@@ -143,12 +144,21 @@ ipcMain.handle("settings:get", () => loadSettings());
 ipcMain.handle("settings:set", (_e, patch: SettingsPatch) => {
   const next = mergeSettings(loadSettings(), patch);
   persistSettings(next);
-  if (controller) controller.settings = next;
+  if (controller) {
+    controller.settings = next;
+    controller.meter.setProvider(next.provider);
+  }
   return next;
 });
 
 ipcMain.handle("settings:listModels", async () => {
   return listLlmModels(loadSettings());
+});
+
+ipcMain.handle("llm:getMeter", async () => {
+  if (!controller) return emptyMeter(loadSettings().provider);
+  await controller.refreshCredits();
+  return controller.meter.snapshot();
 });
 
 ipcMain.handle("app:quit", () => {
