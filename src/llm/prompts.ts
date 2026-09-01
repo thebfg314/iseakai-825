@@ -1,78 +1,82 @@
 import type { WorldState } from "../engine/schema";
-import { labourPool, labourRemaining } from "../engine/labour";
 import { merchantVisitorByName } from "../engine/merchant";
-import { npcWithoutMemories, withSpeakerMemories } from "../engine/memory";
+import { withSpeakerMemories } from "../engine/memory";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { stewardHirePrompt } from "../engine/specialists";
+import { TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
 
-function nonzeroResources(state: WorldState): Record<string, number> {
+function pickNonzero(values: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const [id, amount] of Object.entries(state.resources)) {
+  for (const [id, amount] of Object.entries(values)) {
     if (amount !== 0) out[id] = amount;
   }
   return out;
 }
 
-function sliceState(state: WorldState) {
-  const pool = labourPool(state);
-  const remaining = labourRemaining(state);
+function sownTotals(state: WorldState): Record<string, number> {
+  const sown = { wheat: 0, rye: 0, barley: 0, oats: 0 };
+  for (const h of state.holdings) {
+    sown.wheat += h.sown.wheat;
+    sown.rye += h.sown.rye;
+    sown.barley += h.sown.barley;
+    sown.oats += h.sown.oats;
+  }
+  return pickNonzero(sown);
+}
+
+/**
+ * Mid-season default scrap. No market, no empty stores, no land, no chest.
+ * Exact piles come from hidden tool drawers when the NPC asks.
+ */
+export function sliceStateForChat(state: WorldState, npcId?: string) {
+  const npc = npcId ? state.npcs.find((n) => n.id === npcId) : undefined;
   return {
-    meta: state.meta,
-    player: state.player,
-    holdings: state.holdings,
-    resources: state.resources,
-    custom_resources: state.custom_resources,
-    population: state.population,
-    labour: { pool, remaining, assigned: state.labour.assigned, harvest_risk: state.labour.harvest_risk },
-    agriculture: state.agriculture ?? { springBarleyShare: 0.6, autumnWheatShare: 0.45 },
-    market: state.market,
-    projects: state.projects.filter((p) => p.status !== "cancelled"),
-    modifiers: state.modifiers,
-    standing_orders: state.standing_orders.filter((o) => o.active),
-    npcs: state.npcs.map(npcWithoutMemories),
-    known_techniques: state.known_techniques,
-    flags: state.flags,
-    trade: state.trade,
-    merchant: state.merchant,
+    speaker: npc ? { id: npc.id, name: npc.name, role: npc.role } : undefined,
+    year: state.meta.year,
+    season: state.meta.season,
+    turn: state.meta.turn,
+    hunger: state.flags.hunger,
+    merchant_present: state.flags.merchant_present,
   };
 }
 
-/** Mid-season chat only. Drops the market table, empty stores, trade flags, and cancelled works. */
-export function sliceStateForChat(state: WorldState) {
-  const remaining = labourRemaining(state);
+/** Season chronicler: engine deltas + current totals weather can touch. Not the full estate. */
+export function sliceStateForSeason(state: WorldState, engineDeltas?: Record<string, number>) {
   return {
-    meta: state.meta,
-    player: state.player,
-    holdings: state.holdings.map((h) => ({
-      id: h.id,
-      name: h.name,
-      land: h.land,
-      sown: h.sown,
-      households: h.households,
-      features: h.features,
-    })),
-    resources: nonzeroResources(state),
-    custom_resources: state.custom_resources.filter((c) => c.amount !== 0),
-    population: state.population,
-    labour: { remaining, assigned: state.labour.assigned, harvest_risk: state.labour.harvest_risk },
-    agriculture: state.agriculture ?? { springBarleyShare: 0.6, autumnWheatShare: 0.45 },
-    projects: state.projects.filter((p) => p.status === "active"),
-    modifiers: state.modifiers,
-    standing_orders: state.standing_orders.filter((o) => o.active),
-    npcs: state.npcs.map(npcWithoutMemories),
-    known_techniques: state.known_techniques.map((t) => ({ id: t.id, name: t.name })),
-    flags: { merchant_present: state.flags.merchant_present, hunger: state.flags.hunger },
-    merchant: state.merchant.present
-      ? { present: true, name: state.merchant.name, stock: state.merchant.stock }
-      : { present: false },
+    deltas: engineDeltas && Object.keys(engineDeltas).length ? engineDeltas : state.last_season_deltas,
+    totals: {
+      grain: pickNonzero({
+        wheat: state.resources.wheat,
+        rye: state.resources.rye,
+        barley: state.resources.barley,
+        oats: state.resources.oats,
+      }),
+      livestock: pickNonzero({
+        cattle: state.resources.cattle,
+        sheep: state.resources.sheep,
+        pigs: state.resources.pigs,
+        horses: state.resources.horses,
+        poultry: state.resources.poultry,
+        bees: state.resources.bees,
+      }),
+      denarii: state.resources.denarii,
+      sown: sownTotals(state),
+      households: state.population.households,
+      hunger: state.flags.hunger,
+      mood_modifiers: state.modifiers.filter((m) => m.target === "mood"),
+    },
   };
 }
 
 /** Speech pass: spoken words only. Proposals belong on the books pass. */
 export const SPEECH_ONLY_CONTRACT = `This is a speech-only reply. Write this speaker's spoken words as the player hears them — plain text, or a tiny JSON object with only "speech" and optionally "emotion". Do not emit proposals, chronicle, or any other JSON keys. Do not wrap the reply in the full output contract.`;
 
+export const TOOL_PROTOCOL = `Hidden ledger tool — the player must never see this marker. You do not receive the full villa. If you need exact numbers from the live books, emit exactly this form on its own line (comma-separated drawers allowed):
+${TOOL_MARKER_EXAMPLE}
+Use only these drawer names: ${TOOL_DRAWERS.join(", ")}. Unknown names are ignored. Never mention the marker, drawers, tools, or JSON in spoken words. If you can greet or talk without numbers, do not request tools. After the game fills drawers, do not emit another marker.`;
+
 export const SPEECH_PASS_HINT =
-  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. Never mention providers, status codes, or JSON in speech.';
+  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. Never mention providers, status codes, tools, or JSON in speech.';
 
 export function npcBooksFollowUp(playerMessage: string): string {
   return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: [].\n\nORDER:\n${playerMessage}`;
@@ -100,6 +104,7 @@ Rules:
 - start_project.projectKey must be a catalogue key or you must supply customCosts { labourDays, lumber, iron, stone }. Always set holdingId to the estate holding id from the world state slice.
 - adjust_sowing: change the crop mix. springBarleyShare (0-1 of remaining spring capacity; rest oats), autumnWheatShare (0-1; rest rye). Mid-spring this also fills remaining unsown acres now so the ledger moves before the season turns.
 - If the player is only chatting or asking, proposals may be [].
+- Do not emit <=-tool: markers on this books pass; ledger facts are supplied by the engine.
 - For portrait NPCs (Aldric, Bernard, Ermenald, and hired specialists Colman, Haimo, Gerold, Hugo, Otto, Ambrosius, Hildegard, Lorenzo, Eberhard) you MUST set "emotion" to match your bearing. Never mention emotion, portraits, or the JSON field in speech. If you must, you may also hide a tag the game will strip: [[emotion:pleased]]`;
 
 export function stewardSystemPrompt(state?: WorldState): string {
@@ -231,7 +236,7 @@ export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { spee
           : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
   const withMem = withSpeakerMemories(voice, npcId, state);
   if (!opts?.speechOnly) return withMem;
-  return withMem.replace(OUTPUT_CONTRACT, SPEECH_ONLY_CONTRACT);
+  return withMem.replace(OUTPUT_CONTRACT, `${SPEECH_ONLY_CONTRACT}\n${TOOL_PROTOCOL}`);
 }
 
 export function refereeSystemPrompt(): string {
@@ -247,16 +252,28 @@ Do not invent new geography. Do not skip costs.
 ${OUTPUT_CONTRACT}`;
 }
 
-export function npcUserPrompt(state: WorldState, npcId: string, playerMessage: string, extra?: string): string {
+export function npcUserPrompt(
+  state: WorldState,
+  npcId: string,
+  playerMessage: string,
+  extra?: string,
+  drawers?: unknown,
+): string {
   const npc = state.npcs.find((n) => n.id === npcId);
-  return [
-    `NPC: ${npc?.name ?? npcId} (${npc?.role ?? "?"}). Notes: ${npc?.notes ?? ""}`,
-    `WORLD STATE SLICE:\n${JSON.stringify(sliceStateForChat(state))}`,
-    extra ?? "",
-    `PLAYER SAYS:\n${playerMessage}`,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const parts = [
+    `NPC: ${npc?.name ?? npcId} (${npc?.role ?? "?"})`,
+    `SCRAP (always-on; not the full villa):\n${JSON.stringify(sliceStateForChat(state, npcId))}`,
+  ];
+  if (drawers && typeof drawers === "object" && Object.keys(drawers as object).length) {
+    parts.push(`RECORD DRAWERS (live books, engine-filled; do not invent other numbers):\n${JSON.stringify(drawers)}`);
+  }
+  if (extra) parts.push(extra);
+  parts.push(`PLAYER SAYS:\n${playerMessage}`);
+  return parts.join("\n\n");
+}
+
+export function npcFactsFollowUp(playerMessage: string, drawers: unknown): string {
+  return `You asked to check the records. The engine filled these drawers from the live books. Answer the lord now in spoken words only. Do not emit another tool marker.\n\nRECORD DRAWERS:\n${JSON.stringify(drawers)}\n\nPLAYER SAID:\n${playerMessage}`;
 }
 
 export function seasonUserPrompt(
@@ -265,13 +282,14 @@ export function seasonUserPrompt(
   engineLines: string[],
   merchantNote: string,
   hireNote?: string,
+  engineDeltas?: Record<string, number>,
 ): string {
   return [
     `The season just resolved mechanically. Engine notes:\n- ${engineLines.join("\n- ")}`,
     `Rolled events (you must emit event_effect for each):\n${events.map((e) => `- ${e.id} [${e.category}/${e.polarity}]: ${e.resolvedText}`).join("\n")}`,
     `MERCHANT VISIT (separate roll; do not emit event_effect for it):\n${merchantNote}`,
     hireNote ?? "",
-    `WORLD STATE SLICE (after agriculture/projects, before your event effects):\n${JSON.stringify(sliceState(state), null, 2)}`,
+    `ENGINE LEDGER (this season's agriculture/projects, before your event effects — not the full estate):\n${JSON.stringify(sliceStateForSeason(state, engineDeltas), null, 2)}`,
     "Write the seasonal report and event_effect proposals now.",
   ]
     .filter(Boolean)

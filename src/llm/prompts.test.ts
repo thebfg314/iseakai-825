@@ -9,9 +9,13 @@ import {
   npcSystemPrompt,
   npcUserPrompt,
   refereeSystemPrompt,
+  seasonUserPrompt,
+  sliceStateForChat,
+  sliceStateForSeason,
   smithSystemPrompt,
   stewardSystemPrompt,
   SPEECH_ONLY_CONTRACT,
+  TOOL_PROTOCOL,
 } from "./prompts";
 
 function boot(): WorldState {
@@ -181,8 +185,11 @@ describe("signed-off NPC personalities", () => {
     expect(user).not.toMatch(/"trade"/);
     expect(user).not.toMatch(/"poultry"/);
     expect(user).not.toMatch(/last_chance/);
-    expect(user).toMatch(/"fertile_arable"/);
-    expect(user).toMatch(/"denarii"/);
+    expect(user).not.toMatch(/"fertile_arable"/);
+    expect(user).not.toMatch(/"denarii"/);
+    expect(user).toMatch(/"year":825/);
+    expect(user).toMatch(/"hunger"/);
+    expect(user).toMatch(/SCRAP/);
   });
 
   it("tells Isaac of his own bargains, not Aldric's estate orders", () => {
@@ -210,15 +217,48 @@ describe("signed-off NPC personalities", () => {
     expect(merchantSystemPrompt(state)).not.toContain("four pounds of salt");
   });
 
-  it("drops the full output contract on the speech pass", () => {
+  it("drops the full output contract on the speech pass and teaches the hidden tool marker", () => {
     const speech = npcSystemPrompt("steward", boot(), { speechOnly: true });
     const books = npcSystemPrompt("steward", boot());
     expect(speech).toContain(SPEECH_ONLY_CONTRACT);
+    expect(speech).toContain(TOOL_PROTOCOL);
+    expect(speech).toContain("<=-tool: grain, sown, livestock, chest -=>");
     expect(speech).not.toMatch(/You MUST reply with a single JSON object only/);
     expect(speech).not.toMatch(/"proposals": \[ \.\.\. \]/);
     expect(books).toMatch(/You MUST reply with a single JSON object only/);
     expect(books).toContain("count first and talk second");
     expect(speech).toContain("count first and talk second");
+  });
+
+  it("keeps the mid-season scrap tiny until drawers are requested", () => {
+    const scrap = sliceStateForChat(boot(), "steward");
+    expect(scrap).toMatchObject({
+      speaker: { id: "steward", name: "Aldric", role: "steward" },
+      year: 825,
+      season: "spring",
+      turn: 1,
+      hunger: false,
+      merchant_present: false,
+    });
+    expect(scrap).not.toHaveProperty("resources");
+    expect(scrap).not.toHaveProperty("holdings");
+    expect(scrap).not.toHaveProperty("market");
+  });
+
+  it("gives the chronicler engine deltas and current piles, not the market table", () => {
+    const state = boot();
+    const pack = sliceStateForSeason(state, { rye: -2, sown_barley: 1.8 });
+    expect(pack.deltas).toEqual({ rye: -2, sown_barley: 1.8 });
+    expect(pack.totals.denarii).toBe(96);
+    expect(pack.totals.grain.rye).toBe(8);
+    expect(pack.totals).not.toHaveProperty("market");
+    const prompt = seasonUserPrompt(state, [], ["Households ate rye."], "No merchant this season.", undefined, {
+      rye: -2,
+    });
+    expect(prompt).toMatch(/ENGINE LEDGER/);
+    expect(prompt).toMatch(/event_effect/);
+    expect(prompt).not.toMatch(/"market"/);
+    expect(prompt).not.toMatch(/WORLD STATE SLICE/);
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {
