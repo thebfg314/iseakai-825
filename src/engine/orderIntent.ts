@@ -1,5 +1,6 @@
 import type { MechanicalProposal, WorldState } from "./schema";
 import { lookupProject } from "./projectCatalog";
+import { huntFulfillReason, inferHuntProposals, isNegotiatorId, looksLikeHuntOrder } from "./hunts";
 import { hireFulfillReason, inferHireProposals, looksLikeHireOrder, specialistById } from "./specialists";
 
 const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
@@ -10,9 +11,10 @@ const ORDER_OVERRIDE = /\b(sow|assign|start|give|clear|build|bless|gift|tithe|hi
 const HUSBANDRY_ORDER =
   /\b(rotation|fallow|legumes?|peas?\b|manure|muck|seed[- ]?(keep|keeping|selection|saving|kept)|three[- ]field|split (?:our |the )?(?:farming )?fields)\b/i;
 
-export function looksLikeMechanicalOrder(text: string): boolean {
+export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean {
   const t = text.trim();
   if (!t) return false;
+  if (npcId && isNegotiatorId(npcId) && looksLikeHuntOrder(t)) return true;
   if (looksLikeHireOrder(t)) return true;
   // Pure questions stay reports — even if they mention manure or peas.
   if (QUESTION_PREFIX.test(t) && !ORDER_OVERRIDE.test(t)) return false;
@@ -45,6 +47,10 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
 
   if (npcId === "merchant") {
     return [];
+  }
+
+  if (isNegotiatorId(npcId)) {
+    return inferHuntProposals(state, playerText);
   }
 
   if (npcId === "smith" || specialistById(npcId)) {
@@ -173,6 +179,10 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
 
 export function cannotFulfillReason(state: WorldState, npcId: string, playerText: string): string | null {
   const t = playerText.toLowerCase();
+  if (isNegotiatorId(npcId)) {
+    const huntWhy = huntFulfillReason(state, playerText);
+    if (huntWhy) return huntWhy;
+  }
   const hireWhy = hireFulfillReason(state, npcId, playerText);
   if (hireWhy) return hireWhy;
   if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor)\b/.test(t)) {

@@ -23,6 +23,8 @@ describe("first-meeting intro copy", () => {
     expect(HOUSEHOLD_INTROS.head_seamstress).toMatch(/^Hildegard\./);
     expect(HOUSEHOLD_INTROS.copper_smith).toMatch(/^Lorenzo/);
     expect(HOUSEHOLD_INTROS.captain).toMatch(/^Eberhard\./);
+    expect(HOUSEHOLD_INTROS.negotiator).toMatch(/^My name Gerulf, my lord/);
+    expect(HOUSEHOLD_INTROS.negotiator).toMatch(/Do not send me for barley/);
     expect(Object.keys(MERCHANT_INTROS)).toEqual([
       "Gero",
       "Odo",

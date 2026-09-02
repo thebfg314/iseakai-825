@@ -70,7 +70,7 @@ describe("first-meeting intros", () => {
     expect(lines.filter((t) => t === HOUSEHOLD_INTROS.steward)).toHaveLength(0);
   });
 
-  it("shows Bernard and Ermenald intros once when their tabs first open", () => {
+  it("shows Bernard, Ermenald, and Gerulf intros once when their tabs first open", () => {
     const game = tempGame();
     const smith = game.setScene("smith");
     expect(smith.messages.map((m) => m.text)).toEqual([HOUSEHOLD_INTROS.smith]);
@@ -80,6 +80,12 @@ describe("first-meeting intros", () => {
     const cell = game.setScene("chaplain");
     expect(cell.messages.map((m) => m.text)).toEqual([HOUSEHOLD_INTROS.chaplain]);
     expect(game.setScene("chaplain").messages.map((m) => m.text)).toEqual([HOUSEHOLD_INTROS.chaplain]);
+
+    const gerulf = game.setScene("negotiator");
+    expect(gerulf.messages.map((m) => m.text)).toEqual([HOUSEHOLD_INTROS.negotiator]);
+    expect(HOUSEHOLD_INTROS.negotiator).toMatch(/^My name Gerulf, my lord/);
+    expect(game.setScene("negotiator").messages.map((m) => m.text)).toEqual([HOUSEHOLD_INTROS.negotiator]);
+    expect(game.state.npcs.find((n) => n.id === "negotiator")?.introSpoken).toBe(true);
   });
 
   it("shows Colman's intro once after hire when his tab opens", () => {

@@ -71,18 +71,6 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
   display: block;
   transition: opacity 0.25s ease;
 }
-.portrait.quarry_master img,
-.portrait.carpenter img,
-.portrait.mason img,
-.portrait.potter img,
-.portrait.village_reeve img,
-.portrait.vinedresser img,
-.portrait.head_seamstress img,
-.portrait.copper_smith img,
-.portrait.captain img {
-  transform: scale(1.7);
-  transform-origin: center 82%;
-}
 
 button {
   font: inherit;

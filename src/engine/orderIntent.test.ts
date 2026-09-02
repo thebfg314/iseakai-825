@@ -21,4 +21,9 @@ describe("looksLikeMechanicalOrder", () => {
     expect(looksLikeMechanicalOrder("Sow more barley on the remaining acres.")).toBe(true);
     expect(looksLikeMechanicalOrder("Hire Haimo the carpenter.")).toBe(true);
   });
+
+  it("treats a Gerulf find request as an order", () => {
+    expect(looksLikeMechanicalOrder("Find me pepper.", "negotiator")).toBe(true);
+    expect(looksLikeMechanicalOrder("How are the roads?", "negotiator")).toBe(false);
+  });
 });

@@ -67,9 +67,17 @@ describe("expansion NPC portraits", () => {
     }
   });
 
-  it("still resolves Bernard and Colman the same way", () => {
+  it("still resolves Bernard, Gerulf, and Gerold the same way", () => {
     expect(npcPortrait("smith", "pleased")).toMatch(/Bernard Happy/);
     expect(npcPortrait("smith", "disappointed")).toMatch(/Bernard Displeased/);
+    expect(npcPortrait("negotiator", "neutral")).toMatch(/Gerulf Neutral/);
+    expect(npcPortrait("negotiator", "pleased")).toMatch(/Gerulf Happy/);
+    expect(npcPortrait("negotiator", "disappointed")).toMatch(/Gerulf Displeased/);
+    expect(npcPortrait("negotiator", "thoughtful")).toMatch(/Gerulf Thoughtful/);
+    expect(npcPortrait("negotiator", "concerned")).toMatch(/Gerulf Concerned/);
+    expect(npcPortrait("mason", "pleased")).toMatch(/Gerold Happy\.jpg/);
+    expect(npcPortrait("mason", "disappointed")).toMatch(/Gerold Displeased\.jpg/);
+    expect(npcPortrait("mason", "neutral")).toMatch(/Gerold Neutral\.jpg/);
     expect(npcPortrait("quarry_master", "pleased")).toMatch(/Colman Happy/);
     expect(npcPortrait("quarry_master", "disappointed")).toMatch(/Colman Displeased/);
   });

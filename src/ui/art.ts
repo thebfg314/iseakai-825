@@ -48,6 +48,12 @@ import geroldDispleased from "../../art assets/NPC Images/Gerold Mason/Gerold Di
 import geroldHappy from "../../art assets/NPC Images/Gerold Mason/Gerold Happy.jpg";
 import geroldThoughtful from "../../art assets/NPC Images/Gerold Mason/Gerold Thoughtful.jpg";
 
+import gerulfNeutral from "../../art assets/NPC Images/Gerulf Negotiator/Gerulf Neutral.png";
+import gerulfConcerned from "../../art assets/NPC Images/Gerulf Negotiator/Gerulf Concerned.png";
+import gerulfDispleased from "../../art assets/NPC Images/Gerulf Negotiator/Gerulf Displeased.png";
+import gerulfHappy from "../../art assets/NPC Images/Gerulf Negotiator/Gerulf Happy.png";
+import gerulfThoughtful from "../../art assets/NPC Images/Gerulf Negotiator/Gerulf Thoughtful.png";
+
 import hugoNeutral from "../../art assets/NPC Images/Hugo Potter/Hugo Neutral.png";
 import hugoConcerned from "../../art assets/NPC Images/Hugo Potter/Hugo Concerned.png";
 import hugoDispleased from "../../art assets/NPC Images/Hugo Potter/Hugo Displeased.png";
@@ -172,6 +178,14 @@ const GEROLD: Record<SparsePose, string> = {
   thoughtful: geroldThoughtful,
 };
 
+const GERULF: Record<SparsePose, string> = {
+  neutral: gerulfNeutral,
+  concerned: gerulfConcerned,
+  disappointed: gerulfDispleased,
+  pleased: gerulfHappy,
+  thoughtful: gerulfThoughtful,
+};
+
 const HUGO: Record<SparsePose, string> = {
   neutral: hugoNeutral,
   concerned: hugoConcerned,
@@ -248,6 +262,7 @@ export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, f
   if (npcId === "quarry_master") return sparsePortrait(COLMAN, emotion);
   if (npcId === "carpenter") return sparsePortrait(HAIMO, emotion);
   if (npcId === "mason") return sparsePortrait(GEROLD, emotion);
+  if (npcId === "negotiator") return sparsePortrait(GERULF, emotion);
   if (npcId === "potter") return sparsePortrait(HUGO, emotion);
   if (npcId === "village_reeve") return sparsePortrait(OTTO, emotion);
   if (npcId === "vinedresser") return sparsePortrait(AMBROSIUS, emotion);

@@ -133,6 +133,13 @@
       "role": "chaplain",
       "location": "fontenay",
       "notes": "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands."
+    },
+    {
+      "id": "negotiator",
+      "name": "Gerulf",
+      "role": "negotiator",
+      "location": "fontenay",
+      "notes": "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain/iron → Aldric/Bernard; odd/scarce/far-off → him."
     }
   ],
   "known_techniques": [],

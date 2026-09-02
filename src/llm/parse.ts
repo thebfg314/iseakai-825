@@ -110,7 +110,8 @@ const TYPE_ALIASES: Record<string, (typeof PROPOSAL_TYPES)[number]> = {
   retain: "register_npc",
   employ: "register_npc",
   registernpc: "register_npc",
-  new_npc: "register_npc",
+  hunt: "start_hunt",
+  starthunt: "start_hunt",
 };
 
 const DIRECTION_ALIASES: Record<string, "buy" | "sell" | "consume" | "gain"> = {
@@ -155,6 +156,7 @@ function guessType(obj: Record<string, unknown>): string | undefined {
   if (obj.target && (obj.effect || obj.source)) return "add_modifier";
   if (obj.text && obj.active != null) return "set_standing_order";
   if (obj.npc || (obj.name && obj.role && (obj.isNew != null || obj.type === "register_npc"))) return "register_npc";
+  if (obj.quotedDenarii != null && (obj.goods || obj.resource)) return "start_hunt";
   return undefined;
 }
 
@@ -296,6 +298,17 @@ export function coerceProposalInput(raw: unknown): unknown {
   }
   if (next.type === "register_npc") {
     coerceRegisterNpc(next);
+  }
+  if (next.type === "start_hunt") {
+    if (next.quotedDenarii == null && next.denarii != null) next.quotedDenarii = next.denarii;
+    if (next.quotedDenarii == null && next.cost != null) next.quotedDenarii = next.cost;
+    if (next.durationSeasons == null && next.seasons != null) next.durationSeasons = next.seasons;
+    if (next.durationSeasons == null && next.duration != null) next.durationSeasons = next.duration;
+    if (next.goods == null && typeof next.item === "string") next.goods = next.item;
+    if (typeof next.goods === "string" && next.resource == null) {
+      next.resource = next.goods.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "scarce_goods";
+    }
+    if (next.amount == null) next.amount = 1;
   }
   if (next.type === "event_effect") {
     const dir = coerceDirection(next.direction);

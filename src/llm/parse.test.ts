@@ -201,4 +201,22 @@ describe("parseLlmResponse never shows JSON to the player", () => {
     expect(parsed.proposals).toEqual([]);
     expect(playerFacingNpcSpeech("<=-tool: grain")).toBe(HOLD_AT_ONCE_APOLOGY);
   });
+
+  it("coerces a Gerulf hunt into start_hunt", () => {
+    const parsed = parseProposal({
+      type: "hunt",
+      summary: "Seek pepper",
+      goods: "pepper",
+      quotedDenarii: 42,
+      durationSeasons: 2,
+    });
+    expect(parsed.proposal).toMatchObject({
+      type: "start_hunt",
+      goods: "pepper",
+      resource: "pepper",
+      amount: 1,
+      quotedDenarii: 42,
+      durationSeasons: 2,
+    });
+  });
 });

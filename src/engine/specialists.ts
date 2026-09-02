@@ -138,7 +138,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
 
 export const SPECIALIST_IDS = new Set(HIREABLE_SPECIALISTS.map((s) => s.id));
 
-const CORE_HOUSEHOLD_IDS = new Set(["steward", "smith", "chaplain", "merchant"]);
+const CORE_HOUSEHOLD_IDS = new Set(["steward", "smith", "chaplain", "negotiator", "merchant"]);
 
 export function isCoreHouseholdId(id: string): boolean {
   return CORE_HOUSEHOLD_IDS.has(id);
@@ -297,7 +297,7 @@ export function stewardHirePrompt(state: WorldState): string {
       : "Do not recommend Otto, Ambrosius, Hildegard, Lorenzo, or Eberhard until their line reads available now.";
   return `Closed hire list (never invent another name). Emit register_npc only for a person marked available now, and only when the lord asks to hire:
 ${lines.join("\n")}
-location is the holding id (fontenay). The engine takes that person's listed denarii from the chest on Confirm (and Otto's household grain ration); do NOT also emit transfer_resources for the gift or the ration. Bernard the smith already serves and is not for hire. If that person is already on npcs, not yet available, or the chest cannot spare the coin (or the granary Otto's ration), say so in speech and emit no proposal. Speech without register_npc does not hire anyone.
+location is the holding id (fontenay). The engine takes that person's listed denarii from the chest on Confirm (and Otto's household grain ration); do NOT also emit transfer_resources for the gift or the ration. Bernard the smith and Gerulf the negotiator already serve and are not for hire. If that person is already on npcs, not yet available, or the chest cannot spare the coin (or the granary Otto's ration), say so in speech and emit no proposal. Speech without register_npc does not hire anyone.
 ${recommend}`;
 }
 

@@ -68,5 +68,16 @@ describe("steward ledger voice", () => {
     expect(projectProgressLine(35, 70)).toBe("half raised · 35 days still owed");
     expect(confirmBanner(1)).toMatch(/Confirm is Aldric writing it in the books/);
     expect(confirmBanner(1)).not.toMatch(/world-state/);
+    expect(
+      proposalBlurb({
+        type: "start_hunt",
+        summary: "Gerulf seeks pepper",
+        goods: "pepper",
+        resource: "pepper",
+        amount: 1,
+        quotedDenarii: 42,
+        durationSeasons: 2,
+      }),
+    ).toMatch(/42 denarii over 2 seasons/);
   });
 });
