@@ -46,7 +46,7 @@ const EXPANSION: { id: string; files: Record<string, string> }[] = [
     id: "captain",
     files: {
       neutral: "Eberhard Neutral.png",
-      concerned: "Eberhard Concerned.jpg",
+      concerned: "Eberhard Concerned.png",
       disappointed: "Eberhard Displeased.png",
       pleased: "Eberhard Happy.png",
       thoughtful: "Eberhard Thoughtful .png",

@@ -42,11 +42,11 @@ import haimoDispleased from "../../art assets/NPC Images/Haimo Carpenter/Haimo D
 import haimoHappy from "../../art assets/NPC Images/Haimo Carpenter/Haimo Happy.png";
 import haimoThoughtful from "../../art assets/NPC Images/Haimo Carpenter/Haimo Thoughtful.png";
 
-import geroldNeutral from "../../art assets/NPC Images/Gerold Mason/Gerold Neutral.png";
-import geroldConcerned from "../../art assets/NPC Images/Gerold Mason/Gerold Concerned.png";
-import geroldDispleased from "../../art assets/NPC Images/Gerold Mason/Gerold Displeased.png";
-import geroldHappy from "../../art assets/NPC Images/Gerold Mason/Gerold Happy.png";
-import geroldThoughtful from "../../art assets/NPC Images/Gerold Mason/Gerold Thoughtful.png";
+import geroldNeutral from "../../art assets/NPC Images/Gerold Mason/Gerold Neutral.jpg";
+import geroldConcerned from "../../art assets/NPC Images/Gerold Mason/Gerold Concerned.jpg";
+import geroldDispleased from "../../art assets/NPC Images/Gerold Mason/Gerold Displeased.jpg";
+import geroldHappy from "../../art assets/NPC Images/Gerold Mason/Gerold Happy.jpg";
+import geroldThoughtful from "../../art assets/NPC Images/Gerold Mason/Gerold Thoughtful.jpg";
 
 import hugoNeutral from "../../art assets/NPC Images/Hugo Potter/Hugo Neutral.png";
 import hugoConcerned from "../../art assets/NPC Images/Hugo Potter/Hugo Concerned.png";
@@ -79,7 +79,7 @@ import lorenzoHappy from "../../art assets/NPC Images/Lorenzo Copper Smith/Loren
 import lorenzoThoughtful from "../../art assets/NPC Images/Lorenzo Copper Smith/Lorenzo Thoightful.png";
 
 import eberhardNeutral from "../../art assets/NPC Images/Eberhard Captain/Eberhard Neutral.png";
-import eberhardConcerned from "../../art assets/NPC Images/Eberhard Captain/Eberhard Concerned.jpg";
+import eberhardConcerned from "../../art assets/NPC Images/Eberhard Captain/Eberhard Concerned.png";
 import eberhardDispleased from "../../art assets/NPC Images/Eberhard Captain/Eberhard Displeased.png";
 import eberhardHappy from "../../art assets/NPC Images/Eberhard Captain/Eberhard Happy.png";
 import eberhardThoughtful from "../../art assets/NPC Images/Eberhard Captain/Eberhard Thoughtful .png";
