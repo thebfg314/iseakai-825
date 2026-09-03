@@ -342,7 +342,7 @@ describe("auto-assign leftover onto works", () => {
       s.population.youths = 0;
     });
     state.projects.push(
-      project({ id: "mill-1", key: "flour_mill", name: "Flour mill", labourDaysRequired: 40, labourDaysDone: 10 }),
+      project({ id: "mill-1", key: "flour_mill", name: "Flour mill", labourDaysRequired: 200, labourDaysDone: 10 }),
       project({
         id: "hunt-1",
         key: GERULF_HUNT_KEY,
