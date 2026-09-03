@@ -350,7 +350,40 @@
         "status": { "enum": ["active", "completed", "cancelled"] },
         "rush": { "type": "boolean" },
         "tag": { "type": "string" },
-        "notes": { "type": "string" }
+        "notes": { "type": "string" },
+        "hunt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "goods",
+            "resource",
+            "amount",
+            "quotedDenarii",
+            "escrowedDenarii",
+            "durationSeasons",
+            "seasonsElapsed"
+          ],
+          "properties": {
+            "goods": { "type": "string" },
+            "resource": { "type": "string" },
+            "amount": { "type": "number" },
+            "quotedDenarii": { "type": "number" },
+            "escrowedDenarii": { "type": "number" },
+            "durationSeasons": { "type": "integer" },
+            "seasonsElapsed": { "type": "integer" },
+            "riskNote": { "type": "string" },
+            "unit": { "type": "string" },
+            "customName": { "type": "string" },
+            "customUnit": { "type": "string" },
+            "priceMin": { "type": "number" },
+            "priceMax": { "type": "number" },
+            "tags": { "type": "array", "items": { "type": "string" } },
+            "customNotes": { "type": "string" },
+            "reportSpeech": { "type": "string" },
+            "reportEmotion": { "type": "string" },
+            "reported": { "type": "boolean" }
+          }
+        }
       }
     },
     "modifier": {

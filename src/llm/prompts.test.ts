@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
+import { GERULF_NOTES } from "../engine/hunts";
 import { MERCHANT_VISITORS } from "../engine/merchant";
 import { HIREABLE_SPECIALISTS } from "../engine/specialists";
 import { WorldStateSchema, type WorldState } from "../engine/schema";
 import {
   chaplainSystemPrompt,
   merchantSystemPrompt,
+  negotiatorSystemPrompt,
   npcSystemPrompt,
   npcUserPrompt,
   refereeSystemPrompt,
@@ -47,13 +49,14 @@ const HOUSEHOLD_NOTES = {
     "Proud of what the forge can do, honest about what it cannot but also enjoys technical challenges that stretch his skills. Iron and charcoal are usually short, so he hoards both. Speaks in short sentences but gets excited about new projects that he thinks will work.",
   chaplain:
     "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands.",
+  negotiator: GERULF_NOTES,
 } as const;
 
 describe("signed-off NPC personalities", () => {
-  it("keeps only Aldric, Bernard, and Ermenald at boot, with signed-off notes", () => {
+  it("keeps Aldric, Bernard, Ermenald, and Gerulf at boot, with signed-off notes", () => {
     const state = boot();
-    expect(state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain"]);
-    expect(state.npcs.map((n) => n.name)).toEqual(["Aldric", "Bernard", "Ermenald"]);
+    expect(state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain", "negotiator"]);
+    expect(state.npcs.map((n) => n.name)).toEqual(["Aldric", "Bernard", "Ermenald", "Gerulf"]);
     for (const npc of state.npcs) {
       expect(npc.notes).toBe(HOUSEHOLD_NOTES[npc.id as keyof typeof HOUSEHOLD_NOTES]);
     }
@@ -83,6 +86,14 @@ describe("signed-off NPC personalities", () => {
     expect(ermenald).toMatch(/feast days/i);
     expect(ermenald).toMatch(/where the man's soul stands/i);
     expect(ermenald).toMatch(/do not hire craftsmen/i);
+
+    const gerulf = negotiatorSystemPrompt();
+    expect(gerulf).toContain("You are Gerulf");
+    expect(gerulf).toMatch(/highly charismatic/i);
+    expect(gerulf).toMatch(/does not name a budget|YOU quote the denarii/i);
+    expect(gerulf).toMatch(/start_hunt/);
+    expect(gerulf).toMatch(/Aldric's world/i);
+    expect(npcSystemPrompt("negotiator")).toBe(gerulf);
   });
 
   it("puts each hireable specialist's notes and per-id prompt on the same personality", () => {

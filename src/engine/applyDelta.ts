@@ -10,6 +10,7 @@ import { labourPool, labourRemaining, refreshHarvestRisk } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
+import { isNegotiatorId, negotiatorAllowed, startHunt } from "./hunts";
 import {
   hireSummary,
   isEstateSmithNpc,
@@ -206,6 +207,12 @@ export function applyProposal(
     const blocked = merchantAllowed(state, proposal);
     if (blocked) return fail(state, blocked, `REJECT merchant ${proposal.type}: ${blocked}`);
   }
+  if (isNegotiatorId(actor)) {
+    const blocked = negotiatorAllowed(state, proposal);
+    if (blocked) return fail(state, blocked, `REJECT negotiator ${proposal.type}: ${blocked}`);
+  } else if (proposal.type === "start_hunt") {
+    return fail(state, "Only Gerulf walks the roads for scarce goods.", `REJECT ${actor} start_hunt: not Gerulf`);
+  }
   const specialistActor = specialistById(actor);
   if (specialistActor) {
     const blocked = specialistAllowed(state, proposal, specialistActor);
@@ -240,6 +247,11 @@ export function applyProposal(
       return registerNpc(state, proposal);
     case "event_effect":
       return eventEffect(state, proposal, actor);
+    case "start_hunt": {
+      const r = startHunt(state, proposal);
+      if (!r.ok) return fail(state, r.reason, r.logLine);
+      return ok(state, r.logLine);
+    }
     default:
       return fail(state, "Unknown proposal type.", "REJECT unknown type");
   }

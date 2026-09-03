@@ -45,6 +45,13 @@ import { introAlreadySpoken, introSpeechFor, markIntroSpoken } from "../engine/i
 import { recordConfirmedTransaction } from "../engine/memory";
 import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import {
+  ensureGerulfInHousehold,
+  isNegotiatorId,
+  NEGOTIATOR_ID,
+  normalizeHuntProposal,
+  pendingHuntReports,
+} from "../engine/hunts";
+import {
   hireSummary,
   isEstateSmithNpc,
   matchHireableSpecialist,
@@ -73,6 +80,7 @@ export class GameController {
     steward: "respectful",
     smith: "neutral",
     chaplain: "neutral",
+    negotiator: "neutral",
   };
   meter = new LlmMeterStore("rfab");
 
@@ -86,6 +94,7 @@ export class GameController {
     if (!this.state.agriculture) {
       this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
     }
+    ensureGerulfInHousehold(this.state);
     this.speakIntroIfNeeded("steward");
     this.messages.push({
       id: newId("msg"),
@@ -250,7 +259,7 @@ export class GameController {
         ? "You are visiting only this season. Request the merchant drawer if you need cart stock. Buy only from that stock. Sell any estate resource except denarii."
         : undefined;
     const scrapUser = npcUserPrompt(this.state, npcId, playerText, extra);
-    const order = looksLikeMechanicalOrder(playerText);
+    const order = looksLikeMechanicalOrder(playerText, npcId);
     try {
       const spoken = await this.callLlm(
         [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
@@ -308,7 +317,7 @@ export class GameController {
           requireProposals: true,
           allowRepair: true,
           repairHint:
-            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, or register_npc) with real numbers.",
+            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, register_npc, or start_hunt) with real numbers.",
         });
 
         const missing = missingCitedDrawers(books.proposals, fetched);
@@ -414,7 +423,10 @@ export class GameController {
   ) {
     if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
-    let proposals = dropHireFeeDuplicates(parsed.proposals.map(ensureSummary));
+    let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
+    if (isNegotiatorId(npcId)) {
+      proposals = proposals.filter((p) => p.type === "start_hunt").map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
+    }
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
     let fromEngine = false;
     if (!proposals.length) {
@@ -439,7 +451,7 @@ export class GameController {
       this.ledgerNote(`No mechanical change was applied (${parsed.parseErrors[0]}). The books are unchanged.`, npcId);
       return;
     }
-    if (looksLikeMechanicalOrder(playerText)) {
+    if (looksLikeMechanicalOrder(playerText, npcId)) {
       const why = cannotFulfillReason(this.state, npcId, playerText);
       this.ledgerNote(
         why
@@ -550,6 +562,7 @@ export class GameController {
     const beforeSeason = cloneState(this.state);
     const ledgerBefore = snapshotSeasonLedger(beforeSeason);
     effects.push(...resolveAgricultureAndProjects(this.state));
+    this.speakHuntReturns();
     syncTradeFromFeatures(this.state);
     const roll = rollSeasonEvents(this.state);
     const incoming = nextSeason(this.state.meta.year, this.state.meta.season);
@@ -666,6 +679,21 @@ export class GameController {
     for (const ev of rolled) {
       if (covered.has(ev.id)) continue;
       this.applyEventStub(ev, effects, "Default effect");
+    }
+  }
+
+  private speakHuntReturns() {
+    for (const report of pendingHuntReports(this.state)) {
+      this.npcEmotions[NEGOTIATOR_ID] = report.emotion;
+      this.messages.push({
+        id: newId("msg"),
+        role: "npc",
+        npcId: NEGOTIATOR_ID,
+        npcName: this.npcName(NEGOTIATOR_ID),
+        text: report.text,
+        emotion: report.emotion,
+        at: new Date().toISOString(),
+      });
     }
   }
 
@@ -787,6 +815,9 @@ function fillProposalDefaults(state: WorldState, p: MechanicalProposal): Mechani
       };
     }
   }
+  if (p.type === "start_hunt") {
+    return normalizeHuntProposal(state, p);
+  }
   return p;
 }
 
@@ -842,6 +873,20 @@ function dropHireFeeDuplicates(proposals: MechanicalProposal[]): MechanicalPropo
       p.type === "transfer_resources" &&
       (p.resource === "rye" || p.resource === "wheat" || p.resource === "barley" || p.resource === "oats") &&
       p.direction === "consume"
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function dropHuntFeeDuplicates(proposals: MechanicalProposal[]): MechanicalProposal[] {
+  if (!proposals.some((p) => p.type === "start_hunt")) return proposals;
+  return proposals.filter((p) => {
+    if (
+      p.type === "transfer_resources" &&
+      p.resource === "denarii" &&
+      (p.direction === "consume" || p.direction === "buy")
     ) {
       return false;
     }

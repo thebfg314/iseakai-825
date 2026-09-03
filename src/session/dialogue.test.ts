@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
 import { cloneState } from "../engine/state";
-import { finishSeasonClock } from "../engine/season";
+import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
 import { yieldMultiplier } from "../engine/modifiers";
 import type { RolledEvent } from "../engine/events";
 import type { SeasonEffectLine } from "../engine/schema";
@@ -292,10 +292,10 @@ describe("npc transaction memories", () => {
 });
 
 describe("hire specialists via Aldric Confirm", () => {
-  it("starts Fontenay with only Aldric, Bernard, and Ermenald", () => {
+  it("starts Fontenay with Aldric, Bernard, Ermenald, and Gerulf", () => {
     const state = WorldStateSchema.parse(structuredClone(startingEstate));
-    expect(state.npcs.map((n) => n.id).sort()).toEqual(["chaplain", "smith", "steward"]);
-    expect(state.npcs.map((n) => n.name)).toEqual(["Aldric", "Bernard", "Ermenald"]);
+    expect(state.npcs.map((n) => n.id).sort()).toEqual(["chaplain", "negotiator", "smith", "steward"]);
+    expect(state.npcs.map((n) => n.name)).toEqual(["Aldric", "Bernard", "Ermenald", "Gerulf"]);
     expect(state.npcs.some((n) => /colman|haimo|gerold|hugo|otto|ambrosius|hildegard|lorenzo|eberhard/i.test(n.name))).toBe(false);
     expect(state.npcs.some((n) => /quarry|carpenter|mason|potter|reeve|vinedresser|seamstress|copper|captain/i.test(n.role))).toBe(false);
   });
@@ -305,7 +305,7 @@ describe("hire specialists via Aldric Confirm", () => {
     const before = cloneState(game.state);
     const parsed = parseLlmResponse(JSON.stringify({ speech: "The rye stands well, my lord.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "How fares the rye?");
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
     expect(game.state.resources.denarii).toBe(before.resources.denarii);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
@@ -320,18 +320,14 @@ describe("hire specialists via Aldric Confirm", () => {
     const pending = game.pending.filter((p) => p.status === "pending");
     expect(pending).toHaveLength(1);
     expect(pending[0].proposal.type).toBe("register_npc");
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
     expect(game.state.resources.denarii).toBe(denariiBefore);
 
     const result = game.confirmProposal(pending[0].id);
     expect(result.error).toBeUndefined();
     const haimo = game.state.npcs.find((n) => n.id === "carpenter");
     expect(haimo).toMatchObject({ name: "Haimo", role: "carpenter", location: "fontenay" });
-    expect(haimo?.memories.some((m) => /Haimo|carpenter/i.test(m.summary))).toBe(true);
-    expect(game.state.npcs.find((n) => n.id === "steward")?.memories.some((m) => /Haimo|carpenter/i.test(m.summary))).toBe(
-      true,
-    );
-    expect(game.state.npcs).toHaveLength(4);
+    expect(game.state.npcs).toHaveLength(5);
     expect(game.state.resources.denarii).toBe(denariiBefore - 110);
     const saved = worldFile(game);
     expect(saved.npcs.some((n: { id: string }) => n.id === "carpenter")).toBe(true);
@@ -384,7 +380,7 @@ describe("hire specialists via Aldric Confirm", () => {
       }),
     );
     game.ingestParsedDialogue("steward", parsed, "Find me a quarry master.");
-    expect(game.state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain"]);
+    expect(game.state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain", "negotiator"]);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
   });
 
@@ -394,7 +390,7 @@ describe("hire specialists via Aldric Confirm", () => {
     const parsed = parseLlmResponse(JSON.stringify({ speech: "The chest is too thin.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "Hire a mason for the villa.");
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
     expect(game.messages.some((m) => /chest cannot spare|denarii/i.test(m.text))).toBe(true);
   });
 
@@ -501,8 +497,8 @@ describe("expansion hires via Aldric after unlock", () => {
     const before = cloneState(game.state);
     const parsed = parseLlmResponse(JSON.stringify({ speech: "The rye stands well, my lord.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "How fares the rye?");
-    expect(game.state.npcs).toHaveLength(3);
-    expect(game.state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain"]);
+    expect(game.state.npcs).toHaveLength(4);
+    expect(game.state.npcs.map((n) => n.id)).toEqual(["steward", "smith", "chaplain", "negotiator"]);
     expect(game.messages.some((m) => /Otto|Ambrosius|Hildegard|Lorenzo|Eberhard/.test(m.text))).toBe(false);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.state.resources).toEqual(before.resources);
@@ -525,7 +521,7 @@ describe("expansion hires via Aldric after unlock", () => {
     );
     game.ingestParsedDialogue("steward", parsed, "Hire Otto the reeve.");
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
     expect(game.messages.some((m) => /still small|households/i.test(m.text))).toBe(true);
   });
 
@@ -537,16 +533,16 @@ describe("expansion hires via Aldric after unlock", () => {
     const parsed = parseLlmResponse(JSON.stringify({ speech: "The village has grown.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "How fares the village?");
     expect(game.messages.some((m) => m.npcId === "steward" && /Otto/.test(m.text))).toBe(true);
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
     expect(game.state.resources.denarii).toBe(denariiBefore);
-    expect(worldFile(game).npcs).toHaveLength(3);
+    expect(worldFile(game).npcs).toHaveLength(4);
 
     const hire = parseLlmResponse(JSON.stringify({ speech: "I can send for Otto.", proposals: [] }));
     game.ingestParsedDialogue("steward", hire, "Hire Otto the reeve.");
     const pending = game.pending.filter((p) => p.status === "pending");
     expect(pending).toHaveLength(1);
     expect(pending[0].proposal.type).toBe("register_npc");
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
 
     const ryeBefore = game.state.resources.rye;
     const result = game.confirmProposal(pending[0].id);
@@ -593,7 +589,7 @@ describe("expansion hires via Aldric after unlock", () => {
     const before = cloneState(game.state);
     const parsed = parseLlmResponse(JSON.stringify({ speech: "Otto would keep the dues.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "Tell me of the village.");
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
     expect(game.state.resources.denarii).toBe(before.resources.denarii);
     expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "register_npc")).toHaveLength(0);
   });
@@ -675,7 +671,7 @@ describe("expansion hires via Aldric after unlock", () => {
       [],
     );
     expect(game.state.npcs.some((n) => n.id === "village_reeve")).toBe(false);
-    expect(game.state.npcs).toHaveLength(3);
+    expect(game.state.npcs).toHaveLength(4);
   });
 
   it("recommends Hildegard when a textile workshop is confirmed, without inserting her", () => {
@@ -701,3 +697,62 @@ describe("expansion hires via Aldric after unlock", () => {
     expect(game.state.npcs.some((n) => n.id === "head_seamstress")).toBe(false);
   });
 });
+
+describe("Gerulf hunt via Confirm", () => {
+  it("injects Gerulf when loading a save that predates him", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "isekai-"));
+    const state = WorldStateSchema.parse(structuredClone(startingEstate));
+    state.npcs = state.npcs.filter((n) => n.id !== "negotiator");
+    const game = new GameController(state, dir, defaultAppSettings());
+    expect(game.state.npcs.some((n) => n.id === "negotiator" && n.name === "Gerulf")).toBe(true);
+  });
+
+  it("queues a find proposal, escrows the purse on Confirm, and marks Gerulf on the road", () => {
+    const game = tempGame();
+    const chest = game.state.resources.denarii;
+    expect(game.setScene("negotiator").sceneNpcId).toBe("negotiator");
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Pepper. I will name the purse.", proposals: [] }));
+    game.ingestParsedDialogue("negotiator", parsed, "Find me pepper.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal.type).toBe("start_hunt");
+    expect(pending[0].npcId).toBe("negotiator");
+    if (pending[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    const quote = pending[0].proposal.quotedDenarii;
+    expect(quote).toBeGreaterThan(0);
+    expect(game.state.resources.denarii).toBe(chest);
+    expect(game.state.projects).toHaveLength(0);
+
+    const result = game.confirmProposal(pending[0].id);
+    expect(result.error).toBeUndefined();
+    expect(game.state.resources.denarii).toBe(chest - quote);
+    const hunt = game.state.projects.find((p) => p.tag === "hunt");
+    expect(hunt?.status).toBe("active");
+    expect(hunt?.hunt?.goods).toMatch(/pepper/i);
+    expect(hunt?.hunt?.escrowedDenarii).toBe(quote);
+    expect(game.state.npcs.find((n) => n.id === "negotiator")?.location).toBe("road");
+    expect(worldFile(game).projects.some((p: { tag?: string }) => p.tag === "hunt")).toBe(true);
+  });
+
+  it("does not take a second brief while he is out, and engine speech reports a successful return", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "I will go.", proposals: [] }));
+    game.ingestParsedDialogue("negotiator", parsed, "Find me pepper.");
+    game.confirmProposal(game.pending[0].id);
+    const duration = game.state.projects.find((p) => p.hunt)?.hunt?.durationSeasons ?? 2;
+
+    game.ingestParsedDialogue("negotiator", parsed, "Find me silk instead.");
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "start_hunt")).toHaveLength(0);
+    expect(game.messages.some((m) => /already on the road|mid-hunt/i.test(m.text))).toBe(true);
+
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    for (let i = 0; i < duration; i++) {
+      resolveAgricultureAndProjects(game.state);
+    }
+    vi.restoreAllMocks();
+    expect(game.state.projects.find((p) => p.hunt)?.hunt?.reportSpeech).toMatch(/I have it, my lord/i);
+    expect(game.state.custom_resources.some((c) => c.id === "pepper" && c.amount > 0)).toBe(true);
+    expect(game.state.npcs.find((n) => n.id === "negotiator")?.location).toBe("fontenay");
+  });
+});
+

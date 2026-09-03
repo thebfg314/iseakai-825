@@ -189,6 +189,29 @@ export const ProjectSchema = z.object({
   rush: z.boolean().optional(),
   tag: z.string().optional(),
   notes: z.string().optional(),
+  /** Gerulf road-hunt: time and a purse, not labour-days. */
+  hunt: z
+    .object({
+      goods: z.string(),
+      resource: z.string(),
+      amount: z.number(),
+      quotedDenarii: z.number(),
+      escrowedDenarii: z.number(),
+      durationSeasons: z.number().int(),
+      seasonsElapsed: z.number().int(),
+      riskNote: z.string().optional(),
+      unit: z.string().optional(),
+      customName: z.string().optional(),
+      customUnit: z.string().optional(),
+      priceMin: z.number().optional(),
+      priceMax: z.number().optional(),
+      tags: z.array(z.string()).optional(),
+      customNotes: z.string().optional(),
+      reportSpeech: z.string().optional(),
+      reportEmotion: z.string().optional(),
+      reported: z.boolean().optional(),
+    })
+    .optional(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
@@ -328,6 +351,7 @@ export const PROPOSAL_TYPES = [
   "register_feature",
   "register_npc",
   "event_effect",
+  "start_hunt",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -463,6 +487,23 @@ export const EventEffectProposalSchema = ProposalBase.extend({
   moodDelta: z.coerce.number().optional(),
 });
 
+export const StartHuntProposalSchema = ProposalBase.extend({
+  type: z.literal("start_hunt"),
+  goods: z.string(),
+  resource: z.string(),
+  amount: z.coerce.number().positive(),
+  quotedDenarii: z.coerce.number().positive(),
+  durationSeasons: z.coerce.number().int().min(1).max(8),
+  riskNote: z.string().optional(),
+  unit: z.string().optional(),
+  customName: z.string().optional(),
+  customUnit: z.string().optional(),
+  priceMin: z.coerce.number().optional(),
+  priceMax: z.coerce.number().optional(),
+  tags: z.array(z.string()).optional(),
+  customNotes: z.string().optional(),
+});
+
 export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   AssignLabourProposalSchema,
   SetStandingOrderProposalSchema,
@@ -476,6 +517,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   RegisterFeatureProposalSchema,
   RegisterNpcProposalSchema,
   EventEffectProposalSchema,
+  StartHuntProposalSchema,
 ]);
 
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
@@ -490,6 +532,7 @@ export type RegisterResourceProposal = z.infer<typeof RegisterResourceProposalSc
 export type RegisterFeatureProposal = z.infer<typeof RegisterFeatureProposalSchema>;
 export type RegisterNpcProposal = z.infer<typeof RegisterNpcProposalSchema>;
 export type EventEffectProposal = z.infer<typeof EventEffectProposalSchema>;
+export type StartHuntProposal = z.infer<typeof StartHuntProposalSchema>;
 
 export type MechanicalProposal =
   | AssignLabourProposal
@@ -503,7 +546,8 @@ export type MechanicalProposal =
   | RegisterResourceProposal
   | RegisterFeatureProposal
   | RegisterNpcProposal
-  | EventEffectProposal;
+  | EventEffectProposal
+  | StartHuntProposal;
 
 export const LlmResponseSchema = z.object({
   speech: z.string(),

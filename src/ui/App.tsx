@@ -4,6 +4,7 @@ import type { ChatMessage, PendingProposal } from "../engine/schema";
 import { CANONICAL_RESOURCES } from "../engine/schema";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { isCoreHouseholdId } from "../engine/specialists";
+import { huntProgressLine } from "../engine/hunts";
 import type { AldricEmotion } from "../engine/emotion";
 import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
@@ -351,6 +352,15 @@ export function App() {
             >
               Chaplain · Ermenald
             </button>
+            {view.state.npcs.some((n) => n.id === "negotiator") && (
+              <button
+                className={view.sceneNpcId === "negotiator" ? "active" : ""}
+                title="Speak with Gerulf"
+                onClick={() => withBusy(() => window.api.setScene("negotiator"))}
+              >
+                Negotiator · Gerulf
+              </button>
+            )}
             {view.state.npcs
               .filter((n) => !isCoreHouseholdId(n.id))
               .map((n) => (
@@ -574,7 +584,15 @@ function Ledger({ view }: { view: GameView }) {
       {s.projects
         .filter((p) => p.status === "active")
         .map((p) => (
-          <Row key={p.id} k={p.name} v={projectProgressLine(p.labourDaysDone, p.labourDaysRequired)} />
+          <Row
+            key={p.id}
+            k={p.name}
+            v={
+              p.hunt
+                ? huntProgressLine(p.hunt.seasonsElapsed, p.hunt.durationSeasons)
+                : projectProgressLine(p.labourDaysDone, p.labourDaysRequired)
+            }
+          />
         ))}
       <details>
         <summary>Known works</summary>
@@ -812,6 +830,12 @@ function composerPlaceholder(view: GameView): string {
       return "Tell Bernard what you want of the forge…";
     case "chaplain":
       return "Speak with Father Ermenald of the cell…";
+    case "negotiator": {
+      const away = view.state.projects.some((p) => p.status === "active" && Boolean(p.hunt));
+      return away
+        ? "Gerulf is on the road — check in, or wait until he returns…"
+        : "Name a scarce thing; Gerulf will quote the purse and the time…";
+    }
     case "merchant":
       return `Haggle with ${view.state.merchant.name ?? "the merchant"} over the carts…`;
     case "quarry_master":

@@ -26,6 +26,8 @@ export const HOUSEHOLD_INTROS: Record<string, string> = {
     "Lorenzo, from Lombardy — copper, not Bernard's iron, thank you. Always behind, always busy, but for you I make time. What does my lord need from the soft metal?",
   captain:
     "Eberhard. I've seen enough of war to prefer a quiet watch — and enough to keep my edge if trouble comes. Point me at the gate. Parade dress can wait.",
+  negotiator:
+    "My name Gerulf, my lord. If the merchants on the road do not carry it, I will. Name the thing you want, and I will say what it costs and how long I need — then I go looking. Do not send me for barley; that is Aldric's world.",
 };
 
 export const MERCHANT_INTROS: Record<string, string> = {

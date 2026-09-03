@@ -5,6 +5,7 @@ import { modifiersFor, applyMultiplyAdd, moodFactor, tickModifiers, yieldMultipl
 import { projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
+import { resolveHunts } from "./hunts";
 import { nextSeason, round0, round1 } from "./util";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
@@ -136,6 +137,7 @@ function livestockSeason(state: WorldState): string[] {
 function advanceProjects(state: WorldState): string[] {
   const notes: string[] = [];
   for (const proj of state.projects.filter((p) => p.status === "active")) {
+    if (proj.tag === "hunt" || proj.hunt) continue;
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
       notes.push(`${proj.name}: no labour assigned this season.`);
@@ -206,6 +208,7 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   }
   livestockSeason(state).forEach(add);
   advanceProjects(state).forEach(add);
+  resolveHunts(state).forEach(add);
   return lines;
 }
 
