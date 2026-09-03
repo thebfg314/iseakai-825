@@ -63,6 +63,7 @@ import {
   specialistHireGrainRation,
   specialistNpc,
 } from "../engine/specialists";
+import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -76,6 +77,8 @@ export class GameController {
   historyTail: string[] = [];
   /** In-memory: expansion hires already recommended this session. Does not write world-state. */
   recommendedHireIds = new Set<string>();
+  /** Pending card the lord asked about; next talk with that NPC can revise it. */
+  askedAboutId: string | null = null;
   npcEmotions: Record<string, AldricEmotion> = {
     steward: "respectful",
     smith: "neutral",
@@ -207,6 +210,30 @@ export class GameController {
     return this.view();
   }
 
+  askAboutProposal(id: string): GameView & { error?: string } {
+    const item = this.pending.find((p) => p.id === id && p.status === "pending");
+    if (!item) return { ...this.view(), error: "No such pending proposal." };
+    this.setScene(item.npcId);
+    if (this.sceneNpcId !== item.npcId) {
+      return { ...this.view(), error: "They are not here to speak with." };
+    }
+    this.askedAboutId = item.id;
+    this.messages.push({
+      id: newId("msg"),
+      role: "system",
+      npcId: item.npcId,
+      text: askAboutCue(this.npcName(item.npcId), item.proposal),
+      aside: true,
+      at: new Date().toISOString(),
+    });
+    return this.view();
+  }
+
+  private discussedPending(npcId: string): PendingProposal | undefined {
+    if (!this.askedAboutId) return undefined;
+    return this.pending.find((p) => p.id === this.askedAboutId && p.status === "pending" && p.npcId === npcId);
+  }
+
   log(actor: string, kind: "APPLY" | "REJECT" | "EVENT" | "CHAT" | "SEASON", summary: string) {
     const line = appendHistory(this.saveDir, this.state, actor, kind, summary);
     this.historyTail.push(line);
@@ -254,12 +281,16 @@ export class GameController {
 
     const speechSystem = npcSystemPrompt(npcId, this.state, { speechOnly: true });
     const system = npcSystemPrompt(npcId, this.state);
-    const extra =
+    const discussed = this.discussedPending(npcId);
+    const extraBits = [
       npcId === "merchant"
         ? "You are visiting only this season. Request the merchant drawer if you need cart stock. Buy only from that stock. Sell any estate resource except denarii."
-        : undefined;
+        : undefined,
+      discussed ? pendingOfferScrap(discussed.proposal) : undefined,
+    ].filter(Boolean);
+    const extra = extraBits.length ? extraBits.join("\n\n") : undefined;
     const scrapUser = npcUserPrompt(this.state, npcId, playerText, extra);
-    const order = looksLikeMechanicalOrder(playerText, npcId);
+    const order = looksLikeMechanicalOrder(playerText, npcId) || Boolean(discussed);
     try {
       const spoken = await this.callLlm(
         [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
@@ -311,7 +342,7 @@ export class GameController {
           { role: "system", content: system },
           { role: "user", content: booksUser },
           { role: "assistant", content: answer.raw },
-          { role: "user", content: npcBooksFollowUp(playerText) },
+          { role: "user", content: npcBooksFollowUp(playerText, discussed ? compactOfferLine(discussed.proposal) : undefined) },
         ];
         let books = await this.callLlm(booksMessages, 900, {
           requireProposals: true,
@@ -405,14 +436,24 @@ export class GameController {
     });
   }
 
-  queueProposal(npcId: string, proposal: MechanicalProposal) {
+  queueProposal(npcId: string, proposal: MechanicalProposal, replaceId?: string): PendingProposal {
     const filled = fillProposalDefaults(this.state, proposal);
-    this.pending.push({
-      id: filled.id ?? newId("prop"),
+    const item: PendingProposal = {
+      id: filled.id && filled.id !== replaceId ? filled.id : newId("prop"),
       npcId,
       proposal: { ...filled, id: filled.id },
       status: "pending",
-    });
+    };
+    if (replaceId) {
+      const idx = this.pending.findIndex((p) => p.id === replaceId && p.status === "pending");
+      if (idx >= 0) {
+        this.pending[idx] = item;
+        if (this.askedAboutId === replaceId) this.askedAboutId = item.id;
+        return item;
+      }
+    }
+    this.pending.push(item);
+    return item;
   }
 
   /** Testable: parse result → pending queue and ledger notes. Does not call the model. */
@@ -436,7 +477,18 @@ export class GameController {
         fromEngine = true;
       }
     }
-    for (const p of proposals) this.queueProposal(npcId, p);
+    const asked = this.discussedPending(npcId);
+    let replaceId = asked?.id;
+    let askedProposal = asked?.proposal;
+    for (const p of proposals) {
+      if (replaceId && askedProposal && isRevisionOf(askedProposal, p)) {
+        const queued = this.queueProposal(npcId, p, replaceId);
+        replaceId = queued.id;
+        askedProposal = queued.proposal;
+      } else {
+        this.queueProposal(npcId, p);
+      }
+    }
     if (proposals.length) {
       const n = proposals.length;
       this.ledgerNote(
@@ -537,6 +589,7 @@ export class GameController {
     }
     this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? result.logLine : result.reason ?? result.logLine);
     this.ledgerNote(result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
+    if (this.askedAboutId === id) this.askedAboutId = null;
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, result.logLine);
       this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
@@ -551,6 +604,7 @@ export class GameController {
       item.rejectReason = "Player rejected";
       this.log(item.npcId, "REJECT", item.proposal.summary);
       this.ledgerNote(`You declined: ${item.proposal.summary}`, item.npcId);
+      if (this.askedAboutId === id) this.askedAboutId = null;
     }
     return this.view();
   }
@@ -558,6 +612,7 @@ export class GameController {
   async advanceSeason(): Promise<SeasonResult> {
     const effects: SeasonEffectLine[] = [];
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
+    this.askedAboutId = null;
 
     const beforeSeason = cloneState(this.state);
     const ledgerBefore = snapshotSeasonLedger(beforeSeason);

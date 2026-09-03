@@ -581,6 +581,8 @@ export type ChatMessage = {
   text: string;
   chronicle?: string;
   emotion?: string;
+  /** Quiet in-world aside (Ask about cue), not a ledger note. */
+  aside?: boolean;
   at: string;
 };
 
