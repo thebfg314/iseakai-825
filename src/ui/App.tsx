@@ -16,7 +16,6 @@ import { hudInkLine, hudInkTitle, settingsInkLines } from "./scribeInk";
 import {
   BOOKS_TITLE,
   CONFIRM_HELP,
-  HARVEST_RISK_LINE,
   HUNGER_LINE,
   confirmBanner,
   featuresSentence,
@@ -509,7 +508,6 @@ function Ledger({ view }: { view: GameView }) {
         <p className="flag">{merchantPresentLine(s.merchant.name)}</p>
       )}
       {s.flags.hunger && <p className="flag warn">{HUNGER_LINE}</p>}
-      {s.labour.harvest_risk && <p className="flag warn">{HARVEST_RISK_LINE}</p>}
 
       <h3>Chest and people</h3>
       <Row k="Denarii" v={formatLedgerNumber(s.resources.denarii)} delta={d("denarii")} />

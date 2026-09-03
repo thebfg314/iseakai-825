@@ -38,21 +38,6 @@ export function labourRemaining(state: WorldState): LabourPool {
   };
 }
 
-export function maleShareUsed(state: WorldState): number {
-  const pool = labourPool(state);
-  if (pool.men <= 0) return 0;
-  return labourUsed(state).men / pool.men;
-}
-
-export function refreshHarvestRisk(state: WorldState): void {
-  const season = state.meta.season;
-  if (season === "winter") {
-    state.labour.harvest_risk = false;
-    return;
-  }
-  state.labour.harvest_risk = maleShareUsed(state) > 0.8;
-}
-
 export function labourDaysFromAssignment(
   kind: "mostly_men" | "men_women" | "mixed",
   men: number,

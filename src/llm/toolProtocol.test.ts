@@ -63,6 +63,16 @@ describe("engine drawers from live WorldState", () => {
     expect(Object.keys(pack)).toEqual(["grain"]);
   });
 
+  it("reports remaining extra days without an assignment harvest_risk flag", () => {
+    const state = boot();
+    const pack = collectDrawers(state, ["labour"]);
+    expect(pack.labour).toMatchObject({
+      remaining: { men: 180, women: 130, youths: 27 },
+      assigned: [],
+    });
+    expect(pack.labour).not.toHaveProperty("harvest_risk");
+  });
+
   it("maps rye to grain and denarii to chest", () => {
     expect(drawerForResource("rye")).toBe("grain");
     expect(drawerForResource("denarii")).toBe("chest");
