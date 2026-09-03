@@ -6,7 +6,7 @@ import {
   type WorldState,
 } from "./schema";
 import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
-import { labourPool, labourRemaining } from "./labour";
+import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRemaining } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
@@ -289,7 +289,12 @@ function assignLabour(
   } else {
     state.labour.assigned.push({ projectId: p.projectId, men: p.men, women: p.women, youths: p.youths });
   }
-  return ok(state, `Assigned labour to ${p.projectId}: ${p.men} men, ${p.women} women, ${p.youths} youths.`);
+  autoAssignLeftoverToProject(state, p.projectId);
+  const final = state.labour.assigned.find((a) => a.projectId === p.projectId);
+  const proj = state.projects.find((x) => x.id === p.projectId);
+  const work = proj?.name ?? "the work";
+  const sentence = labourCalledSentence(work, final?.men ?? 0, final?.women ?? 0, final?.youths ?? 0);
+  return ok(state, sentence || `Hands set on ${work}.`);
 }
 
 function setStandingOrder(
@@ -348,7 +353,10 @@ function startProject(
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
   });
-  return ok(state, `Started project ${p.name ?? catalog?.name ?? p.projectKey} (${id}). Materials reserved.`);
+  const name = p.name ?? catalog?.name ?? p.projectKey;
+  const fill = autoAssignLeftoverToProject(state, id);
+  const started = `${name} is begun. Materials are reserved.`;
+  return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
 }
 
 function adjustProject(

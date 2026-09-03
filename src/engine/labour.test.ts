@@ -1,12 +1,31 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
-import { labourPool, labourRemaining } from "./labour";
+import {
+  autoAssignLeftoverToProject,
+  autoFillLeftoverLabour,
+  autoFillRoles,
+  labourDaysFromAssignment,
+  labourPool,
+  labourRemaining,
+  leftoverHeadsForNeed,
+  MOSTLY_MEN_WOMAN_ASSIST_DAYS,
+  pendingAssignLabourForNewProject,
+} from "./labour";
+import { GERULF_HUNT_KEY } from "./hunts";
 import { maxRisk, yieldMultiplier } from "./modifiers";
-import { WorldStateSchema, type WorldState } from "./schema";
+import { labourKindFor } from "./projectCatalog";
+import { WorldStateSchema, type Project, type WorldState } from "./schema";
+import { finishSeasonClock, resolveAgricultureAndProjects } from "./season";
 
-function boot(): WorldState {
-  return WorldStateSchema.parse(structuredClone(startingEstate));
+function boot(extra?: (s: WorldState) => void): WorldState {
+  const state = WorldStateSchema.parse(structuredClone(startingEstate));
+  state.resources.softwood = 40;
+  state.resources.hardwood = 40;
+  state.resources.iron = 200;
+  state.resources.stone = 40;
+  extra?.(state);
+  return state;
 }
 
 function withActiveProject(state: WorldState, id = "proj-scrub"): WorldState {
@@ -22,6 +41,18 @@ function withActiveProject(state: WorldState, id = "proj-scrub"): WorldState {
     status: "active",
   });
   return state;
+}
+
+function project(partial: Partial<Project> & Pick<Project, "id" | "key" | "name">): Project {
+  return {
+    holdingId: "fontenay",
+    labourDaysRequired: 40,
+    labourDaysDone: 0,
+    materials: { lumber: 0, iron: 0, stone: 0 },
+    materialsReserved: true,
+    status: "active",
+    ...partial,
+  };
 }
 
 describe("extra labour days and harvest risk", () => {
@@ -92,5 +123,275 @@ describe("extra labour days and harvest risk", () => {
     expect(state.labour.harvest_risk).toBe(false);
     expect(maxRisk(state, "harvest_risk")).toBe(0.2);
     expect(yieldMultiplier(state, "rye")).toBeCloseTo(before * 0.8, 8);
+  });
+});
+
+describe("constitution labour fill order", () => {
+  it("lists youths first only on mixed work", () => {
+    expect(autoFillRoles("mixed", "clear_scrub")).toEqual(["youths", "women", "men"]);
+    expect(autoFillRoles("mixed", "expand_orchard")).toEqual(["youths", "women", "men"]);
+    expect(autoFillRoles("men_women", "expand_vineyard")).toEqual(["women", "men"]);
+    expect(autoFillRoles("men_women", "textile_workshop")).toEqual(["women", "men", "youths"]);
+    expect(autoFillRoles("men_women", "pottery_kiln")).toEqual(["women", "men", "youths"]);
+    expect(autoFillRoles("mostly_men", "flour_mill")).toEqual(["men", "women"]);
+    expect(autoFillRoles("mostly_men", "quarry")).toEqual(["men"]);
+    expect(autoFillRoles("mostly_men", "wooden_tower")).toEqual(["men"]);
+    expect(autoFillRoles("mostly_men", "drain_swamp")).toEqual(["men"]);
+  });
+
+  it("mixed: youths, then women, then men, capped at remaining days", () => {
+    const added = leftoverHeadsForNeed("mixed", "clear_scrub", 10, { men: 80, women: 80, youths: 40 });
+    expect(added.youths).toBe(25);
+    expect(added.women).toBe(0);
+    expect(added.men).toBe(0);
+    expect(labourDaysFromAssignment("mixed", added.men, added.women, added.youths)).toBeGreaterThanOrEqual(10);
+    expect(added.youths + added.women + added.men).toBeLessThan(80);
+  });
+
+  it("mixed: after youths are spent, women then men fill the rest", () => {
+    const added = leftoverHeadsForNeed("mixed", "fish_pond", 20, { men: 10, women: 8, youths: 5 });
+    expect(added.youths).toBe(5);
+    expect(added.women).toBe(8);
+    expect(added.men).toBe(10);
+    expect(labourDaysFromAssignment("mixed", 10, 8, 5)).toBe(10 + 8 + 2);
+  });
+
+  it("men_women vineyard: women first, then men; no youths", () => {
+    const added = leftoverHeadsForNeed("men_women", "expand_vineyard", 12, { men: 20, women: 20, youths: 20 });
+    expect(added.women).toBe(12);
+    expect(added.men).toBe(0);
+    expect(added.youths).toBe(0);
+  });
+
+  it("men_women textile: women then men, youths only as leftover assist", () => {
+    const added = leftoverHeadsForNeed("men_women", "textile_workshop", 8, { men: 0, women: 5, youths: 20 });
+    expect(added.women).toBe(5);
+    expect(added.men).toBe(0);
+    expect(added.youths).toBe(8);
+    expect(labourDaysFromAssignment("men_women", 0, 5, 8)).toBeGreaterThanOrEqual(8);
+  });
+
+  it("mostly_men mill: men first; no youths; leftover men remain when they cover the days", () => {
+    const added = leftoverHeadsForNeed("mostly_men", "flour_mill", 10, { men: 80, women: 80, youths: 40 });
+    expect(added.men).toBe(10);
+    expect(added.women).toBe(0);
+    expect(added.youths).toBe(0);
+  });
+
+  it("mostly_men mill: does not dump women when leftover after men is still large", () => {
+    const added = leftoverHeadsForNeed("mostly_men", "flour_mill", 230, { men: 40, women: 80, youths: 40 });
+    expect(added.men).toBe(40);
+    expect(added.youths).toBe(0);
+    expect(added.women).toBe(0);
+    expect(230 - 40).toBeGreaterThan(MOSTLY_MEN_WOMAN_ASSIST_DAYS);
+  });
+
+  it("mostly_men: women only as small leftover assist, at 0.6", () => {
+    const added = leftoverHeadsForNeed("mostly_men", "flour_mill", 4, { men: 0, women: 20, youths: 20 });
+    expect(added.youths).toBe(0);
+    expect(added.men).toBe(0);
+    expect(added.women).toBe(7);
+    expect(labourDaysFromAssignment("mostly_men", 0, 7, 0)).toBeCloseTo(4.2);
+  });
+
+  it("mostly_men quarry / tower / swamp: men only", () => {
+    for (const key of ["quarry", "wooden_tower", "drain_swamp"] as const) {
+      const added = leftoverHeadsForNeed("mostly_men", key, 4, { men: 0, women: 20, youths: 20 });
+      expect(added).toEqual({ men: 0, women: 0, youths: 0 });
+    }
+  });
+});
+
+describe("auto-assign leftover onto works", () => {
+  it("Confirm mill calls leftover men, not youths, and leaves spare men idle", () => {
+    const state = boot((s) => {
+      s.population.adult_men = 20;
+      s.population.adult_women = 13;
+      s.population.youths = 9;
+    });
+    const result = applyProposal(
+      state,
+      { type: "start_project", summary: "Begin a flour mill", projectKey: "flour_mill", holdingId: "fontenay" },
+      "steward",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.logLine).not.toMatch(/proj-|\{|JSON|assign_labour/i);
+    expect(result.logLine).toMatch(/called/i);
+    const mill = state.projects.find((p) => p.key === "flour_mill");
+    expect(mill).toBeTruthy();
+    const assign = state.labour.assigned.find((a) => a.projectId === mill!.id);
+    expect(assign?.youths).toBe(0);
+    expect(assign?.men).toBeGreaterThan(0);
+    expect(labourRemaining(state).men).toBeGreaterThan(0);
+    expect(labourDaysFromAssignment("mostly_men", assign!.men, assign!.women, assign!.youths)).toBeLessThanOrEqual(
+      mill!.labourDaysRequired + 1e-9,
+    );
+  });
+
+  it("caps mixed scrub at the days still owed, youths first", () => {
+    const state = boot();
+    state.projects.push(project({ id: "scrub-1", key: "clear_scrub", name: "Clear scrub", labourDaysRequired: 10 }));
+    const fill = autoAssignLeftoverToProject(state, "scrub-1");
+    expect(fill?.added.youths).toBeGreaterThan(0);
+    expect(fill?.added.youths).toBe(25);
+    expect(fill?.added.women).toBe(0);
+    expect(fill?.added.men).toBe(0);
+    expect(fill?.sentence).toMatch(/youths/i);
+    expect(fill?.sentence).not.toMatch(/proj-|JSON/);
+  });
+
+  it("skips Gerulf hunts and merchant deals", () => {
+    const state = boot();
+    state.projects.push(
+      project({
+        id: "hunt-1",
+        key: GERULF_HUNT_KEY,
+        name: "Hunt: pepper",
+        tag: "hunt",
+        labourDaysRequired: 0,
+        hunt: {
+          goods: "pepper",
+          resource: "pepper",
+          amount: 1,
+          quotedDenarii: 42,
+          escrowedDenarii: 42,
+          durationSeasons: 2,
+          seasonsElapsed: 0,
+        },
+      }),
+    );
+    expect(autoAssignLeftoverToProject(state, "hunt-1")).toBeNull();
+    expect(autoFillLeftoverLabour(state)).toEqual([]);
+    expect(state.labour.assigned).toEqual([]);
+  });
+
+  it("does not overwrite an assignment already set this season; only tops up leftover", () => {
+    const state = boot();
+    state.projects.push(project({ id: "mill-1", key: "flour_mill", name: "Flour mill", labourDaysRequired: 230 }));
+    state.labour.assigned.push({ projectId: "mill-1", men: 6, women: 2, youths: 3 });
+    const fill = autoAssignLeftoverToProject(state, "mill-1");
+    expect(fill?.total.men).toBeGreaterThanOrEqual(6);
+    expect(fill?.total.women).toBe(2);
+    expect(fill?.total.youths).toBe(3);
+    expect(state.labour.assigned.find((a) => a.projectId === "mill-1")?.youths).toBe(3);
+  });
+
+  it("does not steal people already assigned to another project", () => {
+    const state = boot((s) => {
+      s.population.adult_men = 4;
+    });
+    state.projects.push(
+      project({ id: "a", key: "flour_mill", name: "Flour mill", labourDaysRequired: 230 }),
+      project({ id: "b", key: "clear_scrub", name: "Clear scrub", labourDaysRequired: 35 }),
+    );
+    state.labour.assigned.push({ projectId: "a", men: labourRemaining(state).men, women: 0, youths: 0 });
+    const menLeft = labourRemaining(state).men;
+    autoAssignLeftoverToProject(state, "b");
+    expect(state.labour.assigned.find((x) => x.projectId === "a")?.men).toBeGreaterThan(0);
+    expect(state.labour.assigned.find((x) => x.projectId === "b")?.men ?? 0).toBe(0);
+    expect(labourRemaining(state).men).toBe(menLeft);
+  });
+
+  it("fills oldest active labour work first after leftover remains", () => {
+    const state = boot((s) => {
+      s.population.adult_men = 2;
+      s.population.adult_women = 0;
+      s.population.youths = 0;
+    });
+    state.projects.push(
+      project({ id: "older", key: "flour_mill", name: "Flour mill", labourDaysRequired: 8 }),
+      project({ id: "newer", key: "palisade", name: "Palisade", labourDaysRequired: 70 }),
+    );
+    const notes = autoFillLeftoverLabour(state);
+    expect(notes.length).toBeGreaterThan(0);
+    const pool = 2 * 15;
+    expect(state.labour.assigned.find((a) => a.projectId === "older")?.men).toBe(8);
+    expect(state.labour.assigned.find((a) => a.projectId === "newer")?.men).toBe(pool - 8);
+  });
+
+  it("prefers an explicit assign_labour floor, then tops up leftover", () => {
+    const state = boot();
+    const started = applyProposal(
+      state,
+      { type: "start_project", summary: "Begin a flour mill", projectKey: "flour_mill", holdingId: "fontenay" },
+      "steward",
+    );
+    expect(started.ok).toBe(true);
+    const mill = state.projects.find((p) => p.key === "flour_mill")!;
+    const assigned = applyProposal(
+      state,
+      { type: "assign_labour", summary: "Ten men on the mill", projectId: mill.id, men: 10, women: 0, youths: 0 },
+      "steward",
+    );
+    expect(assigned.ok).toBe(true);
+    const row = state.labour.assigned.find((a) => a.projectId === mill.id)!;
+    expect(row.men).toBeGreaterThanOrEqual(10);
+    expect(row.youths).toBe(0);
+    expect(row.men).toBeGreaterThan(10);
+    expect(labourDaysFromAssignment("mostly_men", row.men, row.women, row.youths)).toBeLessThanOrEqual(
+      mill.labourDaysRequired + 1e-9,
+    );
+    expect(assigned.logLine).toMatch(/men/i);
+    expect(assigned.logLine).not.toMatch(mill.id);
+  });
+
+  it("season start tops up leftover onto unfinished works and still skips hunts", () => {
+    const state = boot((s) => {
+      s.population.adult_men = 3;
+      s.population.adult_women = 0;
+      s.population.youths = 0;
+    });
+    state.projects.push(
+      project({ id: "mill-1", key: "flour_mill", name: "Flour mill", labourDaysRequired: 40, labourDaysDone: 10 }),
+      project({
+        id: "hunt-1",
+        key: GERULF_HUNT_KEY,
+        name: "Hunt: pepper",
+        tag: "hunt",
+        hunt: {
+          goods: "pepper",
+          resource: "pepper",
+          amount: 1,
+          quotedDenarii: 42,
+          escrowedDenarii: 42,
+          durationSeasons: 2,
+          seasonsElapsed: 0,
+        },
+      }),
+    );
+    state.labour.assigned.push({ projectId: "mill-1", men: 2, women: 0, youths: 0 });
+    resolveAgricultureAndProjects(state);
+    const afterWork = state.labour.assigned.find((a) => a.projectId === "mill-1");
+    expect(afterWork?.men).toBeGreaterThanOrEqual(2);
+    expect(state.labour.assigned.some((a) => a.projectId === "hunt-1")).toBe(false);
+    finishSeasonClock(state);
+    expect(state.labour.assigned.some((a) => a.projectId === "hunt-1")).toBe(false);
+    const mill = state.projects.find((p) => p.id === "mill-1");
+    if (mill?.status === "active") {
+      expect(state.labour.assigned.find((a) => a.projectId === "mill-1")?.youths ?? 0).toBe(0);
+    }
+  });
+
+  it("matches a pending assign_labour to the new work when the id is not another active project", () => {
+    const sibling = pendingAssignLabourForNewProject(
+      [{ status: "pending", proposal: { type: "assign_labour", projectId: "new-mill", men: 10, women: 0, youths: 0 } }],
+      "proj-1",
+      new Set(["proj-1", "other"]),
+    );
+    expect(sibling?.men).toBe(10);
+    expect(
+      pendingAssignLabourForNewProject(
+        [{ status: "pending", proposal: { type: "assign_labour", projectId: "other", men: 4, women: 0, youths: 0 } }],
+        "proj-1",
+        new Set(["proj-1", "other"]),
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps labourKind conversion: women 0.6 on mostly_men, 1.0 otherwise; youths 0.4", () => {
+    expect(labourKindFor({ key: "flour_mill" } as Project)).toBe("mostly_men");
+    expect(labourDaysFromAssignment("mostly_men", 1, 1, 1)).toBeCloseTo(1 + 0.6 + 0.4);
+    expect(labourDaysFromAssignment("mixed", 1, 1, 1)).toBeCloseTo(1 + 1 + 0.4);
+    expect(labourDaysFromAssignment("men_women", 1, 1, 1)).toBeCloseTo(1 + 1 + 0.4);
   });
 });

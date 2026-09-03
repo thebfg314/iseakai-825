@@ -1,6 +1,7 @@
 import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } from "../engine/schema";
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
 import { lookupProject } from "../engine/projectCatalog";
+import { labourCalledPhrase } from "../engine/labour";
 import { matchHireableSpecialist } from "../engine/specialists";
 
 export const BOOKS_TITLE = "The books";
@@ -231,6 +232,11 @@ export function marketLine(resource: string, min: number, max: number): string {
   const verb = PLURAL_GOODS.has(resource) ? "fetch" : "fetches";
   if (min === max) return `${name} ${verb} ${min} denarii the ${unit}`;
   return `${name} ${verb} ${min}–${max} denarii the ${unit}`;
+}
+
+export function labourOnWorkLine(assign?: { men: number; women: number; youths: number } | null): string {
+  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra hands called this season";
+  return labourCalledPhrase(assign.men, assign.women, assign.youths);
 }
 
 export function projectProgressLine(done: number, required: number): string {

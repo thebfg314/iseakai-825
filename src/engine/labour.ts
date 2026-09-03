@@ -1,5 +1,5 @@
-import type { WorldState } from "./schema";
-import { LABOUR_MIDPOINTS } from "./projectCatalog";
+import type { LabourAssignment, Project, WorldState } from "./schema";
+import { LABOUR_MIDPOINTS, labourKindFor } from "./projectCatalog";
 import { modifiersFor, applyMultiplyAdd, moodFactor } from "./modifiers";
 
 export type LabourPool = {
@@ -7,6 +7,24 @@ export type LabourPool = {
   women: number;
   youths: number;
 };
+
+export type LabourKind = "mostly_men" | "men_women" | "mixed";
+
+export type LabourRole = keyof LabourPool;
+
+/**
+ * Constitution §4.3: women may only do small leftover assist on mostly-men
+ * heavy work (0.6 factor). Larger leftover waits for men next season.
+ */
+export const MOSTLY_MEN_WOMAN_ASSIST_DAYS = 6;
+
+/** Indoor / skilled craft where a few youths may assist after women and men. */
+export const LIGHT_YOUTH_ASSIST_KEYS = new Set(["textile_workshop", "pottery_kiln"]);
+
+/** Constitution §4.3: most dangerous / heaviest mostly-men works — no auto women. */
+export const MOSTLY_MEN_NO_WOMEN_KEYS = new Set(["quarry", "wooden_tower", "drain_swamp"]);
+
+const EMPTY_POOL: LabourPool = { men: 0, women: 0, youths: 0 };
 
 export function labourPool(state: WorldState): LabourPool {
   const mid = LABOUR_MIDPOINTS[state.meta.season];
@@ -39,7 +57,7 @@ export function labourRemaining(state: WorldState): LabourPool {
 }
 
 export function labourDaysFromAssignment(
-  kind: "mostly_men" | "men_women" | "mixed",
+  kind: LabourKind,
   men: number,
   women: number,
   youths: number,
@@ -47,4 +65,174 @@ export function labourDaysFromAssignment(
   const womanFactor = kind === "mostly_men" ? 0.6 : 1;
   const youthFactor = 0.4;
   return men + women * womanFactor + youths * youthFactor;
+}
+
+export function isLabourDayProject(project: Project): boolean {
+  if (project.status !== "active") return false;
+  if (project.tag === "hunt" || project.hunt) return false;
+  return true;
+}
+
+export function projectDaysStillNeeded(project: Project): number {
+  return Math.max(0, project.labourDaysRequired - project.labourDaysDone);
+}
+
+/**
+ * Constitution §4.3 fill order for leftover extra days.
+ * mixed: youths, then women, then men.
+ * men_women: women, then men; youths last only on light craft (textile / pottery).
+ * mostly_men: men first; never youths; women only as small leftover assist, and
+ * not on quarry / tower / swamp drain.
+ */
+export function autoFillRoles(kind: LabourKind, projectKey: string): LabourRole[] {
+  if (kind === "mixed") return ["youths", "women", "men"];
+  if (kind === "men_women") {
+    return LIGHT_YOUTH_ASSIST_KEYS.has(projectKey) ? ["women", "men", "youths"] : ["women", "men"];
+  }
+  if (MOSTLY_MEN_NO_WOMEN_KEYS.has(projectKey)) return ["men"];
+  return ["men", "women"];
+}
+
+function coversNeed(kind: LabourKind, heads: LabourPool, remainingDays: number): boolean {
+  return labourDaysFromAssignment(kind, heads.men, heads.women, heads.youths) + 1e-9 >= remainingDays;
+}
+
+/**
+ * Extra heads (youths / women / men) to take from `available` so `already`
+ * plus the result covers `remainingDays`, without dumping surplus people.
+ */
+export function leftoverHeadsForNeed(
+  kind: LabourKind,
+  projectKey: string,
+  remainingDays: number,
+  available: LabourPool,
+  already: LabourPool = EMPTY_POOL,
+): LabourPool {
+  const added: LabourPool = { men: 0, women: 0, youths: 0 };
+  if (remainingDays <= 1e-9) return added;
+  const current: LabourPool = { ...already };
+  const pool: LabourPool = { ...available };
+  for (const role of autoFillRoles(kind, projectKey)) {
+    if (role === "women" && kind === "mostly_men") {
+      const still = remainingDays - labourDaysFromAssignment(kind, current.men, current.women, current.youths);
+      if (still > MOSTLY_MEN_WOMAN_ASSIST_DAYS + 1e-9) continue;
+    }
+    while (pool[role] > 0 && !coversNeed(kind, current, remainingDays)) {
+      current[role] += 1;
+      added[role] += 1;
+      pool[role] -= 1;
+    }
+  }
+  return added;
+}
+
+export function labourCalledPhrase(men: number, women: number, youths: number): string {
+  const parts: string[] = [];
+  if (men) parts.push(`${men} ${men === 1 ? "man" : "men"}`);
+  if (women) parts.push(`${women} ${women === 1 ? "woman" : "women"}`);
+  if (youths) parts.push(`${youths} ${youths === 1 ? "youth" : "youths"}`);
+  if (!parts.length) return "";
+  const who =
+    parts.length === 1 ? parts[0] : parts.length === 2 ? `${parts[0]} and ${parts[1]}` : `${parts[0]}, ${parts[1]}, and ${parts[2]}`;
+  return `${who} called this season`;
+}
+
+export function labourCalledSentence(workName: string, men: number, women: number, youths: number): string {
+  const phrase = labourCalledPhrase(men, women, youths);
+  if (!phrase) return "";
+  return `This season I called ${phrase.replace(" called this season", "")} to ${workName}.`;
+}
+
+function assignmentOn(state: WorldState, projectId: string): LabourAssignment | undefined {
+  return state.labour.assigned.find((a) => a.projectId === projectId);
+}
+
+function writeAssignment(state: WorldState, projectId: string, heads: LabourPool): void {
+  const existing = assignmentOn(state, projectId);
+  if (existing) {
+    existing.men = heads.men;
+    existing.women = heads.women;
+    existing.youths = heads.youths;
+  } else if (heads.men || heads.women || heads.youths) {
+    state.labour.assigned.push({ projectId, men: heads.men, women: heads.women, youths: heads.youths });
+  }
+}
+
+export type AutoAssignResult = {
+  projectId: string;
+  name: string;
+  added: LabourPool;
+  total: LabourPool;
+  sentence: string;
+};
+
+/**
+ * Top up one labour-day work from the leftover extra-day pool.
+ * Never reduces an assignment already on the row; never takes heads from another work.
+ */
+export function autoAssignLeftoverToProject(state: WorldState, projectId: string): AutoAssignResult | null {
+  const project = state.projects.find((p) => p.id === projectId);
+  if (!project || !isLabourDayProject(project)) return null;
+  const kind = labourKindFor(project);
+  const already = assignmentOn(state, projectId) ?? { men: 0, women: 0, youths: 0 };
+  const remainingDays = projectDaysStillNeeded(project);
+  const added = leftoverHeadsForNeed(kind, project.key, remainingDays, labourRemaining(state), already);
+  const total: LabourPool = {
+    men: already.men + added.men,
+    women: already.women + added.women,
+    youths: already.youths + added.youths,
+  };
+  if (added.men || added.women || added.youths) writeAssignment(state, projectId, total);
+  const sentence = labourCalledSentence(project.name, total.men, total.women, total.youths);
+  if (!added.men && !added.women && !added.youths) return sentence ? { projectId, name: project.name, added, total, sentence } : null;
+  return { projectId, name: project.name, added, total, sentence };
+}
+
+/**
+ * Oldest / first active labour-day work first. Skips hunts. Only tops up free remainder.
+ */
+export function autoFillLeftoverLabour(state: WorldState): string[] {
+  const notes: string[] = [];
+  for (const project of state.projects) {
+    if (!isLabourDayProject(project)) continue;
+    if (projectDaysStillNeeded(project) <= 1e-9) continue;
+    const leftover = labourRemaining(state);
+    if (leftover.men <= 0 && leftover.women <= 0 && leftover.youths <= 0) break;
+    const result = autoAssignLeftoverToProject(state, project.id);
+    if (!result) continue;
+    const added = result.added;
+    if (!added.men && !added.women && !added.youths) continue;
+    if (result.sentence) notes.push(result.sentence);
+  }
+  return notes;
+}
+
+export type PendingLabourHint = {
+  status: string;
+  proposal: { type: string; projectId?: string; men?: number; women?: number; youths?: number; summary?: string };
+};
+
+export function pendingAssignLabourForNewProject(
+  pending: PendingLabourHint[],
+  newProjectId: string,
+  activeProjectIds: Set<string>,
+): { type: "assign_labour"; projectId: string; men: number; women: number; youths: number; summary?: string } | null {
+  for (const item of pending) {
+    if (item.status !== "pending") continue;
+    const p = item.proposal;
+    if (p.type !== "assign_labour") continue;
+    const id = p.projectId;
+    if (!id || id === "unassigned") continue;
+    if (id === newProjectId || !activeProjectIds.has(id)) {
+      return {
+        type: "assign_labour",
+        projectId: id,
+        men: p.men ?? 0,
+        women: p.women ?? 0,
+        youths: p.youths ?? 0,
+        summary: p.summary,
+      };
+    }
+  }
+  return null;
 }

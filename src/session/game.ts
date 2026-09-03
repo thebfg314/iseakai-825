@@ -8,7 +8,13 @@ import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from ".
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
-import { labourPool, labourRemaining } from "../engine/labour";
+import {
+  autoAssignLeftoverToProject,
+  isLabourDayProject,
+  labourPool,
+  labourRemaining,
+  pendingAssignLabourForNewProject,
+} from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
@@ -583,15 +589,34 @@ export class GameController {
     this.state = result.state;
     item.status = result.ok ? "applied" : "rejected";
     item.rejectReason = result.reason;
+    let logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
+    if (result.ok && item.proposal.type === "start_project") {
+      const created = [...this.state.projects].filter(isLabourDayProject).at(-1);
+      if (created) {
+        const activeIds = new Set(this.state.projects.filter((p) => p.status === "active").map((p) => p.id));
+        const sibling = pendingAssignLabourForNewProject(this.pending, created.id, activeIds);
+        if (sibling) {
+          const reserved = applyProposal(
+            this.state,
+            { ...sibling, type: "assign_labour", summary: sibling.summary ?? "Hands", projectId: created.id },
+            item.npcId,
+          );
+          this.state = reserved.state;
+          if (reserved.ok) logLine = reserved.logLine ? `${result.logLine.split(" This season")[0]} ${reserved.logLine}` : logLine;
+        } else {
+          autoAssignLeftoverToProject(this.state, created.id);
+        }
+      }
+    }
     if (result.ok && item.proposal.type === "register_npc") {
       const spec = matchHireableSpecialist(item.proposal.npc);
       if (spec) this.npcEmotions[spec.id] = this.npcEmotions[spec.id] ?? "neutral";
     }
-    this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? result.logLine : result.reason ?? result.logLine);
-    this.ledgerNote(result.ok ? `Done: ${result.logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
+    this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? logLine : result.reason ?? result.logLine);
+    this.ledgerNote(result.ok ? `Done: ${logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
     if (this.askedAboutId === id) this.askedAboutId = null;
     if (result.ok) {
-      recordConfirmedTransaction(this.state, item.npcId, item.proposal, result.logLine);
+      recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
       this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
     }
     return this.view();
