@@ -22,36 +22,42 @@ function sameHuntTarget(a: StartHuntProposal, b: StartHuntProposal): boolean {
 
 /** True when `next` is clearly a revision of the asked-about offer, not a second order. */
 export function isRevisionOf(asked: MechanicalProposal, next: MechanicalProposal): boolean {
-  if (asked.type !== next.type) return false;
   switch (asked.type) {
     case "start_project":
       return (
-        asked.projectKey === next.projectKey ||
-        sameName(asked.name, next.name) ||
-        sameName(asked.projectKey, next.name) ||
-        sameName(asked.name, next.projectKey)
+        next.type === "start_project" &&
+        (asked.projectKey === next.projectKey ||
+          sameName(asked.name, next.name) ||
+          sameName(asked.projectKey, next.name) ||
+          sameName(asked.name, next.projectKey))
       );
     case "start_hunt":
-      return sameHuntTarget(asked, next);
+      return next.type === "start_hunt" && sameHuntTarget(asked, next);
     case "set_standing_order":
-      return Boolean((asked.orderId && asked.orderId === next.orderId) || sameName(asked.text, next.text));
+      return (
+        next.type === "set_standing_order" &&
+        Boolean((asked.orderId && asked.orderId === next.orderId) || sameName(asked.text, next.text))
+      );
     case "adjust_project":
+      return next.type === "adjust_project" && asked.projectId === next.projectId;
     case "assign_labour":
-      return asked.projectId === next.projectId;
+      return next.type === "assign_labour" && asked.projectId === next.projectId;
     case "register_npc":
-      return asked.npc.id === next.npc.id || sameName(asked.npc.name, next.npc.name);
+      return next.type === "register_npc" && (asked.npc.id === next.npc.id || sameName(asked.npc.name, next.npc.name));
     case "adjust_sowing":
-      return !asked.holdingId || !next.holdingId || asked.holdingId === next.holdingId;
+      return next.type === "adjust_sowing" && (!asked.holdingId || !next.holdingId || asked.holdingId === next.holdingId);
     case "transfer_resources":
-      return asked.resource === next.resource && asked.direction === next.direction;
+      return next.type === "transfer_resources" && asked.resource === next.resource && asked.direction === next.direction;
     case "add_modifier":
-      return asked.target === next.target && compact(asked.source) === compact(next.source);
+      return next.type === "add_modifier" && asked.target === next.target && compact(asked.source) === compact(next.source);
     case "remove_modifier":
-      return asked.modifierId === next.modifierId;
+      return next.type === "remove_modifier" && asked.modifierId === next.modifierId;
     case "register_resource":
-      return asked.resourceId === next.resourceId || sameName(asked.name, next.name);
+      return (
+        next.type === "register_resource" && (asked.resourceId === next.resourceId || sameName(asked.name, next.name))
+      );
     case "register_feature":
-      return asked.feature === next.feature && asked.holdingId === next.holdingId;
+      return next.type === "register_feature" && asked.feature === next.feature && asked.holdingId === next.holdingId;
     default:
       return false;
   }

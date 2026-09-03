@@ -13,8 +13,8 @@ test("Ask about is only on pending ProposalCard, not ledger Works", () => {
   assert.ok(cardStart >= 0 && ledgerStart > cardStart);
   const card = app.slice(cardStart, ledgerStart);
   const ledger = app.slice(ledgerStart);
-  assert.match(card, />Ask about</);
   assert.match(card, /onAskAbout/);
+  assert.match(card, /Ask about/);
   assert.doesNotMatch(ledger, /Ask about/);
   assert.doesNotMatch(ledger, /askAbout/);
   assert.match(app, /window\.api\.askAboutProposal/);

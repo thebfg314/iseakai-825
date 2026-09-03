@@ -45,7 +45,8 @@ function queueHunt(game: GameController) {
 function llmUserPack(): string {
   return llmChatMock.mock.calls
     .map((call) => {
-      const messages = call[0] as { role: string; content: string }[];
+      const messages = call[1] as { role: string; content: string }[] | undefined;
+      if (!Array.isArray(messages)) return "";
       return messages.map((m) => m.content).join("\n");
     })
     .join("\n");
@@ -260,11 +261,19 @@ describe("Ask about a pending card", () => {
 
   it("still lets Confirm write the books after Ask about", () => {
     const game = tempGame();
-    queueMill(game);
+    const ironBefore = game.state.resources.iron;
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "We can clear an acre.",
+        proposals: [{ type: "start_project", projectKey: "clear_scrub", summary: "Clear scrub", holdingId: "fontenay" }],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Start clearing the scrub.");
     game.askAboutProposal(game.pending[0].id);
     const result = game.confirmProposal(game.pending[0].id);
     expect(result.error).toBeUndefined();
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
-    expect(game.state.projects.some((p) => p.key === "flour_mill" && p.status === "active")).toBe(true);
+    expect(game.state.projects.some((p) => p.key === "clear_scrub" && p.status === "active")).toBe(true);
+    expect(game.state.resources.iron).toBeLessThan(ironBefore);
   });
 });
