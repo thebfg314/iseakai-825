@@ -9,11 +9,9 @@ import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
 import {
-  autoAssignLeftoverToProject,
-  isLabourDayProject,
   labourPool,
   labourRemaining,
-  pendingAssignLabourForNewProject,
+  resolveActiveProject,
 } from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
 import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
@@ -584,42 +582,51 @@ export class GameController {
   confirmProposal(id: string): GameView & { error?: string } {
     const item = this.pending.find((p) => p.id === id && p.status === "pending");
     if (!item) return { ...this.view(), error: "No such pending proposal." };
+    const batch = sortPendingForApply(this.pending.filter((p) => p.status === "pending"));
     const before = cloneState(this.state);
+    let error: string | undefined;
+    for (const next of batch) {
+      const result = this.applyOnePending(next);
+      if (next.id === id && result.error) error = result.error;
+    }
+    this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+    return error ? { ...this.view(), error } : this.view();
+  }
+
+  private applyOnePending(item: PendingProposal): { error?: string } {
+    if (item.status !== "pending") return {};
+    const beforeNpc = cloneState(this.state);
     const result = applyProposal(this.state, item.proposal, item.npcId);
     this.state = result.state;
     item.status = result.ok ? "applied" : "rejected";
     item.rejectReason = result.reason;
-    let logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
+    const logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
     if (result.ok && item.proposal.type === "start_project") {
-      const created = [...this.state.projects].filter(isLabourDayProject).at(-1);
-      if (created) {
-        const activeIds = new Set(this.state.projects.filter((p) => p.status === "active").map((p) => p.id));
-        const sibling = pendingAssignLabourForNewProject(this.pending, created.id, activeIds);
-        if (sibling) {
-          const reserved = applyProposal(
-            this.state,
-            { ...sibling, type: "assign_labour", summary: sibling.summary ?? "Hands", projectId: created.id },
-            item.npcId,
-          );
-          this.state = reserved.state;
-          if (reserved.ok) logLine = reserved.logLine ? `${result.logLine.split(" This season")[0]} ${reserved.logLine}` : logLine;
-        } else {
-          autoAssignLeftoverToProject(this.state, created.id);
-        }
-      }
+      this.rewritePendingLabourProjectIds();
     }
     if (result.ok && item.proposal.type === "register_npc") {
       const spec = matchHireableSpecialist(item.proposal.npc);
       if (spec) this.npcEmotions[spec.id] = this.npcEmotions[spec.id] ?? "neutral";
     }
-    this.log(item.npcId, result.ok ? "APPLY" : "REJECT", result.ok ? logLine : result.reason ?? result.logLine);
+    this.log(item.npcId, result.ok ? "APPLY" : "REJECT", logLine);
     this.ledgerNote(result.ok ? `Done: ${logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
-    if (this.askedAboutId === id) this.askedAboutId = null;
+    if (this.askedAboutId === item.id) this.askedAboutId = null;
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
-      this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+      this.flushHireRecommendations(newlyUnlockedHires(beforeNpc, this.state));
     }
-    return this.view();
+    return result.ok ? {} : { error: result.reason };
+  }
+
+  private rewritePendingLabourProjectIds() {
+    for (const item of this.pending) {
+      if (item.status !== "pending") continue;
+      const p = item.proposal;
+      if (p.type !== "assign_labour" && p.type !== "adjust_project") continue;
+      if (p.projectId === "unassigned") continue;
+      const resolved = resolveActiveProject(this.state, p.projectId, p.summary);
+      if (resolved) p.projectId = resolved.id;
+    }
   }
 
   rejectProposal(id: string): GameView {
@@ -881,9 +888,32 @@ function ensureSummary(p: MechanicalProposal): MechanicalProposal {
   return { ...p, summary: p.type };
 }
 
+const REGISTER_TYPES = new Set(["register_resource", "register_feature", "register_npc"]);
+
+/** start_project and register_* first so assign_labour can resolve the new work. */
+export function sortPendingForApply<T extends { proposal: { type: string } }>(items: T[]): T[] {
+  const rank = (type: string) => {
+    if (type === "start_project") return 0;
+    if (REGISTER_TYPES.has(type)) return 1;
+    if (type === "assign_labour" || type === "adjust_project") return 3;
+    return 2;
+  };
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const diff = rank(a.item.proposal.type) - rank(b.item.proposal.type);
+      return diff !== 0 ? diff : a.index - b.index;
+    })
+    .map((row) => row.item);
+}
+
 function fillProposalDefaults(state: WorldState, p: MechanicalProposal): MechanicalProposal {
   if ((p.type === "start_project" || p.type === "adjust_sowing") && !p.holdingId) {
     return { ...p, holdingId: state.holdings[0]?.id };
+  }
+  if ((p.type === "assign_labour" || p.type === "adjust_project") && p.projectId !== "unassigned") {
+    const resolved = resolveActiveProject(state, p.projectId, p.summary);
+    if (resolved) return { ...p, projectId: resolved.id };
   }
   if (p.type === "register_npc") {
     const spec = matchHireableSpecialist(p.npc);

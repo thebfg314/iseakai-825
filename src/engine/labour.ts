@@ -73,6 +73,42 @@ export function isLabourDayProject(project: Project): boolean {
   return true;
 }
 
+function normalizeProjectRef(ref: string): string {
+  return ref.trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function summaryRefersToTheWork(summary?: string): boolean {
+  if (!summary) return false;
+  return /\b(the|that|this)\s+(work|mill|project|job)\b/i.test(summary);
+}
+
+/**
+ * Match assign_labour / adjust_project refs: generated id, catalog key, or display name.
+ * Does not guess among several active works; a lone labour-day work is used only when
+ * the summary clearly means "the" work.
+ */
+export function resolveActiveProject(state: WorldState, projectIdRef: string, summary?: string): Project | undefined {
+  const ref = projectIdRef.trim();
+  if (!ref || ref === "unassigned") return undefined;
+  const active = state.projects.filter((p) => p.status === "active");
+  const byId = active.find((p) => p.id === ref);
+  if (byId) return byId;
+
+  const keyNorm = normalizeProjectRef(ref);
+  const byKey = active.filter((p) => p.key === ref || normalizeProjectRef(p.key) === keyNorm);
+  if (byKey.length === 1) return byKey[0];
+  if (byKey.length > 1) return undefined;
+
+  const nameNorm = ref.toLowerCase().trim();
+  const byName = active.filter((p) => p.name.toLowerCase().trim() === nameNorm);
+  if (byName.length === 1) return byName[0];
+  if (byName.length > 1) return undefined;
+
+  const labourWorks = active.filter(isLabourDayProject);
+  if (labourWorks.length === 1 && summaryRefersToTheWork(summary)) return labourWorks[0];
+  return undefined;
+}
+
 export function projectDaysStillNeeded(project: Project): number {
   return Math.max(0, project.labourDaysRequired - project.labourDaysDone);
 }
@@ -171,8 +207,9 @@ export type AutoAssignResult = {
  * Never reduces an assignment already on the row; never takes heads from another work.
  */
 export function autoAssignLeftoverToProject(state: WorldState, projectId: string): AutoAssignResult | null {
-  const project = state.projects.find((p) => p.id === projectId);
+  const project = resolveActiveProject(state, projectId) ?? state.projects.find((p) => p.id === projectId);
   if (!project || !isLabourDayProject(project)) return null;
+  projectId = project.id;
   const kind = labourKindFor(project);
   const already = assignmentOn(state, projectId) ?? { men: 0, women: 0, youths: 0 };
   const remainingDays = projectDaysStillNeeded(project);

@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
 import {
@@ -11,12 +14,15 @@ import {
   leftoverHeadsForNeed,
   MOSTLY_MEN_WOMAN_ASSIST_DAYS,
   pendingAssignLabourForNewProject,
+  resolveActiveProject,
 } from "./labour";
 import { GERULF_HUNT_KEY } from "./hunts";
 import { maxRisk, yieldMultiplier } from "./modifiers";
 import { labourKindFor } from "./projectCatalog";
 import { WorldStateSchema, type Project, type WorldState } from "./schema";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "./season";
+import { defaultAppSettings } from "../llm/settings";
+import { GameController, sortPendingForApply } from "../session/game";
 
 function boot(extra?: (s: WorldState) => void): WorldState {
   const state = WorldStateSchema.parse(structuredClone(startingEstate));
@@ -393,5 +399,169 @@ describe("auto-assign leftover onto works", () => {
     expect(labourDaysFromAssignment("mostly_men", 1, 1, 1)).toBeCloseTo(1 + 0.6 + 0.4);
     expect(labourDaysFromAssignment("mixed", 1, 1, 1)).toBeCloseTo(1 + 1 + 0.4);
     expect(labourDaysFromAssignment("men_women", 1, 1, 1)).toBeCloseTo(1 + 1 + 0.4);
+  });
+});
+
+describe("resolveActiveProject and assign_labour by key/name", () => {
+  function startMill(state: WorldState) {
+    const result = applyProposal(
+      state,
+      { type: "start_project", summary: "Begin a flour mill", projectKey: "flour_mill", holdingId: "fontenay" },
+      "steward",
+    );
+    expect(result.ok).toBe(true);
+    return state.projects.find((p) => p.key === "flour_mill")!;
+  }
+
+  it("matches generated id, catalog key, and display name", () => {
+    const state = boot();
+    const mill = startMill(state);
+    expect(resolveActiveProject(state, mill.id)?.id).toBe(mill.id);
+    expect(resolveActiveProject(state, "flour_mill")?.id).toBe(mill.id);
+    expect(resolveActiveProject(state, "Flour mill")?.id).toBe(mill.id);
+    expect(resolveActiveProject(state, "  FLOUR MILL  ")?.id).toBe(mill.id);
+    expect(resolveActiveProject(state, "no_such_work")).toBeUndefined();
+  });
+
+  it("does not guess when two labour works are active", () => {
+    const state = boot();
+    const mill = startMill(state);
+    state.projects.push(project({ id: "scrub-1", key: "clear_scrub", name: "Clear scrub", labourDaysRequired: 10 }));
+    expect(resolveActiveProject(state, "the work", "Put men on the work")).toBeUndefined();
+    expect(resolveActiveProject(state, mill.id)?.id).toBe(mill.id);
+  });
+
+  it("uses the lone labour-day work only when the summary means the work", () => {
+    const state = boot();
+    const mill = startMill(state);
+    expect(resolveActiveProject(state, "hands", "Put men on the mill")?.id).toBe(mill.id);
+    expect(resolveActiveProject(state, "hands", "Ten men somewhere")).toBeUndefined();
+  });
+
+  it("assign_labour with projectId flour_mill writes onto the created proj id", () => {
+    const state = boot();
+    const mill = startMill(state);
+    const assigned = applyProposal(
+      state,
+      { type: "assign_labour", summary: "Hands on the mill", projectId: "flour_mill", men: 10, women: 0, youths: 0 },
+      "steward",
+    );
+    expect(assigned.ok).toBe(true);
+    expect(assigned.reason).not.toBe("No such active project.");
+    const row = state.labour.assigned.find((a) => a.projectId === mill.id);
+    expect(row).toBeTruthy();
+    expect(row?.men).toBeGreaterThanOrEqual(10);
+    expect(state.labour.assigned.some((a) => a.projectId === "flour_mill")).toBe(false);
+  });
+
+  it("assign_labour with display name Flour mill succeeds; unknown key still fails", () => {
+    const state = boot();
+    const mill = startMill(state);
+    const byName = applyProposal(
+      state,
+      { type: "assign_labour", summary: "Hands", projectId: "Flour mill", men: 8, women: 0, youths: 0 },
+      "steward",
+    );
+    expect(byName.ok).toBe(true);
+    expect(state.labour.assigned.find((a) => a.projectId === mill.id)?.men).toBeGreaterThanOrEqual(8);
+
+    const miss = applyProposal(
+      state,
+      { type: "assign_labour", summary: "Hands", projectId: "glassworks", men: 4, women: 0, youths: 0 },
+      "steward",
+    );
+    expect(miss.ok).toBe(false);
+    expect(miss.reason).toBe("No such active project.");
+  });
+
+  it("adjust_project labourThisSeason resolves the catalog key", () => {
+    const state = boot();
+    const mill = startMill(state);
+    const adjusted = applyProposal(
+      state,
+      {
+        type: "adjust_project",
+        summary: "Ten men this season",
+        projectId: "flour_mill",
+        labourThisSeason: { men: 10, women: 0, youths: 0 },
+      },
+      "steward",
+    );
+    expect(adjusted.ok).toBe(true);
+    expect(state.labour.assigned.find((a) => a.projectId === mill.id)?.men).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe("Confirm batch order: start_project before assign_labour", () => {
+  function millGame() {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "isekai-"));
+    const state = WorldStateSchema.parse(structuredClone(startingEstate));
+    state.resources.softwood = 40;
+    state.resources.hardwood = 40;
+    state.resources.iron = 200;
+    state.resources.stone = 40;
+    return new GameController(state, dir, defaultAppSettings());
+  }
+
+  it("sorts start_project ahead of assign_labour even if assign was queued first", () => {
+    const ordered = sortPendingForApply([
+      { proposal: { type: "assign_labour" } },
+      { proposal: { type: "start_project" } },
+      { proposal: { type: "register_npc" } },
+    ]);
+    expect(ordered.map((p) => p.proposal.type)).toEqual(["start_project", "register_npc", "assign_labour"]);
+  });
+
+  it("Confirm batch: assign_labour by key succeeds even if listed first in pending", () => {
+    const game = millGame();
+    game.queueProposal("steward", {
+      type: "assign_labour",
+      summary: "Put men on the mill",
+      projectId: "flour_mill",
+      men: 10,
+      women: 0,
+      youths: 0,
+    });
+    game.queueProposal("steward", {
+      type: "start_project",
+      summary: "Begin a flour mill",
+      projectKey: "flour_mill",
+      holdingId: "fontenay",
+    });
+    expect(game.pending[0].proposal.type).toBe("assign_labour");
+    const result = game.confirmProposal(game.pending[0].id);
+    expect(result.error).toBeUndefined();
+    const mill = game.state.projects.find((p) => p.key === "flour_mill" && p.status === "active");
+    expect(mill).toBeTruthy();
+    expect(mill!.id).toMatch(/^proj-/);
+    const row = game.state.labour.assigned.find((a) => a.projectId === mill!.id);
+    expect(row).toBeTruthy();
+    expect(row?.men).toBeGreaterThanOrEqual(10);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+  });
+
+  it("after Confirm start_project, a later assign_labour by key flour_mill hits the created id", () => {
+    const game = millGame();
+    game.queueProposal("steward", {
+      type: "start_project",
+      summary: "Begin a flour mill",
+      projectKey: "flour_mill",
+      holdingId: "fontenay",
+    });
+    game.confirmProposal(game.pending[0].id);
+    const mill = game.state.projects.find((p) => p.key === "flour_mill")!;
+    game.queueProposal("steward", {
+      type: "assign_labour",
+      summary: "Hands on the mill",
+      projectId: "flour_mill",
+      men: 12,
+      women: 0,
+      youths: 0,
+    });
+    const queued = game.pending.find((p) => p.status === "pending" && p.proposal.type === "assign_labour");
+    expect(queued?.proposal).toMatchObject({ type: "assign_labour", projectId: mill.id });
+    const result = game.confirmProposal(queued!.id);
+    expect(result.error).toBeUndefined();
+    expect(game.state.labour.assigned.find((a) => a.projectId === mill.id)?.men).toBeGreaterThanOrEqual(12);
   });
 });
