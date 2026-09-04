@@ -44,7 +44,7 @@ The engine computes the pool each season:
 - Prototype midpoints: Spring 15 / 10 / 3; Summer 10 / 8 / 2; Autumn 15 / 10 / 3; Winter 20 / 12 / 4.
 
 Assignments that exceed the remaining pool are rejected.  
-Assigning more than 80% of the male pool in Spring, Summer, or Autumn sets `harvest_risk` for that season (yield multiplier 0.85 unless a modifier says otherwise).
+These extra days are already after harvest and field subsistence; assigning them to projects does not set harvest risk or cut yield. Events and Confirm may still apply a `harvest_risk` modifier.
 
 ### 3.2 Arable and the two-field default
 

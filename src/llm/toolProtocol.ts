@@ -139,7 +139,6 @@ function drawerPayload(state: WorldState, name: ToolDrawer, npcId?: string): unk
       return {
         remaining: labourRemaining(state),
         assigned: state.labour.assigned,
-        harvest_risk: state.labour.harvest_risk,
       };
     case "chest":
       return { denarii: state.resources.denarii };

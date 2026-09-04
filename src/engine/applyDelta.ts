@@ -6,7 +6,7 @@ import {
   type WorldState,
 } from "./schema";
 import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
-import { labourPool, labourRemaining, refreshHarvestRisk } from "./labour";
+import { labourPool, labourRemaining } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
@@ -280,7 +280,6 @@ function assignLabour(
   }
   if (p.projectId === "unassigned") {
     state.labour.assigned = [];
-    refreshHarvestRisk(state);
     return ok(state, "Cleared labour assignments.");
   }
   if (existing) {
@@ -290,7 +289,6 @@ function assignLabour(
   } else {
     state.labour.assigned.push({ projectId: p.projectId, men: p.men, women: p.women, youths: p.youths });
   }
-  refreshHarvestRisk(state);
   return ok(state, `Assigned labour to ${p.projectId}: ${p.men} men, ${p.women} women, ${p.youths} youths.`);
 }
 
@@ -367,7 +365,6 @@ function adjustProject(
     }
     proj.status = "cancelled";
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
-    refreshHarvestRisk(state);
     return ok(state, `Cancelled project ${proj.name}; half of unused materials recovered.`);
   }
   if (p.rush !== undefined) proj.rush = p.rush;

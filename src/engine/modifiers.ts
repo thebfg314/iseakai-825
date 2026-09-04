@@ -80,7 +80,6 @@ export function yieldMultiplier(state: WorldState, crop?: string): number {
     ? applyMultiplyAdd(1, modifiersFor(state, "specific_resource_output", { resourceId: crop }), { lo: 0.4, hi: 2.5 })
     : 1;
   let harvest = 1;
-  if (state.labour.harvest_risk) harvest *= 0.85;
   const hr = maxRisk(state, "harvest_risk");
   if (hr > 0) harvest *= clamp(1 - hr, 0.4, 1);
   if (state.flags.hunger) harvest *= 0.9;

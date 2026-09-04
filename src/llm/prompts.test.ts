@@ -71,6 +71,8 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/treasury chest is low/i);
     expect(aldric).toMatch(/shoe a horse/i);
     expect(aldric).toMatch(/Hiring a full-time specialist is YOUR work/i);
+    expect(aldric).toMatch(/do not warn that assigning them risks the harvest/i);
+    expect(aldric).not.toMatch(/80% of the male|harvest is at risk/i);
 
     const bernard = smithSystemPrompt();
     expect(bernard).toContain("You are Bernard");

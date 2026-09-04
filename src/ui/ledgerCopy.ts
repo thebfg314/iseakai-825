@@ -8,7 +8,6 @@ export const BOOKS_TITLE = "The books";
 export const CONFIRM_HELP = "Speech does not change the chest. Confirm is Aldric writing it in the books.";
 
 export const HUNGER_LINE = "The households are hungry — grain will not last.";
-export const HARVEST_RISK_LINE = "Too many men are drawn off the fields. The harvest is at risk.";
 
 const LAND_NAMES: Record<string, string> = {
   fertile_arable: "good ploughland",
