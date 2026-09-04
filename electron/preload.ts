@@ -9,6 +9,7 @@ const api = {
   sendDialogue: (npcId: string, message: string) => ipcRenderer.invoke("game:sendDialogue", npcId, message),
   confirmProposal: (id: string) => ipcRenderer.invoke("game:confirmProposal", id),
   rejectProposal: (id: string) => ipcRenderer.invoke("game:rejectProposal", id),
+  askAboutProposal: (id: string) => ipcRenderer.invoke("game:askAboutProposal", id),
   advanceSeason: () => ipcRenderer.invoke("game:advanceSeason"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (patch: {

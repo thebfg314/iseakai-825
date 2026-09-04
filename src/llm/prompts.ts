@@ -80,8 +80,11 @@ Use only these drawer names: ${TOOL_DRAWERS.join(", ")}. Unknown names are ignor
 export const SPEECH_PASS_HINT =
   'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. Never mention providers, status codes, tools, or JSON in speech.';
 
-export function npcBooksFollowUp(playerMessage: string): string {
-  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: [].\n\nORDER:\n${playerMessage}`;
+export function npcBooksFollowUp(playerMessage: string, revising?: string): string {
+  const revise = revising
+    ? `\nThe lord asked about this pending offer. If they are changing its terms, emit one revised proposal of the same kind (same project, hunt, hire, standing order, or work) — replace, do not stack a second copy. Do not treat it as already Confirmed.\nPENDING OFFER:\n${revising}\n`
+    : "";
+  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: [].${revise}\n\nORDER:\n${playerMessage}`;
 }
 
 const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markdown fences), shape:

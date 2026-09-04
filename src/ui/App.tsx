@@ -53,6 +53,8 @@ export function App() {
   const [models, setModels] = useState<{ id: string }[]>([]);
   const [displayEmotion, setDisplayEmotion] = useState<AldricEmotion>("neutral");
   const scroller = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const focusComposer = useRef(false);
   const sendLock = useRef(false);
 
   const poseCue = view
@@ -88,6 +90,14 @@ export function App() {
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [view?.messages.length, view?.sceneNpcId]);
+
+  useEffect(() => {
+    if (!focusComposer.current || busy) return;
+    focusComposer.current = false;
+    document.getElementById("talk-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    composerRef.current?.focus();
+    document.getElementById("talk-composer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [busy, view?.sceneNpcId, view?.messages.length]);
 
   useEffect(() => {
     if (!view?.pending.length) return;
@@ -387,7 +397,7 @@ export function App() {
             </button>
           </div>
 
-          <div className="talk">
+          <div className="talk" id="talk-panel">
             {portraitSrc && (
               <aside className={`portrait ${view.sceneNpcId}`}>
                 <img src={portraitSrc} alt={npc?.name ?? "Speaker"} />
@@ -416,12 +426,17 @@ export function App() {
                   busy={busy}
                   onConfirm={() => withBusy(() => window.api.confirmProposal(p.id))}
                   onReject={() => withBusy(() => window.api.rejectProposal(p.id))}
+                  onAskAbout={() => {
+                    focusComposer.current = true;
+                    return withBusy(() => window.api.askAboutProposal(p.id));
+                  }}
                 />
               ))}
             </div>
           )}
 
           <form
+            id="talk-composer"
             className="composer"
             onSubmit={(e) => {
               e.preventDefault();
@@ -429,6 +444,7 @@ export function App() {
             }}
           >
             <textarea
+              ref={composerRef}
               value={draft}
               disabled={busy}
               placeholder={composerPlaceholder(view)}
@@ -456,7 +472,7 @@ export function App() {
 
 function MessageBubble({ m }: { m: ChatMessage }) {
   const who =
-    m.role === "player" ? "You" : m.role === "system" ? "The books" : m.npcName ?? "Voice";
+    m.role === "player" ? "You" : m.role === "system" ? (m.aside ? "A pause" : "The books") : m.npcName ?? "Voice";
   return (
     <article className={`bubble ${m.role}`}>
       <div className="who">{who}</div>
@@ -472,12 +488,14 @@ function ProposalCard({
   busy,
   onConfirm,
   onReject,
+  onAskAbout,
 }: {
   p: PendingProposal;
   state: GameView["state"];
   busy: boolean;
   onConfirm: () => void;
   onReject: () => void;
+  onAskAbout: () => void;
 }) {
   return (
     <div className="proposal">
@@ -490,6 +508,9 @@ function ProposalCard({
         </button>
         <button disabled={busy} onClick={onReject}>
           Reject
+        </button>
+        <button disabled={busy} onClick={onAskAbout}>
+          Ask about
         </button>
       </div>
     </div>

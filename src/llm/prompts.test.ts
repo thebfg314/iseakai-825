@@ -8,6 +8,7 @@ import {
   chaplainSystemPrompt,
   merchantSystemPrompt,
   negotiatorSystemPrompt,
+  npcBooksFollowUp,
   npcSystemPrompt,
   npcUserPrompt,
   refereeSystemPrompt,
@@ -270,6 +271,20 @@ describe("signed-off NPC personalities", () => {
     expect(prompt).toMatch(/event_effect/);
     expect(prompt).not.toMatch(/"market"/);
     expect(prompt).not.toMatch(/WORLD STATE SLICE/);
+  });
+
+  it("can carry a pending-offer scrap without dumping the villa", () => {
+    const extra =
+      "PENDING OFFER UNDER DISCUSSION (the lord asked about this unconfirmed offer; if they change terms, revise this same offer — do not stack a second copy, and do not treat it as already Confirmed):\nstart_project Flour mill (flour_mill): Raise a flour mill — 230 days, 11 timber, 60 iron, 4 stone";
+    const user = npcUserPrompt(boot(), "steward", "use more stone", extra);
+    expect(user).toMatch(/PENDING OFFER UNDER DISCUSSION/);
+    expect(user).toMatch(/flour_mill/);
+    expect(user).not.toMatch(/"resources"/);
+    expect(user).not.toMatch(/"holdings"/);
+    const books = npcBooksFollowUp("use more stone", "start_project Flour mill (flour_mill): Raise a flour mill — 230 days, 11 timber, 60 iron, 4 stone");
+    expect(books).toMatch(/PENDING OFFER/);
+    expect(books).toMatch(/replace, do not stack/);
+    expect(books).toMatch(/ORDER:\nuse more stone/);
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {
