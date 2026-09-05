@@ -176,7 +176,8 @@ export function labourCalledPhrase(men: number, women: number, youths: number): 
 export function labourCalledSentence(workName: string, men: number, women: number, youths: number): string {
   const phrase = labourCalledPhrase(men, women, youths);
   if (!phrase) return "";
-  return `This season I called ${phrase.replace(" called this season", "")} to ${workName}.`;
+  const dest = workName.replace(/^(the|a|an)\s+/i, "");
+  return `I have called ${phrase.replace(" called this season", "")} to the ${dest}.`;
 }
 
 function assignmentOn(state: WorldState, projectId: string): LabourAssignment | undefined {

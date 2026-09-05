@@ -1,6 +1,7 @@
 import type { Season, WorldState } from "./schema";
 import { memoriesForMerchantName, persistMerchantVisitorMemories } from "./memory";
 import { clamp, round1 } from "./util";
+import { resourceName } from "../ui/ledgerCopy";
 
 export const MERCHANT_BASE_RANGE: Record<Season, { lo: number; hi: number }> = {
   spring: { lo: 0.25, hi: 0.3 },
@@ -198,8 +199,7 @@ export function applyMerchantRoll(
     state.merchant.name = undefined;
     state.merchant.face = undefined;
     state.merchant.stock = [];
-    const pct = Math.round(result.chance * 100);
-    return `No merchant on the incoming season (chance ${pct}%: base ${Math.round(result.base * 100)}%${result.notes.length ? "; " + result.notes.join("; ") : ""}).`;
+    return "No merchant came with the new season.";
   }
   const idx = Math.floor(Math.random() * MERCHANT_VISITORS.length);
   const visitor = MERCHANT_VISITORS[idx];
@@ -219,9 +219,8 @@ export function applyMerchantRoll(
     memories: [...memoriesForMerchantName(state, name)],
     introSpoken: Boolean(state.merchant_intro_spoken?.[name]),
   });
-  const goods = state.merchant.stock.map((s) => `${s.amount} ${s.resource}`).join(", ");
-  const pct = Math.round(result.chance * 100);
-  return `Merchant ${name} is in the district (chance ${pct}%). Wares: ${goods}.`;
+  const goods = state.merchant.stock.map((s) => `${s.amount} ${resourceName(s.resource)}`).join(", ");
+  return `${name} the merchant is in the district. On the carts: ${goods || "nothing yet"}.`;
 }
 
 export function syncTradeFromFeatures(state: WorldState): void {

@@ -109,8 +109,8 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   adjust_project: "A work",
   adjust_sowing: "The sowing",
   transfer_resources: "The stores",
-  add_modifier: "A custom",
-  remove_modifier: "A custom",
+  add_modifier: "A custom of the hall",
+  remove_modifier: "A standing custom",
   register_resource: "A new store",
   register_feature: "The land",
   register_npc: "A hire",
@@ -163,6 +163,18 @@ export function roleName(id: string): string {
 
 export function proposalTypeName(type: string): string {
   return PROPOSAL_TYPE_NAMES[type] ?? humanizeKey(type);
+}
+
+export function workDisplayName(keyOrName: string): string {
+  if (!keyOrName) return "the work";
+  return lookupProject(keyOrName)?.name ?? FEATURE_NAMES[keyOrName] ?? humanizeKey(keyOrName);
+}
+
+export function modifierSourceName(source: string): string {
+  if (!source) return "a custom of the hall";
+  if (/^event:/i.test(source)) return "a season's change";
+  if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(source)) return humanizeKey(source);
+  return source;
 }
 
 export function resourceUnit(id: string): string {
@@ -285,7 +297,7 @@ export function confirmBanner(count: number): string {
   return `${count} ${noun} — Confirm is Aldric writing ${them} in the books. Advancing the season will lapse unconfirmed orders.`;
 }
 
-function amountOf(resource: string, amount: number): string {
+export function amountPhrase(resource: string, amount: number): string {
   const name = resourceName(resource);
   const unit = resourceUnit(resource);
   if (resource === "denarii") return `${formatLedgerNumber(amount)} denarii`;
@@ -306,7 +318,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return bits.join(" ") || "Change the sowing mix.";
     }
     case "start_project": {
-      const name = p.name ?? lookupProject(p.projectKey)?.name ?? resourceName(p.projectKey);
+      const name = p.name ?? workDisplayName(p.projectKey);
       const holding = state?.holdings.find((h) => h.id === p.holdingId)?.name ?? "the holding";
       return `Begin ${name} on ${holding}.`;
     }
@@ -318,8 +330,8 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return `Change the labour on ${name}.`;
     }
     case "transfer_resources": {
-      const qty = amountOf(p.resource, p.amount);
-      const reason = p.reason ? ` ${p.reason}.` : "";
+      const qty = amountPhrase(p.resource, p.amount);
+      const reason = p.reason && !looksLikeEngineKey(p.reason) ? ` ${p.reason}.` : "";
       if (p.direction === "buy") return `Buy ${qty} from the merchant.${reason}`;
       if (p.direction === "sell") return `Sell ${qty} from the stores.${reason}`;
       if (p.direction === "consume") return `Take ${qty} from the stores.${reason}`;
@@ -333,11 +345,17 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
         const source = p.source ? ` (${p.source})` : "";
         return `${heart}${time}${source}.`;
       }
-      return p.customNote || p.summary || p.source;
+      return (
+        p.customNote ||
+        (p.summary && p.summary !== p.type && !looksLikeEngineKey(p.summary) ? p.summary : "") ||
+        (p.source && !looksLikeEngineKey(p.source) ? p.source : "A custom of the hall.")
+      );
     }
     case "assign_labour": {
       const proj = state ? resolveActiveProject(state, p.projectId, p.summary)?.name ?? "the work" : "the work";
-      return `${p.men} men, ${p.women} women, and ${p.youths} youths to ${proj}.`;
+      const dest = proj.replace(/^(the|a|an)\s+/i, "");
+      const who = labourCalledPhrase(p.men, p.women, p.youths).replace(" called this season", "") || "no extra hands";
+      return `${who} to the ${dest}.`;
     }
     case "set_standing_order":
       return p.text;
@@ -365,4 +383,115 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return `Gerulf will seek ${p.amount} ${p.goods} for ${formatLedgerNumber(p.quotedDenarii)} denarii over ${seasons}. The purse leaves the chest on Confirm.`;
     }
   }
+}
+
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b/i;
+const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
+
+export function looksLikeEngineKey(text: string): boolean {
+  return ENGINE_KEY.test(text) || /^[a-z]+(?:_[a-z0-9]+)+$/.test(text.trim());
+}
+
+const EXACT_REASONS: Record<string, string> = {
+  npc_not_authorized: "That is not theirs to order.",
+  "Unknown project.": "I know no such work on the estate.",
+  "No such active project.": "There is no such work underway.",
+  "Unknown holding.": "I know no such holding.",
+  "Unknown proposal type.": "I cannot write that change into the books.",
+  "Unknown modifier.": "I find no such custom in the books.",
+  "No such pending proposal.": "That order is no longer before me.",
+  "Cannot sell coin.": "Coin is not sold from the chest.",
+  "Resource id already exists.": "That store is already written in the books.",
+  "NPC id already exists.": "That person is already of this house.",
+  "register_resource must declare isNew: true.": "That store is already among the books.",
+  "register_feature must declare isNew: true.": "That work already stands on the holding.",
+  "register_npc must declare isNew: true.": "That person is already recorded.",
+  "adjust_sowing needs a crop mix or acre figures.": "Say how the sowing should be divided, or I cannot change it.",
+  "Cleared labour assignments.": "I have sent the extra hands back to their households.",
+};
+
+function rewriteSnakeKeys(text: string): string {
+  return text.replace(/\b[a-z]+(?:_[a-z0-9]+)+\b/g, (key) => {
+    if (RESOURCE_NAMES[key] || FEATURE_NAMES[key] || LAND_NAMES[key] || ROLE_NAMES[key] || PROPOSAL_TYPE_NAMES[key]) {
+      return resourceName(key) !== humanizeKey(key) && RESOURCE_NAMES[key]
+        ? resourceName(key)
+        : FEATURE_NAMES[key]
+          ? featureName(key)
+          : LAND_NAMES[key]
+            ? landName(key)
+            : ROLE_NAMES[key]
+              ? roleName(key)
+              : proposalTypeName(key);
+    }
+    return workDisplayName(key);
+  });
+}
+
+/** Spoken steward/NPC English for applyDelta reasons and other banner errors. */
+export function playerFacingReason(reason: string): string {
+  const trimmed = reason.trim();
+  if (!trimmed) return "The books will not take that change.";
+  if (EXACT_REASONS[trimmed]) return EXACT_REASONS[trimmed];
+
+  const reject = trimmed.match(/^REJECT\s+\S+\s+\S+:\s*(.+)$/i) ?? trimmed.match(/^REJECT\s+.+:\s*(.+)$/i);
+  if (reject) return playerFacingReason(reject[1]);
+
+  if (/customCosts/i.test(trimmed) || /^Unknown project '/i.test(trimmed)) {
+    const key = trimmed.match(/'([^']+)'/)?.[1];
+    const name = key ? workDisplayName(key) : "that work";
+    return `I know no work called ${name}, and no costs were named for it.`;
+  }
+
+  if (/^Unknown resource '/i.test(trimmed)) {
+    const id = trimmed.match(/'([^']+)'/)?.[1];
+    return `I find no store of ${id ? resourceName(id) : "that good"} in the books.`;
+  }
+
+  const labour = trimmed.match(/Not enough callable labour \(pool men ([\d.]+), women ([\d.]+), youths ([\d.]+)\)/i);
+  if (labour) {
+    return `There are not enough extra hands. I can still call ${labour[1]} men, ${labour[2]} women, and ${labour[3]} youths.`;
+  }
+  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough extra hands left to call.";
+
+  if (/The merchant has no /i.test(trimmed)) return rewriteSnakeKeys(trimmed);
+  if (/^Cannot (sell|consume) /i.test(trimmed)) {
+    return rewriteSnakeKeys(trimmed).replace(/^Cannot consume/, "I cannot take").replace(/^Cannot sell/, "I cannot sell");
+  }
+  if (/Sown acres .* two-field cap/i.test(trimmed)) {
+    return "That sowing would overfill the two-field share of the ploughland.";
+  }
+  if (/Need .+ denarii; have /i.test(trimmed) || /Need .+ hiring gift/i.test(trimmed)) {
+    return rewriteSnakeKeys(trimmed);
+  }
+  if (/Need .+ (timber|iron|stone)/i.test(trimmed)) return rewriteSnakeKeys(trimmed);
+
+  let out = rewriteSnakeKeys(
+    trimmed
+      .replace(/\bREJECT\b/g, "")
+      .replace(/\bnpc_not_authorized\b/g, "that is not theirs to order")
+      .replace(/\bcustomCosts\b/g, "named costs")
+      .replace(/\bproj-[a-z0-9]+/gi, "the work")
+      .replace(/\bmod-[a-z0-9]+/gi, "the custom")
+      .replace(/\bprop-[a-z0-9]+/gi, "the order")
+      .replace(/\s{2,}/g, " ")
+      .trim(),
+  );
+  if (ENGINE_KEY.test(out)) return "The books will not take that change.";
+  return out || "The books will not take that change.";
+}
+
+export function playerFacingSummary(proposal: { type: string; summary?: string }): string {
+  const raw = proposal.summary?.trim() ?? "";
+  if (!raw || raw === proposal.type || looksLikeEngineKey(raw)) return "";
+  if (SNAKE_KEY.test(raw) || ENGINE_KEY.test(raw)) return playerFacingReason(raw);
+  return raw;
+}
+
+/** Success log lines shown in the books after Confirm. */
+export function playerFacingLogLine(line: string): string {
+  const trimmed = line.trim();
+  if (!trimmed) return "It is written in the books.";
+  if (EXACT_REASONS[trimmed]) return EXACT_REASONS[trimmed];
+  if (!ENGINE_KEY.test(trimmed) && !SNAKE_KEY.test(trimmed)) return trimmed;
+  return playerFacingReason(trimmed);
 }

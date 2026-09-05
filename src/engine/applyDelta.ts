@@ -24,6 +24,14 @@ import {
 } from "./specialists";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
+import {
+  amountPhrase,
+  featureName,
+  looksLikeEngineKey,
+  roleName,
+  sowingShareLine,
+  workDisplayName,
+} from "../ui/ledgerCopy";
 
 const SMITH_TRANSFER = new Set([
   "iron",
@@ -197,26 +205,26 @@ export function applyProposal(
 ): ApplyResult {
   if (actor === "smith") {
     const blocked = smithAllowed(state, proposal);
-    if (blocked) return fail(state, blocked, `REJECT smith ${proposal.type}: ${blocked}`);
+    if (blocked) return fail(state, blocked, blocked);
   }
   if (actor === "chaplain") {
     const blocked = chaplainAllowed(state, proposal);
-    if (blocked) return fail(state, blocked, `REJECT chaplain ${proposal.type}: ${blocked}`);
+    if (blocked) return fail(state, blocked, blocked);
   }
   if (actor === "merchant") {
     const blocked = merchantAllowed(state, proposal);
-    if (blocked) return fail(state, blocked, `REJECT merchant ${proposal.type}: ${blocked}`);
+    if (blocked) return fail(state, blocked, blocked);
   }
   if (isNegotiatorId(actor)) {
     const blocked = negotiatorAllowed(state, proposal);
-    if (blocked) return fail(state, blocked, `REJECT negotiator ${proposal.type}: ${blocked}`);
+    if (blocked) return fail(state, blocked, blocked);
   } else if (proposal.type === "start_hunt") {
-    return fail(state, "Only Gerulf walks the roads for scarce goods.", `REJECT ${actor} start_hunt: not Gerulf`);
+    return fail(state, "Only Gerulf walks the roads for scarce goods.", "Only Gerulf walks the roads for scarce goods.");
   }
   const specialistActor = specialistById(actor);
   if (specialistActor) {
     const blocked = specialistAllowed(state, proposal, specialistActor);
-    if (blocked) return fail(state, blocked, `REJECT ${actor} ${proposal.type}: ${blocked}`);
+    if (blocked) return fail(state, blocked, blocked);
   }
 
   switch (proposal.type) {
@@ -253,7 +261,7 @@ export function applyProposal(
       return ok(state, r.logLine);
     }
     default:
-      return fail(state, "Unknown proposal type.", "REJECT unknown type");
+      return fail(state, "Unknown proposal type.", "Unknown proposal type.");
   }
 }
 
@@ -263,7 +271,7 @@ function assignLabour(
 ): ApplyResult {
   if (p.projectId === "unassigned") {
     state.labour.assigned = [];
-    return ok(state, "Cleared labour assignments.");
+    return ok(state, "I have sent the extra hands back to their households.");
   }
   const proj = resolveActiveProject(state, p.projectId, p.summary);
   if (!proj || proj.status !== "active") {
@@ -310,7 +318,7 @@ function setStandingOrder(
   } else {
     state.standing_orders.push({ id, text: p.text, active: p.active });
   }
-  return ok(state, `Standing order ${p.active ? "set" : "paused"}: ${p.text.slice(0, 80)}`);
+  return ok(state, `Standing order ${p.active ? "set" : "paused"}: ${p.text.slice(0, 80)}.`);
 }
 
 function startProject(
@@ -344,7 +352,7 @@ function startProject(
   state.projects.push({
     id,
     key: catalog?.key ?? p.projectKey,
-    name: p.name ?? catalog?.name ?? p.projectKey,
+    name: p.name ?? catalog?.name ?? workDisplayName(p.projectKey),
     holdingId: holding.id,
     labourDaysRequired: labourDays,
     labourDaysDone: 0,
@@ -354,9 +362,9 @@ function startProject(
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
   });
-  const name = p.name ?? catalog?.name ?? p.projectKey;
+  const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
-  const started = `${name} is begun. Materials are reserved.`;
+  const started = `${name} is begun. The timber, iron, and stone are set aside.`;
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
 }
 
@@ -374,7 +382,7 @@ function adjustProject(
     }
     proj.status = "cancelled";
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
-    return ok(state, `Cancelled project ${proj.name}; half of unused materials recovered.`);
+    return ok(state, `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`);
   }
   if (p.rush !== undefined) proj.rush = p.rush;
   if (p.labourThisSeason) {
@@ -387,7 +395,7 @@ function adjustProject(
       youths: p.labourThisSeason.youths,
     });
   }
-  return ok(state, `Adjusted project ${proj.name}.`);
+  return ok(state, `The labour on ${proj.name} is changed.`);
 }
 
 function adjustSowing(
@@ -413,11 +421,11 @@ function adjustSowing(
   }
   if (p.springBarleyShare != null) {
     state.agriculture.springBarleyShare = p.springBarleyShare;
-    notes.push(`spring barley share ${Math.round(p.springBarleyShare * 100)}% of remaining`);
+    notes.push(sowingShareLine("spring", p.springBarleyShare).replace(/\.$/, ""));
   }
   if (p.autumnWheatShare != null) {
     state.agriculture.autumnWheatShare = p.autumnWheatShare;
-    notes.push(`autumn wheat share ${Math.round(p.autumnWheatShare * 100)}%`);
+    notes.push(sowingShareLine("autumn", p.autumnWheatShare).replace(/\.$/, ""));
   }
 
   const sownCap = holding.land.fertile_arable * 0.5;
@@ -444,7 +452,7 @@ function adjustSowing(
     );
   }
   holding.sown = next;
-  return ok(state, `Sowing plan: ${notes.join("; ") || p.summary}`);
+  return ok(state, notes.length ? notes.join(". ") + "." : "The sowing is changed.");
 }
 
 function transferResources(
@@ -461,7 +469,7 @@ function transferResources(
     }
     const stall = state.merchant.stock.find((s) => s.resource === p.resource);
     if (!stall || stall.amount < amount) {
-      return fail(state, `The merchant has no ${amount} ${p.resource} on the carts.`, p.summary);
+      return fail(state, `The merchant has no ${amountPhrase(p.resource, amount)} on the carts.`, p.summary);
     }
     const cost = amount * price;
     if (state.resources.denarii < cost) return fail(state, `Need ${round1(cost)} denarii; have ${state.resources.denarii}.`, p.summary);
@@ -469,25 +477,27 @@ function transferResources(
     stall.amount = round1(stall.amount - amount);
     if (stall.amount <= 0) state.merchant.stock = state.merchant.stock.filter((s) => s.resource !== p.resource);
     setAmount(state, p.resource, current + amount);
-    return ok(state, `Bought ${amount} ${p.resource} from ${state.merchant.name ?? "the merchant"} for ${round1(cost)} denarii.`);
+    return ok(state, `Bought ${amountPhrase(p.resource, amount)} from ${state.merchant.name ?? "the merchant"} for ${round1(cost)} denarii.`);
   }
   if (p.direction === "sell") {
     if (!state.flags.merchant_present || !state.merchant.present) {
       return fail(state, "No merchant is in the district this season.", p.summary);
     }
     if (p.resource === "denarii") return fail(state, "Cannot sell coin.", p.summary);
-    if (current < amount) return fail(state, `Cannot sell ${amount} ${p.resource}; have ${current}.`, p.summary);
+    if (current < amount) return fail(state, `Cannot sell ${amountPhrase(p.resource, amount)}; have ${current}.`, p.summary);
     setAmount(state, p.resource, current - amount);
     state.resources.denarii += amount * price;
-    return ok(state, `Sold ${amount} ${p.resource} to ${state.merchant.name ?? "the merchant"} for ${round1(amount * price)} denarii.`);
+    return ok(state, `Sold ${amountPhrase(p.resource, amount)} to ${state.merchant.name ?? "the merchant"} for ${round1(amount * price)} denarii.`);
   }
   if (p.direction === "consume") {
-    if (current < amount) return fail(state, `Cannot consume ${amount} ${p.resource}; have ${current}.`, p.summary);
+    if (current < amount) return fail(state, `Cannot consume ${amountPhrase(p.resource, amount)}; have ${current}.`, p.summary);
     setAmount(state, p.resource, current - amount);
-    return ok(state, `Consumed ${amount} ${p.resource}${p.reason ? ` (${p.reason})` : ""}.`);
+    const why = p.reason && !looksLikeEngineKey(p.reason) ? ` (${p.reason})` : "";
+    return ok(state, `Took ${amountPhrase(p.resource, amount)} from the stores${why}.`);
   }
   setAmount(state, p.resource, current + amount);
-  return ok(state, `Gained ${amount} ${p.resource}${p.reason ? ` (${p.reason})` : ""}.`);
+  const why = p.reason && !looksLikeEngineKey(p.reason) ? ` (${p.reason})` : "";
+  return ok(state, `Added ${amountPhrase(p.resource, amount)} to the stores${why}.`);
 }
 
 function addModifier(
@@ -516,7 +526,8 @@ function addModifier(
       notes: p.source,
     });
   }
-  return ok(state, `Modifier added: ${p.source} → ${p.target} (${p.kind}).`);
+  const note = p.customNote || (p.source && !looksLikeEngineKey(p.source) ? p.source : "");
+  return ok(state, note ? `A custom is written: ${note}.` : "A custom of the hall is written in the books.");
 }
 
 function removeModifier(
@@ -526,7 +537,7 @@ function removeModifier(
   const before = state.modifiers.length;
   state.modifiers = state.modifiers.filter((m) => m.id !== p.modifierId);
   if (state.modifiers.length === before) return fail(state, "Unknown modifier.", p.summary);
-  return ok(state, `Removed modifier ${p.modifierId}.`);
+  return ok(state, "A custom is lifted from the books.");
 }
 
 function registerResource(
@@ -548,7 +559,7 @@ function registerResource(
     tags: p.tags,
   });
   state.market[p.resourceId] = { min: p.priceMin, max: p.priceMax };
-  return ok(state, `Registered new resource ${p.name} (${p.resourceId}).`);
+  return ok(state, `Recorded ${p.name} among the stores.`);
 }
 
 function registerFeature(
@@ -559,7 +570,7 @@ function registerFeature(
   const holding = state.holdings.find((h) => h.id === p.holdingId);
   if (!holding) return fail(state, "Unknown holding.", p.summary);
   if (!holding.features.includes(p.feature)) holding.features.push(p.feature);
-  return ok(state, `Feature '${p.feature}' recorded on ${holding.name}.`);
+  return ok(state, `A ${featureName(p.feature)} is recorded on ${holding.name}.`);
 }
 
 function registerNpc(
@@ -604,11 +615,11 @@ function registerNpc(
     state.npcs.push(npc);
     return ok(
       state,
-      `Hired ${npc.name} as ${npc.role.replaceAll("_", " ")}. ${cost} denarii taken from the chest.${rationNote}`,
+      `Hired ${npc.name} as ${roleName(npc.role)}. ${cost} denarii taken from the chest.${rationNote}`,
     );
   }
   state.npcs.push(npc);
-  return ok(state, `New person recorded: ${npc.name} (${npc.role}).`);
+  return ok(state, `Recorded ${npc.name} as ${roleName(npc.role)}.`);
 }
 
 function eventEffect(
@@ -616,7 +627,10 @@ function eventEffect(
   p: Extract<MechanicalProposal, { type: "event_effect" }>,
   actor: string,
 ): ApplyResult {
-  const lines: string[] = [`Event ${p.eventId}`];
+  const lines: string[] = [];
+  if (p.summary && p.summary !== p.type && p.summary !== "event_effect" && !looksLikeEngineKey(p.summary)) {
+    lines.push(p.summary.replace(/\.$/, ""));
+  }
   if (p.resource && p.amount && p.direction) {
     const inner = transferResources(state, {
       type: "transfer_resources",
@@ -624,10 +638,8 @@ function eventEffect(
       resource: p.resource,
       amount: p.amount,
       direction: p.direction,
-      reason: p.eventId,
     });
-    if (inner.ok) lines.push(inner.logLine);
-    else lines.push(`resource skipped: ${inner.reason}`);
+    if (inner.ok) lines.push(inner.logLine.replace(/\.$/, ""));
   }
   if (p.moodDelta) {
     const existing = state.modifiers.find((m) => m.source === `event:${p.eventId}:mood`);
@@ -640,22 +652,19 @@ function eventEffect(
         effect: { op: "add", value: p.moodDelta },
         source: `event:${p.eventId}:mood`,
       });
-      lines.push(`Mood ${p.moodDelta > 0 ? "+" : ""}${p.moodDelta}`);
+      lines.push(p.moodDelta > 0 ? "The people take heart" : "The people grow uneasy");
     }
   }
   if (p.nested) {
     for (const raw of p.nested) {
       const parsed = parseProposal(raw);
-      if (!parsed.proposal) {
-        lines.push(`nested dropped: ${parsed.error}`);
-        continue;
-      }
+      if (!parsed.proposal) continue;
       if (parsed.proposal.type === "event_effect") continue;
       const r = applyProposal(state, parsed.proposal, actor);
-      lines.push(r.ok ? r.logLine : `nested reject: ${r.reason}`);
+      if (r.ok) lines.push(r.logLine.replace(/\.$/, ""));
     }
   }
-  return ok(state, lines.join("; "));
+  return ok(state, lines.length ? `${lines.join(". ")}.` : "A season's change is written.");
 }
 
 export function resourceOutputBonus(state: WorldState, resource: string, base: number): number {

@@ -67,7 +67,7 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
       return [
         {
           type: "add_modifier",
-          summary: "Blessing upon the household (mood).",
+          summary: "Blessing upon the household.",
           target: "mood",
           kind: "temporary",
           seasonsRemaining: 4,
@@ -164,7 +164,7 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
     return [
       {
         type: "add_modifier",
-        summary: "A word of encouragement (mood).",
+        summary: "A word of encouragement.",
         target: "mood",
         kind: "temporary",
         seasonsRemaining: 3,

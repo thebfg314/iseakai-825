@@ -27,5 +27,5 @@ export function consumeGrain(state: WorldState, amount: number, label = "Househo
     state.flags.hunger = true;
     return `${label} needed ${amount} modii; short ${left}. Hunger begins.`;
   }
-  return `${label} consumed ${taken.join(", ") || "nothing"}.`;
+  return `${label} took ${taken.join(", ") || "nothing"}.`;
 }

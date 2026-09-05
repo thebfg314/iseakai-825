@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import startingEstate from "../../data/starting-estate.json";
+import { applyProposal } from "../engine/applyDelta";
+import { WorldStateSchema, type WorldState } from "../engine/schema";
 import {
   confirmBanner,
   featureName,
@@ -7,13 +10,27 @@ import {
   merchantPresentLine,
   modifierLine,
   labourOnWorkLine,
+  playerFacingReason,
+  playerFacingSummary,
   projectProgressLine,
   proposalBlurb,
   proposalTypeName,
   resourceName,
   roleName,
   sowingShareLine,
+  workDisplayName,
 } from "./ledgerCopy";
+
+const JARGON = /proj-|REJECT\b|npc_not_authorized|customCosts|\b[a-z]+_[a-z0-9]+\b/;
+
+function estate(): WorldState {
+  const state = WorldStateSchema.parse(structuredClone(startingEstate));
+  state.resources.softwood = 40;
+  state.resources.hardwood = 20;
+  state.resources.iron = 80;
+  state.resources.stone = 20;
+  return state;
+}
 
 describe("steward ledger voice", () => {
   it("uses period names for land, features, roles, and stores", () => {
@@ -38,6 +55,10 @@ describe("steward ledger voice", () => {
   it("hides programmer proposal types, JSON fields, and modifier math", () => {
     expect(proposalTypeName("transfer_resources")).toBe("The stores");
     expect(proposalTypeName("transfer_resources")).not.toMatch(/_/);
+    expect(proposalTypeName("add_modifier")).toBe("A custom of the hall");
+    expect(proposalTypeName("remove_modifier")).toBe("A standing custom");
+    expect(proposalTypeName("add_modifier")).not.toMatch(/_|modifier/i);
+    expect(workDisplayName("flour_mill")).toBe("Flour mill");
     expect(
       proposalBlurb({
         type: "transfer_resources",
@@ -82,5 +103,99 @@ describe("steward ledger voice", () => {
         durationSeasons: 2,
       }),
     ).toMatch(/42 denarii over 2 seasons/);
+    expect(
+      proposalBlurb({
+        type: "assign_labour",
+        summary: "assign_labour",
+        projectId: "proj-xyz",
+        men: 12,
+        women: 0,
+        youths: 0,
+      }),
+    ).toBe("12 men to the work.");
+    expect(playerFacingSummary({ type: "assign_labour", summary: "assign_labour" })).toBe("");
+  });
+
+  it("rewrites apply fail reasons into steward speech", () => {
+    expect(playerFacingReason("npc_not_authorized")).toBe("That is not theirs to order.");
+    expect(playerFacingReason("Unknown project.")).toBe("I know no such work on the estate.");
+    expect(playerFacingReason("No such active project.")).toBe("There is no such work underway.");
+    expect(playerFacingReason("Unknown holding.")).toBe("I know no such holding.");
+    expect(playerFacingReason("Unknown project 'flour_mill' and no customCosts declared.")).toMatch(/flour mill/i);
+    expect(playerFacingReason("REJECT smith assign_labour: npc_not_authorized")).toBe("That is not theirs to order.");
+    expect(playerFacingReason("Not enough callable labour (pool men 180, women 80, youths 40).")).toMatch(
+      /180 men, 80 women, and 40 youths/,
+    );
+    expect(playerFacingReason("The merchant has no 4 trade_goods on the carts.")).toMatch(/wares/);
+    for (const reason of [
+      "npc_not_authorized",
+      "Unknown project.",
+      "No such active project.",
+      "Unknown holding.",
+      "Unknown project 'flour_mill' and no customCosts declared.",
+      "REJECT smith assign_labour: npc_not_authorized",
+      "Unknown resource 'trade_goods'. Register it first.",
+    ]) {
+      expect(playerFacingReason(reason)).not.toMatch(JARGON);
+    }
+  });
+});
+
+describe("apply success and fail voice the lord can read", () => {
+  it("start_project and assign_labour logLines have no generated ids or engine keys", () => {
+    const state = estate();
+    const started = applyProposal(
+      state,
+      { type: "start_project", summary: "Begin a flour mill", projectKey: "flour_mill", holdingId: "fontenay" },
+      "steward",
+    );
+    expect(started.ok).toBe(true);
+    expect(started.logLine).toMatch(/I have called/i);
+    expect(started.logLine).toMatch(/flour mill/i);
+    expect(started.logLine).not.toMatch(JARGON);
+    expect(started.logLine).not.toMatch(/Materials reserved/i);
+
+    const mill = state.projects.find((p) => p.key === "flour_mill")!;
+    const assigned = applyProposal(
+      state,
+      { type: "assign_labour", summary: "Hands on the mill", projectId: mill.id, men: 12, women: 0, youths: 0 },
+      "steward",
+    );
+    expect(assigned.ok).toBe(true);
+    expect(assigned.logLine).toMatch(/I have called/i);
+    expect(assigned.logLine).toMatch(/flour mill/i);
+    expect(assigned.logLine).not.toMatch(JARGON);
+    expect(assigned.logLine).not.toContain(mill.id);
+  });
+
+  it("common fail reasons stay coded internally but playerFacingReason has no jargon", () => {
+    const state = estate();
+    const miss = applyProposal(
+      state,
+      { type: "assign_labour", summary: "Hands", projectId: "glassworks", men: 4, women: 0, youths: 0 },
+      "steward",
+    );
+    expect(miss.ok).toBe(false);
+    expect(miss.reason).toBe("No such active project.");
+    expect(playerFacingReason(miss.reason!)).not.toMatch(JARGON);
+
+    const unknown = applyProposal(
+      state,
+      { type: "start_project", summary: "Begin a glassworks", projectKey: "glassworks", holdingId: "fontenay" },
+      "steward",
+    );
+    expect(unknown.ok).toBe(false);
+    expect(unknown.reason).toMatch(/customCosts|Unknown project/);
+    expect(playerFacingReason(unknown.reason!)).not.toMatch(JARGON);
+
+    const smith = applyProposal(
+      state,
+      { type: "adjust_sowing", summary: "More barley", holdingId: "fontenay", springBarleyShare: 0.9 },
+      "smith",
+    );
+    expect(smith.ok).toBe(false);
+    expect(smith.reason).toBe("npc_not_authorized");
+    expect(playerFacingReason(smith.reason!)).not.toMatch(JARGON);
+    expect(smith.logLine).not.toMatch(/REJECT/);
   });
 });
