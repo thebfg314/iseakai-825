@@ -6,7 +6,7 @@ import {
   type WorldState,
 } from "./schema";
 import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
-import { labourPool, labourRemaining } from "./labour";
+import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRemaining, resolveActiveProject } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
@@ -103,7 +103,7 @@ function smithAllowed(state: WorldState, p: MechanicalProposal): string | null {
       return "npc_not_authorized";
     }
     case "adjust_project": {
-      const proj = state.projects.find((x) => x.id === p.projectId);
+      const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
       if (FORGE_PROJECT_KEYS.has(proj.key) || proj.tag === "forge") return null;
       return "npc_not_authorized";
@@ -142,14 +142,14 @@ function chaplainAllowed(state: WorldState, p: MechanicalProposal): string | nul
       return "npc_not_authorized";
     }
     case "adjust_project": {
-      const proj = state.projects.find((x) => x.id === p.projectId);
+      const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
       if (CHURCH_PROJECT_KEYS.has(proj.key) || proj.tag === "church") return null;
       return "npc_not_authorized";
     }
     case "assign_labour": {
       if (p.projectId === "unassigned") return "npc_not_authorized";
-      const proj = state.projects.find((x) => x.id === p.projectId);
+      const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
       if (CHURCH_PROJECT_KEYS.has(proj.key) || proj.tag === "church") return null;
       return "npc_not_authorized";
@@ -261,11 +261,17 @@ function assignLabour(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "assign_labour" }>,
 ): ApplyResult {
-  if (p.projectId !== "unassigned" && !state.projects.some((x) => x.id === p.projectId && x.status === "active")) {
+  if (p.projectId === "unassigned") {
+    state.labour.assigned = [];
+    return ok(state, "Cleared labour assignments.");
+  }
+  const proj = resolveActiveProject(state, p.projectId, p.summary);
+  if (!proj || proj.status !== "active") {
     return fail(state, "No such active project.", p.summary);
   }
+  const projectId = proj.id;
   const remaining = labourRemaining(state);
-  const existing = state.labour.assigned.find((a) => a.projectId === p.projectId);
+  const existing = state.labour.assigned.find((a) => a.projectId === projectId);
   const already = existing ?? { men: 0, women: 0, youths: 0 };
   const needMen = p.men - (existing ? already.men : 0);
   const needWomen = p.women - (existing ? already.women : 0);
@@ -278,18 +284,18 @@ function assignLabour(
       p.summary,
     );
   }
-  if (p.projectId === "unassigned") {
-    state.labour.assigned = [];
-    return ok(state, "Cleared labour assignments.");
-  }
   if (existing) {
     existing.men = p.men;
     existing.women = p.women;
     existing.youths = p.youths;
   } else {
-    state.labour.assigned.push({ projectId: p.projectId, men: p.men, women: p.women, youths: p.youths });
+    state.labour.assigned.push({ projectId, men: p.men, women: p.women, youths: p.youths });
   }
-  return ok(state, `Assigned labour to ${p.projectId}: ${p.men} men, ${p.women} women, ${p.youths} youths.`);
+  autoAssignLeftoverToProject(state, projectId);
+  const final = state.labour.assigned.find((a) => a.projectId === projectId);
+  const work = proj.name;
+  const sentence = labourCalledSentence(work, final?.men ?? 0, final?.women ?? 0, final?.youths ?? 0);
+  return ok(state, sentence || `Hands set on ${work}.`);
 }
 
 function setStandingOrder(
@@ -348,14 +354,17 @@ function startProject(
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
   });
-  return ok(state, `Started project ${p.name ?? catalog?.name ?? p.projectKey} (${id}). Materials reserved.`);
+  const name = p.name ?? catalog?.name ?? p.projectKey;
+  const fill = autoAssignLeftoverToProject(state, id);
+  const started = `${name} is begun. Materials are reserved.`;
+  return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
 }
 
 function adjustProject(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "adjust_project" }>,
 ): ApplyResult {
-  const proj = state.projects.find((x) => x.id === p.projectId);
+  const proj = resolveActiveProject(state, p.projectId, p.summary);
   if (!proj) return fail(state, "Unknown project.", p.summary);
   if (p.cancel) {
     if (proj.materialsReserved && proj.status === "active") {

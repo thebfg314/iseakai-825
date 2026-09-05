@@ -1,4 +1,5 @@
 import { grainOnHand, HOUSEHOLD_SEASON_GRAIN } from "./grain";
+import { resolveActiveProject } from "./labour";
 import type { MechanicalProposal, Npc, WorldState } from "./schema";
 
 /** Fontenay start: 10 households. A reeve is sought at half again that number. */
@@ -507,14 +508,14 @@ export function specialistAllowed(
     case "start_project":
       return projectAllowed(p, keys, tag) ? null : "npc_not_authorized";
     case "adjust_project": {
-      const proj = state.projects.find((x) => x.id === p.projectId);
+      const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
       if (keys.has(proj.key) || proj.tag === tag) return null;
       return "npc_not_authorized";
     }
     case "assign_labour": {
       if (p.projectId === "unassigned") return "npc_not_authorized";
-      const proj = state.projects.find((x) => x.id === p.projectId);
+      const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
       if (keys.has(proj.key) || proj.tag === tag) return null;
       return "npc_not_authorized";

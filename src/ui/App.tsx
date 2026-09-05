@@ -21,6 +21,7 @@ import {
   featuresSentence,
   formatLedgerNumber,
   formatSignedDelta,
+  labourOnWorkLine,
   labourSentence,
   landName,
   marketLine,
@@ -609,7 +610,7 @@ function Ledger({ view }: { view: GameView }) {
             v={
               p.hunt
                 ? huntProgressLine(p.hunt.seasonsElapsed, p.hunt.durationSeasons)
-                : projectProgressLine(p.labourDaysDone, p.labourDaysRequired)
+                : `${projectProgressLine(p.labourDaysDone, p.labourDaysRequired)} · ${labourOnWorkLine(s.labour.assigned.find((a) => a.projectId === p.id))}`
             }
           />
         ))}

@@ -1,6 +1,6 @@
 import type { SeasonEffectLine, WorldState } from "./schema";
 import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
-import { labourDaysFromAssignment } from "./labour";
+import { autoFillLeftoverLabour, labourDaysFromAssignment } from "./labour";
 import { modifiersFor, applyMultiplyAdd, moodFactor, tickModifiers, yieldMultiplier } from "./modifiers";
 import { projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
@@ -136,6 +136,7 @@ function livestockSeason(state: WorldState): string[] {
 
 function advanceProjects(state: WorldState): string[] {
   const notes: string[] = [];
+  notes.push(...autoFillLeftoverLabour(state));
   for (const proj of state.projects.filter((p) => p.status === "active")) {
     if (proj.tag === "hunt" || proj.hunt) continue;
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
@@ -218,5 +219,6 @@ export function finishSeasonClock(state: WorldState): SeasonEffectLine[] {
   state.meta.year = next.year;
   state.meta.season = next.season;
   state.meta.turn += 1;
+  notes.push(...autoFillLeftoverLabour(state));
   return notes.map((text) => ({ kind: "info" as const, text }));
 }

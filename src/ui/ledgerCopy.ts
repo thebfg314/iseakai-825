@@ -1,6 +1,7 @@
 import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } from "../engine/schema";
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
 import { lookupProject } from "../engine/projectCatalog";
+import { labourCalledPhrase, resolveActiveProject } from "../engine/labour";
 import { matchHireableSpecialist } from "../engine/specialists";
 
 export const BOOKS_TITLE = "The books";
@@ -233,6 +234,11 @@ export function marketLine(resource: string, min: number, max: number): string {
   return `${name} ${verb} ${min}–${max} denarii the ${unit}`;
 }
 
+export function labourOnWorkLine(assign?: { men: number; women: number; youths: number } | null): string {
+  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra hands called this season";
+  return labourCalledPhrase(assign.men, assign.women, assign.youths);
+}
+
 export function projectProgressLine(done: number, required: number): string {
   if (required <= 0) return "finished";
   const frac = done / required;
@@ -305,7 +311,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return `Begin ${name} on ${holding}.`;
     }
     case "adjust_project": {
-      const proj = state?.projects.find((x) => x.id === p.projectId);
+      const proj = state ? resolveActiveProject(state, p.projectId, p.summary) : undefined;
       const name = proj?.name ?? "the work";
       if (p.cancel) return `Stop ${name}.`;
       if (p.rush) return `Hasten ${name}.`;
@@ -330,7 +336,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return p.customNote || p.summary || p.source;
     }
     case "assign_labour": {
-      const proj = state?.projects.find((x) => x.id === p.projectId)?.name ?? "the work";
+      const proj = state ? resolveActiveProject(state, p.projectId, p.summary)?.name ?? "the work" : "the work";
       return `${p.men} men, ${p.women} women, and ${p.youths} youths to ${proj}.`;
     }
     case "set_standing_order":

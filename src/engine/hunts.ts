@@ -7,6 +7,7 @@ import {
   type StartHuntProposal,
   type WorldState,
 } from "./schema";
+import { resolveActiveProject } from "./labour";
 import { looksLikeHireOrder, specialistsFromHireText } from "./specialists";
 import { newId, round1 } from "./util";
 
@@ -347,7 +348,7 @@ export function huntFulfillReason(state: WorldState, playerText: string): string
 export function negotiatorAllowed(state: WorldState, p: MechanicalProposal): string | null {
   if (p.type === "start_hunt") return null;
   if (p.type === "adjust_project") {
-    const proj = state.projects.find((x) => x.id === p.projectId);
+    const proj = resolveActiveProject(state, p.projectId, p.summary);
     if (proj?.hunt || proj?.tag === "hunt") return null;
     return "npc_not_authorized";
   }
