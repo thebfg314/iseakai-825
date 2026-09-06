@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameView } from "../shared/types";
-import type { ChatMessage, PendingProposal } from "../engine/schema";
+import type { ChatMessage, PendingProposal, Season } from "../engine/schema";
 import { CANONICAL_RESOURCES } from "../engine/schema";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { isCoreHouseholdId } from "../engine/specialists";
@@ -8,6 +8,12 @@ import { huntProgressLine } from "../engine/hunts";
 import type { AldricEmotion } from "../engine/emotion";
 import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
+import {
+  SEASON_IDLE_FRAME_MS,
+  nextIdleFrameIndex,
+  seasonHeaderSrc,
+  seasonIdleFrames,
+} from "./seasonAnim";
 import { DEFAULT_MODELS, LLM_PROVIDERS, PROVIDER_META, type AppSettings, type LlmProvider } from "../llm/types";
 import { defaultAppSettings } from "../llm/settings";
 import { emptyMeter, type LlmMeter } from "../llm/usage";
@@ -55,6 +61,7 @@ export function App() {
   const [settings, setSettings] = useState<AppSettings>(defaultAppSettings);
   const [models, setModels] = useState<{ id: string }[]>([]);
   const [displayEmotion, setDisplayEmotion] = useState<AldricEmotion>("neutral");
+  const [loopingSeason, setLoopingSeason] = useState<Season | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
@@ -220,6 +227,16 @@ export function App() {
     }
   }
 
+  async function advanceSeason() {
+    if (!view) return;
+    setLoopingSeason(view.state.meta.season);
+    try {
+      await withBusy(() => window.api.advanceSeason());
+    } finally {
+      setLoopingSeason(null);
+    }
+  }
+
   async function send() {
     if (!view || !draft.trim() || busy || sendLock.current) return;
     const text = draft.trim();
@@ -304,7 +321,7 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div>
+        <div className="topbar-title">
           <div className="title">Villa of Fontenay</div>
           <div className="sub">
             {cap(view.state.meta.season)} {view.state.meta.year} · turn {view.state.meta.turn} · {view.state.player.name}
@@ -313,6 +330,7 @@ export function App() {
             {hudInkLine(view.llmMeter)}
           </div>
         </div>
+        <SeasonHeaderArt season={view.state.meta.season} loopingSeason={loopingSeason} />
         <div className="top-actions">
           <button onClick={() => setScreen("title")} disabled={busy}>
             Title
@@ -323,7 +341,7 @@ export function App() {
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           <button
             className="primary"
-            onClick={() => withBusy(() => window.api.advanceSeason())}
+            onClick={() => void advanceSeason()}
             disabled={busy}
             title={view.pending.length ? "Unconfirmed orders will lapse if you advance." : "Resolve the season and write events to the ledger"}
           >
@@ -469,6 +487,35 @@ export function App() {
       </div>
 
       {settingsModal}
+    </div>
+  );
+}
+
+function SeasonHeaderArt({ season, loopingSeason }: { season: Season; loopingSeason: Season | null }) {
+  const [frameIndex, setFrameIndex] = useState(0);
+  const displaySeason = loopingSeason ?? season;
+
+  useEffect(() => {
+    for (const src of seasonIdleFrames(displaySeason)) {
+      const img = new Image();
+      img.src = src;
+    }
+  }, [displaySeason]);
+
+  useEffect(() => {
+    if (!loopingSeason) {
+      setFrameIndex(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setFrameIndex((i) => nextIdleFrameIndex(i));
+    }, SEASON_IDLE_FRAME_MS);
+    return () => window.clearInterval(id);
+  }, [loopingSeason]);
+
+  return (
+    <div className="season-art" aria-hidden="true">
+      <img src={seasonHeaderSrc(season, loopingSeason, frameIndex)} alt="" draggable={false} />
     </div>
   );
 }
