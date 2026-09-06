@@ -7,6 +7,7 @@ import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
 import { nextSeason, round0, round1 } from "./util";
+import { featureName, landName, resourceName } from "../ui/ledgerCopy";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -100,7 +101,7 @@ function livestockSeason(state: WorldState): string[] {
     if (orch > 0) {
       const goods = round0(orch * 3);
       state.resources.trade_goods += goods;
-      notes.push(`Orchard: +${goods} trade goods (dried fruit / cider value).`);
+      notes.push(`Orchard: +${goods} ${resourceName("trade_goods")} (dried fruit / cider value).`);
     }
   }
   if (season === "winter") {
@@ -141,7 +142,7 @@ function advanceProjects(state: WorldState): string[] {
     if (proj.tag === "hunt" || proj.hunt) continue;
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
-      notes.push(`${proj.name}: no labour assigned this season.`);
+      notes.push(`${proj.name}: no extra hands called this season.`);
       continue;
     }
     const kind = labourKindFor(proj);
@@ -149,21 +150,26 @@ function advanceProjects(state: WorldState): string[] {
     const rush = proj.rush ? 1.15 : 1;
     days *= projectSpeed(state, rush);
     proj.labourDaysDone = round1(proj.labourDaysDone + days);
-    notes.push(`${proj.name}: +${round1(days)} labour-days (${round1(proj.labourDaysDone)}/${proj.labourDaysRequired}).`);
+    const owed = Math.max(0, round1(proj.labourDaysRequired - proj.labourDaysDone));
+    notes.push(
+      `${proj.name}: ${round1(days)} days of work done this season; ${owed === 0 ? "the work is finished" : `${owed} days still owed`}.`,
+    );
     if (proj.labourDaysDone >= proj.labourDaysRequired) {
       proj.status = "completed";
       const holding = state.holdings.find((h) => h.id === proj.holdingId);
       const cat = lookupProject(proj.key);
       if (holding && cat?.completesToFeature && !holding.features.includes(cat.completesToFeature)) {
         holding.features.push(cat.completesToFeature);
-        notes.push(`${proj.name} completed: ${cat.completesToFeature} added to ${holding.name}.`);
+        notes.push(`${proj.name} is finished: a ${featureName(cat.completesToFeature)} now stands on ${holding.name}.`);
       } else if (holding && cat?.completesToLand) {
         const acres = cat.completesToLand.acres ?? 1;
         holding.land[cat.completesToLand.from] = Math.max(0, holding.land[cat.completesToLand.from] - acres);
         holding.land[cat.completesToLand.to] += acres;
-        notes.push(`${proj.name} completed: ${acres} acre ${cat.completesToLand.from} → ${cat.completesToLand.to}.`);
+        notes.push(
+          `${proj.name} is finished: ${acres} acre${acres === 1 ? "" : "s"} of ${landName(cat.completesToLand.from)} is now ${landName(cat.completesToLand.to)}.`,
+        );
       } else {
-        notes.push(`${proj.name} completed.`);
+        notes.push(`${proj.name} is finished.`);
       }
       syncTradeFromFeatures(state);
     }

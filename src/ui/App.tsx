@@ -27,7 +27,10 @@ import {
   marketLine,
   merchantPresentLine,
   modifierLine,
+  modifierSourceName,
   peopleSentence,
+  playerFacingReason,
+  playerFacingSummary,
   projectProgressLine,
   proposalBlurb,
   proposalTypeName,
@@ -329,7 +332,7 @@ export function App() {
         </div>
       </header>
 
-      {error && <div className="banner">{error}</div>}
+      {error && <div className="banner">{playerFacingReason(error)}</div>}
       {busy && <div className="banner muted">Waiting on the court…</div>}
       {view.pending.length > 0 && (
         <div className="banner pending">
@@ -500,7 +503,7 @@ function ProposalCard({
   return (
     <div className="proposal">
       <div className="p-type">{proposalTypeName(p.proposal.type)}</div>
-      <div className="p-sum">{p.proposal.summary}</div>
+      {playerFacingSummary(p.proposal) && <div className="p-sum">{playerFacingSummary(p.proposal)}</div>}
       <div className="p-blurb">{proposalBlurb(p.proposal, state)}</div>
       <div className="p-actions">
         <button className="primary" disabled={busy} onClick={onConfirm}>
@@ -564,7 +567,7 @@ function Ledger({ view }: { view: GameView }) {
           {s.merchant.stock.length === 0 && <p className="muted">The carts are empty.</p>}
           {s.merchant.stock.map((w) => {
             const range = s.market[w.resource];
-            const price = range ? marketLine(w.resource, range.min, range.max) : "price not set";
+            const price = range ? marketLine(w.resource, range.min, range.max) : "price not yet known";
             return (
               <Row
                 key={w.resource}
@@ -628,7 +631,7 @@ function Ledger({ view }: { view: GameView }) {
       <h3>Customs in force</h3>
       {s.modifiers.length === 0 && <p className="muted">None that I am watching.</p>}
       {s.modifiers.map((m) => (
-        <Row key={m.id} k={m.source} v={modifierLine(m)} />
+        <Row key={m.id} k={modifierSourceName(m.source)} v={modifierLine(m)} />
       ))}
 
       <h3>Standing orders</h3>

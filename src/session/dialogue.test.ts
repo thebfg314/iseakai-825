@@ -138,7 +138,7 @@ describe("season events and persistent buffs", () => {
     const mood = game.state.modifiers.some((m) => m.target === "mood");
     const ryeMoved = game.state.resources.rye !== ryeBefore;
     expect(mood || ryeMoved).toBe(true);
-    expect(effects.some((e) => /Default effect|Flavour only/i.test(e.text))).toBe(true);
+    expect(effects.some((e) => /usual change|season's tale had no figures/i.test(e.text))).toBe(true);
   });
 
   it("lets an accepted mood blessing raise later yield and survive a season tick", () => {

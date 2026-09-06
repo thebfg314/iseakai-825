@@ -68,6 +68,7 @@ import {
   specialistNpc,
 } from "../engine/specialists";
 import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
+import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -216,7 +217,7 @@ export class GameController {
 
   askAboutProposal(id: string): GameView & { error?: string } {
     const item = this.pending.find((p) => p.id === id && p.status === "pending");
-    if (!item) return { ...this.view(), error: "No such pending proposal." };
+    if (!item) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
     this.setScene(item.npcId);
     if (this.sceneNpcId !== item.npcId) {
       return { ...this.view(), error: "They are not here to speak with." };
@@ -497,22 +498,22 @@ export class GameController {
       const n = proposals.length;
       this.ledgerNote(
         fromEngine
-          ? `The chronicler returned no valid ledger change. ${n} proposal${n === 1 ? " was" : "s were"} drafted from your order — Confirm writes them in the books.`
-          : `${n} proposed ledger change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
+          ? `The chronicler could not set the figures. ${n} change${n === 1 ? " was" : "s were"} drafted from your order — Confirm writes ${n === 1 ? "it" : "them"} in the books.`
+          : `${n} proposed change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
         npcId,
       );
       return;
     }
     if (parsed.parseErrors.length) {
-      this.ledgerNote(`No mechanical change was applied (${parsed.parseErrors[0]}). The books are unchanged.`, npcId);
+      this.ledgerNote("Nothing was written to the books. They remain unchanged.", npcId);
       return;
     }
     if (looksLikeMechanicalOrder(playerText, npcId)) {
       const why = cannotFulfillReason(this.state, npcId, playerText);
       this.ledgerNote(
         why
-          ? `No mechanical change was proposed. ${why}`
-          : "No mechanical change was proposed. The reply was speech only; the ledger is unchanged. Give a concrete order (sow, start a work, give stores, assign labour, blessing, hire a craftsman) or Advance season.",
+          ? `No change was set down. ${why}`
+          : "They answered in speech only. The books are unchanged. Give a clear order — sow, begin a work, give stores, call hands, a blessing, or hire a craftsman — or advance the season.",
         npcId,
       );
     }
@@ -581,7 +582,7 @@ export class GameController {
 
   confirmProposal(id: string): GameView & { error?: string } {
     const item = this.pending.find((p) => p.id === id && p.status === "pending");
-    if (!item) return { ...this.view(), error: "No such pending proposal." };
+    if (!item) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
     const batch = sortPendingForApply(this.pending.filter((p) => p.status === "pending"));
     const before = cloneState(this.state);
     let error: string | undefined;
@@ -609,13 +610,18 @@ export class GameController {
       if (spec) this.npcEmotions[spec.id] = this.npcEmotions[spec.id] ?? "neutral";
     }
     this.log(item.npcId, result.ok ? "APPLY" : "REJECT", logLine);
-    this.ledgerNote(result.ok ? `Done: ${logLine}` : `Cannot be made so: ${result.reason}`, item.npcId);
+    this.ledgerNote(
+      result.ok
+        ? playerFacingLogLine(logLine)
+        : `It cannot be made so. ${playerFacingReason(result.reason ?? logLine)}`,
+      item.npcId,
+    );
     if (this.askedAboutId === item.id) this.askedAboutId = null;
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
       this.flushHireRecommendations(newlyUnlockedHires(beforeNpc, this.state));
     }
-    return result.ok ? {} : { error: result.reason };
+    return result.ok ? {} : { error: playerFacingReason(result.reason ?? logLine) };
   }
 
   private rewritePendingLabourProjectIds() {
@@ -635,7 +641,7 @@ export class GameController {
       item.status = "rejected";
       item.rejectReason = "Player rejected";
       this.log(item.npcId, "REJECT", item.proposal.summary);
-      this.ledgerNote(`You declined: ${item.proposal.summary}`, item.npcId);
+      this.ledgerNote(`You declined: ${playerFacingSummary(item.proposal) || "that change"}.`, item.npcId);
       if (this.askedAboutId === id) this.askedAboutId = null;
     }
     return this.view();
@@ -711,7 +717,7 @@ export class GameController {
       await this.refreshCredits();
       return { ...this.view(), effects };
     } catch (err) {
-      for (const ev of rolled) this.applyEventStub(ev, effects, "Default effect (no model)");
+      for (const ev of rolled) this.applyEventStub(ev, effects, "The usual change");
       effects.push(...finishSeasonClock(this.state));
       writeLastSeasonDeltas(this.state, ledgerBefore);
       if (isHoldAtOnceFailure(err)) {
@@ -721,7 +727,7 @@ export class GameController {
           id: newId("msg"),
           role: "system",
           npcId: "steward",
-          text: "Season advanced with the engine's own figures. The chronicler could not be heard.",
+          text: "The season turned on the estate's own figures. The chronicler could not be heard.",
           chronicle: effects.map((e) => e.text).join("\n"),
           at: new Date().toISOString(),
         });
@@ -749,23 +755,29 @@ export class GameController {
         };
         const r = applyProposal(this.state, wrapped, "referee");
         this.state = r.state;
-        effects.push({ kind: r.ok ? "apply" : "reject", text: r.ok ? r.logLine : r.reason ?? r.logLine });
+        effects.push({
+          kind: r.ok ? "apply" : "reject",
+          text: r.ok ? playerFacingLogLine(r.logLine) : playerFacingReason(r.reason ?? r.logLine),
+        });
         this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
         continue;
       }
       if (!eventEffectHasMechanics(p)) {
-        effects.push({ kind: "info", text: `Flavour only for ${p.eventId}; using the default numeric effect.` });
+        effects.push({ kind: "info", text: "The season's tale had no figures; I have written the usual change." });
         continue;
       }
       covered.add(p.eventId);
       const r = applyProposal(this.state, p, "referee");
       this.state = r.state;
-      effects.push({ kind: r.ok ? "apply" : "reject", text: r.ok ? r.logLine : r.reason ?? r.logLine });
+      effects.push({
+        kind: r.ok ? "apply" : "reject",
+        text: r.ok ? playerFacingLogLine(r.logLine) : playerFacingReason(r.reason ?? r.logLine),
+      });
       this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
     }
     for (const ev of rolled) {
       if (covered.has(ev.id)) continue;
-      this.applyEventStub(ev, effects, "Default effect");
+      this.applyEventStub(ev, effects, "The usual change");
     }
   }
 
@@ -791,7 +803,7 @@ export class GameController {
       {
         type: "event_effect",
         eventId: ev.id,
-        summary: `Stub for ${ev.id}`,
+        summary: ev.resolvedText || "A season's change",
         resource: stub.resource,
         amount: stub.amount,
         direction: stub.direction,
@@ -800,14 +812,16 @@ export class GameController {
       "referee",
     );
     this.state = r.state;
-    effects.push({ kind: r.ok ? "apply" : "reject", text: `${label}: ${r.logLine}` });
-    this.log("referee", r.ok ? "APPLY" : "REJECT", `${label}: ${r.logLine}`);
+    const text = r.ok ? playerFacingLogLine(r.logLine) : playerFacingReason(r.reason ?? r.logLine);
+    effects.push({ kind: r.ok ? "apply" : "reject", text: label ? `${label}. ${text}` : text });
+    this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
   }
 
-  private pushSeasonLedger(effects: SeasonEffectLine[], parseErrors?: string[]) {
-    const lines = effects.filter((e) => e.kind === "apply" || e.kind === "info" || e.kind === "event").map((e) => e.text);
-    const extra = parseErrors?.length ? `\nChronicler parse: ${parseErrors[0]}` : "";
-    this.ledgerNote(`Season written to the books:\n${lines.join("\n")}${extra}`, "steward");
+  private pushSeasonLedger(effects: SeasonEffectLine[], _parseErrors?: string[]) {
+    const lines = effects
+      .filter((e) => e.kind === "apply" || e.kind === "info" || e.kind === "event")
+      .map((e) => playerFacingLogLine(e.text));
+    this.ledgerNote(`Season written to the books:\n${lines.join("\n")}`, "steward");
   }
 
   private async callLlm(

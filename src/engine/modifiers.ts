@@ -51,9 +51,9 @@ export function tickModifiers(state: WorldState): string[] {
     }
     if (m.promote_on_expire) {
       kept.push({ ...m, kind: "permanent", seasons_remaining: null, source: `${m.source} (established)` });
-      notes.push(`Technique settled into custom: ${m.source}`);
+      notes.push(`A custom has settled in: ${m.source.startsWith("event:") ? "a season's change" : m.source}`);
     } else {
-      notes.push(`Temporary effect ended: ${m.source}`);
+      notes.push(`A custom has run its course: ${m.source.startsWith("event:") ? "a season's change" : m.source}`);
     }
   }
   state.modifiers = kept;
