@@ -95,6 +95,29 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   border-bottom: 1px solid var(--line);
   background: var(--bg-2);
 }
+.topbar-title {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.season-art {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+.season-art img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 3.75rem;
+  object-fit: contain;
+  object-position: center;
+}
 .title { font-size: 1.25rem; letter-spacing: 0.04em; }
 .sub { color: var(--muted); font-size: 0.9rem; }
 .ink-meter {
@@ -103,7 +126,7 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   margin-top: 0.18rem;
   letter-spacing: 0.02em;
 }
-.top-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.top-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 0 0 auto; }
 
 .banner { padding: 0.4rem 1rem; background: #3a2a18; color: var(--parchment); }
 .banner.muted { background: #2a241c; color: var(--muted); }
