@@ -36,11 +36,39 @@ import winter5 from "../../art assets/Anim sprites/Winter Idle/Winter 5.jpg";
 import winter6 from "../../art assets/Anim sprites/Winter Idle/Winter 6.jpg";
 import winter7 from "../../art assets/Anim sprites/Winter Idle/Winter 7.jpg";
 import winter8 from "../../art assets/Anim sprites/Winter Idle/Winter 8.jpg";
+
+import springToSum1 from "../../art assets/Anim sprites/Spring to Summer/SpringtoSum 1.jpg";
+import springToSum2 from "../../art assets/Anim sprites/Spring to Summer/SpringtoSum 2.jpg";
+import springToSum3 from "../../art assets/Anim sprites/Spring to Summer/SpringtoSum 3.jpg";
+import springToSum4 from "../../art assets/Anim sprites/Spring to Summer/SpringtoSum 4.jpg";
+import springToSum5 from "../../art assets/Anim sprites/Spring to Summer/SpringtoSum 5.jpg";
+
+import sumToFall1 from "../../art assets/Anim sprites/Summer to Fall/SumtoFall 1.jpg";
+import sumToFall2 from "../../art assets/Anim sprites/Summer to Fall/SumtoFall 2.jpg";
+import sumToFall3 from "../../art assets/Anim sprites/Summer to Fall/SumtoFall 3.jpg";
+import sumToFall4 from "../../art assets/Anim sprites/Summer to Fall/SumtoFall 4.jpg";
+import sumToFall5 from "../../art assets/Anim sprites/Summer to Fall/SumtoFall 5.jpg";
+
+import fallToWint1 from "../../art assets/Anim sprites/Fall to Winter/FalltoWint 1.jpg";
+import fallToWint2 from "../../art assets/Anim sprites/Fall to Winter/FalltoWint 2.jpg";
+import fallToWint3 from "../../art assets/Anim sprites/Fall to Winter/FalltoWint 3.jpg";
+import fallToWint4 from "../../art assets/Anim sprites/Fall to Winter/FalltoWint 4.jpg";
+import fallToWint5 from "../../art assets/Anim sprites/Fall to Winter/FalltoWint 5.jpg";
+
+import wintToSpring1 from "../../art assets/Anim sprites/Winter to Spring/WinttoSpring 1.jpg";
+import wintToSpring2 from "../../art assets/Anim sprites/Winter to Spring/WinttoSpring 2.jpg";
+import wintToSpring3 from "../../art assets/Anim sprites/Winter to Spring/WinttoSpring 3.jpg";
+import wintToSpring4 from "../../art assets/Anim sprites/Winter to Spring/WinttoSpring 4.jpg";
+import wintToSpring5 from "../../art assets/Anim sprites/Winter to Spring/WinttoSpring 5.jpg";
+
 import seasonTimberFrame from "../../art assets/UI/season-timber-frame.png";
 
 export const SEASON_IDLE_FPS = 4;
 export const SEASON_IDLE_FRAME_MS = 1000 / SEASON_IDLE_FPS;
 export const SEASON_IDLE_FRAME_COUNT = 8;
+export const SEASON_TRANSITION_FPS = SEASON_IDLE_FPS;
+export const SEASON_TRANSITION_FRAME_MS = SEASON_IDLE_FRAME_MS;
+export const SEASON_TRANSITION_FRAME_COUNT = 5;
 /** Shared canvas for every idle frame so the header reel does not jump. */
 export const SEASON_IDLE_CANVAS_WIDTH = 3168;
 export const SEASON_IDLE_CANVAS_HEIGHT = 1344;
@@ -125,14 +153,68 @@ export function seasonIdleFrame(season: Season, frameIndex: number): string {
   return frames[wrapIdleFrameIndex(frameIndex, frames.length)];
 }
 
+/** Consecutive-season reels under `art assets/Anim sprites/` (autumn → Fall). */
+export const SEASON_TRANSITION_ART: readonly {
+  from: Season;
+  to: Season;
+  folder: string;
+  prefix: string;
+}[] = [
+  { from: "spring", to: "summer", folder: "Spring to Summer", prefix: "SpringtoSum" },
+  { from: "summer", to: "autumn", folder: "Summer to Fall", prefix: "SumtoFall" },
+  { from: "autumn", to: "winter", folder: "Fall to Winter", prefix: "FalltoWint" },
+  { from: "winter", to: "spring", folder: "Winter to Spring", prefix: "WinttoSpring" },
+];
+
 /**
- * Later PR: play optional transition frames from → to, then settle on the new
- * season's idle frame 1. Empty until transition art is added.
+ * Play-once transition frames from → to, then settle on the new season's idle
+ * frame 1. Only consecutive seasons have art.
  */
-export const seasonTransition: Partial<Record<Season, Partial<Record<Season, readonly string[]>>>> = {};
+export const seasonTransition: Partial<Record<Season, Partial<Record<Season, readonly string[]>>>> = {
+  spring: {
+    summer: [springToSum1, springToSum2, springToSum3, springToSum4, springToSum5],
+  },
+  summer: {
+    autumn: [sumToFall1, sumToFall2, sumToFall3, sumToFall4, sumToFall5],
+  },
+  autumn: {
+    winter: [fallToWint1, fallToWint2, fallToWint3, fallToWint4, fallToWint5],
+  },
+  winter: {
+    spring: [wintToSpring1, wintToSpring2, wintToSpring3, wintToSpring4, wintToSpring5],
+  },
+};
 
 export function seasonTransitionFrames(from: Season, to: Season): readonly string[] {
   return seasonTransition[from]?.[to] ?? [];
+}
+
+export function seasonTransitionFrame(from: Season, to: Season, frameIndex: number): string | undefined {
+  const frames = seasonTransitionFrames(from, to);
+  if (frames.length === 0) return undefined;
+  const i = Math.min(Math.max(frameIndex, 0), frames.length - 1);
+  return frames[i];
+}
+
+/** Advance one transition frame. Null when the one-shot reel has finished (does not loop). */
+export function nextTransitionFrameIndex(index: number, count = SEASON_TRANSITION_FRAME_COUNT): number | null {
+  const next = index + 1;
+  return next < count ? next : null;
+}
+
+export type SeasonTransitionPlay = {
+  from: Season;
+  to: Season;
+};
+
+/** After Advance writes the new season, start the matching reel if art exists. */
+export function beginSeasonTransition(from: Season, to: Season): SeasonTransitionPlay | null {
+  if (from === to) return null;
+  return seasonTransitionFrames(from, to).length > 0 ? { from, to } : null;
+}
+
+export function endSeasonTransition(): null {
+  return null;
 }
 
 export type SeasonHeaderView = {
@@ -146,16 +228,31 @@ export function seasonHeaderView(
   currentSeason: Season,
   loopingSeason: Season | null,
   frameIndex: number,
+  transition: SeasonTransitionPlay | null = null,
 ): SeasonHeaderView {
   if (loopingSeason) {
     return { displaySeason: loopingSeason, frameIndex, animating: true };
   }
+  if (transition && seasonTransitionFrames(transition.from, transition.to).length > 0) {
+    return { displaySeason: currentSeason, frameIndex, animating: true };
+  }
   return { displaySeason: currentSeason, frameIndex: 0, animating: false };
 }
 
-export function seasonHeaderSrc(currentSeason: Season, loopingSeason: Season | null, frameIndex: number): string {
-  const view = seasonHeaderView(currentSeason, loopingSeason, frameIndex);
-  return seasonIdleFrame(view.displaySeason, view.frameIndex);
+export function seasonHeaderSrc(
+  currentSeason: Season,
+  loopingSeason: Season | null,
+  frameIndex: number,
+  transition: SeasonTransitionPlay | null = null,
+): string {
+  if (loopingSeason) {
+    return seasonIdleFrame(loopingSeason, frameIndex);
+  }
+  const transitionSrc = transition
+    ? seasonTransitionFrame(transition.from, transition.to, frameIndex)
+    : undefined;
+  if (transitionSrc) return transitionSrc;
+  return seasonIdleFrame(currentSeason, 0);
 }
 
 export function beginSeasonAdvanceLoop(currentSeason: Season): Season {

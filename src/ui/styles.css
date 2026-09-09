@@ -133,7 +133,7 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   display: block;
   max-width: none;
   max-height: none;
-  /* Idle JPEGs share 3168×1344; contain in the inset box so the reel does not jump. */
+  /* Idle and transition JPEGs share 3168×1344; contain in the inset box so the reel does not jump. */
   object-fit: contain;
   object-position: center;
 }

@@ -11,10 +11,14 @@ import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_T
 import {
   SEASON_IDLE_FRAME_MS,
   SEASON_TIMBER_FRAME,
+  SEASON_TRANSITION_ART,
+  beginSeasonTransition,
   nextIdleFrameIndex,
   seasonFrameIdleBoxStyle,
   seasonHeaderSrc,
   seasonIdleFrames,
+  seasonTransitionFrames,
+  type SeasonTransitionPlay,
 } from "./seasonAnim";
 import { DEFAULT_MODELS, LLM_PROVIDERS, PROVIDER_META, type AppSettings, type LlmProvider } from "../llm/types";
 import { defaultAppSettings } from "../llm/settings";
@@ -64,6 +68,7 @@ export function App() {
   const [models, setModels] = useState<{ id: string }[]>([]);
   const [displayEmotion, setDisplayEmotion] = useState<AldricEmotion>("neutral");
   const [loopingSeason, setLoopingSeason] = useState<Season | null>(null);
+  const [seasonTransitionPlay, setSeasonTransitionPlay] = useState<SeasonTransitionPlay | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
@@ -231,9 +236,13 @@ export function App() {
 
   async function advanceSeason() {
     if (!view) return;
-    setLoopingSeason(view.state.meta.season);
+    const from = view.state.meta.season;
+    setSeasonTransitionPlay(null);
+    setLoopingSeason(from);
     try {
-      await withBusy(() => window.api.advanceSeason());
+      const result = await withBusy(() => window.api.advanceSeason());
+      const to = result && "state" in result ? result.state.meta.season : undefined;
+      if (to) setSeasonTransitionPlay(beginSeasonTransition(from, to));
     } finally {
       setLoopingSeason(null);
     }
@@ -332,7 +341,12 @@ export function App() {
             {hudInkLine(view.llmMeter)}
           </div>
         </div>
-        <SeasonHeaderArt season={view.state.meta.season} loopingSeason={loopingSeason} />
+        <SeasonHeaderArt
+          season={view.state.meta.season}
+          loopingSeason={loopingSeason}
+          transition={seasonTransitionPlay}
+          onTransitionEnd={() => setSeasonTransitionPlay(null)}
+        />
         <div className="top-actions">
           <button onClick={() => setScreen("title")} disabled={busy}>
             Title
@@ -344,7 +358,7 @@ export function App() {
           <button
             className="primary"
             onClick={() => void advanceSeason()}
-            disabled={busy}
+            disabled={busy || Boolean(seasonTransitionPlay)}
             title={view.pending.length ? "Unconfirmed orders will lapse if you advance." : "Resolve the season and write events to the ledger"}
           >
             Advance season
@@ -493,34 +507,80 @@ export function App() {
   );
 }
 
-function SeasonHeaderArt({ season, loopingSeason }: { season: Season; loopingSeason: Season | null }) {
+function SeasonHeaderArt({
+  season,
+  loopingSeason,
+  transition,
+  onTransitionEnd,
+}: {
+  season: Season;
+  loopingSeason: Season | null;
+  transition: SeasonTransitionPlay | null;
+  onTransitionEnd: () => void;
+}) {
   const [frameIndex, setFrameIndex] = useState(0);
+  const onEndRef = useRef(onTransitionEnd);
+  onEndRef.current = onTransitionEnd;
   const displaySeason = loopingSeason ?? season;
 
   useEffect(() => {
-    for (const src of seasonIdleFrames(displaySeason)) {
-      const img = new Image();
-      img.src = src;
+    const idleSeasons = new Set<Season>([displaySeason, season]);
+    if (transition) idleSeasons.add(transition.to);
+    for (const s of idleSeasons) {
+      for (const src of seasonIdleFrames(s)) {
+        const img = new Image();
+        img.src = src;
+      }
     }
-  }, [displaySeason]);
+    const pairs = transition
+      ? SEASON_TRANSITION_ART.filter((p) => p.from === transition.from && p.to === transition.to)
+      : loopingSeason
+        ? SEASON_TRANSITION_ART.filter((p) => p.from === loopingSeason)
+        : [];
+    for (const pair of pairs) {
+      for (const src of seasonTransitionFrames(pair.from, pair.to)) {
+        const img = new Image();
+        img.src = src;
+      }
+    }
+  }, [displaySeason, season, loopingSeason, transition]);
 
   useEffect(() => {
-    if (!loopingSeason) {
+    if (loopingSeason) {
       setFrameIndex(0);
-      return;
+      const id = window.setInterval(() => {
+        setFrameIndex((i) => nextIdleFrameIndex(i));
+      }, SEASON_IDLE_FRAME_MS);
+      return () => window.clearInterval(id);
     }
-    const id = window.setInterval(() => {
-      setFrameIndex((i) => nextIdleFrameIndex(i));
-    }, SEASON_IDLE_FRAME_MS);
-    return () => window.clearInterval(id);
-  }, [loopingSeason]);
+    if (transition) {
+      const frames = seasonTransitionFrames(transition.from, transition.to);
+      setFrameIndex(0);
+      if (frames.length === 0) {
+        onEndRef.current();
+        return;
+      }
+      let index = 0;
+      const id = window.setInterval(() => {
+        index += 1;
+        if (index >= frames.length) {
+          window.clearInterval(id);
+          onEndRef.current();
+        } else {
+          setFrameIndex(index);
+        }
+      }, SEASON_IDLE_FRAME_MS);
+      return () => window.clearInterval(id);
+    }
+    setFrameIndex(0);
+  }, [loopingSeason, transition]);
 
   return (
     <div className="season-art" aria-hidden="true">
       <div className="season-art-stack">
         <img
           className="season-art-idle"
-          src={seasonHeaderSrc(season, loopingSeason, frameIndex)}
+          src={seasonHeaderSrc(season, loopingSeason, frameIndex, transition)}
           alt=""
           draggable={false}
           style={seasonFrameIdleBoxStyle()}
