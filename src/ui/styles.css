@@ -109,13 +109,32 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   pointer-events: none;
   overflow: hidden;
 }
-.season-art img {
-  display: block;
-  height: 3.75rem;
-  width: auto;
-  aspect-ratio: 3168 / 1344;
+.season-art-stack {
+  position: relative;
   max-width: 100%;
-  object-fit: cover;
+  line-height: 0;
+  background: #100e0b;
+}
+.season-art-frame {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  /* Outer chrome is ~33% of height; 5.6rem keeps the inner landscape near the old 3.75rem. */
+  max-height: 5.6rem;
+  object-fit: contain;
+  pointer-events: none;
+}
+.season-art-idle {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  max-width: none;
+  max-height: none;
+  /* Idle JPEGs share 3168×1344; contain in the inset box so the reel does not jump. */
+  object-fit: contain;
   object-position: center;
 }
 .title { font-size: 1.25rem; letter-spacing: 0.04em; }

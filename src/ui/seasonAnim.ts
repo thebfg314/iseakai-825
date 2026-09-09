@@ -36,6 +36,7 @@ import winter5 from "../../art assets/Anim sprites/Winter Idle/Winter 5.jpg";
 import winter6 from "../../art assets/Anim sprites/Winter Idle/Winter 6.jpg";
 import winter7 from "../../art assets/Anim sprites/Winter Idle/Winter 7.jpg";
 import winter8 from "../../art assets/Anim sprites/Winter Idle/Winter 8.jpg";
+import seasonTimberFrame from "../../art assets/UI/season-timber-frame.png";
 
 export const SEASON_IDLE_FPS = 4;
 export const SEASON_IDLE_FRAME_MS = 1000 / SEASON_IDLE_FPS;
@@ -43,6 +44,36 @@ export const SEASON_IDLE_FRAME_COUNT = 8;
 /** Shared canvas for every idle frame so the header reel does not jump. */
 export const SEASON_IDLE_CANVAS_WIDTH = 3168;
 export const SEASON_IDLE_CANVAS_HEIGHT = 1344;
+
+/**
+ * Timber/iron overlay around the season idle image. Swap this PNG later if a
+ * painter replaces it; update SEASON_FRAME_INSET to match the new inner hole.
+ */
+export const SEASON_TIMBER_FRAME = seasonTimberFrame;
+
+/** Inner opening as fractions of the overlay PNG (top, right, bottom, left). */
+export const SEASON_FRAME_INSET = {
+  top: 0.1625,
+  right: 0.09547,
+  bottom: 0.165278,
+  left: 0.096167,
+} as const;
+
+/** Absolutely position the idle sprite in the frame's transparent opening. */
+export function seasonFrameIdleBoxStyle(): {
+  top: string;
+  left: string;
+  width: string;
+  height: string;
+} {
+  const { top, right, bottom, left } = SEASON_FRAME_INSET;
+  return {
+    top: `${top * 100}%`,
+    left: `${left * 100}%`,
+    width: `${(1 - left - right) * 100}%`,
+    height: `${(1 - top - bottom) * 100}%`,
+  };
+}
 
 /** Folder names under `art assets/Anim sprites/` (Summer uses lowercase "idle"). */
 export const SEASON_ART_FOLDER: Record<Season, string> = {
