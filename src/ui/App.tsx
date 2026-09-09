@@ -10,7 +10,9 @@ import { normalizeEmotion } from "../engine/emotion";
 import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
 import {
   SEASON_IDLE_FRAME_MS,
+  SEASON_TIMBER_FRAME,
   nextIdleFrameIndex,
+  seasonFrameIdleBoxStyle,
   seasonHeaderSrc,
   seasonIdleFrames,
 } from "./seasonAnim";
@@ -515,7 +517,16 @@ function SeasonHeaderArt({ season, loopingSeason }: { season: Season; loopingSea
 
   return (
     <div className="season-art" aria-hidden="true">
-      <img src={seasonHeaderSrc(season, loopingSeason, frameIndex)} alt="" draggable={false} />
+      <div className="season-art-stack">
+        <img
+          className="season-art-idle"
+          src={seasonHeaderSrc(season, loopingSeason, frameIndex)}
+          alt=""
+          draggable={false}
+          style={seasonFrameIdleBoxStyle()}
+        />
+        <img className="season-art-frame" src={SEASON_TIMBER_FRAME} alt="" draggable={false} />
+      </div>
     </div>
   );
 }

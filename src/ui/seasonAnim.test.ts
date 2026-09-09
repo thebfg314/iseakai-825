@@ -3,11 +3,13 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Season } from "../engine/schema";
 import {
+  SEASON_FRAME_INSET,
   SEASON_IDLE_CANVAS_HEIGHT,
   SEASON_IDLE_CANVAS_WIDTH,
   SEASON_IDLE_FRAME_COUNT,
   SEASON_IDLE_FRAME_MS,
   SEASON_IDLE_FPS,
+  SEASON_TIMBER_FRAME,
   SEASONS,
   beginSeasonAdvanceLoop,
   endSeasonAdvanceLoop,
@@ -15,6 +17,7 @@ import {
   wrapIdleFrameIndex,
   seasonArtFolder,
   seasonArtPrefix,
+  seasonFrameIdleBoxStyle,
   seasonHeaderSrc,
   seasonHeaderView,
   seasonIdleFrame,
@@ -128,6 +131,23 @@ describe("season header idle vs advance", () => {
     expect(seasonHeaderSrc(current, looping, 5)).toContain("Winter 6.jpg");
     looping = endSeasonAdvanceLoop();
     expect(seasonHeaderSrc(current, looping, 5)).toContain("Winter 1.jpg");
+  });
+});
+
+describe("season timber frame overlay", () => {
+  it("bundles the overlay PNG and sizes the idle box to the inner opening", () => {
+    expect(SEASON_TIMBER_FRAME).toContain("season-timber-frame.png");
+    const innerW = 1 - SEASON_FRAME_INSET.left - SEASON_FRAME_INSET.right;
+    const innerH = 1 - SEASON_FRAME_INSET.top - SEASON_FRAME_INSET.bottom;
+    expect(innerW).toBeGreaterThan(0.7);
+    expect(innerH).toBeGreaterThan(0.6);
+    expect(SEASON_FRAME_INSET.top).toBeGreaterThan(0.1);
+    expect(SEASON_FRAME_INSET.left).toBeGreaterThan(0.05);
+    const box = seasonFrameIdleBoxStyle();
+    expect(box.top).toBe(`${SEASON_FRAME_INSET.top * 100}%`);
+    expect(box.left).toBe(`${SEASON_FRAME_INSET.left * 100}%`);
+    expect(box.width).toBe(`${innerW * 100}%`);
+    expect(box.height).toBe(`${innerH * 100}%`);
   });
 });
 
