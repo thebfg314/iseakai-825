@@ -189,11 +189,38 @@ export function seasonTransitionFrames(from: Season, to: Season): readonly strin
   return seasonTransition[from]?.[to] ?? [];
 }
 
+/** One frame of the reel. Out-of-range indices return undefined — never clamp an idle 0–7 onto the last frame. */
 export function seasonTransitionFrame(from: Season, to: Season, frameIndex: number): string | undefined {
   const frames = seasonTransitionFrames(from, to);
-  if (frames.length === 0) return undefined;
-  const i = Math.min(Math.max(frameIndex, 0), frames.length - 1);
-  return frames[i];
+  if (frameIndex < 0 || frameIndex >= frames.length) return undefined;
+  return frames[frameIndex];
+}
+
+/** Matching consecutive reel to decode while the old season idle is looping. */
+export function transitionReelFor(from: Season): { from: Season; to: Season } | null {
+  const pair = SEASON_TRANSITION_ART.find((p) => p.from === from);
+  return pair ? { from: pair.from, to: pair.to } : null;
+}
+
+function preloadOneImage(src: string): Promise<void> {
+  if (typeof Image === "undefined") return Promise.resolve();
+  const img = new Image();
+  img.src = src;
+  if (typeof img.decode === "function") {
+    return img.decode().then(
+      () => undefined,
+      () => undefined,
+    );
+  }
+  return new Promise((resolve) => {
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+  });
+}
+
+/** Decode frames now (during the Advance wait) so the first transition paint is not a blank/stutter. */
+export function preloadSeasonImages(srcs: readonly string[]): Promise<void> {
+  return Promise.all(srcs.map((src) => preloadOneImage(src))).then(() => undefined);
 }
 
 /** Advance one transition frame. Null when the one-shot reel has finished (does not loop). */
@@ -223,35 +250,50 @@ export type SeasonHeaderView = {
   animating: boolean;
 };
 
-/** Idle: frame 1 of the current season. Looping: 0-based index of the old season. */
+/** Idle: frame 1 of the current season. Looping: idle index of the old season. Transition uses its own index. */
 export function seasonHeaderView(
   currentSeason: Season,
   loopingSeason: Season | null,
-  frameIndex: number,
+  idleFrameIndex: number,
   transition: SeasonTransitionPlay | null = null,
+  transitionFrameIndex = 0,
+  transitionReady = true,
 ): SeasonHeaderView {
   if (loopingSeason) {
-    return { displaySeason: loopingSeason, frameIndex, animating: true };
+    return { displaySeason: loopingSeason, frameIndex: idleFrameIndex, animating: true };
   }
   if (transition && seasonTransitionFrames(transition.from, transition.to).length > 0) {
-    return { displaySeason: currentSeason, frameIndex, animating: true };
+    if (!transitionReady) {
+      return { displaySeason: transition.from, frameIndex: idleFrameIndex, animating: true };
+    }
+    return { displaySeason: currentSeason, frameIndex: transitionFrameIndex, animating: true };
   }
   return { displaySeason: currentSeason, frameIndex: 0, animating: false };
 }
 
+/**
+ * Looping uses `idleFrameIndex` only. Transition uses `transitionFrameIndex` only
+ * (defaults to 0). A leftover idle 0–7 must not pick a transition frame.
+ */
 export function seasonHeaderSrc(
   currentSeason: Season,
   loopingSeason: Season | null,
-  frameIndex: number,
+  idleFrameIndex: number,
   transition: SeasonTransitionPlay | null = null,
+  transitionFrameIndex = 0,
+  transitionReady = true,
 ): string {
   if (loopingSeason) {
-    return seasonIdleFrame(loopingSeason, frameIndex);
+    return seasonIdleFrame(loopingSeason, idleFrameIndex);
   }
-  const transitionSrc = transition
-    ? seasonTransitionFrame(transition.from, transition.to, frameIndex)
-    : undefined;
-  if (transitionSrc) return transitionSrc;
+  if (transition) {
+    if (!transitionReady) {
+      return seasonIdleFrame(transition.from, idleFrameIndex);
+    }
+    const transitionSrc = seasonTransitionFrame(transition.from, transition.to, transitionFrameIndex);
+    if (transitionSrc) return transitionSrc;
+    return seasonIdleFrame(currentSeason, 0);
+  }
   return seasonIdleFrame(currentSeason, 0);
 }
 

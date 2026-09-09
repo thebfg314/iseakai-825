@@ -32,6 +32,10 @@ test("season timber frame overlay ships as an RGBA PNG and stacks over idle art"
   assert.match(app, /seasonHeaderSrc\(/);
   assert.match(app, /beginSeasonTransition/);
   assert.match(app, /onTransitionEnd/);
+  assert.match(app, /idleFrameIndex/);
+  assert.match(app, /transitionFrameIndex/);
+  assert.match(app, /preloadSeasonImages/);
+  assert.match(app, /transitionReelFor/);
   assert.match(anim, /Spring to Summer\/SpringtoSum 1\.jpg/);
   assert.match(anim, /Summer to Fall\/SumtoFall 1\.jpg/);
   assert.match(anim, /Fall to Winter\/FalltoWint 1\.jpg/);

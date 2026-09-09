@@ -29,7 +29,10 @@ import {
   seasonHeaderView,
   seasonIdleFrame,
   seasonIdleFrames,
+  seasonTransitionFrame,
   seasonTransitionFrames,
+  preloadSeasonImages,
+  transitionReelFor,
 } from "./seasonAnim";
 
 const FOLDER: Record<Season, string> = {
@@ -211,7 +214,7 @@ describe("season transition reels", () => {
       animating: true,
     });
     expect(seasonHeaderSrc(to, looping, 0, transition)).toContain("Spring to Summer/SpringtoSum 1.jpg");
-    expect(seasonHeaderSrc(to, looping, 4, transition)).toContain("Spring to Summer/SpringtoSum 5.jpg");
+    expect(seasonHeaderSrc(to, looping, 0, transition, 4)).toContain("Spring to Summer/SpringtoSum 5.jpg");
 
     const frames = seasonTransitionFrames(from, to);
     let frame = 0;
@@ -247,7 +250,7 @@ describe("season transition reels", () => {
       const transition = beginSeasonTransition(from, to);
       expect(transition).toEqual({ from, to });
       const frameIndex = mid.includes("3.jpg") ? 2 : mid.includes("5.jpg") ? 4 : 0;
-      expect(seasonHeaderSrc(to, looping, frameIndex, transition)).toContain(mid);
+      expect(seasonHeaderSrc(to, looping, 0, transition, frameIndex)).toContain(mid);
       expect(seasonHeaderSrc(to, null, 0, endSeasonTransition())).toContain(idle);
     }
   });
@@ -260,6 +263,38 @@ describe("season transition reels", () => {
     const transition = beginSeasonTransition(current, current);
     expect(transition).toBeNull();
     expect(seasonHeaderSrc(current, looping, 5, transition)).toContain("Winter 1.jpg");
+  });
+
+  it("presents transition index 0 on first view after looping index 7 (no last-frame flash)", () => {
+    for (const { from, to, folder, prefix } of SEASON_TRANSITION_ART) {
+      expect(transitionReelFor(from)).toEqual({ from, to });
+      const leftoverIdle = 7;
+      expect(seasonHeaderSrc(from, from, leftoverIdle)).toMatch(new RegExp(`${PREFIX[from]} 8\\.jpg`));
+      expect(seasonTransitionFrame(from, to, leftoverIdle)).toBeUndefined();
+      expect(seasonTransitionFrame(from, to, 5)).toBeUndefined();
+      expect(seasonTransitionFrame(from, to, 4)).toContain(`${prefix} 5.jpg`);
+
+      const transition = beginSeasonTransition(from, to);
+      expect(transition).toEqual({ from, to });
+      const first = seasonHeaderSrc(to, null, leftoverIdle, transition);
+      expect(first, `${from}→${to}`).toContain(`${folder}/${prefix} 1.jpg`);
+      expect(first).not.toContain(`${prefix} 5.jpg`);
+      expect(seasonHeaderView(to, null, leftoverIdle, transition)).toEqual({
+        displaySeason: to,
+        frameIndex: 0,
+        animating: true,
+      });
+    }
+  });
+
+  it("holds the last idle frame until the transition reel is ready", () => {
+    const transition = beginSeasonTransition("spring", "summer");
+    expect(seasonHeaderSrc("summer", null, 7, transition, 0, false)).toContain("Spring 8.jpg");
+    expect(seasonHeaderSrc("summer", null, 7, transition, 0, true)).toContain("SpringtoSum 1.jpg");
+  });
+
+  it("preloads srcs without throwing when Image is unavailable", async () => {
+    await expect(preloadSeasonImages(seasonTransitionFrames("spring", "summer"))).resolves.toBeUndefined();
   });
 });
 
