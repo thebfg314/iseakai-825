@@ -40,6 +40,9 @@ import winter8 from "../../art assets/Anim sprites/Winter Idle/Winter 8.jpg";
 export const SEASON_IDLE_FPS = 4;
 export const SEASON_IDLE_FRAME_MS = 1000 / SEASON_IDLE_FPS;
 export const SEASON_IDLE_FRAME_COUNT = 8;
+/** Shared canvas for every idle frame so the header reel does not jump. */
+export const SEASON_IDLE_CANVAS_WIDTH = 3168;
+export const SEASON_IDLE_CANVAS_HEIGHT = 1344;
 
 /** Folder names under `art assets/Anim sprites/` (Summer uses lowercase "idle"). */
 export const SEASON_ART_FOLDER: Record<Season, string> = {

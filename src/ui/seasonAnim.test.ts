@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Season } from "../engine/schema";
 import {
+  SEASON_IDLE_CANVAS_HEIGHT,
+  SEASON_IDLE_CANVAS_WIDTH,
   SEASON_IDLE_FRAME_COUNT,
   SEASON_IDLE_FRAME_MS,
   SEASON_IDLE_FPS,
@@ -51,6 +55,19 @@ describe("season idle art mapping", () => {
       frames.forEach((src, i) => {
         expect(src).toContain(`${FOLDER[season]}/${PREFIX[season]} ${i + 1}.jpg`);
       });
+    }
+  });
+
+  it("keeps every idle JPEG on the same 3168×1344 canvas", () => {
+    expect(SEASON_IDLE_CANVAS_WIDTH).toBe(3168);
+    expect(SEASON_IDLE_CANVAS_HEIGHT).toBe(1344);
+    const root = resolve(process.cwd(), "art assets/Anim sprites");
+    for (const season of SEASONS) {
+      for (let i = 1; i <= SEASON_IDLE_FRAME_COUNT; i++) {
+        const file = resolve(root, FOLDER[season], `${PREFIX[season]} ${i}.jpg`);
+        const size = jpegSize(readFileSync(file));
+        expect(size, file).toEqual({ w: 3168, h: 1344 });
+      }
     }
   });
 
@@ -123,3 +140,21 @@ describe("season transition stub", () => {
     }
   });
 });
+
+function jpegSize(buf: Buffer): { w: number; h: number } {
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) {
+      i += 1;
+      continue;
+    }
+    const marker = buf[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { w: buf.readUInt16BE(i + 7), h: buf.readUInt16BE(i + 5) };
+    }
+    if (i + 3 >= buf.length) break;
+    const len = buf.readUInt16BE(i + 2);
+    i += 2 + len;
+  }
+  throw new Error("JPEG SOF not found");
+}

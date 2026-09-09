@@ -111,11 +111,11 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 }
 .season-art img {
   display: block;
+  height: 3.75rem;
   width: auto;
-  height: auto;
+  aspect-ratio: 3168 / 1344;
   max-width: 100%;
-  max-height: 3.75rem;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
 }
 .title { font-size: 1.25rem; letter-spacing: 0.04em; }
