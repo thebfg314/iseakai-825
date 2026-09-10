@@ -22,6 +22,13 @@ import {
   transitionReelFor,
   type SeasonTransitionPlay,
 } from "./seasonAnim";
+import {
+  nextWaitingFrameIndex,
+  preloadWaitingImages,
+  waitingFrame,
+  waitingFrameDurationMs,
+  waitingFrames,
+} from "./waitingAnim";
 import { DEFAULT_MODELS, LLM_PROVIDERS, PROVIDER_META, type AppSettings, type LlmProvider } from "../llm/types";
 import { defaultAppSettings } from "../llm/settings";
 import { emptyMeter, type LlmMeter } from "../llm/usage";
@@ -63,6 +70,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>("title");
   const [view, setView] = useState<GameView | null>(null);
   const [busy, setBusy] = useState(false);
+  const [speakWaiting, setSpeakWaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -259,6 +267,7 @@ export function App() {
     const optimistic = viewWithOptimisticPlayer(view, text);
     setView(optimistic);
     setBusy(true);
+    setSpeakWaiting(true);
     setError(null);
     try {
       const result = (await window.api.sendDialogue(npcId, text)) as GameView & { error?: string };
@@ -268,6 +277,7 @@ export function App() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      setSpeakWaiting(false);
       sendLock.current = false;
     }
   }
@@ -501,8 +511,15 @@ export function App() {
                 }
               }}
             />
-            <button type="submit" className="primary" disabled={busy || sendLock.current || !draft.trim()}>
-              Speak to {npc?.name ?? "them"}
+            <button
+              type="submit"
+              className={speakWaiting ? "primary speak-submit speak-waiting" : "primary speak-submit"}
+              disabled={busy || sendLock.current || !draft.trim()}
+              aria-label={`Speak to ${npc?.name ?? "them"}`}
+              aria-busy={speakWaiting}
+            >
+              <span className="speak-label">Speak to {npc?.name ?? "them"}</span>
+              <SpeakWaitingReel active={speakWaiting} />
             </button>
           </form>
         </section>
@@ -512,6 +529,49 @@ export function App() {
 
       {settingsModal}
     </div>
+  );
+}
+
+function SpeakWaitingReel({ active }: { active: boolean }) {
+  const [frameIndex, setFrameIndex] = useState(0);
+
+  useEffect(() => {
+    void preloadWaitingImages(waitingFrames());
+  }, []);
+
+  useEffect(() => {
+    if (!active) {
+      setFrameIndex(0);
+      return;
+    }
+    void preloadWaitingImages(waitingFrames());
+    let cancelled = false;
+    let timeoutId: number | undefined;
+    setFrameIndex(0);
+    const schedule = (current: number) => {
+      timeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        const next = nextWaitingFrameIndex(current);
+        setFrameIndex(next);
+        schedule(next);
+      }, waitingFrameDurationMs(current));
+    };
+    schedule(0);
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+  }, [active]);
+
+  if (!active) return null;
+  return (
+    <img
+      className="speak-waiting-reel"
+      src={waitingFrame(frameIndex)}
+      alt=""
+      draggable={false}
+      aria-hidden="true"
+    />
   );
 }
 
