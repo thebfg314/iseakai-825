@@ -218,6 +218,7 @@ export function applyMerchantRoll(
     notes: visitor.notes,
     memories: [...memoriesForMerchantName(state, name)],
     introSpoken: Boolean(state.merchant_intro_spoken?.[name]),
+    wantsTalk: true,
   });
   const goods = state.merchant.stock.map((s) => `${s.amount} ${resourceName(s.resource)}`).join(", ");
   return `${name} the merchant is in the district. On the carts: ${goods || "nothing yet"}.`;

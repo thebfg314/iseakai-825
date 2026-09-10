@@ -612,12 +612,14 @@ function registerNpc(
     }
     state.resources.denarii = round1(state.resources.denarii - cost);
     const rationNote = ration > 0 ? ` ${consumeGrain(state, ration, `${spec.name}'s house`)}` : "";
+    npc.wantsTalk = true;
     state.npcs.push(npc);
     return ok(
       state,
       `Hired ${npc.name} as ${roleName(npc.role)}. ${cost} denarii taken from the chest.${rationNote}`,
     );
   }
+  npc.wantsTalk = true;
   state.npcs.push(npc);
   return ok(state, `Recorded ${npc.name} as ${roleName(npc.role)}.`);
 }

@@ -89,6 +89,7 @@ export function gerulfNpc(location = GERULF_HOME_LOCATION): Npc {
     location,
     notes: GERULF_NOTES,
     memories: [],
+    wantsTalk: true,
   };
 }
 
@@ -455,7 +456,10 @@ function refund(state: WorldState, denarii: number) {
 
 function bringGerulfHome(state: WorldState) {
   const npc = state.npcs.find((n) => n.id === NEGOTIATOR_ID);
-  if (npc) npc.location = state.holdings[0]?.id ?? GERULF_HOME_LOCATION;
+  if (npc) {
+    npc.location = state.holdings[0]?.id ?? GERULF_HOME_LOCATION;
+    npc.wantsTalk = true;
+  }
 }
 
 type HuntOutcome = "success" | "partial" | "over_budget" | "rumor" | "mishap";

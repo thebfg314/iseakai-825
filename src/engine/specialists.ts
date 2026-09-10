@@ -181,6 +181,7 @@ export function specialistNpc(spec: HireableSpecialist, location = "fontenay"): 
     location,
     notes: spec.notes,
     memories: [],
+    wantsTalk: true,
   };
 }
 
@@ -478,6 +479,22 @@ const CRAFT_SCOPES: Record<string, CraftScope> = {
     features: ["palisade", "tower", "gatehouse", "watch_post"],
   },
 };
+
+/** Hired specialist present whose craft list or tag covers this project. */
+export function hiredSpecialistMatchingProject(
+  state: WorldState,
+  project: { key: string; tag?: string },
+  by: "key" | "tag",
+): string | undefined {
+  for (const spec of HIREABLE_SPECIALISTS) {
+    if (!specialistAlreadyPresent(state, spec)) continue;
+    const scope = CRAFT_SCOPES[spec.id];
+    if (!scope) continue;
+    if (by === "key" && scope.projects.has(project.key)) return spec.id;
+    if (by === "tag" && scope.tag && project.tag === scope.tag) return spec.id;
+  }
+  return undefined;
+}
 
 function projectAllowed(p: MechanicalProposal, keys: Set<string>, tag?: string): boolean {
   if (p.type === "start_project") return keys.has(p.projectKey) || (tag != null && p.tag === tag);

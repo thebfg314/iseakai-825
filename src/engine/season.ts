@@ -6,6 +6,7 @@ import { projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
+import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
 import { featureName, landName, resourceName } from "../ui/ledgerCopy";
 
@@ -171,6 +172,7 @@ function advanceProjects(state: WorldState): string[] {
       } else {
         notes.push(`${proj.name} is finished.`);
       }
+      flagCompletedProjectWantsTalk(state, proj);
       syncTradeFromFeatures(state);
     }
   }

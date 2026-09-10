@@ -69,6 +69,12 @@ import {
 } from "../engine/specialists";
 import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
+import {
+  completedProjectBeats,
+  dismissNewsWantsTalk,
+  releaseConfirmWantsTalk,
+  setNpcWantsTalk,
+} from "../engine/wantsTalk";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -212,6 +218,7 @@ export class GameController {
     if (!this.state.npcs.some((n) => n.id === npcId) && npcId !== "merchant") return this.view();
     this.sceneNpcId = npcId;
     this.speakIntroIfNeeded(npcId);
+    dismissNewsWantsTalk(this.state, npcId, this.pending);
     return this.view();
   }
 
@@ -275,6 +282,7 @@ export class GameController {
     }
     this.sceneNpcId = npcId;
     this.speakIntroIfNeeded(npcId);
+    dismissNewsWantsTalk(this.state, npcId, this.pending);
     this.messages.push({
       id: newId("msg"),
       role: "player",
@@ -454,10 +462,12 @@ export class GameController {
       if (idx >= 0) {
         this.pending[idx] = item;
         if (this.askedAboutId === replaceId) this.askedAboutId = item.id;
+        setNpcWantsTalk(this.state, npcId, true);
         return item;
       }
     }
     this.pending.push(item);
+    setNpcWantsTalk(this.state, npcId, true);
     return item;
   }
 
@@ -591,6 +601,9 @@ export class GameController {
       if (next.id === id && result.error) error = result.error;
     }
     this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+    for (const npcId of new Set(batch.map((p) => p.npcId))) {
+      releaseConfirmWantsTalk(this.state, npcId, this.pending);
+    }
     return error ? { ...this.view(), error } : this.view();
   }
 
@@ -643,18 +656,24 @@ export class GameController {
       this.log(item.npcId, "REJECT", item.proposal.summary);
       this.ledgerNote(`You declined: ${playerFacingSummary(item.proposal) || "that change"}.`, item.npcId);
       if (this.askedAboutId === id) this.askedAboutId = null;
+      releaseConfirmWantsTalk(this.state, item.npcId, this.pending);
     }
     return this.view();
   }
 
   async advanceSeason(): Promise<SeasonResult> {
     const effects: SeasonEffectLine[] = [];
+    const lapsing = this.pending.filter((p) => p.status === "pending");
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
     this.askedAboutId = null;
+    for (const npcId of new Set(lapsing.map((p) => p.npcId))) {
+      releaseConfirmWantsTalk(this.state, npcId, this.pending);
+    }
 
     const beforeSeason = cloneState(this.state);
     const ledgerBefore = snapshotSeasonLedger(beforeSeason);
     effects.push(...resolveAgricultureAndProjects(this.state));
+    this.speakCompletedProjects(beforeSeason);
     this.speakHuntReturns();
     syncTradeFromFeatures(this.state);
     const roll = rollSeasonEvents(this.state);
@@ -714,6 +733,7 @@ export class GameController {
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
+      dismissNewsWantsTalk(this.state, "steward", this.pending);
       await this.refreshCredits();
       return { ...this.view(), effects };
     } catch (err) {
@@ -735,6 +755,7 @@ export class GameController {
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
+      dismissNewsWantsTalk(this.state, "steward", this.pending);
       await this.refreshCredits();
       return { ...this.view(), effects };
     }
@@ -778,6 +799,21 @@ export class GameController {
     for (const ev of rolled) {
       if (covered.has(ev.id)) continue;
       this.applyEventStub(ev, effects, "The usual change");
+    }
+  }
+
+  private speakCompletedProjects(before: WorldState) {
+    for (const beat of completedProjectBeats(before, this.state)) {
+      this.npcEmotions[beat.npcId] = "pleased";
+      this.messages.push({
+        id: newId("msg"),
+        role: "npc",
+        npcId: beat.npcId,
+        npcName: this.npcName(beat.npcId),
+        text: beat.text,
+        emotion: "pleased",
+        at: new Date().toISOString(),
+      });
     }
   }
 

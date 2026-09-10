@@ -461,7 +461,8 @@
           "type": "array",
           "items": { "$ref": "#/$defs/npcMemory" }
         },
-        "introSpoken": { "type": "boolean" }
+        "introSpoken": { "type": "boolean" },
+        "wantsTalk": { "type": "boolean" }
       }
     },
     "technique": {

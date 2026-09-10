@@ -257,6 +257,8 @@ export const NpcSchema = z.object({
   memories: z.array(NpcMemorySchema).default([]),
   /** Engine first-meeting intro already shown this save. */
   introSpoken: z.boolean().optional(),
+  /** Tab badge: they have news, an intro, or a waiting Confirm. Old saves default false. */
+  wantsTalk: z.boolean().default(false),
 });
 export type Npc = z.infer<typeof NpcSchema>;
 

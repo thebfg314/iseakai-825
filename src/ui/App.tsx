@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { GameView } from "../shared/types";
 import type { ChatMessage, PendingProposal, Season } from "../engine/schema";
 import { CANONICAL_RESOURCES } from "../engine/schema";
@@ -7,7 +7,7 @@ import { isCoreHouseholdId } from "../engine/specialists";
 import { huntProgressLine } from "../engine/hunts";
 import type { AldricEmotion } from "../engine/emotion";
 import { normalizeEmotion } from "../engine/emotion";
-import { BUTTON_CLICK, GAME_THEMES, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
+import { BUTTON_CLICK, GAME_THEMES, NPC_WANTS_TALK, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
 import {
   SEASON_IDLE_FRAME_MS,
   SEASON_TIMBER_FRAME,
@@ -379,51 +379,57 @@ export function App() {
       <div className="layout">
         <section className="dialogue">
           <div className="scene-tabs">
-            <button
-              className={view.sceneNpcId === "steward" ? "active" : ""}
+            <SceneTab
+              active={view.sceneNpcId === "steward"}
+              wantsTalk={npcWantsTalk(view, "steward")}
               onClick={() => withBusy(() => window.api.setScene("steward"))}
             >
               Steward · Aldric
-            </button>
-            <button
-              className={view.sceneNpcId === "smith" ? "active" : ""}
+            </SceneTab>
+            <SceneTab
+              active={view.sceneNpcId === "smith"}
+              wantsTalk={npcWantsTalk(view, "smith")}
               disabled={!view.smithAvailable}
               title={view.smithAvailable ? "Speak with the smith" : "Requires a forge on the estate"}
               onClick={() => view.smithAvailable && withBusy(() => window.api.setScene("smith"))}
             >
               Smith · Bernard
-            </button>
-            <button
-              className={view.sceneNpcId === "chaplain" ? "active" : ""}
+            </SceneTab>
+            <SceneTab
+              active={view.sceneNpcId === "chaplain"}
+              wantsTalk={npcWantsTalk(view, "chaplain")}
               disabled={!view.chaplainAvailable}
               title={view.chaplainAvailable ? "Speak with the chaplain" : "Requires a chapel or cell on the estate"}
               onClick={() => view.chaplainAvailable && withBusy(() => window.api.setScene("chaplain"))}
             >
               Chaplain · Ermenald
-            </button>
+            </SceneTab>
             {view.state.npcs.some((n) => n.id === "negotiator") && (
-              <button
-                className={view.sceneNpcId === "negotiator" ? "active" : ""}
+              <SceneTab
+                active={view.sceneNpcId === "negotiator"}
+                wantsTalk={npcWantsTalk(view, "negotiator")}
                 title="Speak with Gerulf"
                 onClick={() => withBusy(() => window.api.setScene("negotiator"))}
               >
                 Negotiator · Gerulf
-              </button>
+              </SceneTab>
             )}
             {view.state.npcs
               .filter((n) => !isCoreHouseholdId(n.id))
               .map((n) => (
-                <button
+                <SceneTab
                   key={n.id}
-                  className={view.sceneNpcId === n.id ? "active" : ""}
+                  active={view.sceneNpcId === n.id}
+                  wantsTalk={n.wantsTalk}
                   title={`Speak with ${n.name}`}
                   onClick={() => withBusy(() => window.api.setScene(n.id))}
                 >
                   {cap(roleName(n.role))} · {n.name}
-                </button>
+                </SceneTab>
               ))}
-            <button
-              className={view.sceneNpcId === "merchant" ? "active" : ""}
+            <SceneTab
+              active={view.sceneNpcId === "merchant"}
+              wantsTalk={npcWantsTalk(view, "merchant")}
               disabled={!view.merchantAvailable}
               title={
                 view.merchantAvailable
@@ -433,7 +439,7 @@ export function App() {
               onClick={() => view.merchantAvailable && withBusy(() => window.api.setScene("merchant"))}
             >
               Merchant{view.state.merchant.name ? ` · ${view.state.merchant.name}` : ""}
-            </button>
+            </SceneTab>
           </div>
 
           <div className="talk" id="talk-panel">
@@ -1035,5 +1041,39 @@ function composerPlaceholder(view: GameView): string {
 
 function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function npcWantsTalk(view: GameView, npcId: string): boolean {
+  return view.state.npcs.find((n) => n.id === npcId)?.wantsTalk === true;
+}
+
+function SceneTab({
+  active,
+  wantsTalk,
+  disabled,
+  title,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  wantsTalk: boolean;
+  disabled?: boolean;
+  title?: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      className={active ? "active" : ""}
+      disabled={disabled}
+      title={wantsTalk && !disabled ? "They have something to say" : title}
+      onClick={onClick}
+    >
+      {children}
+      {wantsTalk ? (
+        <img src={NPC_WANTS_TALK} className="wants-talk-badge" alt="" title="They have something to say" />
+      ) : null}
+    </button>
+  );
 }
 
