@@ -7,6 +7,7 @@ import sunlitSteelAndLute from "../../art assets/Music/Sunlit Steel and Lute.mp3
 import harvestsGoldenSong from "../../art assets/Music/The Harvest's Golden Song.mp3";
 import theQuietMarch from "../../art assets/Music/The Quiet March.mp3";
 import buttonClick from "../../art assets/Sound fx/ui-click.wav";
+import npcWantsTalkIcon from "../../art assets/UI/npc-wants-talk.png";
 
 import aldricNeutral from "../../art assets/NPC Images/Aldrec Steward/Aldric neutral nobg.png";
 import aldricRespectful from "../../art assets/NPC Images/Aldrec Steward/Aldrec respectful nobg.png";
@@ -105,6 +106,7 @@ export const TITLE_SCREEN = titleScreen;
 export const TITLE_MENU_BACKGROUND = titleMenuBackground;
 export const TITLE_THEME = titleTheme;
 export const BUTTON_CLICK = buttonClick;
+export const NPC_WANTS_TALK = npcWantsTalkIcon;
 export const GAME_THEMES = [
   titleTheme,
   frostOnTheStone,

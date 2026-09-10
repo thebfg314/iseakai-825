@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { npcPortrait } from "./art";
+import { npcPortrait, NPC_WANTS_TALK } from "./art";
 
 const EXPANSION: { id: string; files: Record<string, string> }[] = [
   {
@@ -97,5 +97,11 @@ const MERCHANT_FACE_FILES = [
 describe("merchant portraits", () => {
   it.each(MERCHANT_FACE_FILES)("face %s resolves to %s", (face, file) => {
     expect(npcPortrait("merchant", "neutral", face)).toContain(file);
+  });
+});
+
+describe("wants-talk tab badge", () => {
+  it("points at the UI icon", () => {
+    expect(NPC_WANTS_TALK).toMatch(/npc-wants-talk\.png/);
   });
 });

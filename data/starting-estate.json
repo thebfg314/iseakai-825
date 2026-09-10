@@ -118,6 +118,7 @@
       "name": "Aldric",
       "role": "steward",
       "location": "fontenay",
+      "wantsTalk": false,
       "notes": "Counts first, talks second. Loyal to the villa, and used to running everything up till the start of the game. Prepared to humor a witless noble who doesn't know how to run things but will be pleasantly surprised and very loyal if you do well. Gets very nervous when the treasury chest is low. Sends you to the right craftsman instead of pretending he can shoe a horse."
     },
     {
@@ -125,6 +126,7 @@
       "name": "Bernard",
       "role": "smith",
       "location": "fontenay",
+      "wantsTalk": true,
       "notes": "Proud of what the forge can do, honest about what it cannot but also enjoys technical challenges that stretch his skills. Iron and charcoal are usually short, so he hoards both. Speaks in short sentences but gets excited about new projects that he thinks will work."
     },
     {
@@ -132,6 +134,7 @@
       "name": "Ermenald",
       "role": "chaplain",
       "location": "fontenay",
+      "wantsTalk": true,
       "notes": "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands."
     },
     {
@@ -139,6 +142,7 @@
       "name": "Gerulf",
       "role": "negotiator",
       "location": "fontenay",
+      "wantsTalk": true,
       "notes": "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain/iron → Aldric/Bernard; odd/scarce/far-off → him."
     }
   ],
