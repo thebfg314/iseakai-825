@@ -219,6 +219,12 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   min-width: 9.5rem;
   overflow: hidden;
 }
+/* Transparent waiting frames sit on black, not the usual brown (#5c3d1e / #3a3228). */
+.composer .speak-submit.speak-waiting,
+.composer .speak-submit.speak-waiting:disabled {
+  background: #000;
+  opacity: 1;
+}
 .composer .speak-submit.speak-waiting .speak-label {
   visibility: hidden;
 }

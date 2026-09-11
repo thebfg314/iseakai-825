@@ -77,6 +77,27 @@ describe("speak waiting reel", () => {
   it("preloads srcs without throwing when Image is unavailable", async () => {
     await expect(preloadWaitingImages(waitingFrames())).resolves.toBeUndefined();
   });
+
+  it("paints the Speak button solid black while waiting so transparent frames are not muddy on brown", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/ui/styles.css"), "utf8");
+    const rules = [...css.matchAll(/([^{]+)\{([^}]+)\}/g)].map((m) => ({
+      selector: m[1].replace(/\s+/g, " ").trim(),
+      body: m[2],
+    }));
+    const waitingFill = rules.filter(
+      (r) =>
+        r.selector.includes("speak-submit.speak-waiting") &&
+        !r.selector.includes("speak-label") &&
+        !r.selector.includes("reel"),
+    );
+    expect(waitingFill.some((r) => r.selector.includes(":disabled"))).toBe(true);
+    for (const rule of waitingFill) {
+      expect(rule.body, rule.selector).toMatch(/background(?:-color)?:\s*#000(?:000)?\b/i);
+      expect(rule.body, rule.selector).toMatch(/opacity:\s*1\b/);
+    }
+    expect(css).toMatch(/button\.primary\s*\{[^}]*background:\s*#5c3d1e/);
+    expect(css).not.toMatch(/Advance season[\s\S]{0,80}speak-waiting/);
+  });
 });
 
 function pngSize(buf: Buffer): { w: number; h: number } {
