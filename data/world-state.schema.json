@@ -168,6 +168,11 @@
       "type": "object",
       "additionalProperties": { "type": "number" },
       "description": "Signed store, sown, and household changes from the last resolved season. Empty until the first Advance season."
+    },
+    "estate_history": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/estateSeasonSnapshot" },
+      "description": "Prior seasons' estate books as they stood before each Advance season. Empty until the first Advance season."
     }
   },
   "$defs": {
@@ -351,6 +356,14 @@
         "rush": { "type": "boolean" },
         "tag": { "type": "string" },
         "notes": { "type": "string" },
+        "startedYear": { "type": "integer" },
+        "startedSeason": { "$ref": "#/$defs/season" },
+        "completedYear": { "type": "integer" },
+        "completedSeason": { "$ref": "#/$defs/season" },
+        "seasonMarks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectSeasonMark" }
+        },
         "hunt": {
           "type": "object",
           "additionalProperties": false,
@@ -384,6 +397,148 @@
             "reported": { "type": "boolean" }
           }
         }
+      }
+    },
+    "projectSeasonMark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["year", "season", "labourDaysDone"],
+      "properties": {
+        "year": { "type": "integer" },
+        "season": { "$ref": "#/$defs/season" },
+        "labourDaysDone": { "type": "number" },
+        "huntSeasonsElapsed": { "type": "integer" }
+      }
+    },
+    "estateSeasonSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "year",
+        "season",
+        "turn",
+        "region",
+        "holdings",
+        "resources",
+        "custom_resources",
+        "population",
+        "agriculture",
+        "flags",
+        "merchant",
+        "market",
+        "npcs",
+        "known_techniques"
+      ],
+      "properties": {
+        "year": { "type": "integer" },
+        "season": { "$ref": "#/$defs/season" },
+        "turn": { "type": "integer" },
+        "region": { "type": "string" },
+        "holdings": { "type": "array", "items": { "$ref": "#/$defs/holding" } },
+        "resources": { "$ref": "#/$defs/resourceMap" },
+        "custom_resources": { "type": "array", "items": { "$ref": "#/$defs/customResource" } },
+        "population": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["households", "adult_men", "adult_women", "youths"],
+          "properties": {
+            "households": { "type": "integer", "minimum": 0 },
+            "adult_men": { "type": "integer", "minimum": 0 },
+            "adult_women": { "type": "integer", "minimum": 0 },
+            "youths": { "type": "integer", "minimum": 0 },
+            "mancipia": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "agriculture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["springBarleyShare", "autumnWheatShare"],
+          "properties": {
+            "springBarleyShare": { "type": "number" },
+            "autumnWheatShare": { "type": "number" }
+          }
+        },
+        "last_season_deltas": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "flags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["merchant_present", "hunger"],
+          "properties": {
+            "merchant_present": { "type": "boolean" },
+            "hunger": { "type": "boolean" }
+          }
+        },
+        "merchant": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present"],
+          "properties": {
+            "present": { "type": "boolean" },
+            "name": { "type": "string" },
+            "stock": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["resource", "amount"],
+                "properties": {
+                  "resource": { "type": "string" },
+                  "amount": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "market": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/priceRange" }
+        },
+        "npcs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "role"],
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        },
+        "known_techniques": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        },
+        "labour": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pool", "remaining"],
+          "properties": {
+            "pool": { "$ref": "#/$defs/labourPoolView" },
+            "remaining": { "$ref": "#/$defs/labourPoolView" }
+          }
+        }
+      }
+    },
+    "labourPoolView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["men", "women", "youths"],
+      "properties": {
+        "men": { "type": "number" },
+        "women": { "type": "number" },
+        "youths": { "type": "number" }
       }
     },
     "modifier": {

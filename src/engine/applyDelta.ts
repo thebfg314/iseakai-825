@@ -22,6 +22,7 @@ import {
   specialistHireGrainRation,
   specialistNpc,
 } from "./specialists";
+import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import {
@@ -362,6 +363,7 @@ function startProject(
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
   });
+  stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
   const started = `${name} is begun. The timber, iron, and stone are set aside.`;
@@ -381,6 +383,7 @@ function adjustProject(
       state.resources.stone += proj.materials.stone * 0.5;
     }
     proj.status = "cancelled";
+    stampProjectEnded(state, proj);
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
     return ok(state, `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`);
   }

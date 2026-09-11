@@ -238,9 +238,64 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   pointer-events: none;
 }
 
-.ledger { overflow: auto; padding: 1rem 1.1rem 2rem; background: #16130f; }
+.ledger {
+  overflow: hidden;
+  padding: 0;
+  background: #16130f;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ledger-head { padding: 1rem 1.1rem 0; flex-shrink: 0; }
+.ledger-body { overflow: auto; padding: 0.75rem 1.1rem 2rem; flex: 1; min-height: 0; }
 .ledger h2 { margin: 0 0 0.2rem; font-size: 1.1rem; }
 .ledger h3 { margin: 1.1rem 0 0.35rem; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.books-tabs {
+  display: flex;
+  margin: 0.7rem -1.1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.books-tabs button {
+  flex: 1;
+  border: 0;
+  border-right: 1px solid var(--line);
+  padding: 0.48rem 0.3rem;
+  background: transparent;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.books-tabs button:last-child { border-right: 0; }
+.books-tabs button.active {
+  background: #2e281f;
+  color: var(--parchment);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.season-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.15rem 0 0.45rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  background: #1c1812;
+}
+.season-pager button { font-size: 0.82rem; letter-spacing: 0.03em; }
+.season-label {
+  flex: 1;
+  text-align: center;
+  color: var(--parchment);
+  letter-spacing: 0.03em;
+}
+.season-now { color: var(--muted); font-weight: 400; }
+.season-pager-spacer { width: 4.6rem; flex-shrink: 0; }
+.season-hint { margin: 0 0 0.7rem; font-size: 0.82rem; }
+.labour-entry, .custom-entry {
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dotted #2e291f;
+}
 .muted { color: var(--muted); }
 .flag { color: var(--accent); }
 .flag.warn { color: #d98973; }

@@ -10,6 +10,33 @@ export const CONFIRM_HELP = "Speech does not change the chest. Confirm is Aldric
 
 export const HUNGER_LINE = "The households are hungry — grain will not last.";
 
+export const LABOURS_EMPTY = "None underway, and none finished in these books.";
+export const CUSTOMS_ORDERS_EMPTY = "No standing order is written.";
+export const CUSTOMS_LAWS_EMPTY = "No lasting custom of the hall is written.";
+export const ESTATE_THIS_SEASON_HINT = "These are the books of this season.";
+export const ESTATE_NO_HISTORY_HINT = "Earlier seasons are not yet kept.";
+export const ESTATE_PAST_HINT = "As the books stood in that season.";
+export const ESTATE_PAST_MISSING = "That season's books were not kept.";
+
+export function seasonBooksLabel(season: string, year: number): string {
+  const name = season.charAt(0).toUpperCase() + season.slice(1);
+  return `${name} ${year}`;
+}
+
+export function labourStatusLine(status: "active" | "completed" | "cancelled"): string {
+  if (status === "active") return "Underway";
+  if (status === "completed") return "Finished";
+  return "Stopped";
+}
+
+export function seasonsOfWorkPhrase(n: number): string {
+  if (n <= 1) return "this season's work";
+  if (n === 2) return "two seasons of work";
+  const words = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+  if (n < words.length) return `${words[n]} seasons of work`;
+  return `${n} seasons of work`;
+}
+
 const LAND_NAMES: Record<string, string> = {
   fertile_arable: "good ploughland",
   meadow: "meadow",

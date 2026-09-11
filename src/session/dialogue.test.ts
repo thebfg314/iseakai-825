@@ -234,6 +234,12 @@ describe("per-NPC dialogue logs", () => {
     expect(steward.messages.some((m) => /Season written to the books/.test(m.text))).toBe(true);
     expect(game.state.last_season_deltas.sown_barley).toBe(1.8);
     expect(Object.keys(game.state.last_season_deltas).length).toBeGreaterThan(0);
+    expect(game.state.estate_history).toHaveLength(1);
+    expect(game.state.estate_history[0].season).toBe("spring");
+    expect(game.state.estate_history[0].year).toBe(825);
+    expect(game.state.estate_history[0].resources.denarii).toBe(96);
+    expect(game.state.estate_history[0].population.households).toBe(10);
+    expect(game.state.meta.season).toBe("summer");
     const smith = game.setScene("smith");
     expect(smith.messages.some((m) => /harvest is gathered|Season written/.test(m.text))).toBe(false);
     expect(smith.messages.some((m) => opening.test(m.text))).toBe(false);

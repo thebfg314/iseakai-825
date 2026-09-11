@@ -172,6 +172,61 @@ export const LabourAssignmentSchema = z.object({
 });
 export type LabourAssignment = z.infer<typeof LabourAssignmentSchema>;
 
+export const ProjectSeasonMarkSchema = z.object({
+  year: z.number().int(),
+  season: z.enum(SEASONS),
+  labourDaysDone: z.number(),
+  huntSeasonsElapsed: z.number().int().optional(),
+});
+export type ProjectSeasonMark = z.infer<typeof ProjectSeasonMarkSchema>;
+
+export const LabourPoolViewSchema = z.object({
+  men: z.number(),
+  women: z.number(),
+  youths: z.number(),
+});
+
+export const EstateSeasonSnapshotSchema = z.object({
+  year: z.number().int(),
+  season: z.enum(SEASONS),
+  turn: z.number().int(),
+  region: z.string(),
+  holdings: z.array(HoldingSchema),
+  resources: ResourceMapSchema,
+  custom_resources: z.array(CustomResourceSchema),
+  population: z.object({
+    households: z.number().int().nonnegative(),
+    adult_men: z.number().int().nonnegative(),
+    adult_women: z.number().int().nonnegative(),
+    youths: z.number().int().nonnegative(),
+    mancipia: z.number().int().nonnegative().optional(),
+  }),
+  agriculture: z.object({
+    springBarleyShare: z.number().min(0).max(1),
+    autumnWheatShare: z.number().min(0).max(1),
+  }),
+  last_season_deltas: z.record(z.string(), z.number()).default({}),
+  flags: z.object({
+    merchant_present: z.boolean(),
+    hunger: z.boolean(),
+  }),
+  merchant: z.object({
+    present: z.boolean(),
+    name: z.string().optional(),
+    stock: z.array(z.object({ resource: z.string(), amount: z.number() })).default([]),
+  }),
+  market: z.record(z.string(), PriceRangeSchema),
+  npcs: z.array(z.object({ name: z.string(), role: z.string() })),
+  known_techniques: z.array(z.object({ id: z.string(), name: z.string() })),
+  labour: z
+    .object({
+      pool: LabourPoolViewSchema,
+      remaining: LabourPoolViewSchema,
+    })
+    .optional(),
+});
+export type EstateSeasonSnapshot = z.infer<typeof EstateSeasonSnapshotSchema>;
+
 export const ProjectSchema = z.object({
   id: z.string(),
   key: z.string(),
@@ -189,6 +244,14 @@ export const ProjectSchema = z.object({
   rush: z.boolean().optional(),
   tag: z.string().optional(),
   notes: z.string().optional(),
+  /** Season the work was first written. Absent on older saves. */
+  startedYear: z.number().int().optional(),
+  startedSeason: z.enum(SEASONS).optional(),
+  /** Season the work finished or was stopped. Absent while underway, or on older saves. */
+  completedYear: z.number().int().optional(),
+  completedSeason: z.enum(SEASONS).optional(),
+  /** Labour (or hunt elapsed) as written at the close of each season of work. */
+  seasonMarks: z.array(ProjectSeasonMarkSchema).optional(),
   /** Gerulf road-hunt: time and a purse, not labour-days. */
   hunt: z
     .object({
@@ -337,6 +400,8 @@ export const WorldStateSchema = z.object({
     .default({ springBarleyShare: 0.6, autumnWheatShare: 0.45 }),
   /** Signed store / sown / household changes from the last Advance season. Empty on a fresh game. */
   last_season_deltas: z.record(z.string(), z.number()).default({}),
+  /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
+  estate_history: z.array(EstateSeasonSnapshotSchema).default([]),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 
