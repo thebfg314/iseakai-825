@@ -30,6 +30,14 @@ test("Speak wait overlays the waiting reel only while dialogue send is in flight
 
   assert.match(css, /\.speak-waiting-reel/);
   assert.match(css, /object-fit:\s*contain/);
+  assert.match(
+    css,
+    /\.composer \.speak-submit\.speak-waiting,\s*\.composer \.speak-submit\.speak-waiting:disabled\s*\{[^}]*background:\s*#000/,
+  );
+  assert.match(
+    css,
+    /\.composer \.speak-submit\.speak-waiting:disabled\s*\{[^}]*opacity:\s*1/,
+  );
 
   for (let i = 1; i <= 12; i++) {
     const file = path.join(root, "art assets/Anim sprites/waiting", `waiting ${i}.png`);
