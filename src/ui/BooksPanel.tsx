@@ -15,7 +15,7 @@ import {
   type BooksTab,
   type EstateLedgerSource,
   type LabourBookEntry,
-} from "./booksPanel";
+} from "./booksView";
 import {
   BOOKS_TITLE,
   HUNGER_LINE,
