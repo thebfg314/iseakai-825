@@ -17,6 +17,7 @@ import {
   proposalTypeName,
   resourceName,
   roleName,
+  seasonBooksLabel,
   sowingShareLine,
   workDisplayName,
 } from "./ledgerCopy";
@@ -90,6 +91,7 @@ describe("steward ledger voice", () => {
     expect(projectProgressLine(35, 70)).toBe("half raised · 35 days still owed");
     expect(labourOnWorkLine({ men: 12, women: 0, youths: 0 })).toBe("12 men called this season");
     expect(labourOnWorkLine({ men: 0, women: 0, youths: 0 })).toBe("no extra hands called this season");
+    expect(seasonBooksLabel("spring", 825)).toBe("Spring 825");
     expect(confirmBanner(1)).toMatch(/Confirm is Aldric writing it in the books/);
     expect(confirmBanner(1)).not.toMatch(/world-state/);
     expect(

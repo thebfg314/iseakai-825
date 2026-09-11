@@ -9,6 +9,7 @@ import {
 } from "./schema";
 import { resolveActiveProject } from "./labour";
 import { looksLikeHireOrder, specialistsFromHireText } from "./specialists";
+import { markProjectSeason, stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { newId, round1 } from "./util";
 
 export const NEGOTIATOR_ID = "negotiator";
@@ -413,6 +414,7 @@ export function startHunt(state: WorldState, p: StartHuntProposal): { ok: true; 
       reported: false,
     },
   });
+  stampProjectStart(state, state.projects[state.projects.length - 1]);
   const npc = state.npcs.find((n) => n.id === NEGOTIATOR_ID);
   if (npc) npc.location = GERULF_ROAD_LOCATION;
   return {
@@ -506,6 +508,12 @@ function outcomeSpeech(outcome: HuntOutcome, hunt: NonNullable<WorldState["proje
   }
 }
 
+function closeHunt(state: WorldState, proj: WorldState["projects"][number]) {
+  proj.status = "completed";
+  stampProjectEnded(state, proj);
+  bringGerulfHome(state);
+}
+
 /** Advance Gerulf hunts one season. Completes with engine-owned success, partial, extra cost, or failure. */
 export function resolveHunts(state: WorldState): string[] {
   const lines: string[] = [];
@@ -514,6 +522,7 @@ export function resolveHunts(state: WorldState): string[] {
     hunt.seasonsElapsed += 1;
     const left = hunt.durationSeasons - hunt.seasonsElapsed;
     if (left > 0) {
+      markProjectSeason(state, proj);
       lines.push(
         `Gerulf still on the road for ${hunt.goods}: ${left} season${left === 1 ? "" : "s"} yet.`,
       );
@@ -530,8 +539,7 @@ export function resolveHunts(state: WorldState): string[] {
         hunt.reportSpeech = speech.text;
         hunt.reportEmotion = speech.emotion;
         hunt.reported = false;
-        proj.status = "completed";
-        bringGerulfHome(state);
+        closeHunt(state, proj);
         lines.push(
           `Gerulf returned with ${hunt.amount} ${hunt.goods}, but the inland price ran ${extra} denarii over the quote.`,
         );
@@ -546,8 +554,7 @@ export function resolveHunts(state: WorldState): string[] {
       hunt.reportSpeech = speech.text;
       hunt.reportEmotion = speech.emotion;
       hunt.reported = false;
-      proj.status = "completed";
-      bringGerulfHome(state);
+      closeHunt(state, proj);
       lines.push(`Gerulf returned with ${hunt.amount} ${hunt.goods}. The purse is spent.`);
       continue;
     }
@@ -560,8 +567,7 @@ export function resolveHunts(state: WorldState): string[] {
       hunt.reportSpeech = speech.text;
       hunt.reportEmotion = speech.emotion;
       hunt.reported = false;
-      proj.status = "completed";
-      bringGerulfHome(state);
+      closeHunt(state, proj);
       lines.push(`Gerulf returned with a partial find of ${hunt.goods}. ${back} denarii recovered.`);
       continue;
     }
@@ -572,8 +578,7 @@ export function resolveHunts(state: WorldState): string[] {
       hunt.reportSpeech = speech.text;
       hunt.reportEmotion = speech.emotion;
       hunt.reported = false;
-      proj.status = "completed";
-      bringGerulfHome(state);
+      closeHunt(state, proj);
       lines.push(`Gerulf's hunt for ${hunt.goods} failed: false rumour. ${back} denarii recovered.`);
       continue;
     }
@@ -583,8 +588,7 @@ export function resolveHunts(state: WorldState): string[] {
     hunt.reportSpeech = speech.text;
     hunt.reportEmotion = speech.emotion;
     hunt.reported = false;
-    proj.status = "completed";
-    bringGerulfHome(state);
+    closeHunt(state, proj);
     lines.push(
       `Gerulf's hunt for ${hunt.goods} failed: a mishap on the road.${back ? ` ${back} denarii recovered.` : " The purse is gone."}`,
     );

@@ -9,6 +9,7 @@ import { resolveHunts } from "./hunts";
 import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
 import { featureName, landName, resourceName } from "../ui/ledgerCopy";
+import { markProjectSeason, stampProjectEnded } from "./projectProgress";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -143,6 +144,7 @@ function advanceProjects(state: WorldState): string[] {
     if (proj.tag === "hunt" || proj.hunt) continue;
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
+      markProjectSeason(state, proj);
       notes.push(`${proj.name}: no extra hands called this season.`);
       continue;
     }
@@ -155,8 +157,10 @@ function advanceProjects(state: WorldState): string[] {
     notes.push(
       `${proj.name}: ${round1(days)} days of work done this season; ${owed === 0 ? "the work is finished" : `${owed} days still owed`}.`,
     );
+    markProjectSeason(state, proj);
     if (proj.labourDaysDone >= proj.labourDaysRequired) {
       proj.status = "completed";
+      stampProjectEnded(state, proj);
       const holding = state.holdings.find((h) => h.id === proj.holdingId);
       const cat = lookupProject(proj.key);
       if (holding && cat?.completesToFeature && !holding.features.includes(cat.completesToFeature)) {

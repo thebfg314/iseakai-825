@@ -4,6 +4,7 @@ import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
+import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
@@ -672,6 +673,7 @@ export class GameController {
 
     const beforeSeason = cloneState(this.state);
     const ledgerBefore = snapshotSeasonLedger(beforeSeason);
+    archiveEstateSeason(this.state, beforeSeason);
     effects.push(...resolveAgricultureAndProjects(this.state));
     this.speakCompletedProjects(beforeSeason);
     this.speakHuntReturns();

@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { GameView } from "../shared/types";
 import type { ChatMessage, PendingProposal, Season } from "../engine/schema";
-import { CANONICAL_RESOURCES } from "../engine/schema";
-import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { isCoreHouseholdId } from "../engine/specialists";
-import { huntProgressLine } from "../engine/hunts";
-import type { AldricEmotion } from "../engine/emotion";
-import { normalizeEmotion } from "../engine/emotion";
+import { normalizeEmotion, type AldricEmotion } from "../engine/emotion";
+import { BooksPanel } from "./BooksPanel";
 import { BUTTON_CLICK, GAME_THEMES, NPC_WANTS_TALK, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
 import {
   SEASON_IDLE_FRAME_MS,
@@ -35,30 +32,13 @@ import { emptyMeter, type LlmMeter } from "../llm/usage";
 import { applyServerDialogueView, viewWithOptimisticPlayer } from "./chatSend";
 import { hudInkLine, hudInkTitle, settingsInkLines } from "./scribeInk";
 import {
-  BOOKS_TITLE,
   CONFIRM_HELP,
-  HUNGER_LINE,
   confirmBanner,
-  featuresSentence,
-  formatLedgerNumber,
-  formatSignedDelta,
-  labourOnWorkLine,
-  labourSentence,
-  landName,
-  marketLine,
-  merchantPresentLine,
-  modifierLine,
-  modifierSourceName,
-  peopleSentence,
   playerFacingReason,
   playerFacingSummary,
-  projectProgressLine,
   proposalBlurb,
   proposalTypeName,
-  resourceName,
-  resourceUnit,
   roleName,
-  sowingShareLine,
 } from "./ledgerCopy";
 
 function musicGain(s: Pick<AppSettings, "masterVolume" | "musicVolume">): number {
@@ -524,7 +504,7 @@ export function App() {
           </form>
         </section>
 
-        <Ledger view={view} />
+        <BooksPanel view={view} />
       </div>
 
       {settingsModal}
@@ -731,156 +711,6 @@ function ProposalCard({
           Ask about
         </button>
       </div>
-    </div>
-  );
-}
-
-function Ledger({ view }: { view: GameView }) {
-  const s = view.state;
-  const holding = s.holdings[0];
-  const deltas = s.last_season_deltas ?? {};
-  const d = (id: string) => deltas[id];
-  return (
-    <aside className="ledger">
-      <h2>{BOOKS_TITLE}</h2>
-      <p className="muted">{s.meta.region}</p>
-      {s.flags.merchant_present && s.merchant.present && (
-        <p className="flag">{merchantPresentLine(s.merchant.name)}</p>
-      )}
-      {s.flags.hunger && <p className="flag warn">{HUNGER_LINE}</p>}
-
-      <h3>Chest and people</h3>
-      <Row k="Denarii" v={formatLedgerNumber(s.resources.denarii)} delta={d("denarii")} />
-      <Row k="Manses" v={String(s.population.households)} delta={d("households")} />
-      <p className="ledger-note">{peopleSentence(s.population)}</p>
-      <p className="ledger-note">{labourSentence(view.labour.pool, view.labour.remaining)}</p>
-      {s.npcs
-        .filter((n) => n.id !== "merchant")
-        .map((n) => (
-          <Row key={n.id} k={n.name} v={roleName(n.role)} />
-        ))}
-
-      <h3>Land — {holding?.name}</h3>
-      {holding &&
-        Object.entries(holding.land).map(([k, v]) => <Row key={k} k={landName(k)} v={`${v} acres`} />)}
-      {holding && (
-        <>
-          <h3>Sown</h3>
-          {Object.entries(holding.sown).map(([k, v]) => (
-            <Row key={k} k={resourceName(k)} v={`${v} acres`} delta={d(`sown_${k}`)} />
-          ))}
-          <p className="ledger-note">{sowingShareLine("spring", s.agriculture?.springBarleyShare ?? 0.6)}</p>
-          <p className="ledger-note">{sowingShareLine("autumn", s.agriculture?.autumnWheatShare ?? 0.45)}</p>
-          <h3>On the holding</h3>
-          <p className="ledger-note">{featuresSentence(holding.features)}</p>
-        </>
-      )}
-
-      {s.merchant.present && (
-        <>
-          <h3>{s.merchant.name ? `${s.merchant.name}'s carts` : "The merchant's carts"}</h3>
-          {s.merchant.stock.length === 0 && <p className="muted">The carts are empty.</p>}
-          {s.merchant.stock.map((w) => {
-            const range = s.market[w.resource];
-            const price = range ? marketLine(w.resource, range.min, range.max) : "price not yet known";
-            return (
-              <Row
-                key={w.resource}
-                k={resourceName(w.resource)}
-                v={`${formatLedgerNumber(w.amount)} on the carts · ${price}`}
-              />
-            );
-          })}
-        </>
-      )}
-
-      <h3>Stores</h3>
-      {CANONICAL_RESOURCES.filter((r) => r !== "denarii").map((r) => (
-        <Row
-          key={r}
-          k={resourceName(r)}
-          v={`${formatLedgerNumber(s.resources[r])} ${resourceUnit(r)}`}
-          delta={d(r)}
-          hideZero={s.resources[r] === 0 && d(r) == null}
-        />
-      ))}
-      {s.custom_resources.map((c) => (
-        <Row key={c.id} k={c.name} v={`${formatLedgerNumber(c.amount)} ${c.unit}`} />
-      ))}
-
-      <h3>Prices</h3>
-      {Object.entries(s.market)
-        .slice(0, 16)
-        .map(([k, p]) => (
-          <p key={k} className="ledger-note">
-            {marketLine(k, p.min, p.max)}.
-          </p>
-        ))}
-
-      <h3>Works</h3>
-      {s.projects.filter((p) => p.status === "active").length === 0 && <p className="muted">None underway.</p>}
-      {s.projects
-        .filter((p) => p.status === "active")
-        .map((p) => (
-          <Row
-            key={p.id}
-            k={p.name}
-            v={
-              p.hunt
-                ? huntProgressLine(p.hunt.seasonsElapsed, p.hunt.durationSeasons)
-                : `${projectProgressLine(p.labourDaysDone, p.labourDaysRequired)} · ${labourOnWorkLine(s.labour.assigned.find((a) => a.projectId === p.id))}`
-            }
-          />
-        ))}
-      <details>
-        <summary>Known works</summary>
-        <ul className="tiny">
-          {PROJECT_CATALOG.map((p) => (
-            <li key={p.key}>
-              {p.name} — {p.labourDays} days, {p.lumber} timber, {p.iron} iron, {p.stone} stone
-            </li>
-          ))}
-        </ul>
-      </details>
-
-      <h3>Customs in force</h3>
-      {s.modifiers.length === 0 && <p className="muted">None that I am watching.</p>}
-      {s.modifiers.map((m) => (
-        <Row key={m.id} k={modifierSourceName(m.source)} v={modifierLine(m)} />
-      ))}
-
-      <h3>Standing orders</h3>
-      {s.standing_orders
-        .filter((o) => o.active)
-        .map((o) => (
-          <p key={o.id} className="order">
-            {o.text}
-          </p>
-        ))}
-
-      <h3>Known crafts</h3>
-      {s.known_techniques.length === 0 && <p className="muted">None recorded.</p>}
-      {s.known_techniques.map((t) => (
-        <p key={t.id} className="ledger-note">
-          {t.name}
-        </p>
-      ))}
-    </aside>
-  );
-}
-
-function Row({ k, v, hideZero, delta }: { k: string; v: string; hideZero?: boolean; delta?: number }) {
-  if (hideZero) return null;
-  const showDelta = delta != null && delta !== 0;
-  return (
-    <div className="row">
-      <span>{k}</span>
-      <span>
-        {v}
-        {showDelta && (
-          <span className={`delta ${delta > 0 ? "gain" : "loss"}`}>{formatSignedDelta(delta)}</span>
-        )}
-      </span>
     </div>
   );
 }
