@@ -104,13 +104,16 @@ function EstateTab({
           <strong>{pager.label}</strong>
           {pager.viewingCurrent ? <span className="season-now"> · this season</span> : null}
         </div>
-        {pager.showForward ? (
-          <button type="button" disabled={!pager.canGoForward} title="Toward this season" onClick={onForward}>
-            Later
-          </button>
-        ) : (
-          <span className="season-pager-spacer" aria-hidden="true" />
-        )}
+        <button
+          type="button"
+          className="season-forward"
+          disabled={!pager.canGoForward}
+          hidden={!pager.showForward}
+          title="Toward this season"
+          onClick={onForward}
+        >
+          Later
+        </button>
       </div>
       <p className="muted season-hint">{pager.hint}</p>
       {pager.source ? <EstateBody source={pager.source} /> : historyLength === 0 ? null : <p className="muted">{pager.hint}</p>}
