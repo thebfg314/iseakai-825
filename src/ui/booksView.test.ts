@@ -17,7 +17,7 @@ import {
   laboursEmptyLine,
   selectBooksTab,
   stepEstateOffset,
-} from "./booksPanel";
+} from "./booksView";
 
 const JARGON = /\b(delta|schema|npc id|npcId|world-state|JSON|proj-|assign_labour)\b/i;
 
@@ -81,6 +81,11 @@ describe("books tabs", () => {
 });
 
 describe("estate season pager", () => {
+  it("defaults estate_history to empty on a fresh estate with no field in the json", () => {
+    expect("estate_history" in startingEstate).toBe(false);
+    expect(estate().estate_history).toEqual([]);
+  });
+
   it("hides forward on this season and pages back to real prior figures", () => {
     const live = estate();
     live.resources.denarii = 70;
