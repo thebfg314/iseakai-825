@@ -1,0 +1,261 @@
+{
+  "omit": [
+    "fulling mill",
+    "trip-hammer",
+    "trip hammer",
+    "forge mill",
+    "mill-forge",
+    "mill forge"
+  ],
+  "entries": [
+    {
+      "id": "missus",
+      "title": "missus",
+      "aliases": ["missus"],
+      "rule": "default",
+      "definition": "A missus (from missus dominicus, \"envoy of the lord\") was a royal inspector Charlemagne and his heirs sent out to check that local counts and bishops were ruling fairly and collecting what the crown was owed. Think FBI / federal inspector general, not \"Mrs.\"\n\nIf a missus turns up in the books or in gossip, someone important is looking at your neighborhood."
+    },
+    {
+      "id": "manses",
+      "title": "Manses",
+      "aliases": ["manses", "mansus", "manse"],
+      "rule": "default",
+      "definition": "A mansus (plural often written manses in estate lists) was a peasant farmstead unit — house, garden, and the strips of land that fed one household. Rough modern sense: \"households on the tax roll,\" not mansions.\n\nWhen the books say how many manses you have, they're counting productive families, not bedrooms."
+    },
+    {
+      "id": "modii",
+      "title": "modii / modius",
+      "aliases": ["modii", "modius"],
+      "rule": "default",
+      "definition": "A modius (plural modii) is a dry measure for grain. The classical Roman modius was about 8.7 liters — roughly 2 US dry gallons, or a bit under a peck (a peck is 8 dry quarts). Picture a sturdy bucket of wheat, not a truckload.\n\nExact medieval sizes wandered by region, but in the game it's your grain \"bushel-ish\" unit on the ledger."
+    },
+    {
+      "id": "denarii",
+      "title": "denarii / denarius",
+      "aliases": ["denarii", "denarius"],
+      "rule": "default",
+      "definition": "The denarius (plural denarii) is the silver penny of the Frankish world. Charlemagne's reform (c. 793–794) struck about 240 of them from a pound of silver (~1.7 g of silver each). Accounting still used the old trio: 12 denarii = 1 solidus (shilling of account), 20 solidi = 1 pound — the ancestor of Britain's £sd system.\n\nIn game terms: your cash. A handful of denarii is grocery money; hundreds are serious."
+    },
+    {
+      "id": "demesne",
+      "title": "demesne",
+      "aliases": ["demesne"],
+      "rule": "default",
+      "definition": "Demesne (say \"di-MAIN\") is the land the lord keeps for his own working — not rented out to free tenants. Modern hook: the company's owned factories vs franchisees; or a ranch's \"home place\" vs leased pastures.\n\nLabour, seed, and harvest on the demesne hit your chest and stores directly."
+    },
+    {
+      "id": "pagus",
+      "title": "pagus",
+      "aliases": ["pagus"],
+      "rule": "default",
+      "definition": "A pagus was a rural district — bigger than a village, smaller than a whole kingdom. \"Pagus of Autun\" is like saying \"Autun County.\"\n\nIt tells you whose orbit Fontenay sits in for law, markets, and trouble."
+    },
+    {
+      "id": "cell_saint_martin",
+      "title": "cell of Saint-Martin",
+      "aliases": [
+        "cell of Saint-Martin",
+        "Saint-Martin's cell",
+        "Saint-Martins cell",
+        "Saint Martin's cell"
+      ],
+      "rule": "default",
+      "definition": "Fontenay's little monastic house under Saint Martin's patronage — a few brothers, a timber oratory, and a claim on local tithes and prayers, under a larger abbey's shadow."
+    },
+    {
+      "id": "cell",
+      "title": "cell",
+      "aliases": ["cells", "cell"],
+      "rule": "monastic_cell",
+      "definition": "Here cell means a small monastic house (Latin cella), not a prison cell. Tiny community of monks or nuns under a larger abbey's shadow — a religious \"branch office\" with a chapel, a few brothers, and claims on local tithes and prayers.\n\nMatching prefers \"cell of\", \"the cell\", and other monastic company; isolated English \"cell\" is left alone when the sense looks like a prison or a modern metaphor."
+    },
+    {
+      "id": "pannage",
+      "title": "pannage / mast",
+      "aliases": ["pannage", "mast year", "mast"],
+      "rule": "default",
+      "definition": "Pannage is turning pigs into the woods in autumn to fatten on fallen nuts. Mast is that nut fall. A good mast year is a bumper crop of woodland calories.\n\nModern hook: free-range finishing on seasonal forage."
+    },
+    {
+      "id": "bloomery",
+      "title": "bloomery",
+      "aliases": ["bloom iron", "bloomeries", "bloomery"],
+      "rule": "default",
+      "definition": "A bloomery is a small charcoal furnace that turns ore into a spongy lump of iron called a bloom. Not a modern blast furnace.\n\nBloom iron is that rough product."
+    },
+    {
+      "id": "mill_leat",
+      "title": "mill leat",
+      "aliases": ["mill leat", "mill-leat", "leat"],
+      "rule": "mill_leat",
+      "definition": "A leat is a dug channel that leads river flow to a mill wheel.\n\nModern hook: millrace / dedicated water channel. Bare \"leat\" is linked when the millrace sense is clear."
+    },
+    {
+      "id": "two_field",
+      "title": "two-field",
+      "aliases": ["two-field rotation", "two field rotation", "two-field"],
+      "rule": "default",
+      "definition": "Half the arable sown, half fallow each year, then swap.\n\nEarly medieval soil rest before wider three-field use."
+    },
+    {
+      "id": "villa",
+      "title": "villa",
+      "aliases": ["villa"],
+      "rule": "default",
+      "definition": "Carolingian estate center (hall, stores, lands), not a vacation villa.\n\nFontenay is a working manor hub."
+    },
+    {
+      "id": "waste",
+      "title": "overgrown waste",
+      "aliases": ["overgrown waste", "waste"],
+      "rule": "land_waste",
+      "definition": "Uncultivated marginal ground, not garbage.\n\nIn the land labels, waste is the tired edge of the holding that can be improved back to meadow or tillage."
+    },
+    {
+      "id": "scrub",
+      "title": "overgrown scrub",
+      "aliases": ["overgrown scrub", "scrub"],
+      "rule": "land_scrub",
+      "definition": "Brush that can be cleared to arable.\n\nIn the land labels, scrub is overgrown cover waiting on labour and iron, not a cleaning verb."
+    },
+    {
+      "id": "marling",
+      "title": "marling",
+      "aliases": ["marling", "marl"],
+      "rule": "default",
+      "definition": "Spreading chalky/clay-lime earth to improve soil; like liming a field."
+    },
+    {
+      "id": "reeve",
+      "title": "village reeve",
+      "aliases": ["village reeve", "reeve"],
+      "rule": "default",
+      "definition": "Village headman / peasant go-between. On this estate that is Otto — he speaks for the hides and who is shirking."
+    },
+    {
+      "id": "oratory",
+      "title": "timber oratory",
+      "aliases": ["timber oratory", "oratory"],
+      "rule": "default",
+      "definition": "Small prayer house/chapel, not a speech. Timber means wooden — Fontenay's oratory is a modest timber chapel, not a stone church."
+    },
+    {
+      "id": "feast_days",
+      "title": "feast days",
+      "aliases": ["feast days", "feast day"],
+      "rule": "default",
+      "definition": "Church holy days when ordinary field work stops."
+    },
+    {
+      "id": "francia",
+      "title": "Francia",
+      "aliases": ["Francia"],
+      "rule": "default",
+      "definition": "Frankish realm under the Carolingians; not the modern French Republic."
+    },
+    {
+      "id": "carolingian",
+      "title": "Carolingian",
+      "aliases": ["Carolingians", "Carolingian"],
+      "rule": "default",
+      "definition": "Of Charlemagne's dynasty/era (late 700s–900s)."
+    },
+    {
+      "id": "louis_the_pious",
+      "title": "Louis the Pious",
+      "aliases": ["Louis the Pious"],
+      "rule": "default",
+      "definition": "Charlemagne's son; emperor in 825 (814–840)."
+    },
+    {
+      "id": "alemannic",
+      "title": "Alemannic",
+      "aliases": ["Alemannic", "Alemannia"],
+      "rule": "default",
+      "definition": "From Alemannia / later Swabia region."
+    },
+    {
+      "id": "lombard",
+      "title": "Lombard",
+      "aliases": ["Lombards", "Lombardy", "Lombard"],
+      "rule": "default",
+      "definition": "From Lombardy / north Italian Lombard world."
+    },
+    {
+      "id": "frank",
+      "title": "Frank / Frankish",
+      "aliases": ["Frankish", "Franks", "Frank"],
+      "rule": "frank",
+      "definition": "Frankish people / identity in the Carolingian world.\n\nMatching uses word boundaries so \"frankly\" and \"frankincense\" stay ordinary English."
+    },
+    {
+      "id": "tithe",
+      "title": "tithe",
+      "aliases": ["tithes", "tithe"],
+      "rule": "default",
+      "definition": "Church share (~tenth) of produce; a standing religious claim on the estate's grain and a little wool."
+    },
+    {
+      "id": "renders",
+      "title": "renders",
+      "aliases": ["renders"],
+      "rule": "default",
+      "definition": "Obligations owed upward to a higher lord / public power; overlord taxes, not a cooking verb."
+    },
+    {
+      "id": "standing_order",
+      "title": "standing order",
+      "aliases": ["standing orders", "standing order"],
+      "rule": "default",
+      "definition": "Ongoing written estate rule (not bank autopay).\n\nConfirm is what writes one into the customs book; speech alone does not."
+    },
+    {
+      "id": "lasting_custom",
+      "title": "lasting custom",
+      "aliases": [
+        "lasting custom of the hall",
+        "custom of the hall",
+        "customs of the hall",
+        "lasting custom",
+        "standing custom"
+      ],
+      "rule": "default",
+      "definition": "A rule or effect recorded as how the estate is run — a custom of the hall, lasting or for a time.\n\nThese sit in the customs book beside standing orders."
+    },
+    {
+      "id": "hunt",
+      "title": "hunt",
+      "aliases": ["mid-hunt", "mid hunt", "a hunt", "the hunt", "that hunt", "hunt for", "hunt"],
+      "rule": "hunt_gerulf",
+      "definition": "Here a hunt is Gerulf taking a purse and walking the roads to find scarce goods — not a deer drive. He quotes a price and a span of seasons; the coin leaves the chest when you Confirm.\n\nMatching prefers Gerulf intros, hunt proposals, and hunt UI. A wildlife \"hunt\" (deer, boar, and the like) is left alone."
+    },
+    {
+      "id": "hides",
+      "title": "hides",
+      "aliases": ["hides", "hide"],
+      "rule": "hides_skins",
+      "definition": "Animal skins in the stores — leather-to-be — not the old English land-measure \"hide,\" unless the sentence is clearly about land.\n\nA few hides on the ledger are a tannery's raw stock, not a count of acres."
+    },
+    {
+      "id": "muster",
+      "title": "muster",
+      "aliases": ["muster"],
+      "rule": "default",
+      "definition": "Call-up of men for local military or guard duty."
+    },
+    {
+      "id": "prior",
+      "title": "prior",
+      "aliases": ["prior"],
+      "rule": "monastic_prior",
+      "definition": "Head of the small monastic house. At Fontenay that is Ermenald, prior of Saint-Martin's cell.\n\n\"Prior season\" and \"prior to\" stay ordinary English."
+    },
+    {
+      "id": "hall",
+      "title": "the hall",
+      "aliases": ["the hall", "timber hall", "manor hall", "stone hall", "halls", "hall"],
+      "rule": "manor_hall",
+      "definition": "Seat of household authority — the timber hall at Fontenay — not a corridor.\n\nMatching prefers \"the hall\" and other manor phrases; bare \"hall\" is linked only when the manor sense is safe."
+    }
+  ]
+}

@@ -42,6 +42,7 @@ export type EstateLedgerSource = {
   season: Season;
   turn: number;
   region: string;
+  eraNote?: string;
   holdings: WorldState["holdings"];
   resources: WorldState["resources"];
   custom_resources: WorldState["custom_resources"];
@@ -69,6 +70,7 @@ export function estateSourceFromLive(view: GameView): EstateLedgerSource {
     season: s.meta.season,
     turn: s.meta.turn,
     region: s.meta.region,
+    eraNote: s.meta.eraNote,
     holdings: s.holdings,
     resources: s.resources,
     custom_resources: s.custom_resources,
@@ -154,6 +156,7 @@ export type LabourBookEntry = {
   handsLine?: string;
   spanLine: string;
   marks: LabourMarkView[];
+  hunt: boolean;
 };
 
 const STATUS_RANK: Record<Project["status"], number> = { active: 0, completed: 1, cancelled: 2 };
@@ -189,6 +192,7 @@ function labourBookEntry(proj: Project, nowSeason: Season, nowYear: number, stat
     handsLine,
     spanLine: labourSpanLine(proj, nowSeason, nowYear),
     marks: labourMarkViews(proj),
+    hunt: Boolean(proj.hunt || proj.tag === "hunt"),
   };
 }
 

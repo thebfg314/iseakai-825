@@ -358,6 +358,83 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   margin: 0.4rem 0 0;
 }
 
+button.glossary-term {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 0.16em;
+  text-decoration-thickness: 1px;
+}
+button.glossary-term:hover,
+button.glossary-term:focus-visible {
+  color: var(--accent);
+  text-decoration-thickness: 2px;
+  outline: none;
+}
+button.glossary-term:focus-visible {
+  box-shadow: 0 0 0 2px rgba(196, 163, 90, 0.45);
+}
+
+.glossary-back {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.28);
+}
+.glossary-back-center {
+  display: grid;
+  place-items: center;
+}
+.glossary-popover {
+  position: relative;
+  width: min(22rem, 92vw);
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+  background: var(--parchment);
+  color: var(--parchment-ink);
+  border: 1px solid var(--accent);
+  padding: 0.85rem 1.05rem 1rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.glossary-popover:focus {
+  outline: none;
+}
+.glossary-popover h3 {
+  margin: 0 1.6rem 0.45rem 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+  color: #3d2a12;
+}
+.glossary-popover p {
+  margin: 0 0 0.55rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.glossary-popover p:last-child { margin-bottom: 0; }
+.glossary-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5c3d1e;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .dialogue { border-right: 0; min-height: 55vh; }

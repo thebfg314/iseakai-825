@@ -40,6 +40,7 @@ import {
   proposalTypeName,
   roleName,
 } from "./ledgerCopy";
+import { GlossaryProvider, GlossaryText } from "./GlossaryText";
 
 function musicGain(s: Pick<AppSettings, "masterVolume" | "musicVolume">): number {
   return Math.min(1, Math.max(0, (s.masterVolume ?? 1) * (s.musicVolume ?? 0.55)));
@@ -322,10 +323,13 @@ export function App() {
   const portraitSrc = npcPortrait(view.sceneNpcId, displayEmotion, view.state.merchant.face);
 
   return (
+    <GlossaryProvider>
     <div className="app">
       <header className="topbar">
         <div className="topbar-title">
-          <div className="title">Villa of Fontenay</div>
+          <div className="title">
+            <GlossaryText text="Villa of Fontenay" />
+          </div>
           <div className="sub">
             {cap(view.state.meta.season)} {view.state.meta.year} · turn {view.state.meta.turn} · {view.state.player.name}
           </div>
@@ -358,11 +362,15 @@ export function App() {
         </div>
       </header>
 
-      {error && <div className="banner">{playerFacingReason(error)}</div>}
+      {error && (
+        <div className="banner">
+          <GlossaryText text={playerFacingReason(error)} />
+        </div>
+      )}
       {busy && <div className="banner muted">Waiting on the court…</div>}
       {view.pending.length > 0 && (
         <div className="banner pending">
-          {confirmBanner(view.pending.length)}
+          <GlossaryText text={confirmBanner(view.pending.length)} />
         </div>
       )}
 
@@ -452,7 +460,9 @@ export function App() {
           {view.pending.length > 0 && (
             <div className="proposals" id="pending-proposals">
               <h3>Proposed changes — Confirm writes the books</h3>
-              <p className="proposal-help">{CONFIRM_HELP}</p>
+              <p className="proposal-help">
+                <GlossaryText text={CONFIRM_HELP} />
+              </p>
               {view.pending.map((p) => (
                 <ProposalCard
                   key={p.id}
@@ -509,6 +519,7 @@ export function App() {
 
       {settingsModal}
     </div>
+    </GlossaryProvider>
   );
 }
 
@@ -671,11 +682,17 @@ function SeasonHeaderArt({
 function MessageBubble({ m }: { m: ChatMessage }) {
   const who =
     m.role === "player" ? "You" : m.role === "system" ? (m.aside ? "A pause" : "The books") : m.npcName ?? "Voice";
+  const linkSpeech = m.role !== "player";
+  const hunt = m.npcId === "negotiator" ? { hunt: true as const } : undefined;
   return (
     <article className={`bubble ${m.role}`}>
       <div className="who">{who}</div>
-      <div className="text">{m.text}</div>
-      {m.chronicle && <div className="chronicle">{m.chronicle}</div>}
+      <div className="text">{linkSpeech ? <GlossaryText text={m.text} context={hunt} /> : m.text}</div>
+      {m.chronicle && (
+        <div className="chronicle">
+          <GlossaryText text={m.chronicle} context={hunt} />
+        </div>
+      )}
     </article>
   );
 }
@@ -695,11 +712,20 @@ function ProposalCard({
   onReject: () => void;
   onAskAbout: () => void;
 }) {
+  const hunt = p.proposal.type === "start_hunt" ? { hunt: true as const } : undefined;
   return (
     <div className="proposal">
-      <div className="p-type">{proposalTypeName(p.proposal.type)}</div>
-      {playerFacingSummary(p.proposal) && <div className="p-sum">{playerFacingSummary(p.proposal)}</div>}
-      <div className="p-blurb">{proposalBlurb(p.proposal, state)}</div>
+      <div className="p-type">
+        <GlossaryText text={proposalTypeName(p.proposal.type)} context={hunt} />
+      </div>
+      {playerFacingSummary(p.proposal) && (
+        <div className="p-sum">
+          <GlossaryText text={playerFacingSummary(p.proposal)} context={hunt} />
+        </div>
+      )}
+      <div className="p-blurb">
+        <GlossaryText text={proposalBlurb(p.proposal, state)} context={hunt} />
+      </div>
       <div className="p-actions">
         <button className="primary" disabled={busy} onClick={onConfirm}>
           Confirm
