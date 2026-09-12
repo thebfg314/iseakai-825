@@ -67,7 +67,7 @@
       "title": "cell",
       "aliases": ["cells", "cell"],
       "rule": "monastic_cell",
-      "definition": "Here cell means a small monastic house (Latin cella), not a prison cell. Tiny community of monks or nuns under a larger abbey's shadow — a religious \"branch office\" with a chapel, a few brothers, and claims on local tithes and prayers.\n\nMatching prefers \"cell of\", \"the cell\", and other monastic company; isolated English \"cell\" is left alone when the sense looks like a prison or a modern metaphor."
+      "definition": "Here cell means a small monastic house (Latin cella), not a prison cell. Tiny community of monks or nuns under a larger abbey's shadow — a religious \"branch office\" with a chapel, a few brothers, and claims on local tithes and prayers."
     },
     {
       "id": "pannage",
@@ -88,7 +88,7 @@
       "title": "mill leat",
       "aliases": ["mill leat", "mill-leat", "leat"],
       "rule": "mill_leat",
-      "definition": "A leat is a dug channel that leads river flow to a mill wheel.\n\nModern hook: millrace / dedicated water channel. Bare \"leat\" is linked when the millrace sense is clear."
+      "definition": "A leat is a dug channel that leads river flow to a mill wheel.\n\nModern hook: millrace / dedicated water channel."
     },
     {
       "id": "two_field",
@@ -186,7 +186,7 @@
       "title": "Frank / Frankish",
       "aliases": ["Frankish", "Franks", "Frank"],
       "rule": "frank",
-      "definition": "Frankish people / identity in the Carolingian world.\n\nMatching uses word boundaries so \"frankly\" and \"frankincense\" stay ordinary English."
+      "definition": "Frankish people / identity in the Carolingian world."
     },
     {
       "id": "tithe",
@@ -227,7 +227,7 @@
       "title": "hunt",
       "aliases": ["mid-hunt", "mid hunt", "a hunt", "the hunt", "that hunt", "hunt for", "hunt"],
       "rule": "hunt_gerulf",
-      "definition": "Here a hunt is Gerulf taking a purse and walking the roads to find scarce goods — not a deer drive. He quotes a price and a span of seasons; the coin leaves the chest when you Confirm.\n\nMatching prefers Gerulf intros, hunt proposals, and hunt UI. A wildlife \"hunt\" (deer, boar, and the like) is left alone."
+      "definition": "Here a hunt is Gerulf taking a purse and walking the roads to find scarce goods — not a deer drive. He quotes a price and a span of seasons; the coin leaves the chest when you Confirm."
     },
     {
       "id": "hides",
@@ -255,7 +255,7 @@
       "title": "the hall",
       "aliases": ["the hall", "timber hall", "manor hall", "stone hall", "halls", "hall"],
       "rule": "manor_hall",
-      "definition": "Seat of household authority — the timber hall at Fontenay — not a corridor.\n\nMatching prefers \"the hall\" and other manor phrases; bare \"hall\" is linked only when the manor sense is safe."
+      "definition": "Seat of household authority — the timber hall at Fontenay — not a corridor."
     }
   ]
 }
