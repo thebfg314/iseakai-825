@@ -80,7 +80,7 @@ describe("mid-season hidden ledger tools", () => {
     });
     llmChatMock.mockResolvedValueOnce("<=-tool: my_deals -=>");
     llmChatMock.mockResolvedValueOnce("Aye — you asked me to sow more barley, my lord.");
-    await game.sendDialogue("steward", "Do you remember the sowing?");
+    await game.sendDialogue("steward", "Do you remember what we agreed last season?");
     const turn = lastTurn(game);
     expect(turn.some((m) => m.role === "npc" && m.text === RECALL_DEALS_LINE)).toBe(true);
     expect(turn.every((m) => m.text !== CHECK_RECORDS_LINE)).toBe(true);
