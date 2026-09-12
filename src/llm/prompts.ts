@@ -75,10 +75,11 @@ export const SPEECH_ONLY_CONTRACT = `This is a speech-only reply. Write this spe
 
 export const TOOL_PROTOCOL = `Hidden ledger tool — the player must never see this marker. You do not receive the full villa. If you need exact numbers from the live books, emit exactly this form on its own line (comma-separated drawers allowed):
 ${TOOL_MARKER_EXAMPLE}
-Use only these drawer names: ${TOOL_DRAWERS.join(", ")}. Unknown names are ignored. Never mention the marker, drawers, tools, or JSON in spoken words. If you can greet or talk without numbers, do not request tools. After the game fills drawers, do not emit another marker.`;
+If you need to carefully recall past dealings with the lord, emit exactly <=-tool: my_deals -=> (alone, or with ledger drawers if you also need the books).
+Use only these drawer names: ${TOOL_DRAWERS.join(", ")}. Unknown names are ignored. Never mention the marker, drawers, tools, or JSON in spoken words. If you can greet or talk without numbers or a careful recall, do not request tools. After the game fills drawers, answer in spoken words only. Do not emit another marker.`;
 
 export const SPEECH_PASS_HINT =
-  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. Never mention providers, status codes, tools, or JSON in speech.';
+  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. If you need to carefully recall past dealings with the lord, emit <=-tool: my_deals -=>. Never mention providers, status codes, tools, or JSON in speech.';
 
 export function npcBooksFollowUp(playerMessage: string, revising?: string): string {
   const revise = revising
@@ -292,7 +293,13 @@ export function npcUserPrompt(
 }
 
 export function npcFactsFollowUp(playerMessage: string, drawers: unknown): string {
-  return `You asked to check the records. The engine filled these drawers from the live books. Answer the lord now in spoken words only. Do not emit another tool marker.\n\nRECORD DRAWERS:\n${JSON.stringify(drawers)}\n\nPLAYER SAID:\n${playerMessage}`;
+  const names =
+    drawers && typeof drawers === "object" && drawers !== null ? Object.keys(drawers as object) : [];
+  const memoryOnly = names.length > 0 && names.every((n) => n === "my_deals");
+  const lead = memoryOnly
+    ? "You asked to recall past dealings. The engine filled these drawers. Answer the lord now in spoken words only. Do not emit another tool marker."
+    : "You asked to check the records. The engine filled these drawers from the live books. Answer the lord now in spoken words only. Do not emit another tool marker.";
+  return `${lead}\n\nRECORD DRAWERS:\n${JSON.stringify(drawers)}\n\nPLAYER SAID:\n${playerMessage}`;
 }
 
 export function seasonUserPrompt(

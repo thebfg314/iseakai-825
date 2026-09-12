@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
 import { HOLD_AT_ONCE_APOLOGY } from "../llm/providerErrors";
-import { CHECK_RECORDS_LINE } from "../llm/toolProtocol";
+import { CHECK_RECORDS_LINE, RECALL_DEALS_LINE } from "../llm/toolProtocol";
 import { defaultAppSettings } from "../llm/settings";
 
 const llmChatMock = vi.hoisted(() => vi.fn());
@@ -68,6 +68,60 @@ describe("mid-season hidden ledger tools", () => {
     expect(turn.every((m) => !/<=-tool:/.test(m.text))).toBe(true);
     expect(turn.some((m) => /The rye is in store/.test(m.text))).toBe(false);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+  });
+
+  it("thinks back on a memory-only my_deals pull and fills that drawer", async () => {
+    const game = tempGame();
+    game.state.npcs.find((n) => n.id === "steward")!.memories.push({
+      turn: 1,
+      year: 825,
+      season: "spring",
+      summary: "The lord ordered more barley sown on the remaining spring acres.",
+    });
+    llmChatMock.mockResolvedValueOnce("<=-tool: my_deals -=>");
+    llmChatMock.mockResolvedValueOnce("Aye — you asked me to sow more barley, my lord.");
+    await game.sendDialogue("steward", "Do you remember what we agreed last season?");
+    const turn = lastTurn(game);
+    expect(turn.some((m) => m.role === "npc" && m.text === RECALL_DEALS_LINE)).toBe(true);
+    expect(turn.every((m) => m.text !== CHECK_RECORDS_LINE)).toBe(true);
+    expect(turn.some((m) => m.role === "npc" && /more barley/.test(m.text))).toBe(true);
+    expect(turn.every((m) => !/<=-tool:/.test(m.text))).toBe(true);
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    const facts = callText(1);
+    expect(facts).toMatch(/more barley sown/);
+    expect(facts).toMatch(/"my_deals"/);
+    expect(facts).toMatch(/recall past dealings/i);
+  });
+
+  it("keeps the records holding line when grain is pulled with my_deals", async () => {
+    const game = tempGame();
+    game.state.npcs.find((n) => n.id === "steward")!.memories.push({
+      turn: 1,
+      year: 825,
+      season: "spring",
+      summary: "The lord ordered more barley sown on the remaining spring acres.",
+    });
+    llmChatMock.mockResolvedValueOnce("<=-tool: grain, my_deals -=>");
+    llmChatMock.mockResolvedValueOnce("Eight modii of rye remain, my lord.");
+    await game.sendDialogue("steward", "How much rye, and do you remember our deals?");
+    const turn = lastTurn(game);
+    expect(turn.some((m) => m.text === CHECK_RECORDS_LINE)).toBe(true);
+    expect(turn.every((m) => m.text !== RECALL_DEALS_LINE)).toBe(true);
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    const facts = callText(1);
+    expect(facts).toMatch(/"rye"\s*:\s*8/);
+    expect(facts).toMatch(/"my_deals"/);
+    expect(facts).toMatch(/check the records/i);
+  });
+
+  it("treats a memories alias as a memory-only think pull", async () => {
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce("<=-tool: memories -=>");
+    llmChatMock.mockResolvedValueOnce("I remember no bargains yet, my lord.");
+    await game.sendDialogue("steward", "What have we settled?");
+    expect(lastTurn(game).some((m) => m.text === RECALL_DEALS_LINE)).toBe(true);
+    expect(lastTurn(game).every((m) => m.text !== CHECK_RECORDS_LINE)).toBe(true);
+    expect(callText(1)).toMatch(/"my_deals"/);
   });
 
   it("fills grain and chest together from a batch marker", async () => {

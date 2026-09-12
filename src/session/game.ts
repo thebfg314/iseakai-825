@@ -33,8 +33,8 @@ import {
   SPEECH_PASS_HINT,
 } from "../llm/prompts";
 import {
-  CHECK_RECORDS_LINE,
   collectDrawers,
+  holdingLineForDrawers,
   missingCitedDrawers,
   parseToolRequest,
   stripToolMarkers,
@@ -322,7 +322,7 @@ export class GameController {
       let answer = spoken;
 
       if (tool.requested) {
-        this.pushCheckRecords(npcId);
+        this.pushHoldingLine(npcId, tool.drawers);
         fetched = tool.drawers;
         drawers = collectDrawers(this.state, fetched, npcId);
         try {
@@ -415,14 +415,14 @@ export class GameController {
   }
 
   /** Engine string in the NPC's mouth — never a Books line, never a model call. */
-  private pushCheckRecords(npcId: string) {
+  private pushHoldingLine(npcId: string, drawers: readonly ToolDrawer[]) {
     if (PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = "thoughtful";
     this.messages.push({
       id: newId("msg"),
       role: "npc",
       npcId,
       npcName: this.npcName(npcId),
-      text: CHECK_RECORDS_LINE,
+      text: holdingLineForDrawers(drawers),
       emotion: PORTRAIT_NPCS.has(npcId) ? "thoughtful" : undefined,
       at: new Date().toISOString(),
     });

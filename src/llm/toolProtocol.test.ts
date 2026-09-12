@@ -6,8 +6,11 @@ import {
   collectDrawers,
   drawerForResource,
   hasMalformedToolMarker,
+  holdingLineForDrawers,
+  isMemoryOnlyDrawers,
   missingCitedDrawers,
   parseToolRequest,
+  RECALL_DEALS_LINE,
   stripToolMarkers,
 } from "./toolProtocol";
 
@@ -29,7 +32,24 @@ describe("hidden tool markers", () => {
       "The rye stands well.\n\nAye.",
     );
     expect(stripToolMarkers("<=-tool: grain -=>")).toBe("");
+    expect(stripToolMarkers("<=-tool: my_deals -=>")).toBe("");
     expect(CHECK_RECORDS_LINE).toMatch(/check the records/i);
+    expect(RECALL_DEALS_LINE).toMatch(/think on that/i);
+    expect(RECALL_DEALS_LINE).not.toMatch(/check the records/i);
+  });
+
+  it("treats memories and deals as my_deals, and picks the think line only for memory-only pulls", () => {
+    expect(parseToolRequest("<=-tool: my_deals -=>").drawers).toEqual(["my_deals"]);
+    expect(parseToolRequest("<=-tool: memories -=>").drawers).toEqual(["my_deals"]);
+    expect(parseToolRequest("<=-tool: deals -=>").drawers).toEqual(["my_deals"]);
+    expect(parseToolRequest("<=-tool: grain, my_deals -=>").drawers.sort()).toEqual(["grain", "my_deals"]);
+    expect(isMemoryOnlyDrawers(["my_deals"])).toBe(true);
+    expect(isMemoryOnlyDrawers(["grain"])).toBe(false);
+    expect(isMemoryOnlyDrawers(["grain", "my_deals"])).toBe(false);
+    expect(isMemoryOnlyDrawers([])).toBe(false);
+    expect(holdingLineForDrawers(["my_deals"])).toBe(RECALL_DEALS_LINE);
+    expect(holdingLineForDrawers(["grain"])).toBe(CHECK_RECORDS_LINE);
+    expect(holdingLineForDrawers(["chest", "my_deals"])).toBe(CHECK_RECORDS_LINE);
   });
 
   it("ignores unknown drawer names without treating the marker as malformed", () => {
@@ -71,6 +91,21 @@ describe("engine drawers from live WorldState", () => {
       assigned: [],
     });
     expect(pack.labour).not.toHaveProperty("harvest_risk");
+  });
+
+  it("fills my_deals from the speaker's memories", () => {
+    const state = boot();
+    state.npcs.find((n) => n.id === "steward")!.memories.push({
+      turn: 1,
+      year: 825,
+      season: "spring",
+      summary: "The lord ordered more barley sown.",
+    });
+    const pack = collectDrawers(state, ["my_deals"], "steward");
+    expect(pack.my_deals).toEqual([
+      expect.objectContaining({ year: 825, season: "spring", summary: "The lord ordered more barley sown." }),
+    ]);
+    expect(collectDrawers(state, ["memories"], "steward")).toEqual(pack);
   });
 
   it("maps rye to grain and denarii to chest", () => {
