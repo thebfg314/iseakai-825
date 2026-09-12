@@ -29,6 +29,21 @@ export type ToolDrawer = (typeof TOOL_DRAWERS)[number];
 /** Engine-authored, in the NPC's mouth — not a Books line, not a model call. */
 export const CHECK_RECORDS_LINE = "A moment, my lord — let me check the records.";
 
+/** Memory-only tool pull — thinking back, not checking the books. */
+export const RECALL_DEALS_LINE = "Hmm… let me think on that, my lord.";
+
+const MEMORY_DRAWERS = new Set<ToolDrawer>(["my_deals"]);
+
+/** True when every requested drawer is a memory recall (my_deals). Empty is not memory-only. */
+export function isMemoryOnlyDrawers(drawers: readonly ToolDrawer[]): boolean {
+  return drawers.length > 0 && drawers.every((d) => MEMORY_DRAWERS.has(d));
+}
+
+/** Records line if any ledger drawer is present; think-line only for a memory-only pull. */
+export function holdingLineForDrawers(drawers: readonly ToolDrawer[]): string {
+  return isMemoryOnlyDrawers(drawers) ? RECALL_DEALS_LINE : CHECK_RECORDS_LINE;
+}
+
 const GRAIN_KEYS = ["wheat", "rye", "barley", "oats"] as const;
 const LIVESTOCK_KEYS = ["cattle", "sheep", "pigs", "horses", "poultry", "bees"] as const;
 const FORGE_KEYS = ["iron", "charcoal", "copper", "tin"] as const;
@@ -51,6 +66,7 @@ function normalizeDrawerName(raw: string): string {
 function asDrawer(raw: string): ToolDrawer | undefined {
   const n = normalizeDrawerName(raw);
   if (n === "labor") return "labour";
+  if (n === "memories" || n === "deals") return "my_deals";
   if (isToolDrawer(n)) return n;
   return undefined;
 }

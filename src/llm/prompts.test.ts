@@ -237,6 +237,9 @@ describe("signed-off NPC personalities", () => {
     expect(speech).toContain(SPEECH_ONLY_CONTRACT);
     expect(speech).toContain(TOOL_PROTOCOL);
     expect(speech).toContain("<=-tool: grain, sown, livestock, chest -=>");
+    expect(speech).toContain("<=-tool: my_deals -=>");
+    expect(speech).toMatch(/recall past dealings/i);
+    expect(speech).toMatch(/answer in spoken words only/i);
     expect(speech).not.toMatch(/You MUST reply with a single JSON object only/);
     expect(speech).not.toMatch(/"proposals": \[ \.\.\. \]/);
     expect(books).toMatch(/You MUST reply with a single JSON object only/);
