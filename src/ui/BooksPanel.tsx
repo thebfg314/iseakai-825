@@ -32,6 +32,7 @@ import {
   roleName,
   sowingShareLine,
 } from "./ledgerCopy";
+import { GlossaryText } from "./GlossaryText";
 
 export function BooksPanel({ view }: { view: GameView }) {
   const [tab, setTab] = useState<BooksTab>("estate");
@@ -51,7 +52,9 @@ export function BooksPanel({ view }: { view: GameView }) {
   return (
     <aside className="ledger">
       <div className="ledger-head">
-        <h2>{BOOKS_TITLE}</h2>
+        <h2>
+          <GlossaryText text={BOOKS_TITLE} />
+        </h2>
         <div className="books-tabs" role="tablist" aria-label={BOOKS_TITLE}>
           {BOOKS_TABS.map((id) => (
             <button
@@ -115,8 +118,16 @@ function EstateTab({
           Later
         </button>
       </div>
-      <p className="muted season-hint">{pager.hint}</p>
-      {pager.source ? <EstateBody source={pager.source} /> : historyLength === 0 ? null : <p className="muted">{pager.hint}</p>}
+      <p className="muted season-hint">
+        <GlossaryText text={pager.hint} />
+      </p>
+      {pager.source ? (
+        <EstateBody source={pager.source} />
+      ) : historyLength === 0 ? null : (
+        <p className="muted">
+          <GlossaryText text={pager.hint} />
+        </p>
+      )}
     </>
   );
 }
@@ -127,18 +138,35 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
   const d = (id: string) => deltas[id];
   return (
     <>
-      <p className="muted">{s.region}</p>
+      <p className="muted">
+        <GlossaryText text={s.region} />
+      </p>
+      {s.eraNote ? (
+        <p className="muted">
+          <GlossaryText text={s.eraNote} />
+        </p>
+      ) : null}
       {s.flags.merchant_present && s.merchant.present && (
-        <p className="flag">{merchantPresentLine(s.merchant.name)}</p>
+        <p className="flag">
+          <GlossaryText text={merchantPresentLine(s.merchant.name)} />
+        </p>
       )}
-      {s.flags.hunger && <p className="flag warn">{HUNGER_LINE}</p>}
+      {s.flags.hunger && (
+        <p className="flag warn">
+          <GlossaryText text={HUNGER_LINE} />
+        </p>
+      )}
 
       <h3>Chest and people</h3>
       <Row k="Denarii" v={formatLedgerNumber(s.resources.denarii)} delta={d("denarii")} />
       <Row k="Manses" v={String(s.population.households)} delta={d("households")} />
-      <p className="ledger-note">{peopleSentence(s.population)}</p>
+      <p className="ledger-note">
+        <GlossaryText text={peopleSentence(s.population)} />
+      </p>
       {s.labour ? (
-        <p className="ledger-note">{labourSentence(s.labour.pool, s.labour.remaining)}</p>
+        <p className="ledger-note">
+          <GlossaryText text={labourSentence(s.labour.pool, s.labour.remaining)} />
+        </p>
       ) : (
         <p className="muted">The extra days of that season were not kept.</p>
       )}
@@ -147,17 +175,26 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
       ))}
 
       <h3>Land — {holding?.name}</h3>
-      {holding && Object.entries(holding.land).map(([k, v]) => <Row key={k} k={landName(k)} v={`${v} acres`} />)}
+      {holding &&
+        Object.entries(holding.land).map(([k, v]) => (
+          <Row key={k} k={landName(k)} v={`${v} acres`} land />
+        ))}
       {holding && (
         <>
           <h3>Sown</h3>
           {Object.entries(holding.sown).map(([k, v]) => (
             <Row key={k} k={resourceName(k)} v={`${v} acres`} delta={d(`sown_${k}`)} />
           ))}
-          <p className="ledger-note">{sowingShareLine("spring", s.agriculture?.springBarleyShare ?? 0.6)}</p>
-          <p className="ledger-note">{sowingShareLine("autumn", s.agriculture?.autumnWheatShare ?? 0.45)}</p>
+          <p className="ledger-note">
+            <GlossaryText text={sowingShareLine("spring", s.agriculture?.springBarleyShare ?? 0.6)} />
+          </p>
+          <p className="ledger-note">
+            <GlossaryText text={sowingShareLine("autumn", s.agriculture?.autumnWheatShare ?? 0.45)} />
+          </p>
           <h3>On the holding</h3>
-          <p className="ledger-note">{featuresSentence(holding.features)}</p>
+          <p className="ledger-note">
+            <GlossaryText text={featuresSentence(holding.features)} />
+          </p>
         </>
       )}
 
@@ -198,7 +235,7 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
         .slice(0, 16)
         .map(([k, p]) => (
           <p key={k} className="ledger-note">
-            {marketLine(k, p.min, p.max)}.
+            <GlossaryText text={`${marketLine(k, p.min, p.max)}.`} />
           </p>
         ))}
 
@@ -206,7 +243,7 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
       {s.known_techniques.length === 0 && <p className="muted">None recorded.</p>}
       {s.known_techniques.map((t) => (
         <p key={t.id} className="ledger-note">
-          {t.name}
+          <GlossaryText text={t.name} />
         </p>
       ))}
     </>
@@ -220,7 +257,9 @@ function LaboursTab({ entries }: { entries: LabourBookEntry[] }) {
   if (empty) {
     return (
       <>
-        <p className="muted">{empty}</p>
+        <p className="muted">
+          <GlossaryText text={empty} />
+        </p>
         <KnownWorks />
       </>
     );
@@ -245,11 +284,13 @@ function LaboursTab({ entries }: { entries: LabourBookEntry[] }) {
 function KnownWorks() {
   return (
     <details>
-      <summary>Works known to the hall</summary>
+      <summary>
+        <GlossaryText text="Works known to the hall" />
+      </summary>
       <ul className="tiny">
         {PROJECT_CATALOG.map((p) => (
           <li key={p.key}>
-            {p.name} — {p.labourDays} days, {p.lumber} timber, {p.iron} iron, {p.stone} stone
+            <GlossaryText text={`${p.name} — ${p.labourDays} days, ${p.lumber} timber, ${p.iron} iron, ${p.stone} stone`} />
           </li>
         ))}
       </ul>
@@ -258,20 +299,33 @@ function KnownWorks() {
 }
 
 function LabourCard({ entry }: { entry: LabourBookEntry }) {
+  const hunt = entry.hunt ? { hunt: true as const } : undefined;
   return (
     <article className="labour-entry">
       <div className="row">
-        <span>{entry.name}</span>
-        <span>{entry.statusLine}</span>
+        <span>
+          <GlossaryText text={entry.name} context={hunt} />
+        </span>
+        <span>
+          <GlossaryText text={entry.statusLine} context={hunt} />
+        </span>
       </div>
-      <p className="ledger-note">{entry.progressLine}</p>
-      {entry.handsLine ? <p className="ledger-note">{entry.handsLine}</p> : null}
-      <p className="ledger-note">{entry.spanLine}</p>
+      <p className="ledger-note">
+        <GlossaryText text={entry.progressLine} context={hunt} />
+      </p>
+      {entry.handsLine ? (
+        <p className="ledger-note">
+          <GlossaryText text={entry.handsLine} context={hunt} />
+        </p>
+      ) : null}
+      <p className="ledger-note">
+        <GlossaryText text={entry.spanLine} />
+      </p>
       {entry.marks.length > 0 ? (
         <ul className="tiny">
           {entry.marks.map((m) => (
             <li key={m.label}>
-              {m.label} — {m.progress}
+              <GlossaryText text={`${m.label} — ${m.progress}`} context={hunt} />
             </li>
           ))}
         </ul>
@@ -291,40 +345,75 @@ function CustomsTab({
 }) {
   return (
     <>
-      <h3>Standing orders</h3>
-      {empty.orders && <p className="muted">{empty.orders}</p>}
+      <h3>
+        <GlossaryText text="Standing orders" />
+      </h3>
+      {empty.orders && (
+        <p className="muted">
+          <GlossaryText text={empty.orders} />
+        </p>
+      )}
       {orders.map((o) => (
         <article key={o.id} className="custom-entry">
           <div className="row">
-            <span>{o.title}</span>
+            <span>
+              <GlossaryText text={o.title} />
+            </span>
             <span>{o.lasting ? "In force" : "Lifted"}</span>
           </div>
-          <p className="order">{o.body}</p>
+          <p className="order">
+            <GlossaryText text={o.body} />
+          </p>
         </article>
       ))}
-      <h3>Customs of the hall</h3>
-      {empty.laws && <p className="muted">{empty.laws}</p>}
+      <h3>
+        <GlossaryText text="Customs of the hall" />
+      </h3>
+      {empty.laws && (
+        <p className="muted">
+          <GlossaryText text={empty.laws} />
+        </p>
+      )}
       {laws.map((law) => (
         <article key={law.id} className="custom-entry">
           <div className="row">
-            <span>{law.title}</span>
+            <span>
+              <GlossaryText text={law.title} />
+            </span>
             <span>{law.lasting ? "Lasting" : "For a time"}</span>
           </div>
-          <p className="ledger-note">{law.body}</p>
+          <p className="ledger-note">
+            <GlossaryText text={law.body} />
+          </p>
         </article>
       ))}
     </>
   );
 }
 
-function Row({ k, v, hideZero, delta }: { k: string; v: string; hideZero?: boolean; delta?: number }) {
+function Row({
+  k,
+  v,
+  hideZero,
+  delta,
+  land,
+}: {
+  k: string;
+  v: string;
+  hideZero?: boolean;
+  delta?: number;
+  land?: boolean;
+}) {
   if (hideZero) return null;
   const showDelta = delta != null && delta !== 0;
+  const ctx = land ? { land: true as const } : undefined;
   return (
     <div className="row">
-      <span>{k}</span>
       <span>
-        {v}
+        <GlossaryText text={k} context={ctx} />
+      </span>
+      <span>
+        <GlossaryText text={v} context={ctx} />
         {showDelta && <span className={`delta ${delta > 0 ? "gain" : "loss"}`}>{formatSignedDelta(delta)}</span>}
       </span>
     </div>
