@@ -36,6 +36,8 @@ describe("fresh boot UI", () => {
     expect(html).toContain("Isekai in the year of our lord 825");
     expect(html).not.toContain("Opening the estate books");
     expect(html).not.toContain("Villa of Fontenay");
+    expect(html).not.toContain("People's happiness");
+    expect(html).not.toContain("happiness-meter");
   });
 
   it("mounts BooksPanel on a fresh estate with empty history and the three tabs", () => {

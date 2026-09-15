@@ -162,5 +162,6 @@
   "merchant": {
     "present": false,
     "stock": []
-  }
+  },
+  "peopleHappiness": 50
 }

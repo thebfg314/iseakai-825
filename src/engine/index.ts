@@ -17,3 +17,4 @@ export * from "./memory";
 export * from "./intros";
 export * from "./hunts";
 export * from "./wantsTalk";
+export * from "./peopleHappiness";

@@ -90,10 +90,37 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--line);
   background: var(--bg-2);
+}
+.happiness-meter {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(5.6rem * 2128 / 912);
+  height: 5.6rem;
+  align-self: center;
+}
+.happiness-meter-bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+.happiness-meter-arrow {
+  position: absolute;
+  top: 56%;
+  width: 1.6rem;
+  height: 2.5rem;
+  object-fit: cover;
+  object-position: top center;
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: left 0.45s ease;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
 }
 .topbar-title {
   flex: 0 0 auto;

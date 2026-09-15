@@ -237,6 +237,8 @@ describe("per-NPC dialogue logs", () => {
     expect(game.state.estate_history).toHaveLength(1);
     expect(game.state.estate_history[0].season).toBe("spring");
     expect(game.state.estate_history[0].year).toBe(825);
+    expect(game.state.peopleHappiness).toBeGreaterThanOrEqual(0);
+    expect(game.state.peopleHappiness).toBeLessThanOrEqual(100);
     expect(game.state.estate_history[0].resources.denarii).toBe(96);
     expect(game.state.estate_history[0].population.households).toBe(10);
     expect(game.state.meta.season).toBe("summer");

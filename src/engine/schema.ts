@@ -400,6 +400,11 @@ export const WorldStateSchema = z.object({
     .default({ springBarleyShare: 0.6, autumnWheatShare: 0.45 }),
   /** Signed store / sown / household changes from the last Advance season. Empty on a fresh game. */
   last_season_deltas: z.record(z.string(), z.number()).default({}),
+  /**
+   * Estate-wide people's happiness (0 wretched … 100 joyful). Distinct from modifier
+   * target `mood`, which only scales yield and labour. Old saves default to 50.
+   */
+  peopleHappiness: z.number().min(0).max(100).default(50),
   /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
   estate_history: z.array(EstateSeasonSnapshotSchema).default([]),
 });
