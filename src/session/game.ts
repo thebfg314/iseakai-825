@@ -4,6 +4,7 @@ import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
+import { tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
@@ -716,6 +717,11 @@ export class GameController {
         },
       );
       this.applySeasonProposals(parsed.proposals, rolled, effects);
+      tickPeopleHappinessFromSeason(
+        this.state,
+        effects.map((e) => e.text),
+        rolled,
+      );
 
       const clock = finishSeasonClock(this.state);
       effects.push(...clock);
@@ -740,6 +746,11 @@ export class GameController {
       return { ...this.view(), effects };
     } catch (err) {
       for (const ev of rolled) this.applyEventStub(ev, effects, "The usual change");
+      tickPeopleHappinessFromSeason(
+        this.state,
+        effects.map((e) => e.text),
+        rolled,
+      );
       effects.push(...finishSeasonClock(this.state));
       writeLastSeasonDeltas(this.state, ledgerBefore);
       if (isHoldAtOnceFailure(err)) {

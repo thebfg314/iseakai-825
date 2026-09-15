@@ -3,6 +3,7 @@ import { gerulfOnTheRoad } from "../engine/hunts";
 import { merchantVisitorByName } from "../engine/merchant";
 import { withSpeakerMemories } from "../engine/memory";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
+import { peopleHappinessHallWord } from "../engine/peopleHappiness";
 import { stewardHirePrompt } from "../engine/specialists";
 import { TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
 
@@ -66,6 +67,7 @@ export function sliceStateForSeason(state: WorldState, engineDeltas?: Record<str
       households: state.population.households,
       hunger: state.flags.hunger,
       mood_modifiers: state.modifiers.filter((m) => m.target === "mood"),
+      the_people: peopleHappinessHallWord(state.peopleHappiness ?? 50),
     },
   };
 }

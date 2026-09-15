@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { npcPortrait, NPC_WANTS_TALK } from "./art";
+import { npcPortrait, NPC_WANTS_TALK, HAPPINESS_ARROW, HAPPINESS_METER } from "./art";
 
 const EXPANSION: { id: string; files: Record<string, string> }[] = [
   {
@@ -103,5 +103,12 @@ describe("merchant portraits", () => {
 describe("wants-talk tab badge", () => {
   it("points at the UI icon", () => {
     expect(NPC_WANTS_TALK).toMatch(/npc-wants-talk\.png/);
+  });
+});
+
+describe("people's happiness meter art", () => {
+  it("points at the meter and arrow UI files", () => {
+    expect(HAPPINESS_METER).toMatch(/happiness-meter\.png/);
+    expect(HAPPINESS_ARROW).toMatch(/happiness-arrow\.png/);
   });
 });

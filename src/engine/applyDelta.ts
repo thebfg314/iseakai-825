@@ -10,6 +10,7 @@ import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRe
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
+import { applyPeopleHappinessDelta, HAPPINESS_ALMS, looksLikeAlms } from "./peopleHappiness";
 import { isNegotiatorId, negotiatorAllowed, startHunt } from "./hunts";
 import {
   hireSummary,
@@ -496,6 +497,9 @@ function transferResources(
     if (current < amount) return fail(state, `Cannot consume ${amountPhrase(p.resource, amount)}; have ${current}.`, p.summary);
     setAmount(state, p.resource, current - amount);
     const why = p.reason && !looksLikeEngineKey(p.reason) ? ` (${p.reason})` : "";
+    if (looksLikeAlms(`${p.summary ?? ""} ${p.reason ?? ""}`)) {
+      applyPeopleHappinessDelta(state, HAPPINESS_ALMS);
+    }
     return ok(state, `Took ${amountPhrase(p.resource, amount)} from the stores${why}.`);
   }
   setAmount(state, p.resource, current + amount);

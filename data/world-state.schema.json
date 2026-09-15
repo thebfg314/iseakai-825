@@ -169,6 +169,13 @@
       "additionalProperties": { "type": "number" },
       "description": "Signed store, sown, and household changes from the last resolved season. Empty until the first Advance season."
     },
+    "peopleHappiness": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50,
+      "description": "Estate-wide people's happiness (0 wretched … 100 joyful). Distinct from mood modifiers, which only scale yield and labour. Omitted on old saves; treat as 50."
+    },
     "estate_history": {
       "type": "array",
       "items": { "$ref": "#/$defs/estateSeasonSnapshot" },
