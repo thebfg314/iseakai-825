@@ -5,10 +5,20 @@ import { modifiersFor } from "./modifiers";
 import { clamp } from "./util";
 
 /**
- * Estate-wide people's happiness (the hall meter), not per-NPC mood and not the
- * `mood` modifier target (that one only scales yield and callable labour).
+ * Estate-wide people's happiness (the hall meter). This is the one morale stock.
  *
- * Durable 0–100 stock. Old saves omit the field; Zod defaults it to 50 (settled).
+ * Durable 0–100. Old saves omit the field; Zod defaults it to 50 (settled).
+ *
+ * Modifier target `mood` does **not** multiply yield or callable labour. Confirming
+ * `add_modifier` on mood nudges this meter at once. Active mood modifiers (including
+ * old saves and event `moodDelta`) also feed the season tick below, so a lasting
+ * blessing keeps hearts up until `seasons_remaining` runs out. Event mood swings
+ * are not applied twice: they only write the modifier, and this tick reads it.
+ *
+ * Hidden effort (not shown on the books, not named in season lines):
+ *   0 wretched → 0.90,  50 settled → 1.00,  100 joyful → 1.10  (linear).
+ * Same assigned heads/hours; harvest, herds, and project progress simply come out
+ * better or worse. Callable labour pool is unchanged.
  *
  * Each Advance season, after agriculture and event effects, the engine adds this
  * signed sum and clamps:
@@ -21,7 +31,7 @@ import { clamp } from "./util";
  *   harsh custom         −5  Sunday labour, extra/heavy dues, corvée, work on feast days
  *   extra-day labour     −6 / −3  extra heads called vs the season's leftover pool
  *   war / muster         −8  flags.active_threat, or a muster event this tick
- *   mood modifiers       ×3  net `add` on target `mood` (blessings and event unease)
+ *   mood modifiers       mapped add/multiply/set on target `mood` (blessings, unease)
  *
  * Mid-season charity: a confirmed consume tagged as alms/charity nudges +3 at once.
  * Pressures are additive and listed in `peopleHappinessPressures` so tests can see them.
@@ -42,6 +52,11 @@ export const HAPPINESS_LABOUR_FIRM = -3;
 export const HAPPINESS_WAR = -8;
 export const HAPPINESS_MOOD_PER_ADD = 3;
 export const HAPPINESS_ALMS = 3;
+
+/** Quiet yield / project-progress multiplier at happiness 0 (wretched). */
+export const PEOPLE_EFFORT_AT_ZERO = 0.9;
+/** Quiet multiplier at happiness 100 (joyful). Settled (50) is exactly 1. */
+export const PEOPLE_EFFORT_AT_HUNDRED = 1.1;
 
 const GRAIN_AMPLE_SEASONS = 4;
 const GRAIN_ADEQUATE_SEASONS = 2;
@@ -77,6 +92,27 @@ export function peopleHappinessHallWord(value: number): "wretched" | "uneasy" | 
 
 export function clampPeopleHappiness(n: number): number {
   return clamp(Math.round(n), PEOPLE_HAPPINESS_MIN, PEOPLE_HAPPINESS_MAX);
+}
+
+/**
+ * Hidden effort from the people's heart. Does not change callable heads or the
+ * labour assignment ledger. Modest: wretched work a little slack, joyful a little
+ * harder — not a second yield dial beside mood modifiers.
+ */
+export function peopleEffortFactor(state: WorldState): number {
+  const h = clamp(state.peopleHappiness ?? PEOPLE_HAPPINESS_DEFAULT, PEOPLE_HAPPINESS_MIN, PEOPLE_HAPPINESS_MAX);
+  return PEOPLE_EFFORT_AT_ZERO + (h / PEOPLE_HAPPINESS_MAX) * (PEOPLE_EFFORT_AT_HUNDRED - PEOPLE_EFFORT_AT_ZERO);
+}
+
+/** Map a mood-targeted effect onto a happiness delta. +1 add → +3 (one modest blessing). */
+export function moodEffectToHappinessDelta(effect: { op: "add" | "multiply" | "set"; value: number }): number {
+  if (effect.op === "add") return Math.round(effect.value * HAPPINESS_MOOD_PER_ADD);
+  return Math.round((effect.value - 1) * 100);
+}
+
+/** Confirming a mood custom: the meter moves now. Seasonal tick still reads the modifier later. */
+export function applyMoodModifierToHappiness(state: WorldState, effect: { op: "add" | "multiply" | "set"; value: number }): number {
+  return applyPeopleHappinessDelta(state, moodEffectToHappinessDelta(effect));
 }
 
 export function applyPeopleHappinessDelta(state: WorldState, delta: number): number {
@@ -118,12 +154,12 @@ function labourCallRatio(state: WorldState): number {
   return usedHeads / poolHeads;
 }
 
-function moodAddTotal(state: WorldState): number {
-  let add = 0;
+function moodModifiersHappinessDelta(state: WorldState): number {
+  let delta = 0;
   for (const m of modifiersFor(state, "mood")) {
-    if (m.effect.op === "add") add += m.effect.value;
+    delta += moodEffectToHappinessDelta(m.effect);
   }
-  return add;
+  return delta;
 }
 
 export function peopleHappinessPressures(state: WorldState, extras: PeopleHappinessExtras = {}): HappinessPressure[] {
@@ -152,8 +188,8 @@ export function peopleHappinessPressures(state: WorldState, extras: PeopleHappin
 
   if (state.flags.active_threat || extras.muster) push("war", HAPPINESS_WAR);
 
-  const mood = moodAddTotal(state);
-  if (mood) push("mood", Math.round(mood * HAPPINESS_MOOD_PER_ADD));
+  const mood = moodModifiersHappinessDelta(state);
+  if (mood) push("mood", mood);
 
   return out;
 }

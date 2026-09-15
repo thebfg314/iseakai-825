@@ -83,7 +83,7 @@ Poultry and household smallstock remain untracked as lordly herds except the dem
 Each season the lordly household and retainers consume a modest grain tithe from stores so the ledger moves:
 
 - 0.5 modius of the most plentiful grain per household per season, taken from rye then wheat then barley then oats.
-- If stores cannot meet this, set `hunger` (mood −, yield − next season) via an engine-applied temporary modifier.
+- If stores cannot meet this, set `hunger` (the people grow less glad; yield − next season).
 
 This is a playable simplification, not a claim about Carolingian rations.
 
@@ -234,7 +234,7 @@ Escape hatch: `custom` — stored and shown in the ledger and injected into prom
 - `add` effects: add (labour_efficiency add is extra fraction of pool).
 - `set`: last applied wins (avoid except for market_price).
 - `accident_risk` and `harvest_risk`: use the maximum of competing values.
-- `mood`: `add` of +1 is about +3% grain yield and callable labour (clamped 0.85–1.15) until `seasons_remaining` runs out. Blessings and event mood swings therefore change later seasons, not only the chat log.
+- `mood`: no longer a parallel yield/labour dial. `add` of +1 nudges estate `peopleHappiness` by +3 when the custom is confirmed, and the same amount each Advance season while the modifier lasts (event `moodDelta` only uses the season tick, so it is not applied twice). Happiness is the source of truth: wretched effort 0.90, settled 1.00, joyful 1.10 (linear 0–100). That quiet multiplier scales agricultural yield, livestock yield, and project progress; callable labour heads on the books stay the same. Do not print a “happiness bonus” or extra labour-days line. Old saves that still carry mood modifiers keep working — they are read as happiness pressure, not as a second yield factor.
 
 ---
 

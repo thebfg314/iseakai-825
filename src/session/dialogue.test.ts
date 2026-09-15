@@ -7,6 +7,8 @@ import { WorldStateSchema } from "../engine/schema";
 import { cloneState } from "../engine/state";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
 import { yieldMultiplier } from "../engine/modifiers";
+import { labourPool } from "../engine/labour";
+import { HAPPINESS_MOOD_PER_ADD, peopleEffortFactor } from "../engine/peopleHappiness";
 import type { RolledEvent } from "../engine/events";
 import type { SeasonEffectLine } from "../engine/schema";
 import { MERCHANT_INTROS } from "../engine/intros";
@@ -141,9 +143,12 @@ describe("season events and persistent buffs", () => {
     expect(effects.some((e) => /usual change|season's tale had no figures/i.test(e.text))).toBe(true);
   });
 
-  it("lets an accepted mood blessing raise later yield and survive a season tick", () => {
+  it("lets an accepted mood blessing raise the people's heart and later yield without extra callable labour", () => {
     const game = tempGame();
-    const base = yieldMultiplier(game.state, "rye");
+    const poolBefore = { ...labourPool(game.state) };
+    const yieldModsBefore = yieldMultiplier(game.state, "rye");
+    const effortBefore = peopleEffortFactor(game.state);
+    const happyBefore = game.state.peopleHappiness;
     const parsed = parseLlmResponse(
       JSON.stringify({
         speech: "A blessing upon the house.",
@@ -162,14 +167,17 @@ describe("season events and persistent buffs", () => {
     );
     game.ingestParsedDialogue("chaplain", parsed, "Give us your blessing.");
     game.confirmProposal(game.pending[0].id);
-    expect(yieldMultiplier(game.state, "rye")).toBeGreaterThan(base);
+    expect(game.state.peopleHappiness).toBe(happyBefore + HAPPINESS_MOOD_PER_ADD);
+    expect(labourPool(game.state)).toEqual(poolBefore);
+    expect(yieldMultiplier(game.state, "rye")).toBe(yieldModsBefore);
+    expect(peopleEffortFactor(game.state)).toBeGreaterThan(effortBefore);
     const remaining = game.state.modifiers.find((m) => m.source === "Ermenald's blessing")?.seasons_remaining;
     expect(remaining).toBe(4);
 
     finishSeasonClock(game.state);
     const after = game.state.modifiers.find((m) => m.source === "Ermenald's blessing");
     expect(after?.seasons_remaining).toBe(3);
-    expect(yieldMultiplier(game.state, "rye")).toBeGreaterThan(base);
+    expect(peopleEffortFactor(game.state)).toBeGreaterThan(effortBefore);
   });
 });
 

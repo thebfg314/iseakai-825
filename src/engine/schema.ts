@@ -401,8 +401,10 @@ export const WorldStateSchema = z.object({
   /** Signed store / sown / household changes from the last Advance season. Empty on a fresh game. */
   last_season_deltas: z.record(z.string(), z.number()).default({}),
   /**
-   * Estate-wide people's happiness (0 wretched … 100 joyful). Distinct from modifier
-   * target `mood`, which only scales yield and labour. Old saves default to 50.
+   * Estate-wide people's happiness (0 wretched … 100 joyful). Source of truth for
+   * morale. Modifier target `mood` nudges this meter (on confirm, and each season
+   * while the custom lasts); it does not scale yield or callable labour. Old saves
+   * default to 50.
    */
   peopleHappiness: z.number().min(0).max(100).default(50),
   /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
