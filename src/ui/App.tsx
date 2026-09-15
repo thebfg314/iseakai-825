@@ -4,7 +4,7 @@ import type { ChatMessage, PendingProposal, Season } from "../engine/schema";
 import { isCoreHouseholdId } from "../engine/specialists";
 import { normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 import { BooksPanel } from "./BooksPanel";
-import { HappinessMeter } from "./HappinessMeter";
+import { PeopleHappinessMeter } from "./PeopleHappinessMeter";
 import { BUTTON_CLICK, GAME_THEMES, NPC_WANTS_TALK, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
 import {
   SEASON_IDLE_FRAME_MS,
@@ -338,7 +338,7 @@ export function App() {
             {hudInkLine(view.llmMeter)}
           </div>
         </div>
-        <HappinessMeter value={view.state.peopleHappiness} />
+        <PeopleHappinessMeter value={view.state.peopleHappiness} />
         <SeasonHeaderArt
           season={view.state.meta.season}
           loopingSeason={loopingSeason}

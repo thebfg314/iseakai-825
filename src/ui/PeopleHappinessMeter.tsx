@@ -1,7 +1,7 @@
 import { HAPPINESS_ARROW, HAPPINESS_METER } from "./art";
 import { happinessArrowLeftPercent, PEOPLE_HAPPINESS_LABEL, peopleHappinessVoice } from "./happinessMeter";
 
-export function HappinessMeter({ value }: { value: number }) {
+export function PeopleHappinessMeter({ value }: { value: number }) {
   const left = happinessArrowLeftPercent(value);
   const voice = peopleHappinessVoice(value);
   return (

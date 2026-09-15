@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { HappinessMeter } from "./HappinessMeter";
+import { PeopleHappinessMeter } from "./PeopleHappinessMeter";
 import { HAPPINESS_ARROW, HAPPINESS_METER } from "./art";
 import {
   HAPPINESS_TRACK_LEFT,
@@ -58,12 +58,12 @@ describe("happiness meter art", () => {
 
 describe("happiness meter markup", () => {
   it("exposes an accessible people's happiness meter and places the arrow", () => {
-    const html = renderToStaticMarkup(createElement(HappinessMeter, { value: 20 }));
+    const html = renderToStaticMarkup(createElement(PeopleHappinessMeter, { value: 20 }));
     expect(html).toContain('role="meter"');
-    expect(html).toContain("People's happiness");
+    expect(html).toMatch(/People(?:'s|&#x27;s) happiness/);
     expect(html).toContain(`left:${happinessArrowLeftPercent(20)}%`);
     expect(html).not.toContain("peopleHappiness");
-    const high = renderToStaticMarkup(createElement(HappinessMeter, { value: 90 }));
+    const high = renderToStaticMarkup(createElement(PeopleHappinessMeter, { value: 90 }));
     expect(high).toContain(`left:${happinessArrowLeftPercent(90)}%`);
     expect(happinessArrowLeftPercent(90)).toBeGreaterThan(happinessArrowLeftPercent(20));
   });
