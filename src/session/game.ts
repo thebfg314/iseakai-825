@@ -5,6 +5,7 @@ import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
 import { tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
+import { ARRIVAL_REFUSE_LINE, resolvePeopleMovement } from "../engine/peopleMovement";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
@@ -656,7 +657,12 @@ export class GameController {
       item.status = "rejected";
       item.rejectReason = "Player rejected";
       this.log(item.npcId, "REJECT", item.proposal.summary);
-      this.ledgerNote(`You declined: ${playerFacingSummary(item.proposal) || "that change"}.`, item.npcId);
+      this.ledgerNote(
+        item.proposal.type === "settle_households"
+          ? ARRIVAL_REFUSE_LINE
+          : `You declined: ${playerFacingSummary(item.proposal) || "that change"}.`,
+        item.npcId,
+      );
       if (this.askedAboutId === id) this.askedAboutId = null;
       releaseConfirmWantsTalk(this.state, item.npcId, this.pending);
     }
@@ -722,6 +728,7 @@ export class GameController {
         effects.map((e) => e.text),
         rolled,
       );
+      this.resolveHappinessMovement(effects);
 
       const clock = finishSeasonClock(this.state);
       effects.push(...clock);
@@ -751,6 +758,7 @@ export class GameController {
         effects.map((e) => e.text),
         rolled,
       );
+      this.resolveHappinessMovement(effects);
       effects.push(...finishSeasonClock(this.state));
       writeLastSeasonDeltas(this.state, ledgerBefore);
       if (isHoldAtOnceFailure(err)) {
@@ -771,6 +779,18 @@ export class GameController {
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       await this.refreshCredits();
       return { ...this.view(), effects };
+    }
+  }
+
+  private resolveHappinessMovement(effects: SeasonEffectLine[]) {
+    const movement = resolvePeopleMovement(this.state);
+    if (movement.departureNote) effects.push({ kind: "info", text: movement.departureNote });
+    if (movement.arrivalNote) effects.push({ kind: "info", text: movement.arrivalNote });
+    if (
+      movement.arrival &&
+      !this.pending.some((p) => p.status === "pending" && p.proposal.type === "settle_households")
+    ) {
+      this.queueProposal("steward", movement.arrival);
     }
   }
 
@@ -1000,7 +1020,18 @@ function isSpecialistHireProposal(p: MechanicalProposal | unknown): boolean {
   return rec.type === "register_npc" && Boolean(matchHireableSpecialist(rec.npc ?? {}));
 }
 
+function isSettleHouseholdsProposal(p: MechanicalProposal | unknown): boolean {
+  return Boolean(p && typeof p === "object" && (p as { type?: string }).type === "settle_households");
+}
+
 function stripSeasonHires(p: MechanicalProposal, effects: SeasonEffectLine[]): MechanicalProposal | null {
+  if (p.type === "settle_households") {
+    effects.push({
+      kind: "info",
+      text: "Taking a household onto the demesne waits on Confirm.",
+    });
+    return null;
+  }
   if (isSpecialistHireProposal(p)) {
     effects.push({
       kind: "info",
@@ -1008,12 +1039,20 @@ function stripSeasonHires(p: MechanicalProposal, effects: SeasonEffectLine[]): M
     });
     return null;
   }
-  if (p.type === "event_effect" && p.nested?.some(isSpecialistHireProposal)) {
-    effects.push({
-      kind: "info",
-      text: "Hiring waits on Confirm with Aldric; the season report cannot take a person into the household.",
-    });
-    const nested = p.nested.filter((n) => !isSpecialistHireProposal(n));
+  if (p.type === "event_effect" && p.nested?.some((n) => isSpecialistHireProposal(n) || isSettleHouseholdsProposal(n))) {
+    const nested = p.nested.filter((n) => !isSpecialistHireProposal(n) && !isSettleHouseholdsProposal(n));
+    if (p.nested.some(isSpecialistHireProposal)) {
+      effects.push({
+        kind: "info",
+        text: "Hiring waits on Confirm with Aldric; the season report cannot take a person into the household.",
+      });
+    }
+    if (p.nested.some(isSettleHouseholdsProposal)) {
+      effects.push({
+        kind: "info",
+        text: "Taking a household onto the demesne waits on Confirm.",
+      });
+    }
     return { ...p, nested };
   }
   return p;

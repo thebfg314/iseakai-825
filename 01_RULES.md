@@ -236,6 +236,15 @@ Escape hatch: `custom` — stored and shown in the ledger and injected into prom
 - `accident_risk` and `harvest_risk`: use the maximum of competing values.
 - `mood`: no longer a parallel yield/labour dial. `add` of +1 nudges estate `peopleHappiness` by +3 when the custom is confirmed, and the same amount each Advance season while the modifier lasts (event `moodDelta` only uses the season tick, so it is not applied twice). Happiness is the source of truth: wretched effort 0.90, settled 1.00, joyful 1.10 (linear 0–100). That quiet multiplier scales agricultural yield, livestock yield, and project progress; callable labour heads on the books stay the same. Do not print a “happiness bonus” or extra labour-days line. Old saves that still carry mood modifiers keep working — they are read as happiness pressure, not as a second yield factor.
 
+### 8.3 People coming and going
+
+After the season happiness tick, the engine counts consecutive **joyful** seasons (`peopleHappiness` ≥ 75) and **wretched** seasons (≤ 24). Old saves start both streaks at 0.
+
+- **Arrivals.** On the second consecutive joyful season, 15% chance a family seeks a place; +15% per further season, capped at 45%. Offered as a mid-season Confirm (`settle_households`): one household, a man, a woman, and a youth. Accept writes them into the demesne people; refuse turns them away. Unconfirmed, they lapse on the next Advance like other orders. The season report cannot take them in without Confirm.
+- **Departures.** On the second consecutive wretched season, 20% chance a household slips away in the night; +20% per further season, capped at 55%. Applied at once — no Confirm. Never below 4 households / 4 men / 4 women (youths stop at 2).
+
+These rolls are extra engine events. They do not consume the catalogue population slot. Player-facing copy is hall language only.
+
 ---
 
 ## 9. LLM role split

@@ -116,6 +116,28 @@ describe("steward ledger voice", () => {
       }),
     ).toBe("12 men to the work.");
     expect(playerFacingSummary({ type: "assign_labour", summary: "assign_labour" })).toBe("");
+    expect(proposalTypeName("settle_households")).toBe("People at the gate");
+    expect(proposalTypeName("settle_households")).not.toMatch(/_|settle/i);
+    expect(
+      proposalBlurb({
+        type: "settle_households",
+        summary: "A family seeks a place among the demesne people.",
+        households: 1,
+        adult_men: 1,
+        adult_women: 1,
+        youths: 1,
+      }),
+    ).toMatch(/one household/i);
+    expect(
+      proposalBlurb({
+        type: "settle_households",
+        summary: "A family seeks a place among the demesne people.",
+        households: 1,
+        adult_men: 1,
+        adult_women: 1,
+        youths: 1,
+      }),
+    ).not.toMatch(/happiness|peopleHappiness|mood/i);
   });
 
   it("rewrites apply fail reasons into steward speech", () => {

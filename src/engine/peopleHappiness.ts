@@ -39,6 +39,10 @@ import { clamp } from "./util";
 export const PEOPLE_HAPPINESS_MIN = 0;
 export const PEOPLE_HAPPINESS_MAX = 100;
 export const PEOPLE_HAPPINESS_DEFAULT = 50;
+/** Hall word “joyful” — arrivals roll after a streak at or above this. */
+export const PEOPLE_JOYFUL_MIN = 75;
+/** Hall word “wretched” — departures roll after a streak at or below this. */
+export const PEOPLE_WRETCHED_MAX = 24;
 
 export const HAPPINESS_HUNGER = -12;
 export const HAPPINESS_GRAIN_AMPLE = 4;
@@ -83,10 +87,10 @@ export type PeopleHappinessExtras = {
 };
 
 export function peopleHappinessHallWord(value: number): "wretched" | "uneasy" | "settled" | "glad" | "joyful" {
-  if (value <= 24) return "wretched";
+  if (value <= PEOPLE_WRETCHED_MAX) return "wretched";
   if (value <= 44) return "uneasy";
   if (value <= 55) return "settled";
-  if (value <= 74) return "glad";
+  if (value < PEOPLE_JOYFUL_MIN) return "glad";
   return "joyful";
 }
 

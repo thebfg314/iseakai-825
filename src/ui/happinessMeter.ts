@@ -1,5 +1,5 @@
 import { clamp } from "../engine/util";
-import { PEOPLE_HAPPINESS_MAX, PEOPLE_HAPPINESS_MIN } from "../engine/peopleHappiness";
+import { PEOPLE_HAPPINESS_MAX, PEOPLE_HAPPINESS_MIN, PEOPLE_JOYFUL_MIN, PEOPLE_WRETCHED_MAX } from "../engine/peopleHappiness";
 
 /**
  * Inner coloured track on `art assets/UI/happiness-meter.png` (2128×912).
@@ -22,9 +22,9 @@ export function happinessArrowLeftPercent(value: number): number {
 
 /** Hall language for the meter, not engine jargon. */
 export function peopleHappinessVoice(value: number): string {
-  if (value <= 24) return "The people are wretched";
+  if (value <= PEOPLE_WRETCHED_MAX) return "The people are wretched";
   if (value <= 44) return "The people are uneasy";
   if (value <= 55) return "The people are settled";
-  if (value <= 74) return "The people are glad";
+  if (value < PEOPLE_JOYFUL_MIN) return "The people are glad";
   return "The people are joyful";
 }

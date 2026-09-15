@@ -407,6 +407,12 @@ export const WorldStateSchema = z.object({
    * default to 50.
    */
   peopleHappiness: z.number().min(0).max(100).default(50),
+  /**
+   * Consecutive Advance seasons the meter has stayed joyful (≥75) or wretched (≤24).
+   * Old saves default to 0.
+   */
+  peopleHappinessHighStreak: z.number().int().nonnegative().default(0),
+  peopleHappinessLowStreak: z.number().int().nonnegative().default(0),
   /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
   estate_history: z.array(EstateSeasonSnapshotSchema).default([]),
 });
@@ -426,6 +432,7 @@ export const PROPOSAL_TYPES = [
   "register_npc",
   "event_effect",
   "start_hunt",
+  "settle_households",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -561,6 +568,14 @@ export const EventEffectProposalSchema = ProposalBase.extend({
   moodDelta: z.coerce.number().optional(),
 });
 
+export const SettleHouseholdsProposalSchema = ProposalBase.extend({
+  type: z.literal("settle_households"),
+  households: z.coerce.number().int().positive().default(1),
+  adult_men: z.coerce.number().int().nonnegative().default(1),
+  adult_women: z.coerce.number().int().nonnegative().default(1),
+  youths: z.coerce.number().int().nonnegative().default(1),
+});
+
 export const StartHuntProposalSchema = ProposalBase.extend({
   type: z.literal("start_hunt"),
   goods: z.string(),
@@ -592,6 +607,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   RegisterNpcProposalSchema,
   EventEffectProposalSchema,
   StartHuntProposalSchema,
+  SettleHouseholdsProposalSchema,
 ]);
 
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
@@ -607,6 +623,7 @@ export type RegisterFeatureProposal = z.infer<typeof RegisterFeatureProposalSche
 export type RegisterNpcProposal = z.infer<typeof RegisterNpcProposalSchema>;
 export type EventEffectProposal = z.infer<typeof EventEffectProposalSchema>;
 export type StartHuntProposal = z.infer<typeof StartHuntProposalSchema>;
+export type SettleHouseholdsProposal = z.infer<typeof SettleHouseholdsProposalSchema>;
 
 export type MechanicalProposal =
   | AssignLabourProposal
@@ -621,7 +638,8 @@ export type MechanicalProposal =
   | RegisterFeatureProposal
   | RegisterNpcProposal
   | EventEffectProposal
-  | StartHuntProposal;
+  | StartHuntProposal
+  | SettleHouseholdsProposal;
 
 export const LlmResponseSchema = z.object({
   speech: z.string(),

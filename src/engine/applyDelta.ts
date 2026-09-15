@@ -11,6 +11,7 @@ import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
 import { applyMoodModifierToHappiness, applyPeopleHappinessDelta, HAPPINESS_ALMS, looksLikeAlms } from "./peopleHappiness";
+import { applySettleHouseholds } from "./peopleMovement";
 import { isNegotiatorId, negotiatorAllowed, startHunt } from "./hunts";
 import {
   hireSummary,
@@ -262,6 +263,8 @@ export function applyProposal(
       if (!r.ok) return fail(state, r.reason, r.logLine);
       return ok(state, r.logLine);
     }
+    case "settle_households":
+      return ok(state, applySettleHouseholds(state, proposal));
     default:
       return fail(state, "Unknown proposal type.", "Unknown proposal type.");
   }
