@@ -52,6 +52,15 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
 .title-menu button.primary { background: #3d2a12; }
 .title-status { color: var(--muted); margin-top: 0.75rem; }
 
+.empty-villa-words {
+  max-width: 36rem;
+  margin: 0 1rem;
+  text-align: center;
+  font-size: 1.25rem;
+  line-height: 1.55;
+  color: var(--parchment);
+}
+
 .talk { display: flex; min-height: 0; flex: 1; }
 .portrait {
   width: clamp(300px, min(34vw, calc((100vh - 13rem) * 0.67)), 580px);

@@ -15,15 +15,11 @@ import { PEOPLE_JOYFUL_MIN, PEOPLE_WRETCHED_MAX } from "./peopleHappiness";
  * next Advance like other orders.
  *
  * Departures (wretched streak ≥ 2): chance 20% / +20% / cap 55%. Applied at once;
- * no Confirm. Households and working-age people fall, never below the floor.
+ * no Confirm. Unhappy people may keep leaving until the holding is empty. When no
+ * households or working-age people remain, the villa is abandoned (game over).
  *
- * Old saves omit the streak fields; Zod defaults them to 0.
+ * Old saves omit the streak fields and `estateAbandoned`; Zod defaults them.
  */
-
-export const PEOPLE_HOUSEHOLD_FLOOR = 4;
-export const PEOPLE_MEN_FLOOR = 4;
-export const PEOPLE_WOMEN_FLOOR = 4;
-export const PEOPLE_YOUTH_FLOOR = 2;
 
 export const ARRIVAL_STREAK_MIN = 2;
 export const ARRIVAL_CHANCE_PER_SEASON = 0.15;
@@ -42,6 +38,8 @@ export const ARRIVAL_SEASON_NOTE =
 export const ARRIVAL_CONFIRM_LINE = "A household has taken its place among the demesne people.";
 export const ARRIVAL_REFUSE_LINE = "You turned the family away.";
 export const DEPARTURE_SEASON_NOTE = "In the night a household slipped away from the demesne.";
+export const ABANDONED_GAME_OVER =
+  "The demesne people are gone. The villa stands empty. There is no one left to work the land.";
 
 export type PopulationDelta = {
   households: number;
@@ -54,6 +52,8 @@ export type PeopleMovementResult = {
   arrival?: SettleHouseholdsProposal;
   arrivalNote?: string;
   departureNote?: string;
+  abandoned?: boolean;
+  gameOverNote?: string;
 };
 
 export function arrivalChance(streak: number): number {
@@ -64,6 +64,21 @@ export function arrivalChance(streak: number): number {
 export function departureChance(streak: number): number {
   if (streak < DEPARTURE_STREAK_MIN) return 0;
   return Math.min(DEPARTURE_CHANCE_CAP, Math.round(DEPARTURE_CHANCE_PER_SEASON * (streak - DEPARTURE_STREAK_MIN + 1) * 100) / 100);
+}
+
+export function workingAgeHeads(state: WorldState): number {
+  return state.population.adult_men + state.population.adult_women + state.population.youths;
+}
+
+/** No households, or no working-age people left to work the villa. */
+export function estateIsAbandoned(state: WorldState): boolean {
+  return state.population.households <= 0 || workingAgeHeads(state) <= 0;
+}
+
+export function markEstateAbandoned(state: WorldState): boolean {
+  if (!estateIsAbandoned(state)) return false;
+  state.estateAbandoned = true;
+  return true;
 }
 
 export function tickHappinessStreaks(state: WorldState): { high: number; low: number } {
@@ -91,17 +106,17 @@ export function applyPopulationDelta(state: WorldState, delta: PopulationDelta):
 }
 
 export function canDepartHousehold(state: WorldState): boolean {
-  return (
-    state.population.households > PEOPLE_HOUSEHOLD_FLOOR &&
-    state.population.adult_men > PEOPLE_MEN_FLOOR &&
-    state.population.adult_women > PEOPLE_WOMEN_FLOOR
-  );
+  return state.population.households > 0 || workingAgeHeads(state) > 0;
 }
 
 export function departureDelta(state: WorldState): PopulationDelta | null {
   if (!canDepartHousehold(state)) return null;
-  const youths = state.population.youths > PEOPLE_YOUTH_FLOOR ? -1 : 0;
-  return { households: -1, adult_men: -1, adult_women: -1, youths };
+  return {
+    households: state.population.households > 0 ? -1 : 0,
+    adult_men: state.population.adult_men > 0 ? -1 : 0,
+    adult_women: state.population.adult_women > 0 ? -1 : 0,
+    youths: state.population.youths > 0 ? -1 : 0,
+  };
 }
 
 export function makeArrivalProposal(): SettleHouseholdsProposal {
@@ -122,17 +137,28 @@ export function applySettleHouseholds(state: WorldState, p: SettleHouseholdsProp
   return ARRIVAL_CONFIRM_LINE;
 }
 
+function abandonedResult(extra: PeopleMovementResult = {}): PeopleMovementResult {
+  return { ...extra, abandoned: true, gameOverNote: ABANDONED_GAME_OVER };
+}
+
 /**
  * Update streaks from current happiness, then maybe apply a departure or offer an arrival.
  * Does not queue Confirm itself — the session layer does that.
  */
 export function resolvePeopleMovement(state: WorldState, rng: () => number = Math.random): PeopleMovementResult {
+  if (state.estateAbandoned || estateIsAbandoned(state)) {
+    markEstateAbandoned(state);
+    return abandonedResult();
+  }
   tickHappinessStreaks(state);
   const leaveAt = departureChance(state.peopleHappinessLowStreak ?? 0);
   if (leaveAt > 0 && rng() < leaveAt) {
     const delta = departureDelta(state);
     if (delta) {
       applyPopulationDelta(state, delta);
+      if (markEstateAbandoned(state)) {
+        return abandonedResult({ departureNote: DEPARTURE_SEASON_NOTE });
+      }
       return { departureNote: DEPARTURE_SEASON_NOTE };
     }
   }

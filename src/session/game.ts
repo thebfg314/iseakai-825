@@ -5,7 +5,7 @@ import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
 import { tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
-import { ARRIVAL_REFUSE_LINE, resolvePeopleMovement } from "../engine/peopleMovement";
+import { ARRIVAL_REFUSE_LINE, ABANDONED_GAME_OVER, estateIsAbandoned, markEstateAbandoned, resolvePeopleMovement } from "../engine/peopleMovement";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
@@ -112,6 +112,10 @@ export class GameController {
       this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
     }
     ensureGerulfInHousehold(this.state);
+    if (estateIsAbandoned(this.state)) {
+      markEstateAbandoned(this.state);
+      return;
+    }
     this.speakIntroIfNeeded("steward");
     this.messages.push({
       id: newId("msg"),
@@ -125,6 +129,7 @@ export class GameController {
   }
 
   view(): GameView {
+    if (estateIsAbandoned(this.state)) markEstateAbandoned(this.state);
     if (this.sceneNpcId === "merchant" && !this.merchantAvailable()) {
       this.sceneNpcId = "steward";
     }
@@ -275,6 +280,10 @@ export class GameController {
   }
 
   async sendDialogue(npcId: string, playerText: string): Promise<DialogueResult> {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), error: ABANDONED_GAME_OVER };
+    }
     if (npcId === "merchant" && !this.merchantAvailable()) {
       this.sceneNpcId = "steward";
       return { ...this.view(), error: "The merchant has left the district." };
@@ -594,6 +603,10 @@ export class GameController {
   }
 
   confirmProposal(id: string): GameView & { error?: string } {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), error: ABANDONED_GAME_OVER };
+    }
     const item = this.pending.find((p) => p.id === id && p.status === "pending");
     if (!item) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
     const batch = sortPendingForApply(this.pending.filter((p) => p.status === "pending"));
@@ -652,6 +665,10 @@ export class GameController {
   }
 
   rejectProposal(id: string): GameView {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return this.view();
+    }
     const item = this.pending.find((p) => p.id === id && p.status === "pending");
     if (item) {
       item.status = "rejected";
@@ -670,6 +687,10 @@ export class GameController {
   }
 
   async advanceSeason(): Promise<SeasonResult> {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), effects: [{ kind: "info", text: ABANDONED_GAME_OVER }] };
+    }
     const effects: SeasonEffectLine[] = [];
     const lapsing = this.pending.filter((p) => p.status === "pending");
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
@@ -785,9 +806,11 @@ export class GameController {
   private resolveHappinessMovement(effects: SeasonEffectLine[]) {
     const movement = resolvePeopleMovement(this.state);
     if (movement.departureNote) effects.push({ kind: "info", text: movement.departureNote });
+    if (movement.gameOverNote) effects.push({ kind: "info", text: movement.gameOverNote });
     if (movement.arrivalNote) effects.push({ kind: "info", text: movement.arrivalNote });
     if (
       movement.arrival &&
+      !this.state.estateAbandoned &&
       !this.pending.some((p) => p.status === "pending" && p.proposal.type === "settle_households")
     ) {
       this.queueProposal("steward", movement.arrival);

@@ -241,7 +241,7 @@ Escape hatch: `custom` — stored and shown in the ledger and injected into prom
 After the season happiness tick, the engine counts consecutive **joyful** seasons (`peopleHappiness` ≥ 75) and **wretched** seasons (≤ 24). Old saves start both streaks at 0.
 
 - **Arrivals.** On the second consecutive joyful season, 15% chance a family seeks a place; +15% per further season, capped at 45%. Offered as a mid-season Confirm (`settle_households`): one household, a man, a woman, and a youth. Accept writes them into the demesne people; refuse turns them away. Unconfirmed, they lapse on the next Advance like other orders. The season report cannot take them in without Confirm.
-- **Departures.** On the second consecutive wretched season, 20% chance a household slips away in the night; +20% per further season, capped at 55%. Applied at once — no Confirm. Never below 4 households / 4 men / 4 women (youths stop at 2).
+- **Departures.** On the second consecutive wretched season, 20% chance a household slips away in the night; +20% per further season, capped at 55%. Applied at once — no Confirm. Households may fall to none. When no households (or no working-age people) remain, the villa is abandoned: the game ends.
 
 These rolls are extra engine events. They do not consume the catalogue population slot. Player-facing copy is hall language only.
 

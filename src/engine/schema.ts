@@ -413,6 +413,10 @@ export const WorldStateSchema = z.object({
    */
   peopleHappinessHighStreak: z.number().int().nonnegative().default(0),
   peopleHappinessLowStreak: z.number().int().nonnegative().default(0),
+  /**
+   * True when the demesne people are gone and the villa cannot be worked. Old saves default false.
+   */
+  estateAbandoned: z.boolean().default(false),
   /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
   estate_history: z.array(EstateSeasonSnapshotSchema).default([]),
 });

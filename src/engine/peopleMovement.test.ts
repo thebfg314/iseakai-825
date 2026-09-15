@@ -12,6 +12,7 @@ import {
   ARRIVAL_SEASON_NOTE,
   ARRIVAL_STREAK_MIN,
   ARRIVAL_SUMMARY,
+  ABANDONED_GAME_OVER,
   arrivalChance,
   canDepartHousehold,
   DEPARTURE_CHANCE_CAP,
@@ -20,9 +21,6 @@ import {
   departureChance,
   departureDelta,
   makeArrivalProposal,
-  PEOPLE_HOUSEHOLD_FLOOR,
-  PEOPLE_MEN_FLOOR,
-  PEOPLE_WOMEN_FLOOR,
   resolvePeopleMovement,
   tickHappinessStreaks,
 } from "./peopleMovement";
@@ -46,12 +44,15 @@ describe("happiness streaks", () => {
     const raw = structuredClone(startingEstate) as {
       peopleHappinessHighStreak?: number;
       peopleHappinessLowStreak?: number;
+      estateAbandoned?: boolean;
     };
     delete raw.peopleHappinessHighStreak;
     delete raw.peopleHappinessLowStreak;
+    delete raw.estateAbandoned;
     const state = WorldStateSchema.parse(raw);
     expect(state.peopleHappinessHighStreak).toBe(0);
     expect(state.peopleHappinessLowStreak).toBe(0);
+    expect(state.estateAbandoned).toBe(false);
   });
 
   it("counts consecutive joyful or wretched seasons and resets on settled", () => {
@@ -155,22 +156,31 @@ describe("departures", () => {
     expect(state.holdings[0].households).toBe(before.households - 1);
   });
 
-  it("cannot be stopped by refusing, and will not empty the demesne", () => {
+  it("cannot be stopped by refusing, and may fall below the old four-household floor", () => {
     const state = boot((s) => {
       s.peopleHappiness = 4;
-      s.population.households = PEOPLE_HOUSEHOLD_FLOOR;
-      s.population.adult_men = PEOPLE_MEN_FLOOR;
-      s.population.adult_women = PEOPLE_WOMEN_FLOOR;
+      s.population.households = 4;
+      s.population.adult_men = 4;
+      s.population.adult_women = 4;
       s.population.youths = 2;
-      s.holdings[0].households = PEOPLE_HOUSEHOLD_FLOOR;
+      s.holdings[0].households = 4;
       s.peopleHappinessLowStreak = 8;
     });
-    expect(canDepartHousehold(state)).toBe(false);
-    expect(departureDelta(state)).toBeNull();
+    expect(canDepartHousehold(state)).toBe(true);
+    expect(departureDelta(state)).toEqual({
+      households: -1,
+      adult_men: -1,
+      adult_women: -1,
+      youths: -1,
+    });
     const result = resolvePeopleMovement(state, () => 0);
-    expect(result.departureNote).toBeUndefined();
-    expect(state.population.households).toBe(PEOPLE_HOUSEHOLD_FLOOR);
-    expect(state.population.adult_men).toBe(PEOPLE_MEN_FLOOR);
+    expect(result.departureNote).toBe(DEPARTURE_SEASON_NOTE);
+    expect(result.abandoned).toBeUndefined();
+    expect(state.estateAbandoned).toBe(false);
+    expect(state.population.households).toBe(3);
+    expect(state.population.adult_men).toBe(3);
+    expect(state.population.adult_women).toBe(3);
+    expect(state.population.youths).toBe(1);
 
     const game = tempGame((s) => {
       s.peopleHappiness = 8;
@@ -181,6 +191,60 @@ describe("departures", () => {
     expect(movement.departureNote).toBe(DEPARTURE_SEASON_NOTE);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.state.population.households).toBe(before - 1);
+  });
+
+  it("ends the game when the last household slips away", async () => {
+    const game = tempGame((s) => {
+      s.peopleHappiness = 4;
+      s.peopleHappinessLowStreak = 8;
+      s.population.households = 1;
+      s.population.adult_men = 1;
+      s.population.adult_women = 1;
+      s.population.youths = 1;
+      s.holdings[0].households = 1;
+    });
+    expect(game.messages.some((m) => /I am Aldric/.test(m.text))).toBe(true);
+
+    const result = resolvePeopleMovement(game.state, () => 0);
+    expect(result.departureNote).toBe(DEPARTURE_SEASON_NOTE);
+    expect(result.abandoned).toBe(true);
+    expect(result.gameOverNote).toBe(ABANDONED_GAME_OVER);
+    expect(game.state.estateAbandoned).toBe(true);
+    expect(game.state.population.households).toBe(0);
+    expect(game.state.population.adult_men).toBe(0);
+    expect(game.state.holdings[0].households).toBe(0);
+    expect(game.view().state.estateAbandoned).toBe(true);
+
+    const talk = await game.sendDialogue("steward", "What news of the people?");
+    expect(talk.error).toBe(ABANDONED_GAME_OVER);
+    const season = await game.advanceSeason();
+    expect(season.effects?.some((e) => e.text === ABANDONED_GAME_OVER)).toBe(true);
+  });
+
+  it("treats an already empty holding as abandoned without a further roll", () => {
+    const empty = boot((s) => {
+      s.population.households = 0;
+      s.population.adult_men = 0;
+      s.population.adult_women = 0;
+      s.population.youths = 0;
+      s.holdings[0].households = 0;
+    });
+    expect(canDepartHousehold(empty)).toBe(false);
+    expect(departureDelta(empty)).toBeNull();
+    const result = resolvePeopleMovement(empty, () => 0);
+    expect(result.abandoned).toBe(true);
+    expect(result.gameOverNote).toBe(ABANDONED_GAME_OVER);
+    expect(empty.estateAbandoned).toBe(true);
+
+    const loaded = tempGame((s) => {
+      s.population.households = 0;
+      s.population.adult_men = 0;
+      s.population.adult_women = 0;
+      s.population.youths = 0;
+      s.holdings[0].households = 0;
+    });
+    expect(loaded.state.estateAbandoned).toBe(true);
+    expect(loaded.messages).toHaveLength(0);
   });
 });
 
@@ -206,6 +270,8 @@ describe("effort curve stays independent", () => {
   it("speaks hall language, not engine jargon", () => {
     expect(ARRIVAL_SEASON_NOTE).not.toMatch(/happiness|peopleHappiness|moodFactor|settle_households/i);
     expect(DEPARTURE_SEASON_NOTE).not.toMatch(/happiness|peopleHappiness|moodFactor/i);
+    expect(ABANDONED_GAME_OVER).not.toMatch(/happiness|peopleHappiness|moodFactor|game over|estateAbandoned/i);
+    expect(ABANDONED_GAME_OVER).toMatch(/villa stands empty/i);
     expect(ARRIVAL_SUMMARY).toMatch(/demesne people/i);
   });
 });

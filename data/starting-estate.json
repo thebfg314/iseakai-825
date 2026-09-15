@@ -165,5 +165,6 @@
   },
   "peopleHappiness": 50,
   "peopleHappinessHighStreak": 0,
-  "peopleHappinessLowStreak": 0
+  "peopleHappinessLowStreak": 0,
+  "estateAbandoned": false
 }
