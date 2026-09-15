@@ -1,6 +1,6 @@
 import type { LabourAssignment, Project, WorldState } from "./schema";
 import { LABOUR_MIDPOINTS, labourKindFor } from "./projectCatalog";
-import { modifiersFor, applyMultiplyAdd, moodFactor } from "./modifiers";
+import { modifiersFor, applyMultiplyAdd } from "./modifiers";
 
 export type LabourPool = {
   men: number;
@@ -28,7 +28,7 @@ const EMPTY_POOL: LabourPool = { men: 0, women: 0, youths: 0 };
 
 export function labourPool(state: WorldState): LabourPool {
   const mid = LABOUR_MIDPOINTS[state.meta.season];
-  const eff = applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 }) * moodFactor(state);
+  const eff = applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
   return {
     men: Math.round(state.population.adult_men * mid.men * eff),
     women: Math.round(state.population.adult_women * mid.women * eff),

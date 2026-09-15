@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
+import { labourPool } from "./labour";
+import { yieldMultiplier } from "./modifiers";
 import {
   applyPeopleHappinessDelta,
   HAPPINESS_ALMS,
@@ -13,7 +15,11 @@ import {
   HAPPINESS_MOOD_PER_ADD,
   HAPPINESS_WAR,
   looksLikeAlms,
+  moodEffectToHappinessDelta,
+  PEOPLE_EFFORT_AT_HUNDRED,
+  PEOPLE_EFFORT_AT_ZERO,
   PEOPLE_HAPPINESS_DEFAULT,
+  peopleEffortFactor,
   peopleHappinessPressures,
   peopleHappinessSeasonDelta,
   standingOrderIsFeast,
@@ -133,6 +139,21 @@ describe("season pressures", () => {
     );
   });
 
+  it("reads multiply mood customs on old saves as happiness pressure, not a yield dial", () => {
+    const state = boot();
+    state.modifiers.push({
+      id: "mod-mult",
+      target: "mood",
+      kind: "temporary",
+      seasons_remaining: 2,
+      effect: { op: "multiply", value: 1.03 },
+      source: "event:w-yield:mood",
+    });
+    expect(moodEffectToHappinessDelta({ op: "multiply", value: 1.03 })).toBe(3);
+    expect(peopleHappinessPressures(state).some((p) => p.id === "mood" && p.delta === 3)).toBe(true);
+    expect(yieldMultiplier(state, "rye")).toBe(yieldMultiplier(boot(), "rye"));
+  });
+
   it("clamps at the ends of the bar", () => {
     const low = boot();
     low.peopleHappiness = 2;
@@ -169,5 +190,132 @@ describe("alms from the stores", () => {
     );
     expect(r.ok).toBe(true);
     expect(state.peopleHappiness).toBe(before + HAPPINESS_ALMS);
+  });
+});
+
+describe("mood fold and hidden effort", () => {
+  function blessing() {
+    return {
+      type: "add_modifier" as const,
+      summary: "Blessing",
+      target: "mood" as const,
+      kind: "temporary" as const,
+      seasonsRemaining: 4,
+      effect: { op: "add" as const, value: 1 },
+      source: "Ermenald's blessing",
+    };
+  }
+
+  it("nudges the meter when a mood blessing is written, without changing callable labour", () => {
+    const state = boot();
+    const pool = { ...labourPool(state) };
+    const before = state.peopleHappiness;
+    const yieldBefore = yieldMultiplier(state, "rye");
+    const r = applyProposal(state, blessing(), "chaplain");
+    expect(r.ok).toBe(true);
+    expect(state.peopleHappiness).toBe(before + HAPPINESS_MOOD_PER_ADD);
+    expect(labourPool(state)).toEqual(pool);
+    expect(yieldMultiplier(state, "rye")).toBe(yieldBefore);
+  });
+
+  it("does not double-dip: a leftover mood modifier at the same happiness does not raise yield or the labour pool", () => {
+    const plain = boot();
+    const withMood = boot();
+    withMood.modifiers.push({
+      id: "mod-old",
+      target: "mood",
+      kind: "temporary",
+      seasons_remaining: 3,
+      effect: { op: "add", value: 2 },
+      source: "old save blessing",
+    });
+    expect(withMood.peopleHappiness).toBe(plain.peopleHappiness);
+    expect(yieldMultiplier(withMood, "wheat")).toBe(yieldMultiplier(plain, "wheat"));
+    expect(labourPool(withMood)).toEqual(labourPool(plain));
+    expect(peopleEffortFactor(withMood)).toBe(peopleEffortFactor(plain));
+  });
+
+  it("scales harvest from happiness at fixed labour, without naming a bonus", () => {
+    const low = boot();
+    low.peopleHappiness = 8;
+    low.meta.season = "summer";
+    const high = boot();
+    high.peopleHappiness = 92;
+    high.meta.season = "summer";
+    expect(labourPool(low)).toEqual(labourPool(high));
+    expect(peopleEffortFactor(low)).toBeCloseTo(
+      PEOPLE_EFFORT_AT_ZERO + (8 / 100) * (PEOPLE_EFFORT_AT_HUNDRED - PEOPLE_EFFORT_AT_ZERO),
+      8,
+    );
+    expect(peopleEffortFactor(high)).toBeGreaterThan(1);
+    expect(peopleEffortFactor(boot())).toBe(1);
+
+    const wheatBefore = low.resources.wheat;
+    const lowLines = resolveAgricultureAndProjects(low);
+    resolveAgricultureAndProjects(high);
+    const lowGain = low.resources.wheat - wheatBefore;
+    const highGain = high.resources.wheat - wheatBefore;
+    expect(highGain).toBeGreaterThan(lowGain);
+    expect(lowGain).toBeGreaterThan(0);
+    expect(lowLines.map((l) => l.text).join("\n")).not.toMatch(/happiness bonus|extra labour days|\+labour/i);
+  });
+
+  it("scales project progress from happiness at the same assigned heads, without naming a bonus", () => {
+    const addWork = (s: WorldState, happiness: number) => {
+      s.peopleHappiness = happiness;
+      s.projects.push({
+        id: "proj-scrub",
+        key: "clear_scrub",
+        name: "Clear scrub",
+        holdingId: s.holdings[0].id,
+        labourDaysRequired: 400,
+        labourDaysDone: 0,
+        materials: { lumber: 0, iron: 0, stone: 0 },
+        materialsReserved: true,
+        status: "active",
+      });
+      s.labour.assigned = [{ projectId: "proj-scrub", men: 10, women: 0, youths: 0 }];
+    };
+    const workLow = boot((s) => addWork(s, 8));
+    const workHigh = boot((s) => addWork(s, 92));
+    expect(workLow.labour.assigned).toEqual(workHigh.labour.assigned);
+    expect(labourPool(workLow)).toEqual(labourPool(workHigh));
+    const lowNotes = resolveAgricultureAndProjects(workLow);
+    const highNotes = resolveAgricultureAndProjects(workHigh);
+    expect(workHigh.labour.assigned).toEqual(workLow.labour.assigned);
+    expect(workHigh.projects[0].labourDaysDone).toBeGreaterThan(workLow.projects[0].labourDaysDone);
+    expect(lowNotes.map((l) => l.text).join("\n")).not.toMatch(/happiness bonus|extra labour days/i);
+    expect(highNotes.map((l) => l.text).join("\n")).not.toMatch(/happiness bonus|extra labour days/i);
+  });
+
+  it("still updates the meter from seasonal pressures after agriculture", () => {
+    const state = boot();
+    state.resources.wheat = 0;
+    state.resources.rye = 0;
+    state.resources.barley = 0;
+    state.resources.oats = 0;
+    resolveAgricultureAndProjects(state);
+    expect(state.flags.hunger).toBe(true);
+    const before = state.peopleHappiness;
+    tickPeopleHappiness(state);
+    expect(state.peopleHappiness).toBe(before + HAPPINESS_HUNGER);
+    expect(peopleHappinessPressures(state).some((p) => p.id === "hunger")).toBe(true);
+  });
+
+  it("does not apply event moodDelta twice in one season tick", () => {
+    const state = boot();
+    const before = state.peopleHappiness;
+    const r = applyProposal(
+      state,
+      { type: "event_effect", eventId: "w-yield", summary: "Fair weather.", moodDelta: 1 },
+      "referee",
+    );
+    expect(r.ok).toBe(true);
+    expect(state.peopleHappiness).toBe(before);
+    expect(state.modifiers.some((m) => m.target === "mood" && m.effect.value === 1)).toBe(true);
+    const seasonal = peopleHappinessSeasonDelta(state);
+    expect(seasonal).toBe(HAPPINESS_MOOD_PER_ADD + peopleHappinessSeasonDelta(boot()));
+    tickPeopleHappiness(state);
+    expect(state.peopleHappiness).toBe(before + seasonal);
   });
 });

@@ -10,7 +10,8 @@ import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRe
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { consumeGrain, grainOnHand } from "./grain";
-import { applyPeopleHappinessDelta, HAPPINESS_ALMS, looksLikeAlms } from "./peopleHappiness";
+import { applyMoodModifierToHappiness, applyPeopleHappinessDelta, HAPPINESS_ALMS, looksLikeAlms } from "./peopleHappiness";
+import { applySettleHouseholds } from "./peopleMovement";
 import { isNegotiatorId, negotiatorAllowed, startHunt } from "./hunts";
 import {
   hireSummary,
@@ -262,6 +263,8 @@ export function applyProposal(
       if (!r.ok) return fail(state, r.reason, r.logLine);
       return ok(state, r.logLine);
     }
+    case "settle_households":
+      return ok(state, applySettleHouseholds(state, proposal));
     default:
       return fail(state, "Unknown proposal type.", "Unknown proposal type.");
   }
@@ -533,6 +536,7 @@ function addModifier(
       notes: p.source,
     });
   }
+  if (p.target === "mood") applyMoodModifierToHappiness(state, p.effect);
   const note = p.customNote || (p.source && !looksLikeEngineKey(p.source) ? p.source : "");
   return ok(state, note ? `A custom is written: ${note}.` : "A custom of the hall is written in the books.");
 }
@@ -676,11 +680,13 @@ function eventEffect(
   return ok(state, lines.length ? `${lines.join(". ")}.` : "A season's change is written.");
 }
 
+/** Apply specific_resource_output as a factor (capped 0.4–2.5), not as a cap on the pile itself. */
 export function resourceOutputBonus(state: WorldState, resource: string, base: number): number {
-  return applyMultiplyAdd(base, modifiersFor(state, "specific_resource_output", { resourceId: resource }), {
+  const factor = applyMultiplyAdd(1, modifiersFor(state, "specific_resource_output", { resourceId: resource }), {
     lo: 0.4,
     hi: 2.5,
   });
+  return base * factor;
 }
 
 export function projectSpeed(state: WorldState, extra?: number): number {

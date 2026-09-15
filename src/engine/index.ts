@@ -18,3 +18,4 @@ export * from "./intros";
 export * from "./hunts";
 export * from "./wantsTalk";
 export * from "./peopleHappiness";
+export * from "./peopleMovement";

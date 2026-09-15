@@ -143,6 +143,7 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   register_npc: "A hire",
   event_effect: "The season",
   start_hunt: "A hunt",
+  settle_households: "People at the gate",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -409,10 +410,14 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const seasons = p.durationSeasons === 1 ? "1 season" : `${p.durationSeasons} seasons`;
       return `Gerulf will seek ${p.amount} ${p.goods} for ${formatLedgerNumber(p.quotedDenarii)} denarii over ${seasons}. The purse leaves the chest on Confirm.`;
     }
+    case "settle_households": {
+      const hh = p.households === 1 ? "one household" : `${p.households} households`;
+      return `Take in ${hh} — a man, a woman, and a youth of working age.`;
+    }
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {

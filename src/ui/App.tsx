@@ -42,6 +42,7 @@ import {
   roleName,
 } from "./ledgerCopy";
 import { GlossaryProvider, GlossaryText } from "./GlossaryText";
+import { EmptyVillaScreen } from "./emptyVilla";
 
 function musicGain(s: Pick<AppSettings, "masterVolume" | "musicVolume">): number {
   return Math.min(1, Math.max(0, (s.masterVolume ?? 1) * (s.musicVolume ?? 0.55)));
@@ -318,6 +319,20 @@ export function App() {
         <p>Opening the estate books…</p>
         {error && <p className="error">{error}</p>}
       </div>
+    );
+  }
+
+  if (view.state.estateAbandoned) {
+    return (
+      <>
+        <EmptyVillaScreen
+          busy={busy}
+          onTitle={() => setScreen("title")}
+          onNewGame={() => void startNew()}
+        />
+        {error && <p className="error">{error}</p>}
+        {settingsModal}
+      </>
     );
   }
 

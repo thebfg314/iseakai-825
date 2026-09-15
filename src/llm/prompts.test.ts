@@ -73,6 +73,8 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/Hiring a full-time specialist is YOUR work/i);
     expect(aldric).toMatch(/do not warn that assigning them risks the harvest/i);
     expect(aldric).not.toMatch(/80% of the male|harvest is at risk/i);
+    expect(aldric).not.toMatch(/~3% yield and callable labour/i);
+    expect(aldric).toMatch(/nudges the people's heart/i);
 
     const bernard = smithSystemPrompt();
     expect(bernard).toContain("You are Bernard");
@@ -268,7 +270,11 @@ describe("signed-off NPC personalities", () => {
     expect(pack.deltas).toEqual({ rye: -2, sown_barley: 1.8 });
     expect(pack.totals.denarii).toBe(96);
     expect(pack.totals.grain.rye).toBe(8);
+    expect(pack.totals.the_people).toBe("settled");
     expect(pack.totals).not.toHaveProperty("market");
+    const glad = boot();
+    glad.peopleHappiness = 90;
+    expect(sliceStateForSeason(glad).totals.the_people).toBe("joyful");
     const prompt = seasonUserPrompt(state, [], ["Households ate rye."], "No merchant this season.", undefined, {
       rye: -2,
     });

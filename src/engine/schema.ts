@@ -401,10 +401,22 @@ export const WorldStateSchema = z.object({
   /** Signed store / sown / household changes from the last Advance season. Empty on a fresh game. */
   last_season_deltas: z.record(z.string(), z.number()).default({}),
   /**
-   * Estate-wide people's happiness (0 wretched … 100 joyful). Distinct from modifier
-   * target `mood`, which only scales yield and labour. Old saves default to 50.
+   * Estate-wide people's happiness (0 wretched … 100 joyful). Source of truth for
+   * morale. Modifier target `mood` nudges this meter (on confirm, and each season
+   * while the custom lasts); it does not scale yield or callable labour. Old saves
+   * default to 50.
    */
   peopleHappiness: z.number().min(0).max(100).default(50),
+  /**
+   * Consecutive Advance seasons the meter has stayed joyful (≥75) or wretched (≤24).
+   * Old saves default to 0.
+   */
+  peopleHappinessHighStreak: z.number().int().nonnegative().default(0),
+  peopleHappinessLowStreak: z.number().int().nonnegative().default(0),
+  /**
+   * True when the demesne people are gone and the villa cannot be worked. Old saves default false.
+   */
+  estateAbandoned: z.boolean().default(false),
   /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
   estate_history: z.array(EstateSeasonSnapshotSchema).default([]),
 });
@@ -424,6 +436,7 @@ export const PROPOSAL_TYPES = [
   "register_npc",
   "event_effect",
   "start_hunt",
+  "settle_households",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -559,6 +572,14 @@ export const EventEffectProposalSchema = ProposalBase.extend({
   moodDelta: z.coerce.number().optional(),
 });
 
+export const SettleHouseholdsProposalSchema = ProposalBase.extend({
+  type: z.literal("settle_households"),
+  households: z.coerce.number().int().positive().default(1),
+  adult_men: z.coerce.number().int().nonnegative().default(1),
+  adult_women: z.coerce.number().int().nonnegative().default(1),
+  youths: z.coerce.number().int().nonnegative().default(1),
+});
+
 export const StartHuntProposalSchema = ProposalBase.extend({
   type: z.literal("start_hunt"),
   goods: z.string(),
@@ -590,6 +611,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   RegisterNpcProposalSchema,
   EventEffectProposalSchema,
   StartHuntProposalSchema,
+  SettleHouseholdsProposalSchema,
 ]);
 
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
@@ -605,6 +627,7 @@ export type RegisterFeatureProposal = z.infer<typeof RegisterFeatureProposalSche
 export type RegisterNpcProposal = z.infer<typeof RegisterNpcProposalSchema>;
 export type EventEffectProposal = z.infer<typeof EventEffectProposalSchema>;
 export type StartHuntProposal = z.infer<typeof StartHuntProposalSchema>;
+export type SettleHouseholdsProposal = z.infer<typeof SettleHouseholdsProposalSchema>;
 
 export type MechanicalProposal =
   | AssignLabourProposal
@@ -619,7 +642,8 @@ export type MechanicalProposal =
   | RegisterFeatureProposal
   | RegisterNpcProposal
   | EventEffectProposal
-  | StartHuntProposal;
+  | StartHuntProposal
+  | SettleHouseholdsProposal;
 
 export const LlmResponseSchema = z.object({
   speech: z.string(),

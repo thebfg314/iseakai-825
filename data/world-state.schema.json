@@ -174,7 +174,24 @@
       "minimum": 0,
       "maximum": 100,
       "default": 50,
-      "description": "Estate-wide people's happiness (0 wretched … 100 joyful). Distinct from mood modifiers, which only scale yield and labour. Omitted on old saves; treat as 50."
+      "description": "Estate-wide people's happiness (0 wretched … 100 joyful). Source of truth for morale. Mood modifiers nudge this meter; they do not scale yield or callable labour. Omitted on old saves; treat as 50."
+    },
+    "peopleHappinessHighStreak": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Consecutive Advance seasons the people have been joyful (≥75). Omitted on old saves; treat as 0."
+    },
+    "peopleHappinessLowStreak": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Consecutive Advance seasons the people have been wretched (≤24). Omitted on old saves; treat as 0."
+    },
+    "estateAbandoned": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the demesne people are gone and the villa cannot be worked. Omitted on old saves; treat as false."
     },
     "estate_history": {
       "type": "array",

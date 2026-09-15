@@ -1,7 +1,8 @@
 import type { SeasonEffectLine, WorldState } from "./schema";
 import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
 import { autoFillLeftoverLabour, labourDaysFromAssignment } from "./labour";
-import { modifiersFor, applyMultiplyAdd, moodFactor, tickModifiers, yieldMultiplier } from "./modifiers";
+import { modifiersFor, applyMultiplyAdd, tickModifiers, yieldMultiplier } from "./modifiers";
+import { peopleEffortFactor } from "./peopleHappiness";
 import { projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
@@ -15,7 +16,7 @@ function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats
   let acres = 0;
   for (const h of state.holdings) acres += h.sown[crop];
   if (acres <= 0) return null;
-  const spoilage = yieldMultiplier(state, crop);
+  const spoilage = yieldMultiplier(state, crop) * peopleEffortFactor(state);
   const base = YIELD_MID[crop] * acres;
   const amount = round1(resourceOutputBonus(state, crop, base * spoilage));
   state.resources[crop] = round1(state.resources[crop] + amount);
@@ -71,7 +72,9 @@ function livestockSeason(state: WorldState): string[] {
   const notes: string[] = [];
   const season = state.meta.season;
   const livestockYield =
-    applyMultiplyAdd(1, modifiersFor(state, "livestock_yield"), { lo: 0.4, hi: 2.5 }) * moodFactor(state) * (state.flags.hunger ? 0.9 : 1);
+    applyMultiplyAdd(1, modifiersFor(state, "livestock_yield"), { lo: 0.4, hi: 2.5 }) *
+    peopleEffortFactor(state) *
+    (state.flags.hunger ? 0.9 : 1);
   if (season === "spring") {
     const wool = round0(resourceOutputBonus(state, "wool", state.resources.sheep * 2 * livestockYield));
     state.resources.wool += wool;
@@ -151,7 +154,7 @@ function advanceProjects(state: WorldState): string[] {
     const kind = labourKindFor(proj);
     let days = labourDaysFromAssignment(kind, assign.men, assign.women, assign.youths);
     const rush = proj.rush ? 1.15 : 1;
-    days *= projectSpeed(state, rush);
+    days *= projectSpeed(state, rush) * peopleEffortFactor(state);
     proj.labourDaysDone = round1(proj.labourDaysDone + days);
     const owed = Math.max(0, round1(proj.labourDaysRequired - proj.labourDaysDone));
     notes.push(
