@@ -5,7 +5,21 @@ import { isCoreHouseholdId } from "../engine/specialists";
 import { normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 import { BooksPanel } from "./BooksPanel";
 import { PeopleHappinessMeter } from "./PeopleHappinessMeter";
-import { BUTTON_CLICK, GAME_THEMES, NPC_WANTS_TALK, TITLE_MENU_BACKGROUND, TITLE_SCREEN, TITLE_THEME, npcPortrait } from "./art";
+import {
+  BUTTON_CLICK,
+  COINS,
+  GAME_OVER_THEME,
+  GAME_THEMES,
+  HALL_HORN,
+  NPC_WANTS_TALK,
+  PEN_CONFIRM,
+  SEASON_FANFARE,
+  TITLE_MENU_BACKGROUND,
+  TITLE_SCREEN,
+  TITLE_THEME,
+  npcPortrait,
+} from "./art";
+import { confirmSfx, hallHornDue, musicBedFor, musicGain, seasonAdvanceSfx, seasonKey, sfxGain } from "./sfx";
 import {
   SEASON_IDLE_FRAME_MS,
   SEASON_TIMBER_FRAME,
@@ -44,9 +58,6 @@ import {
 import { GlossaryProvider, GlossaryText } from "./GlossaryText";
 import { EmptyVillaScreen } from "./emptyVilla";
 
-function musicGain(s: Pick<AppSettings, "masterVolume" | "musicVolume">): number {
-  return Math.min(1, Math.max(0, (s.masterVolume ?? 1) * (s.musicVolume ?? 0.55)));
-}
 type Screen = "title" | "game";
 
 export function App() {
@@ -117,8 +128,25 @@ export function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const volumeRef = useRef(musicGain(settings));
   const masterRef = useRef(settings.masterVolume ?? 1);
+  const hornSeasonRef = useRef<string | null>(null);
   volumeRef.current = musicGain(settings);
   masterRef.current = settings.masterVolume ?? 1;
+  const musicBed = musicBedFor(screen, Boolean(view?.state.estateAbandoned));
+
+  function playSfx(src: string) {
+    const fx = new Audio(src);
+    fx.volume = sfxGain(masterRef.current);
+    void fx.play().catch(() => {
+      /* one-shot may wait for a gesture */
+    });
+  }
+
+  function considerHallHorn(next: GameView) {
+    const key = seasonKey(next.state.meta);
+    if (hornSeasonRef.current === key) return;
+    hornSeasonRef.current = key;
+    if (hallHornDue(next)) playSfx(HALL_HORN);
+  }
 
   useEffect(() => {
     const audio = new Audio();
@@ -139,13 +167,20 @@ export function App() {
     };
 
     const onEnded = () => {
-      if (screen === "game") playRandomGameTrack();
+      if (musicBed === "game") playRandomGameTrack();
     };
     audio.addEventListener("ended", onEnded);
 
-    if (screen === "title") {
+    if (musicBed === "title") {
       audio.loop = true;
       audio.src = TITLE_THEME;
+      void audio.play().catch(() => {
+        /* autoplay may wait for a click */
+      });
+    } else if (musicBed === "gameOver") {
+      audio.loop = true;
+      audio.src = GAME_OVER_THEME;
+      audio.volume = volumeRef.current;
       void audio.play().catch(() => {
         /* autoplay may wait for a click */
       });
@@ -168,7 +203,7 @@ export function App() {
       audio.src = "";
       if (audioRef.current === audio) audioRef.current = null;
     };
-  }, [screen]);
+  }, [musicBed]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volumeRef.current;
@@ -179,7 +214,7 @@ export function App() {
       const button = (event.target as HTMLElement | null)?.closest("button");
       if (!(button instanceof HTMLButtonElement) || button.disabled) return;
       const fx = new Audio(BUTTON_CLICK);
-      fx.volume = Math.min(1, Math.max(0, masterRef.current * 0.6));
+      fx.volume = sfxGain(masterRef.current);
       void fx.play().catch(() => {
         /* click may be blocked until a gesture */
       });
@@ -207,8 +242,12 @@ export function App() {
   }
 
   async function startNew() {
+    hornSeasonRef.current = null;
     const result = await withBusy(() => window.api.newGame());
-    if (result && "state" in result) setScreen("game");
+    if (result && "state" in result) {
+      setScreen("game");
+      considerHallHorn(result);
+    }
   }
 
   async function startLoad() {
@@ -219,6 +258,7 @@ export function App() {
       if (result && "state" in result) {
         setView(result);
         setScreen("game");
+        considerHallHorn(result);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -234,11 +274,22 @@ export function App() {
     setLoopingSeason(from);
     try {
       const result = await withBusy(() => window.api.advanceSeason());
-      const to = result && "state" in result ? result.state.meta.season : undefined;
+      const landed = result && "state" in result ? result : null;
+      const to = landed?.state.meta.season;
       if (to) setSeasonTransitionPlay(beginSeasonTransition(from, to));
+      const cues = seasonAdvanceSfx(from, landed);
+      if (cues.fanfare) playSfx(SEASON_FANFARE);
+      if (landed && !landed.state.estateAbandoned) considerHallHorn(landed);
     } finally {
       setLoopingSeason(null);
     }
+  }
+
+  async function confirmPending(p: PendingProposal) {
+    const result = await withBusy(() => window.api.confirmProposal(p.id));
+    const cues = confirmSfx(p.proposal, result && "state" in result ? result : null);
+    if (cues.pen) playSfx(PEN_CONFIRM);
+    if (cues.coins) playSfx(COINS);
   }
 
   async function send() {
@@ -486,7 +537,7 @@ export function App() {
                   p={p}
                   state={view.state}
                   busy={busy}
-                  onConfirm={() => withBusy(() => window.api.confirmProposal(p.id))}
+                  onConfirm={() => void confirmPending(p)}
                   onReject={() => withBusy(() => window.api.rejectProposal(p.id))}
                   onAskAbout={() => {
                     focusComposer.current = true;
