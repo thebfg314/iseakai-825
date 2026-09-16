@@ -25,6 +25,7 @@ import {
   musicGain,
   seasonAdvanceSfx,
   seasonKey,
+  sfxDucksMusic,
   sfxGain,
 } from "./sfx";
 
@@ -49,7 +50,7 @@ function viewOf(extra?: (v: GameView) => void): GameView {
 
 describe("sfx asset wiring", () => {
   it("points at the packed cues", () => {
-    expect(BUTTON_CLICK).toMatch(/ui-click\.wav/);
+    expect(BUTTON_CLICK).toMatch(/ui-click\.mp3/);
     expect(PEN_CONFIRM).toMatch(/pen-confirm\.mp3/);
     expect(SEASON_FANFARE).toMatch(/season-fanfare\.wav/);
     expect(HALL_HORN).toMatch(/hall-horn\.mp3/);
@@ -60,7 +61,7 @@ describe("sfx asset wiring", () => {
   it("keeps the packed files on disk", () => {
     const dir = resolve(process.cwd(), "art assets/Sound fx");
     for (const file of [
-      "ui-click.wav",
+      "ui-click.mp3",
       "pen-confirm.mp3",
       "season-fanfare.wav",
       "hall-horn.mp3",
@@ -80,6 +81,15 @@ describe("volume", () => {
     expect(sfxGain(1)).toBeCloseTo(SFX_MASTER_FACTOR);
     expect(sfxGain(0.5)).toBeCloseTo(0.3);
     expect(sfxGain(-1)).toBe(0);
+  });
+
+  it("ducks music only for season fanfare and hall horn", () => {
+    expect(sfxDucksMusic("fanfare")).toBe(true);
+    expect(sfxDucksMusic("horn")).toBe(true);
+    expect(sfxDucksMusic("click")).toBe(false);
+    expect(sfxDucksMusic("pen")).toBe(false);
+    expect(sfxDucksMusic("coins")).toBe(false);
+    expect(sfxDucksMusic("gameOver")).toBe(false);
   });
 });
 
@@ -226,12 +236,17 @@ describe("advance season cues", () => {
   });
 });
 
-describe("packed click wav", () => {
-  it("is a PCM mouse click, not the old laptop pock", () => {
-    const buf = readFileSync(resolve(process.cwd(), "art assets/Sound fx/ui-click.wav"));
-    expect(buf.toString("ascii", 0, 4)).toBe("RIFF");
-    expect(buf.toString("ascii", 8, 12)).toBe("WAVE");
-    const fmt = buf.indexOf(Buffer.from("fmt "));
-    expect(buf.readUInt16LE(fmt + 8)).toBe(1);
+describe("packed click mp3", () => {
+  it("is the user-trimmed MPEG click, not the old WAV or laptop pock", () => {
+    const mp3 = resolve(process.cwd(), "art assets/Sound fx/ui-click.mp3");
+    const wav = resolve(process.cwd(), "art assets/Sound fx/ui-click.wav");
+    expect(existsSync(mp3)).toBe(true);
+    expect(existsSync(wav)).toBe(false);
+    const buf = readFileSync(mp3);
+    const mpeg = buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
+    const id3 = buf.toString("ascii", 0, 3) === "ID3";
+    expect(mpeg || id3).toBe(true);
+    expect(buf.length).toBeGreaterThan(2_000);
+    expect(buf.length).toBeLessThan(30_000);
   });
 });

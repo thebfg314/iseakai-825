@@ -119,7 +119,7 @@ describe("wants-talk tab badge", () => {
 
 describe("sfx pack art", () => {
   it("points at the packed click, pen, fanfare, horn, coins, and game-over cues", () => {
-    expect(BUTTON_CLICK).toMatch(/ui-click\.wav/);
+    expect(BUTTON_CLICK).toMatch(/ui-click\.mp3/);
     expect(PEN_CONFIRM).toMatch(/pen-confirm\.mp3/);
     expect(SEASON_FANFARE).toMatch(/season-fanfare\.wav/);
     expect(HALL_HORN).toMatch(/hall-horn\.mp3/);

@@ -14,6 +14,11 @@ export function sfxGain(masterVolume: number | undefined): number {
   return Math.min(1, Math.max(0, (masterVolume ?? 1) * SFX_MASTER_FACTOR));
 }
 
+/** Season fanfare and hall horn duck the music bed; pen, coins, and click do not. */
+export function sfxDucksMusic(cue: "click" | "pen" | "coins" | "fanfare" | "horn" | "gameOver"): boolean {
+  return cue === "fanfare" || cue === "horn";
+}
+
 export function musicBedFor(screen: "title" | "game", estateAbandoned: boolean): MusicBed {
   if (screen === "title") return "title";
   return estateAbandoned ? "gameOver" : "game";
