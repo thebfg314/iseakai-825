@@ -20,6 +20,7 @@ import {
   npcPortrait,
 } from "./art";
 import { confirmSfx, hallHornDue, musicBedFor, musicGain, seasonAdvanceSfx, seasonKey, sfxGain } from "./sfx";
+import { createSfxPlayer, type SfxPlayer } from "./sfxPlayback";
 import {
   SEASON_IDLE_FRAME_MS,
   SEASON_TIMBER_FRAME,
@@ -129,23 +130,23 @@ export function App() {
   const volumeRef = useRef(musicGain(settings));
   const masterRef = useRef(settings.masterVolume ?? 1);
   const hornSeasonRef = useRef<string | null>(null);
+  const sfxPlayerRef = useRef<SfxPlayer | null>(null);
+  if (sfxPlayerRef.current == null) {
+    sfxPlayerRef.current = createSfxPlayer({ getMusic: () => audioRef.current });
+  }
   volumeRef.current = musicGain(settings);
   masterRef.current = settings.masterVolume ?? 1;
   const musicBed = musicBedFor(screen, Boolean(view?.state.estateAbandoned));
 
-  function playSfx(src: string) {
-    const fx = new Audio(src);
-    fx.volume = sfxGain(masterRef.current);
-    void fx.play().catch(() => {
-      /* one-shot may wait for a gesture */
-    });
+  function playSfx(src: string, duckMusic = false) {
+    sfxPlayerRef.current?.play(src, sfxGain(masterRef.current), { duckMusic });
   }
 
   function considerHallHorn(next: GameView) {
     const key = seasonKey(next.state.meta);
     if (hornSeasonRef.current === key) return;
     hornSeasonRef.current = key;
-    if (hallHornDue(next)) playSfx(HALL_HORN);
+    if (hallHornDue(next)) playSfx(HALL_HORN, true);
   }
 
   useEffect(() => {
@@ -189,7 +190,8 @@ export function App() {
     }
 
     const tryPlay = () => {
-      if (audio.paused) {
+      sfxPlayerRef.current?.unlock();
+      if (audio.paused && !sfxPlayerRef.current?.holdingMusic) {
         void audio.play().catch(() => {
           /* still blocked */
         });
@@ -210,14 +212,12 @@ export function App() {
   }, [settings.masterVolume, settings.musicVolume]);
 
   useEffect(() => {
+    const player = sfxPlayerRef.current;
+    player?.preload([BUTTON_CLICK, PEN_CONFIRM, SEASON_FANFARE, HALL_HORN, COINS]);
     const onClick = (event: MouseEvent) => {
       const button = (event.target as HTMLElement | null)?.closest("button");
       if (!(button instanceof HTMLButtonElement) || button.disabled) return;
-      const fx = new Audio(BUTTON_CLICK);
-      fx.volume = sfxGain(masterRef.current);
-      void fx.play().catch(() => {
-        /* click may be blocked until a gesture */
-      });
+      player?.play(BUTTON_CLICK, sfxGain(masterRef.current));
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
@@ -278,7 +278,7 @@ export function App() {
       const to = landed?.state.meta.season;
       if (to) setSeasonTransitionPlay(beginSeasonTransition(from, to));
       const cues = seasonAdvanceSfx(from, landed);
-      if (cues.fanfare) playSfx(SEASON_FANFARE);
+      if (cues.fanfare) playSfx(SEASON_FANFARE, true);
       if (landed && !landed.state.estateAbandoned) considerHallHorn(landed);
     } finally {
       setLoopingSeason(null);

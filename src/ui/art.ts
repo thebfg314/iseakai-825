@@ -6,7 +6,7 @@ import springOnTheStone from "../../art assets/Music/Spring on the Stone.mp3";
 import sunlitSteelAndLute from "../../art assets/Music/Sunlit Steel and Lute.mp3";
 import harvestsGoldenSong from "../../art assets/Music/The Harvest's Golden Song.mp3";
 import theQuietMarch from "../../art assets/Music/The Quiet March.mp3";
-import buttonClick from "../../art assets/Sound fx/ui-click.wav";
+import buttonClick from "../../art assets/Sound fx/ui-click.mp3";
 import penConfirm from "../../art assets/Sound fx/pen-confirm.mp3";
 import seasonFanfare from "../../art assets/Sound fx/season-fanfare.wav";
 import hallHorn from "../../art assets/Sound fx/hall-horn.mp3";
