@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { npcPortrait, NPC_WANTS_TALK, HAPPINESS_ARROW, HAPPINESS_METER } from "./art";
+import {
+  BUTTON_CLICK,
+  COINS,
+  GAME_OVER_THEME,
+  HALL_HORN,
+  HAPPINESS_ARROW,
+  HAPPINESS_METER,
+  npcPortrait,
+  NPC_WANTS_TALK,
+  PEN_CONFIRM,
+  SEASON_FANFARE,
+} from "./art";
 
 const EXPANSION: { id: string; files: Record<string, string> }[] = [
   {
@@ -103,6 +114,17 @@ describe("merchant portraits", () => {
 describe("wants-talk tab badge", () => {
   it("points at the UI icon", () => {
     expect(NPC_WANTS_TALK).toMatch(/npc-wants-talk\.png/);
+  });
+});
+
+describe("sfx pack art", () => {
+  it("points at the packed click, pen, fanfare, horn, coins, and game-over cues", () => {
+    expect(BUTTON_CLICK).toMatch(/ui-click\.wav/);
+    expect(PEN_CONFIRM).toMatch(/pen-confirm\.mp3/);
+    expect(SEASON_FANFARE).toMatch(/season-fanfare\.wav/);
+    expect(HALL_HORN).toMatch(/hall-horn\.mp3/);
+    expect(COINS).toMatch(/coins\.wav/);
+    expect(GAME_OVER_THEME).toMatch(/game-over\.mp3/);
   });
 });
 
