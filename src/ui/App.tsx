@@ -19,7 +19,18 @@ import {
   TITLE_THEME,
   npcPortrait,
 } from "./art";
-import { confirmSfx, hallHornDue, musicBedFor, musicGain, seasonAdvanceSfx, seasonKey, sfxGain } from "./sfx";
+import {
+  confirmSfx,
+  hallHornDue,
+  musicBedFor,
+  musicGain,
+  seasonAdvanceSfx,
+  seasonFanfareOnAdvancePress,
+  seasonKey,
+  sfxGain,
+  uiClickFromEvent,
+  uiClickOnEnabledButton,
+} from "./sfx";
 import { createSfxPlayer, type SfxPlayer } from "./sfxPlayback";
 import {
   SEASON_IDLE_FRAME_MS,
@@ -131,6 +142,7 @@ export function App() {
   const volumeRef = useRef(musicGain(settings));
   const masterRef = useRef(settings.masterVolume ?? 1);
   const hornSeasonRef = useRef<string | null>(null);
+  const advancingRef = useRef(false);
   const sfxPlayerRef = useRef<SfxPlayer | null>(null);
   if (sfxPlayerRef.current == null) {
     sfxPlayerRef.current = createSfxPlayer({ getMusic: () => audioRef.current });
@@ -215,13 +227,16 @@ export function App() {
   useEffect(() => {
     const player = sfxPlayerRef.current;
     player?.preload([BUTTON_CLICK, PEN_CONFIRM, SEASON_FANFARE, HALL_HORN, COINS]);
-    const onClick = (event: MouseEvent) => {
-      const button = (event.target as HTMLElement | null)?.closest("button");
-      if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+    const onUiClick = (event: Event) => {
+      if (!uiClickOnEnabledButton(event as { type: string; button?: number; detail?: number; target?: HTMLElement | null })) return;
       player?.play(BUTTON_CLICK, sfxGain(masterRef.current));
     };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    document.addEventListener("pointerdown", onUiClick, true);
+    document.addEventListener("click", onUiClick, true);
+    return () => {
+      document.removeEventListener("pointerdown", onUiClick, true);
+      document.removeEventListener("click", onUiClick, true);
+    };
   }, []);
 
   const npc = view?.state.npcs.find((n) => n.id === view.sceneNpcId);
@@ -269,7 +284,9 @@ export function App() {
   }
 
   async function advanceSeason() {
-    if (!view) return;
+    if (!view || advancingRef.current) return;
+    advancingRef.current = true;
+    if (seasonFanfareOnAdvancePress()) playSfx(SEASON_FANFARE, true);
     const from = view.state.meta.season;
     setSeasonTransitionPlay(null);
     setLoopingSeason(from);
@@ -278,12 +295,17 @@ export function App() {
       const landed = result && "state" in result ? result : null;
       const to = landed?.state.meta.season;
       if (to) setSeasonTransitionPlay(beginSeasonTransition(from, to));
-      const cues = seasonAdvanceSfx(from, landed);
-      if (cues.fanfare) playSfx(SEASON_FANFARE, true);
+      seasonAdvanceSfx(from, landed);
       if (landed && !landed.state.estateAbandoned) considerHallHorn(landed);
     } finally {
       setLoopingSeason(null);
+      advancingRef.current = false;
     }
+  }
+
+  function onAdvanceSeasonActivate(event: { type: string; button?: number; detail?: number }) {
+    if (!uiClickFromEvent(event)) return;
+    void advanceSeason();
   }
 
   async function confirmPending(p: PendingProposal) {
@@ -433,7 +455,8 @@ export function App() {
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           <button
             className="primary"
-            onClick={() => void advanceSeason()}
+            onPointerDown={onAdvanceSeasonActivate}
+            onClick={onAdvanceSeasonActivate}
             disabled={busy || Boolean(seasonTransitionPlay)}
             title={view.pending.length ? "Unconfirmed orders will lapse if you advance." : "Resolve the season and write events to the ledger"}
           >

@@ -24,9 +24,12 @@ import {
   musicBedFor,
   musicGain,
   seasonAdvanceSfx,
+  seasonFanfareOnAdvancePress,
   seasonKey,
   sfxDucksMusic,
   sfxGain,
+  uiClickFromEvent,
+  uiClickOnEnabledButton,
 } from "./sfx";
 
 function viewOf(extra?: (v: GameView) => void): GameView {
@@ -200,13 +203,14 @@ describe("hall horn", () => {
 });
 
 describe("advance season cues", () => {
-  it("plays fanfare when the clock actually turns, not on a same-season failure", () => {
+  it("starts fanfare on Advance Season press, not after the clock turns", () => {
+    expect(seasonFanfareOnAdvancePress()).toBe(true);
     const summer = viewOf((v) => {
       for (const npc of v.state.npcs) npc.wantsTalk = false;
       v.state.meta.season = "summer";
     });
     expect(advanceSeasonLanded("spring", summer)).toBe(true);
-    expect(seasonAdvanceSfx("spring", summer)).toEqual({ fanfare: true, horn: false });
+    expect(seasonAdvanceSfx("spring", summer)).toEqual({ fanfare: false, horn: false });
     expect(seasonAdvanceSfx("spring", { ...summer, error: "timeout" })).toEqual({
       fanfare: false,
       horn: false,
@@ -217,12 +221,13 @@ describe("advance season cues", () => {
     expect(seasonAdvanceSfx("spring", null)).toEqual({ fanfare: false, horn: false });
   });
 
-  it("skips fanfare and horn when the empty villa is the result", () => {
+  it("skips horn when the empty villa is the result", () => {
     const over = viewOf((v) => {
       v.state.meta.season = "summer";
       v.state.estateAbandoned = true;
       v.state.npcs[0].wantsTalk = true;
     });
+    expect(seasonFanfareOnAdvancePress()).toBe(true);
     expect(seasonAdvanceSfx("spring", over)).toEqual({ fanfare: false, horn: false });
     expect(musicBedFor("game", true)).toBe("gameOver");
   });
@@ -235,8 +240,28 @@ describe("advance season cues", () => {
       v.state.merchant.present = true;
       v.state.flags.merchant_present = true;
     });
-    expect(seasonAdvanceSfx("spring", landed)).toEqual({ fanfare: true, horn: true });
+    expect(seasonAdvanceSfx("spring", landed)).toEqual({ fanfare: false, horn: true });
     expect(seasonKey(landed.state.meta)).toBe("825:summer");
+  });
+});
+
+describe("ui click press", () => {
+  const enabled = { closest: () => ({ disabled: false }) };
+  const disabled = { closest: () => ({ disabled: true }) };
+  const notButton = { closest: () => null };
+
+  it("fires on primary pointerdown/mousedown, not mouseup or pointer click", () => {
+    expect(uiClickFromEvent({ type: "pointerdown", button: 0 })).toBe(true);
+    expect(uiClickFromEvent({ type: "mousedown", button: 0 })).toBe(true);
+    expect(uiClickFromEvent({ type: "pointerdown", button: 2 })).toBe(false);
+    expect(uiClickFromEvent({ type: "mouseup", button: 0 })).toBe(false);
+    expect(uiClickFromEvent({ type: "click", button: 0, detail: 1 })).toBe(false);
+    expect(uiClickFromEvent({ type: "click", detail: 0 })).toBe(true);
+    expect(uiClickOnEnabledButton({ type: "pointerdown", button: 0, target: enabled })).toBe(true);
+    expect(uiClickOnEnabledButton({ type: "click", detail: 1, target: enabled })).toBe(false);
+    expect(uiClickOnEnabledButton({ type: "pointerdown", button: 0, target: disabled })).toBe(false);
+    expect(uiClickOnEnabledButton({ type: "pointerdown", button: 0, target: notButton })).toBe(false);
+    expect(uiClickOnEnabledButton({ type: "click", detail: 0, target: enabled })).toBe(true);
   });
 });
 

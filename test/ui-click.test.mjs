@@ -23,6 +23,9 @@ test("BUTTON_CLICK is the trimmed MPEG click, not the old WAV or laptop pock", (
   assert.doesNotMatch(app, /new Audio\(BUTTON_CLICK\)/);
   assert.match(app, /createSfxPlayer/);
   assert.match(app, /player\?\.play\(BUTTON_CLICK/);
+  assert.match(app, /uiClickOnEnabledButton/);
+  assert.match(app, /document\.addEventListener\("pointerdown"/);
+  assert.match(app, /document\.addEventListener\("click"/);
   assert.match(playback, /currentTime = 0/);
   assert.match(playback, /createBufferSource/);
 
@@ -50,6 +53,7 @@ test("App preloads one-shots and ducks music only for fanfare and horn", () => {
   }
   assert.match(app, /confirmSfx/);
   assert.match(app, /seasonAdvanceSfx/);
+  assert.match(app, /seasonFanfareOnAdvancePress/);
   assert.match(app, /hallHornDue/);
   assert.match(app, /musicBedFor/);
   assert.match(app, /GAME_OVER_THEME/);
@@ -58,5 +62,10 @@ test("App preloads one-shots and ducks music only for fanfare and horn", () => {
   assert.match(app, /playSfx\(PEN_CONFIRM\)/);
   assert.match(app, /playSfx\(COINS\)/);
   assert.match(app, /holdingMusic/);
+  assert.match(app, /onPointerDown=\{onAdvanceSeasonActivate\}/);
+  const advance = app.slice(app.indexOf("async function advanceSeason()"), app.indexOf("async function confirmPending"));
+  const fanfareAt = advance.indexOf("playSfx(SEASON_FANFARE, true)");
+  const processAt = advance.indexOf("window.api.advanceSeason()");
+  assert.ok(fanfareAt >= 0 && processAt >= 0 && fanfareAt < processAt, "fanfare before season processing");
   assert.doesNotMatch(app, /onConfirm=\{\(\) => withBusy\(\(\) => window\.api\.confirmProposal/);
 });
