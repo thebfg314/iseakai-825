@@ -303,7 +303,9 @@ export function quoteMerchantBasket(state: WorldState, basket: MerchantShopBaske
   const playerReceives = round1(Math.max(0, net));
   const partial = { buyLines, sellLines, buyCost, sellProceeds, net, playerPays, playerReceives };
 
-  if (!buyLines.length && !sellLines.length) return failQuote("Nothing is chosen.", partial);
+  if (!buyLines.length && !sellLines.length) {
+    return { ...partial, canConfirm: false };
+  }
   if (playerPays > state.resources.denarii + 0.001) {
     return failQuote(`Need ${playerPays} denarii; have ${state.resources.denarii}.`, partial);
   }

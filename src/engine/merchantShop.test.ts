@@ -100,6 +100,13 @@ describe("merchant shop pricing", () => {
 });
 
 describe("merchant shop confirm", () => {
+  it("does not treat an empty basket as an error line", () => {
+    const state = present();
+    const quote = quoteMerchantBasket(state, emptyMerchantBasket());
+    expect(quote.canConfirm).toBe(false);
+    expect(quote.reason).toBeUndefined();
+  });
+
   it("writes stock and denarii on Confirm", () => {
     const state = present();
     state.resources.denarii = 96;
