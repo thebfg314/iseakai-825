@@ -19,6 +19,35 @@ export function sfxDucksMusic(cue: "click" | "pen" | "coins" | "fanfare" | "horn
   return cue === "fanfare" || cue === "horn";
 }
 
+export type UiClickEvent = {
+  type: string;
+  button?: number;
+  detail?: number;
+  target?: { closest?: (selector: string) => { disabled?: boolean } | null } | null;
+};
+
+/**
+ * UI click cue on primary press (`pointerdown` / `mousedown`), not mouseup/`click`.
+ * Keyboard activation still gets a quiet click: a synthesized `click` with `detail === 0`.
+ * Pointer-generated clicks have `detail >= 1`, so wiring both press and click does not double-fire.
+ */
+export function uiClickFromEvent(event: UiClickEvent): boolean {
+  if (event.type === "pointerdown" || event.type === "mousedown") return (event.button ?? 0) === 0;
+  if (event.type === "click") return (event.detail ?? 0) === 0;
+  return false;
+}
+
+export function uiClickOnEnabledButton(event: UiClickEvent): boolean {
+  if (!uiClickFromEvent(event)) return false;
+  const button = event.target?.closest?.("button");
+  return Boolean(button) && button?.disabled !== true;
+}
+
+/** Fanfare starts on Advance Season press; the clock can turn after. */
+export function seasonFanfareOnAdvancePress(): boolean {
+  return true;
+}
+
 export function musicBedFor(screen: "title" | "game", estateAbandoned: boolean): MusicBed {
   if (screen === "title") return "title";
   return estateAbandoned ? "gameOver" : "game";
@@ -93,7 +122,7 @@ export function seasonAdvanceSfx(fromSeason: string | undefined, result: Advance
     pending: result.pending ?? [],
     state: result.state,
   };
-  return { fanfare: true, horn: hallHornDue(hornView) };
+  return { fanfare: false, horn: hallHornDue(hornView) };
 }
 
 export function enterGameHorn(view: Pick<GameView, "merchantAvailable" | "pending" | "state">): boolean {
