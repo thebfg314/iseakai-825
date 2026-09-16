@@ -2,6 +2,7 @@ import type { Season, WorldState } from "./schema";
 import { memoriesForMerchantName, persistMerchantVisitorMemories } from "./memory";
 import { clamp, round1 } from "./util";
 import { resourceName } from "../ui/ledgerCopy";
+import { beginMerchantVisitShop, persistMerchantPurseOnLeave } from "./merchantShop";
 
 export const MERCHANT_BASE_RANGE: Record<Season, { lo: number; hi: number }> = {
   spring: { lo: 0.25, hi: 0.3 },
@@ -169,13 +170,16 @@ export function rollMerchantVisit(
 }
 
 export function generateMerchantStock(): { resource: string; amount: number }[] {
-  const count = 4 + Math.floor(Math.random() * 4);
+  const count = 3 + Math.floor(Math.random() * 3);
   const pool = [...PEDDLER_WARES];
   const stock: { resource: string; amount: number }[] = [];
   for (let i = 0; i < count && pool.length; i++) {
     const idx = Math.floor(Math.random() * pool.length);
     const resource = pool.splice(idx, 1)[0];
-    const amount = resource === "wine" || resource === "tin" || resource === "copper" ? 1 + Math.floor(Math.random() * 4) : 3 + Math.floor(Math.random() * 10);
+    const amount =
+      resource === "wine" || resource === "tin" || resource === "copper"
+        ? 1 + Math.floor(Math.random() * 3)
+        : 2 + Math.floor(Math.random() * 6);
     stock.push({ resource, amount });
   }
   return stock;
@@ -187,7 +191,10 @@ export function applyMerchantRoll(
 ): string {
   state.merchant.last_chance = round1(result.chance * 100) / 100;
   const leaving = state.npcs.find((n) => n.id === "merchant");
-  if (leaving?.name) persistMerchantVisitorMemories(state, leaving.name, leaving.memories ?? []);
+  if (leaving?.name) {
+    persistMerchantVisitorMemories(state, leaving.name, leaving.memories ?? []);
+    persistMerchantPurseOnLeave(state, leaving.name);
+  }
   if (leaving?.name && leaving.introSpoken) {
     state.merchant_intro_spoken ??= {};
     state.merchant_intro_spoken[leaving.name] = true;
@@ -199,6 +206,13 @@ export function applyMerchantRoll(
     state.merchant.name = undefined;
     state.merchant.face = undefined;
     state.merchant.stock = [];
+    state.merchant.purse = undefined;
+    state.merchant.purseStart = undefined;
+    state.merchant.demand = undefined;
+    state.merchant.buyback = [];
+    state.merchant.boughtVolume = {};
+    state.merchant.soldVolume = {};
+    state.merchant.purseDrained = undefined;
     return "No merchant came with the new season.";
   }
   const idx = Math.floor(Math.random() * MERCHANT_VISITORS.length);
@@ -210,6 +224,7 @@ export function applyMerchantRoll(
   state.merchant.name = name;
   state.merchant.face = face;
   state.merchant.stock = generateMerchantStock();
+  beginMerchantVisitShop(state, name);
   state.npcs.push({
     id: "merchant",
     name,

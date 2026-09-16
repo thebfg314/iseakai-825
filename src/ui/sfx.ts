@@ -29,6 +29,7 @@ export function seasonKey(meta: { year: number; season: string }): string {
 }
 
 export function isMerchantBuySell(proposal: { type: string; direction?: string } | undefined): boolean {
+  if (proposal?.type === "merchant_shop") return true;
   return proposal?.type === "transfer_resources" && (proposal.direction === "buy" || proposal.direction === "sell");
 }
 

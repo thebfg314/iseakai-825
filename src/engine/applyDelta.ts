@@ -9,6 +9,7 @@ import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEY
 import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRemaining, resolveActiveProject } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
+import { applyMerchantTransferLine } from "./merchantShop";
 import { consumeGrain, grainOnHand } from "./grain";
 import { applyMoodModifierToHappiness, applyPeopleHappinessDelta, HAPPINESS_ALMS, looksLikeAlms } from "./peopleHappiness";
 import { applySettleHouseholds } from "./peopleMovement";
@@ -86,14 +87,6 @@ function setAmount(state: WorldState, resource: string, amount: number): boolean
   if (!custom) return false;
   custom.amount = v;
   return true;
-}
-
-function midpointPrice(state: WorldState, resource: string): number {
-  const range = state.market[resource];
-  if (range) return (range.min + range.max) / 2;
-  const custom = state.custom_resources.find((c) => c.id === resource);
-  if (custom) return (custom.priceMin + custom.priceMax) / 2;
-  return 0;
 }
 
 function hasForge(state: WorldState): boolean {
@@ -469,32 +462,18 @@ function transferResources(
   const current = getAmount(state, p.resource);
   if (current === null) return fail(state, `Unknown resource '${p.resource}'. Register it first.`, p.summary);
   const amount = Math.abs(p.amount);
-  const price = p.pricePerUnit ?? midpointPrice(state, p.resource);
-  if (p.direction === "buy") {
+  if (p.direction === "buy" || p.direction === "sell") {
     if (!state.flags.merchant_present || !state.merchant.present) {
       return fail(state, "No merchant is in the district this season.", p.summary);
     }
-    const stall = state.merchant.stock.find((s) => s.resource === p.resource);
-    if (!stall || stall.amount < amount) {
-      return fail(state, `The merchant has no ${amountPhrase(p.resource, amount)} on the carts.`, p.summary);
-    }
-    const cost = amount * price;
-    if (state.resources.denarii < cost) return fail(state, `Need ${round1(cost)} denarii; have ${state.resources.denarii}.`, p.summary);
-    state.resources.denarii -= cost;
-    stall.amount = round1(stall.amount - amount);
-    if (stall.amount <= 0) state.merchant.stock = state.merchant.stock.filter((s) => s.resource !== p.resource);
-    setAmount(state, p.resource, current + amount);
-    return ok(state, `Bought ${amountPhrase(p.resource, amount)} from ${state.merchant.name ?? "the merchant"} for ${round1(cost)} denarii.`);
-  }
-  if (p.direction === "sell") {
-    if (!state.flags.merchant_present || !state.merchant.present) {
-      return fail(state, "No merchant is in the district this season.", p.summary);
-    }
-    if (p.resource === "denarii") return fail(state, "Cannot sell coin.", p.summary);
-    if (current < amount) return fail(state, `Cannot sell ${amountPhrase(p.resource, amount)}; have ${current}.`, p.summary);
-    setAmount(state, p.resource, current - amount);
-    state.resources.denarii += amount * price;
-    return ok(state, `Sold ${amountPhrase(p.resource, amount)} to ${state.merchant.name ?? "the merchant"} for ${round1(amount * price)} denarii.`);
+    const direction = p.direction;
+    return applyMerchantTransferLine(state, {
+      resource: p.resource,
+      amount: p.amount,
+      direction,
+      pricePerUnit: p.pricePerUnit,
+      summary: p.summary,
+    });
   }
   if (p.direction === "consume") {
     if (current < amount) return fail(state, `Cannot consume ${amountPhrase(p.resource, amount)}; have ${current}.`, p.summary);

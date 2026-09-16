@@ -58,6 +58,7 @@ import {
 } from "./ledgerCopy";
 import { GlossaryProvider, GlossaryText } from "./GlossaryText";
 import { EmptyVillaScreen } from "./emptyVilla";
+import { ShopPanel } from "./ShopPanel";
 
 type Screen = "title" | "game";
 
@@ -292,6 +293,17 @@ export function App() {
     if (cues.coins) playSfx(COINS);
   }
 
+  async function confirmShop(basket: {
+    buyStall: Record<string, number>;
+    buyBack: Record<string, number>;
+    sell: Record<string, number>;
+  }) {
+    const result = await withBusy(() => window.api.confirmMerchantShop(basket));
+    const cues = confirmSfx({ type: "merchant_shop" }, result && "state" in result ? result : null);
+    if (cues.pen) playSfx(PEN_CONFIRM);
+    if (cues.coins) playSfx(COINS);
+  }
+
   async function send() {
     if (!view || !draft.trim() || busy || sendLock.current) return;
     const text = draft.trim();
@@ -514,8 +526,29 @@ export function App() {
                 <img src={portraitSrc} alt={npc?.name ?? "Speaker"} />
               </aside>
             )}
-            <div className="log" ref={scroller}>
-              {view.messages.length === 0 ? (
+            <div className={view.sceneNpcId === "merchant" && view.merchantAvailable ? "merchant-scene" : "log"} ref={view.sceneNpcId === "merchant" && view.merchantAvailable ? undefined : scroller}>
+              {view.sceneNpcId === "merchant" && view.merchantAvailable ? (
+                <>
+                  <ShopPanel
+                    key={`${view.state.merchant.name ?? "merchant"}:${view.state.meta.turn}:${view.state.resources.denarii}:${view.state.merchant.purse ?? 0}:${view.state.merchant.stock.map((s) => `${s.resource}:${s.amount}`).join(",")}`}
+                    view={view}
+                    busy={busy}
+                    onConfirm={(basket) => void confirmShop(basket)}
+                    onSpeak={() => {
+                      focusComposer.current = true;
+                      document.getElementById("talk-composer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      composerRef.current?.focus();
+                    }}
+                  />
+                  <div className="log shop-log" ref={scroller}>
+                    {view.messages.length === 0 ? (
+                      <p className="muted empty-log">Gossip of the roads, if you want it.</p>
+                    ) : (
+                      view.messages.map((m) => <MessageBubble key={m.id} m={m} />)
+                    )}
+                  </div>
+                </>
+              ) : view.messages.length === 0 ? (
                 <p className="muted empty-log">
                   {view.sceneNpcId === "merchant" && !view.merchantAvailable ? "No one here." : "No words yet."}
                 </p>
@@ -999,7 +1032,7 @@ function composerPlaceholder(view: GameView): string {
         : "Name a scarce thing; Gerulf will quote the purse and the time…";
     }
     case "merchant":
-      return `Haggle with ${view.state.merchant.name ?? "the merchant"} over the carts…`;
+      return `Speak with ${view.state.merchant.name ?? "the merchant"} of the roads…`;
     case "quarry_master":
       return "Speak with Colman of the stone…";
     case "carpenter":

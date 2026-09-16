@@ -386,12 +386,32 @@ export const WorldStateSchema = z.object({
       face: z.number().int().min(1).max(8).optional(),
       last_chance: z.number().optional(),
       stock: z.array(z.object({ resource: z.string(), amount: z.number() })).default([]),
+      /** Remaining denarii this visitor will pay for estate goods this visit. */
+      purse: z.number().nonnegative().optional(),
+      purseStart: z.number().nonnegative().optional(),
+      /** 0–1 demand that visit; stretches bulk step sizes inside category ranges. */
+      demand: z.number().min(0).max(1).optional(),
+      /** Goods the player sold them this visit, kept at the exact sale price for buyback. */
+      buyback: z
+        .array(
+          z.object({
+            resource: z.string(),
+            amount: z.number(),
+            pricePerUnit: z.number(),
+          }),
+        )
+        .default([]),
+      boughtVolume: z.record(z.string(), z.number()).default({}),
+      soldVolume: z.record(z.string(), z.number()).default({}),
+      purseDrained: z.boolean().optional(),
     })
     .default({ present: false, stock: [] }),
   /** Visiting merchants leave npcs[]; bargains persist here by visitor name (Isaac, Gero, …). */
   merchant_memories: z.record(z.string(), z.array(NpcMemorySchema)).default({}),
   /** First-meeting intro already shown, by visitor name, so Isaac does not re-introduce on a later visit. */
   merchant_intro_spoken: z.record(z.string(), z.boolean()).default({}),
+  /** Extra buying power on the next visit, keyed by visitor name, after a drained purse. */
+  merchant_purse_bonus: z.record(z.string(), z.number()).default({}),
   agriculture: z
     .object({
       springBarleyShare: z.number().min(0).max(1).default(0.6),

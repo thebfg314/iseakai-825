@@ -139,6 +139,12 @@ ipcMain.handle("game:rejectProposal", (_e, id: string) => requireGame().rejectPr
 
 ipcMain.handle("game:askAboutProposal", (_e, id: string) => requireGame().askAboutProposal(id));
 
+ipcMain.handle("game:confirmMerchantShop", (_e, basket: {
+  buyStall: Record<string, number>;
+  buyBack: Record<string, number>;
+  sell: Record<string, number>;
+}) => requireGame().confirmMerchantShop(basket));
+
 ipcMain.handle("game:advanceSeason", async () => requireGame().advanceSeason());
 
 ipcMain.handle("settings:get", () => loadSettings());

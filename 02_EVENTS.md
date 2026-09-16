@@ -304,4 +304,4 @@ Not a weather or “other category” event. The engine rolls this on its own ea
 - Starting Fontenay has no river/road/landing/reputation bonuses and is not flagged remote.
 - A mill-capable stream is not a merchant river. Improved pack-paths are the `improve_road` project (`improved_road` feature, +10% access).
 
-On arrival the merchant has a limited stall; the player may buy those wares and sell estate stores for coin until the next season.
+On arrival the merchant has a limited stall. The player buys and sells at the stall window (spread prices, bulk steps, buyback at the sale price, purse of about 1000 denarii) until the next season.

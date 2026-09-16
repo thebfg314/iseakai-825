@@ -1,6 +1,7 @@
 import type { EstateSeasonSnapshot, WorldState } from "./schema";
 import { labourPool, labourRemaining } from "./labour";
 import { clamp, deepClone } from "./util";
+import { merchantCartsForBooks } from "./merchantShop";
 
 export const ESTATE_HISTORY_LIMIT = 32;
 
@@ -26,7 +27,7 @@ export function captureEstateSeason(state: WorldState): EstateSeasonSnapshot {
     merchant: {
       present: state.merchant.present,
       name: state.merchant.name,
-      stock: deepClone(state.merchant.stock ?? []),
+      stock: merchantCartsForBooks(state.merchant),
     },
     market: deepClone(state.market),
     npcs: state.npcs.filter((n) => n.id !== "merchant").map((n) => ({ name: n.name, role: n.role })),

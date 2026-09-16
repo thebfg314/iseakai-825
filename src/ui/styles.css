@@ -62,6 +62,81 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
 }
 
 .talk { display: flex; min-height: 0; flex: 1; }
+.merchant-scene {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.shop-panel {
+  flex: 1.15 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.7rem 0.85rem 0.55rem;
+  border-bottom: 1px solid var(--accent);
+  background: #241c14;
+}
+.shop-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: baseline;
+  margin-bottom: 0.45rem;
+}
+.shop-panel h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--parchment);
+  letter-spacing: 0.04em;
+}
+.shop-purse { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.shop-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.1fr 0.9fr;
+  gap: 0.65rem;
+  min-height: 0;
+}
+.shop-col {
+  border: 1px solid var(--line);
+  background: #1c1812;
+  padding: 0.5rem 0.55rem 0.65rem;
+  min-height: 0;
+}
+.shop-col h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.shop-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  align-items: center;
+  border-bottom: 1px dotted #2e291f;
+  padding: 0.28rem 0;
+}
+.shop-row-copy { min-width: 0; flex: 1; }
+.shop-good { font-size: 0.9rem; color: var(--parchment); }
+.shop-meta { font-size: 0.75rem; color: var(--muted); }
+.shop-qty { display: flex; gap: 0.2rem; align-items: center; flex-shrink: 0; }
+.shop-qty button { padding: 0.15rem 0.45rem; }
+.shop-qty input {
+  width: 3.1rem;
+  font: inherit;
+  text-align: center;
+  background: #15130f;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.15rem 0.2rem;
+}
+.shop-net { margin: 0 0 0.4rem; color: var(--parchment); font-weight: 600; }
+.shop-tally-line { margin: 0 0 0.25rem; font-size: 0.82rem; color: var(--muted); }
+.shop-reason { color: #d98973; font-size: 0.85rem; margin: 0.35rem 0; }
+.shop-speak-hint { margin: 0.55rem 0 0; font-size: 0.8rem; }
+.shop-log { flex: 0.55 1 auto; max-height: 28vh; min-height: 6rem; }
 .portrait {
   width: clamp(300px, min(34vw, calc((100vh - 13rem) * 0.67)), 580px);
   flex-shrink: 0;
@@ -475,4 +550,5 @@ button.glossary-term:focus-visible {
   .layout { grid-template-columns: 1fr; }
   .dialogue { border-right: 0; min-height: 55vh; }
   .portrait { width: min(220px, 42vw); }
+  .shop-grid { grid-template-columns: 1fr; }
 }
