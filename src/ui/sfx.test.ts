@@ -126,6 +126,10 @@ describe("confirm cues", () => {
       pen: true,
       coins: false,
     });
+    expect(confirmSfx({ type: "merchant_shop" }, ok)).toEqual({
+      pen: true,
+      coins: true,
+    });
   });
 });
 

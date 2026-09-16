@@ -130,9 +130,9 @@ Each season the engine rolls:
    | Good reputation / known surplus | +5–10% (engine uses +8%) | Off. |
    | Remote **or** troubled (`active_threat`) | −10–15% (one: −12%; both: −15%) | Off. |
 
-   Chance is clamped to 2–90%. On success, `flags.merchant_present` and `merchant.present` are set, an NPC id `merchant` is added, and `merchant.stock` is filled with a handful of peddler wares. The merchant leaves on the next season unless the roll succeeds again.
+   Chance is clamped to 2–90%. On success, `flags.merchant_present` and `merchant.present` are set, an NPC id `merchant` is added, and `merchant.stock` is filled with a thin pack of peddler wares. The visitor also receives a purse of about 1000 denarii buying power (plus any stored bonus for that name, soft-capped near 2000). The merchant leaves on the next season unless the roll succeeds again.
 
-   **Trade:** `transfer_resources` **buy** and **sell** require a merchant this season. **Buy** may only take from `merchant.stock` (stock is reduced). **Sell** converts estate goods to denarii at market mid-price (or `pricePerUnit`). `consume` / `gain` never need a merchant.
+   **Trade:** Buys and sells go through the stall window (not LLM JSON). Confirm writes `resources` and merchant stock. Buy price sits above market mid; sell below, except goods sold this visit which may be bought back at the exact sale price. Large amounts step into worse bands after a demand-sized step. If the player drains that named visitor's purse, they gain +200 buying power on their next appearance. The player cannot Confirm a basket they cannot pay. `transfer_resources` **buy** and **sell** still require a merchant this season and follow the same stock, purse, and spread rules. `consume` / `gain` never need a merchant.
 
 Pick uniformly inside the chosen category’s polarity: 50% negative, 30% positive, 20% mixed (if that polarity has entries). Then pick uniformly among those entries.
 

@@ -10,6 +10,11 @@ const api = {
   confirmProposal: (id: string) => ipcRenderer.invoke("game:confirmProposal", id),
   rejectProposal: (id: string) => ipcRenderer.invoke("game:rejectProposal", id),
   askAboutProposal: (id: string) => ipcRenderer.invoke("game:askAboutProposal", id),
+  confirmMerchantShop: (basket: {
+    buyStall: Record<string, number>;
+    buyBack: Record<string, number>;
+    sell: Record<string, number>;
+  }) => ipcRenderer.invoke("game:confirmMerchantShop", basket),
   advanceSeason: () => ipcRenderer.invoke("game:advanceSeason"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (patch: {

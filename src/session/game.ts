@@ -3,6 +3,13 @@ import type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
 import { applyMerchantRoll, rollMerchantVisit, syncTradeFromFeatures } from "../engine/merchant";
+import {
+  applyMerchantBasket,
+  ensureMerchantVisitShop,
+  type MerchantShopBasket,
+  shopLogLine,
+  quoteMerchantBasket,
+} from "../engine/merchantShop";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
 import { tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
 import { ARRIVAL_REFUSE_LINE, ABANDONED_GAME_OVER, estateIsAbandoned, markEstateAbandoned, resolvePeopleMovement } from "../engine/peopleMovement";
@@ -133,6 +140,7 @@ export class GameController {
     if (this.sceneNpcId === "merchant" && !this.merchantAvailable()) {
       this.sceneNpcId = "steward";
     }
+    if (this.merchantAvailable()) ensureMerchantVisitShop(this.state);
     this.persist();
     return {
       state: this.state,
@@ -621,6 +629,41 @@ export class GameController {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);
     }
     return error ? { ...this.view(), error } : this.view();
+  }
+
+  confirmMerchantShop(basket: MerchantShopBasket): GameView & { error?: string } {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), error: ABANDONED_GAME_OVER };
+    }
+    if (!this.merchantAvailable()) {
+      return { ...this.view(), error: playerFacingReason("The merchant has already left the district.") };
+    }
+    ensureMerchantVisitShop(this.state);
+    const quote = quoteMerchantBasket(this.state, basket);
+    if (!quote.canConfirm) {
+      return { ...this.view(), error: playerFacingReason(quote.reason ?? "The stall cannot be settled.") };
+    }
+    const result = applyMerchantBasket(this.state, basket);
+    this.state = result.state;
+    const logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
+    this.log("merchant", result.ok ? "APPLY" : "REJECT", logLine);
+    this.ledgerNote(
+      result.ok
+        ? playerFacingLogLine(logLine)
+        : `It cannot be made so. ${playerFacingReason(result.reason ?? logLine)}`,
+      "merchant",
+    );
+    if (result.ok) {
+      recordConfirmedTransaction(this.state, "merchant", {
+        type: "transfer_resources",
+        summary: shopLogLine(this.state, quote),
+        resource: quote.buyLines[0]?.resource ?? quote.sellLines[0]?.resource ?? "denarii",
+        amount: quote.buyLines[0]?.amount ?? quote.sellLines[0]?.amount ?? 0,
+        direction: quote.sellProceeds >= quote.buyCost ? "sell" : "buy",
+      }, logLine);
+    }
+    return result.ok ? this.view() : { ...this.view(), error: playerFacingReason(result.reason ?? logLine) };
   }
 
   private applyOnePending(item: PendingProposal): { error?: string } {

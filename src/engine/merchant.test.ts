@@ -34,6 +34,7 @@ describe("merchant visitor face", () => {
       expect(state.merchant.present).toBe(true);
       expect(state.merchant.name).toBe(name);
       expect(state.merchant.face).toBe(face);
+      expect(state.merchant.purse).toBe(1000);
       const npc = state.npcs.find((n) => n.id === "merchant");
       expect(npc?.name).toBe(name);
       expect(npc?.notes).toBe(notes);

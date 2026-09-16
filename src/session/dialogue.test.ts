@@ -305,6 +305,33 @@ describe("npc transaction memories", () => {
     expect(saved.merchant_memories.Isaac[0].summary).toMatch(/salt/i);
     expect(saved.npcs.find((n: { id: string }) => n.id === "smith").memories ?? []).toEqual([]);
   });
+
+  it("confirms the stall basket without LLM JSON and writes stock, denarii, and Isaac's memory", () => {
+    const game = tempGame();
+    game.state.flags.merchant_present = true;
+    game.state.merchant.present = true;
+    game.state.merchant.name = "Isaac";
+    game.state.merchant.stock = [{ resource: "salt", amount: 8 }];
+    game.state.npcs.push({
+      id: "merchant",
+      name: "Isaac",
+      role: "merchant",
+      location: "fontenay",
+      memories: [],
+      wantsTalk: true,
+    });
+    game.state.resources.denarii = 200;
+    const saltBefore = game.state.resources.salt;
+    const result = game.confirmMerchantShop({ buyStall: { salt: 3 }, buyBack: {}, sell: {} });
+    expect(result.error).toBeUndefined();
+    expect(game.state.resources.salt).toBe(saltBefore + 3);
+    expect(game.state.merchant.stock.find((s) => s.resource === "salt")?.amount).toBe(5);
+    expect(game.state.resources.denarii).toBeLessThan(200);
+    expect(game.state.merchant_memories.Isaac?.length).toBeGreaterThan(0);
+    const saved = worldFile(game);
+    expect(saved.resources.salt).toBe(game.state.resources.salt);
+    expect(saved.merchant.stock.find((s: { resource: string }) => s.resource === "salt").amount).toBe(5);
+  });
 });
 
 describe("hire specialists via Aldric Confirm", () => {

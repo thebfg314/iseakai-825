@@ -1,4 +1,5 @@
 import { huntProgressLine } from "../engine/hunts";
+import { merchantCartsForBooks } from "../engine/merchantShop";
 import { clampEstateOffset, estatePagerFlags, snapshotAtOffset, stepEstateOffset } from "../engine/estateBooks";
 import { seasonsBetween } from "../engine/projectProgress";
 import type { EstateSeasonSnapshot, GameModifier, Project, Season, StandingOrder, WorldState } from "../engine/schema";
@@ -81,7 +82,7 @@ export function estateSourceFromLive(view: GameView): EstateLedgerSource {
     },
     last_season_deltas: s.last_season_deltas ?? {},
     flags: { merchant_present: s.flags.merchant_present, hunger: s.flags.hunger },
-    merchant: { present: s.merchant.present, name: s.merchant.name, stock: s.merchant.stock ?? [] },
+    merchant: { present: s.merchant.present, name: s.merchant.name, stock: merchantCartsForBooks(s.merchant) },
     market: s.market,
     npcs: s.npcs.filter((n) => n.id !== "merchant").map((n) => ({ name: n.name, role: n.role })),
     known_techniques: s.known_techniques.map((t) => ({ id: t.id, name: t.name })),
