@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { looksLikeMechanicalOrder } from "./orderIntent";
+import { looksLikeMechanicalOrder, inferOrderProposals } from "./orderIntent";
+import { WorldStateSchema } from "./schema";
+import startingEstate from "../../data/starting-estate.json";
 
 const THREE_FIELD_ORDER =
   "ok. Id like us to split our farming fields into a three-field rotation, rest one year under legumes (peas), put manure on the tired acres, and keep the best seed-selection back for sowing.";
@@ -7,6 +9,17 @@ const THREE_FIELD_ORDER =
 describe("looksLikeMechanicalOrder", () => {
   it("treats the three-field / legumes / manure / seed-selection paragraph as an order", () => {
     expect(looksLikeMechanicalOrder(THREE_FIELD_ORDER)).toBe(true);
+  });
+
+  it("drafts a deferred three-field sowing for that paragraph", () => {
+    const state = WorldStateSchema.parse(structuredClone(startingEstate));
+    const inferred = inferOrderProposals(state, "steward", THREE_FIELD_ORDER);
+    expect(inferred).toHaveLength(1);
+    expect(inferred[0]).toMatchObject({
+      type: "defer_proposal",
+      beat: "after_harvest",
+      proposal: { type: "adjust_sowing", rotation: "three_field" },
+    });
   });
 
   it("does not treat a lands report question as an order", () => {

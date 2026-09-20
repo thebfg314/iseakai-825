@@ -46,6 +46,14 @@ export function isRevisionOf(asked: MechanicalProposal, next: MechanicalProposal
       return next.type === "register_npc" && (asked.npc.id === next.npc.id || sameName(asked.npc.name, next.npc.name));
     case "adjust_sowing":
       return next.type === "adjust_sowing" && (!asked.holdingId || !next.holdingId || asked.holdingId === next.holdingId);
+    case "defer_proposal":
+      return (
+        next.type === "defer_proposal" &&
+        asked.proposal.type === next.proposal.type &&
+        (asked.beat === next.beat ||
+          asked.seasonsRemaining === next.seasonsRemaining ||
+          asked.proposal.type === "adjust_sowing")
+      );
     case "transfer_resources":
       return next.type === "transfer_resources" && asked.resource === next.resource && asked.direction === next.direction;
     case "add_modifier":
@@ -88,6 +96,8 @@ export function askAboutCue(npcName: string, proposal: MechanicalProposal): stri
       return `The lord would speak of the change to the work ${who} just proposed.`;
     case "adjust_sowing":
       return `The lord would speak of the sowing ${who} just proposed.`;
+    case "defer_proposal":
+      return `The lord would speak of the forthcoming order ${who} just proposed.`;
     case "transfer_resources":
       return `The lord would speak of the stores ${who} just proposed to move.`;
     case "assign_labour":
@@ -124,6 +134,8 @@ export function compactOfferLine(proposal: MechanicalProposal): string {
       return `hire ${proposal.npc.name} (${proposal.npc.role}): ${proposal.summary}`;
     case "adjust_sowing":
       return `adjust_sowing: ${proposal.summary}`;
+    case "defer_proposal":
+      return `defer_proposal ${proposal.beat ?? `in ${proposal.seasonsRemaining ?? proposal.applyAfterSeasons ?? "?"} seasons`}: ${proposal.summary} — inner ${compactOfferLine(proposal.proposal)}`;
     case "transfer_resources":
       return `transfer_resources ${proposal.direction} ${proposal.amount} ${proposal.resource}: ${proposal.summary}`;
     case "add_modifier":

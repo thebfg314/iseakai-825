@@ -57,7 +57,9 @@ import {
 } from "../llm/providerErrors";
 import { introAlreadySpoken, introSpeechFor, markIntroSpoken } from "../engine/intros";
 import { recordConfirmedTransaction } from "../engine/memory";
-import { cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
+import { augmentOrderProposals, cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
+import { cancelForthcomingOrder as cancelStoredForthcoming } from "../engine/forthcoming";
+import { fieldRotation, sownCapacity } from "../engine/agriculture";
 import {
   ensureGerulfInHousehold,
   isNegotiatorId,
@@ -116,7 +118,7 @@ export class GameController {
     if (opts?.resetUsage) this.meter.reset();
     else this.loadUsage();
     if (!this.state.agriculture) {
-      this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
+      this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45, rotation: "two_field" };
     }
     ensureGerulfInHousehold(this.state);
     if (estateIsAbandoned(this.state)) {
@@ -381,7 +383,7 @@ export class GameController {
           requireProposals: true,
           allowRepair: true,
           repairHint:
-            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, transfer_resources, add_modifier, set_standing_order, register_npc, or start_hunt) with real numbers.",
+            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, or start_hunt) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
         });
 
         const missing = missingCitedDrawers(books.proposals, fetched);
@@ -504,6 +506,7 @@ export class GameController {
       proposals = proposals.filter((p) => p.type === "start_hunt").map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
     }
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
+    proposals = augmentOrderProposals(this.state, npcId, playerText, proposals);
     let fromEngine = false;
     if (!proposals.length) {
       const inferred = inferOrderProposals(this.state, npcId, playerText);
@@ -543,7 +546,7 @@ export class GameController {
       this.ledgerNote(
         why
           ? `No change was set down. ${why}`
-          : "They answered in speech only. The books are unchanged. Give a clear order — sow, begin a work, give stores, call hands, a blessing, or hire a craftsman — or advance the season.",
+          : "They answered in speech only. The books are unchanged. Give a clear order — sow, begin a work, give stores, call hands, a blessing, hire a craftsman, or a forthcoming change after harvest — or advance the season.",
         npcId,
       );
     }
@@ -727,6 +730,18 @@ export class GameController {
       releaseConfirmWantsTalk(this.state, item.npcId, this.pending);
     }
     return this.view();
+  }
+
+  cancelForthcomingOrder(id: string): GameView & { error?: string } {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), error: ABANDONED_GAME_OVER };
+    }
+    const result = cancelStoredForthcoming(this.state, id);
+    this.state = result.state;
+    this.log("steward", result.ok ? "REJECT" : "REJECT", result.logLine);
+    this.ledgerNote(result.ok ? playerFacingLogLine(result.logLine) : playerFacingReason(result.reason ?? result.logLine), "steward");
+    return result.ok ? this.view() : { ...this.view(), error: playerFacingReason(result.reason ?? result.logLine) };
   }
 
   async advanceSeason(): Promise<SeasonResult> {
@@ -1057,6 +1072,10 @@ export function sortPendingForApply<T extends { proposal: { type: string } }>(it
 }
 
 function fillProposalDefaults(state: WorldState, p: MechanicalProposal): MechanicalProposal {
+  if (p.type === "defer_proposal") {
+    const inner = fillProposalDefaults(state, p.proposal) as typeof p.proposal;
+    return { ...p, proposal: inner };
+  }
   if ((p.type === "start_project" || p.type === "adjust_sowing") && !p.holdingId) {
     return { ...p, holdingId: state.holdings[0]?.id };
   }
@@ -1177,7 +1196,7 @@ function openingSpeech(state: WorldState): string {
   const land = h?.land;
   const features = h?.features ?? [];
   const overgrown = (land?.scrub ?? 0) + (land?.waste ?? 0) + (land?.swamp ?? 0);
-  const sownCap = (land?.fertile_arable ?? 0) * 0.5;
+  const sownCap = sownCapacity(land?.fertile_arable ?? 0, fieldRotation(state));
   const sownNow = h ? h.sown.wheat + h.sown.rye + h.sown.barley + h.sown.oats : 0;
   const sowing =
     sownNow + 0.05 < sownCap

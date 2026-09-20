@@ -190,6 +190,9 @@ function drawerPayload(state: WorldState, name: ToolDrawer, npcId?: string): unk
     case "customs":
       return {
         standing_orders: state.standing_orders.filter((o) => o.active).map((o) => ({ id: o.id, text: o.text })),
+        forthcoming: (state.forthcoming_orders ?? [])
+          .filter((o) => o.status === "waiting")
+          .map((o) => ({ id: o.id, text: o.text })),
         known_techniques: state.known_techniques.map((t) => ({ id: t.id, name: t.name })),
         modifiers: state.modifiers,
       };
@@ -277,6 +280,10 @@ export function drawersCitedByProposal(p: MechanicalProposal): ToolDrawer[] {
       break;
     case "set_standing_order":
       add("customs");
+      break;
+    case "defer_proposal":
+      add("customs");
+      for (const d of drawersCitedByProposal(p.proposal)) add(d);
       break;
     case "register_resource":
       add("stores");

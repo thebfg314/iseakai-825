@@ -13,6 +13,8 @@ export const HUNGER_LINE = "The households are hungry — grain will not last.";
 export const LABOURS_EMPTY = "None underway, and none finished in these books.";
 export const CUSTOMS_ORDERS_EMPTY = "No standing order is written.";
 export const CUSTOMS_LAWS_EMPTY = "No lasting custom of the hall is written.";
+export const CUSTOMS_FORTHCOMING_EMPTY = "No forthcoming order is waiting.";
+export const FORTHCOMING_STRIKE = "Strike it";
 export const ESTATE_THIS_SEASON_HINT = "These are the books of this season.";
 export const ESTATE_NO_HISTORY_HINT = "Earlier seasons are not yet kept.";
 export const ESTATE_PAST_HINT = "As the books stood in that season.";
@@ -144,6 +146,7 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   event_effect: "The season",
   start_hunt: "A hunt",
   settle_households: "People at the gate",
+  defer_proposal: "A forthcoming order",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -226,6 +229,70 @@ export function formatLedgerNumber(n: number): string {
 export function formatSignedDelta(n: number): string {
   const body = formatLedgerNumber(n);
   return n > 0 ? `+${body}` : body;
+}
+
+export function sowingRotationLine(rotation?: string): string {
+  if (rotation === "three_field") {
+    return "The ploughland is kept in three fields — winter seed, spring seed, and a rest.";
+  }
+  return "The ploughland is kept in two fields — half sown, half fallow.";
+}
+
+export function forthcomingWhenLine(trigger: {
+  kind: "beat" | "after_seasons";
+  beat?: string;
+  seasonsRemaining?: number;
+}): string {
+  if (trigger.kind === "after_seasons") {
+    const n = trigger.seasonsRemaining ?? 1;
+    if (n <= 1) return "After this season";
+    const words = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+    return n < words.length ? `After ${words[n]} seasons` : `After ${n} seasons`;
+  }
+  if (trigger.beat === "next_spring_sowing") return "At the next spring sowing";
+  if (trigger.beat === "next_autumn_sowing") return "At the next autumn sowing";
+  return "After this harvest";
+}
+
+export function forthcomingInnerBlurb(
+  inner: PendingProposal["proposal"] | MechanicalProposal,
+  state?: WorldState,
+): string {
+  if (inner.type === "adjust_sowing" && inner.rotation === "three_field") {
+    return "three-field rotation on the ploughland";
+  }
+  if (inner.type === "adjust_sowing" && inner.rotation === "two_field") {
+    return "two-field rotation on the ploughland";
+  }
+  const blurb = proposalBlurb(inner, state).replace(/\.$/, "");
+  if (blurb && !looksLikeEngineKey(blurb)) return blurb.charAt(0).toLowerCase() + blurb.slice(1);
+  const summary = inner.summary?.trim();
+  if (summary && summary !== inner.type && !looksLikeEngineKey(summary)) {
+    return summary.charAt(0).toLowerCase() + summary.slice(1);
+  }
+  return "the ordered change";
+}
+
+export function forthcomingOrderText(
+  trigger: { kind: "beat" | "after_seasons"; beat?: string; seasonsRemaining?: number },
+  inner: PendingProposal["proposal"] | MechanicalProposal,
+  state?: WorldState,
+): string {
+  return `${forthcomingWhenLine(trigger)}: ${forthcomingInnerBlurb(inner, state)}.`;
+}
+
+export function forthcomingWrittenLine(text: string): string {
+  return `It is written as a forthcoming order: ${text.replace(/\.$/, "")}.`;
+}
+
+export function forthcomingStruckLine(text: string): string {
+  return `The forthcoming order is struck from the books: ${text.replace(/\.$/, "")}.`;
+}
+
+export function forthcomingKeptLine(logLine: string): string {
+  const kept = logLine.replace(/\.$/, "").trim();
+  if (!kept || looksLikeEngineKey(kept)) return "The forthcoming order is kept.";
+  return `The forthcoming order is kept: ${kept.charAt(0).toLowerCase() + kept.slice(1)}.`;
 }
 
 export function sowingShareLine(kind: "spring" | "autumn", share: number): string {
@@ -337,6 +404,8 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
   switch (p.type) {
     case "adjust_sowing": {
       const bits: string[] = [];
+      if (p.rotation === "three_field") bits.push(sowingRotationLine("three_field"));
+      if (p.rotation === "two_field") bits.push(sowingRotationLine("two_field"));
       if (p.springBarleyShare != null) bits.push(sowingShareLine("spring", p.springBarleyShare));
       if (p.autumnWheatShare != null) bits.push(sowingShareLine("autumn", p.autumnWheatShare));
       if (p.barley != null) bits.push(`${p.barley} acres of barley.`);
@@ -414,10 +483,26 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const hh = p.households === 1 ? "one household" : `${p.households} households`;
       return `Take in ${hh} — a man, a woman, and a youth of working age.`;
     }
+    case "defer_proposal": {
+      if (p.text && p.text.trim() && !looksLikeEngineKey(p.text)) return p.text.trim();
+      const inner = p.proposal;
+      if (inner && typeof inner === "object" && "type" in inner) {
+        return forthcomingOrderText(
+          p.seasonsRemaining != null || p.applyAfterSeasons != null
+            ? { kind: "after_seasons", seasonsRemaining: p.seasonsRemaining ?? p.applyAfterSeasons }
+            : { kind: "beat", beat: typeof p.trigger === "string" ? p.trigger : p.beat ?? (typeof p.trigger === "object" ? p.trigger?.beat : undefined) },
+          inner,
+          state,
+        );
+      }
+      return p.summary && p.summary !== p.type && !looksLikeEngineKey(p.summary)
+        ? p.summary
+        : "Write a forthcoming order in the books, to be kept later.";
+    }
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {
@@ -489,8 +574,8 @@ export function playerFacingReason(reason: string): string {
   if (/^Cannot (sell|consume) /i.test(trimmed)) {
     return rewriteSnakeKeys(trimmed).replace(/^Cannot consume/, "I cannot take").replace(/^Cannot sell/, "I cannot sell");
   }
-  if (/Sown acres .* two-field cap/i.test(trimmed)) {
-    return "That sowing would overfill the two-field share of the ploughland.";
+  if (/Sown acres .* (two-field cap|three-field cap|sown share)/i.test(trimmed)) {
+    return "That sowing would overfill the sown share of the ploughland.";
   }
   if (/Need .+ denarii; have /i.test(trimmed) || /Need .+ hiring gift/i.test(trimmed)) {
     return rewriteSnakeKeys(trimmed);

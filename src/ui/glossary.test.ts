@@ -30,6 +30,7 @@ const REQUIRED_IDS = [
   "bloomery",
   "mill_leat",
   "two_field",
+  "three_field",
   "villa",
   "waste",
   "scrub",

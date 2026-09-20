@@ -638,7 +638,12 @@ export function App() {
           </form>
         </section>
 
-        <BooksPanel view={view} />
+        <BooksPanel
+          view={view}
+          onCancelForthcoming={(id) => {
+            void withBusy(() => window.api.cancelForthcomingOrder(id));
+          }}
+        />
       </div>
 
       {settingsModal}

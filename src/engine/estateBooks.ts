@@ -18,6 +18,7 @@ export function captureEstateSeason(state: WorldState): EstateSeasonSnapshot {
     agriculture: {
       springBarleyShare: state.agriculture?.springBarleyShare ?? 0.6,
       autumnWheatShare: state.agriculture?.autumnWheatShare ?? 0.45,
+      rotation: state.agriculture?.rotation ?? "two_field",
     },
     last_season_deltas: { ...(state.last_season_deltas ?? {}) },
     flags: {

@@ -1,7 +1,9 @@
-import type { MechanicalProposal, WorldState } from "./schema";
+import type { DeferProposal, InnerMechanicalProposal, MechanicalProposal, WorldState } from "./schema";
 import { lookupProject } from "./projectCatalog";
 import { huntFulfillReason, inferHuntProposals, isNegotiatorId, looksLikeHuntOrder } from "./hunts";
 import { hireFulfillReason, inferHireProposals, looksLikeHireOrder, specialistById } from "./specialists";
+import { isDeferProposal } from "./forthcoming";
+import { forthcomingOrderText } from "../ui/ledgerCopy";
 
 const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
 const ORDER_VERB =
@@ -9,7 +11,13 @@ const ORDER_VERB =
 const ORDER_OVERRIDE = /\b(sow|assign|start|give|clear|build|bless|gift|tithe|hire|retain|employ)\b/i;
 /** Lord instructions to change rotation / fallow / legumes / manure / seed-keeping — even without sow/plant. */
 const HUSBANDRY_ORDER =
-  /\b(rotation|fallow|legumes?|peas?\b|manure|muck|seed[- ]?(keep|keeping|selection|saving|kept)|three[- ]field|split (?:our |the )?(?:farming )?fields)\b/i;
+  /\b(rotation|fallow|legumes?|peas?\b|manure|muck|seed[- ]?(keep|keeping|selection|saving|kept)|three[- ]field|three[- ]phase|3[- ](?:phase|field)|split (?:our |the )?(?:farming )?fields)\b/i;
+const ROTATION_ORDER =
+  /\b(rotation|three[- ]field|three[- ]phase|3[- ](?:phase|field)|split (?:our |the )?(?:farming )?fields)\b/i;
+const DEFER_AFTER_HARVEST = /\b(after (?:this |the )?harvest|once (?:the |this )?harvest|when the harvest)\b/i;
+const DEFER_SPRING = /\b(next spring|spring sowing|next year's spring)\b/i;
+const DEFER_AUTUMN = /\b(next autumn|autumn sowing|winter sowing)\b/i;
+const DEFER_SEASONS = /\b(?:after|in)\s+(\d+|one|two|three|four)\s+seasons?\b/i;
 
 export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean {
   const t = text.trim();
@@ -35,6 +43,78 @@ function mostPlentifulGrain(state: WorldState): { resource: "wheat" | "rye" | "b
 
 function holdingId(state: WorldState): string {
   return state.holdings[0]?.id ?? "fontenay";
+}
+
+function seasonsWord(raw: string): number {
+  const n = Number(raw);
+  if (Number.isFinite(n) && n >= 1) return Math.floor(n);
+  if (raw === "one") return 1;
+  if (raw === "two") return 2;
+  if (raw === "three") return 3;
+  if (raw === "four") return 4;
+  return 1;
+}
+
+export function looksLikeRotationOrder(text: string): boolean {
+  return ROTATION_ORDER.test(text);
+}
+
+export function inferDeferTriggerFromText(playerText: string) {
+  const t = playerText.toLowerCase();
+  if (DEFER_SPRING.test(t)) return { kind: "beat" as const, beat: "next_spring_sowing" as const };
+  if (DEFER_AUTUMN.test(t)) return { kind: "beat" as const, beat: "next_autumn_sowing" as const };
+  const seasons = t.match(DEFER_SEASONS);
+  if (seasons) return { kind: "after_seasons" as const, seasonsRemaining: seasonsWord(seasons[1]) };
+  if (DEFER_AFTER_HARVEST.test(t)) return { kind: "beat" as const, beat: "after_harvest" as const };
+  return { kind: "beat" as const, beat: "after_harvest" as const };
+}
+
+function isSowingOrDeferredSowing(p: MechanicalProposal): boolean {
+  if (p.type === "adjust_sowing") return true;
+  if (!isDeferProposal(p)) return false;
+  const inner = p.proposal as InnerMechanicalProposal | undefined;
+  return inner?.type === "adjust_sowing";
+}
+
+export function inferDeferredRotation(state: WorldState, playerText: string): MechanicalProposal[] {
+  const hid = holdingId(state);
+  const trigger = inferDeferTriggerFromText(playerText);
+  const inner: InnerMechanicalProposal = {
+    type: "adjust_sowing",
+    summary: "Keep a three-field rotation.",
+    holdingId: hid,
+    rotation: "three_field",
+  };
+  const text = forthcomingOrderText(trigger, inner);
+  const proposal: DeferProposal = {
+    type: "defer_proposal",
+    summary: text,
+    text,
+    proposal: inner,
+  };
+  if (trigger.kind === "beat") proposal.beat = trigger.beat;
+  else {
+    proposal.seasonsRemaining = trigger.seasonsRemaining;
+    proposal.applyAfterSeasons = trigger.seasonsRemaining;
+  }
+  return [proposal];
+}
+
+/**
+ * If the lord ordered a rotation change and the model emitted nothing mechanical
+ * (or only a standing-order flavour line), park a deferred adjust_sowing.
+ */
+export function augmentOrderProposals(
+  state: WorldState,
+  npcId: string,
+  playerText: string,
+  existing: MechanicalProposal[],
+): MechanicalProposal[] {
+  if (npcId !== "steward") return existing;
+  if (!looksLikeRotationOrder(playerText)) return existing;
+  if (existing.some(isSowingOrDeferredSowing)) return existing;
+  const inferred = inferDeferredRotation(state, playerText);
+  return inferred.length ? [...existing, ...inferred] : existing;
 }
 
 /**
@@ -172,6 +252,10 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
         source: "Lord's encouragement",
       },
     ];
+  }
+
+  if (looksLikeRotationOrder(playerText)) {
+    return inferDeferredRotation(state, playerText);
   }
 
   return [];

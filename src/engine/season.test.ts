@@ -17,6 +17,18 @@ describe("Fontenay season sowing defaults", () => {
     expect(state.holdings[0].sown.rye).toBe(7);
   });
 
+  it("autumn three-field sowing uses a third of the arable after the rotation is written", () => {
+    const state = WorldStateSchema.parse(structuredClone(startingEstate));
+    state.agriculture.rotation = "three_field";
+    state.meta.season = "autumn";
+    state.holdings[0].sown = { wheat: 0, rye: 0, barley: 1.8, oats: 1.2 };
+    resolveAgricultureAndProjects(state);
+    const sown = state.holdings[0].sown;
+    expect(sown.wheat + sown.rye).toBeCloseTo(32 / 3, 1);
+    expect(sown.barley).toBe(0);
+    expect(sown.oats).toBe(0);
+  });
+
   it("does not clone-mutate the starting JSON module", () => {
     const a = WorldStateSchema.parse(structuredClone(startingEstate));
     const b = cloneState(a);

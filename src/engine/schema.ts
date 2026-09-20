@@ -204,6 +204,7 @@ export const EstateSeasonSnapshotSchema = z.object({
   agriculture: z.object({
     springBarleyShare: z.number().min(0).max(1),
     autumnWheatShare: z.number().min(0).max(1),
+    rotation: z.enum(["two_field", "three_field"]).default("two_field"),
   }),
   last_season_deltas: z.record(z.string(), z.number()).default({}),
   flags: z.object({
@@ -333,6 +334,23 @@ export const TechniqueSchema = z.object({
 });
 export type Technique = z.infer<typeof TechniqueSchema>;
 
+export const FORTHCOMING_BEATS = ["after_harvest", "next_spring_sowing", "next_autumn_sowing"] as const;
+export type ForthcomingBeat = (typeof FORTHCOMING_BEATS)[number];
+
+export const ForthcomingOrderSchema = z.object({
+  id: z.string(),
+  npcId: z.string(),
+  text: z.string(),
+  beat: z.enum(FORTHCOMING_BEATS).optional(),
+  seasonsRemaining: z.number().int().nonnegative().optional(),
+  proposal: z.unknown(),
+  status: z.enum(["waiting", "applied", "cancelled", "rejected"]).default("waiting"),
+  createdTurn: z.number().int().optional(),
+  createdSeason: z.enum(SEASONS).optional(),
+  createdYear: z.number().int().optional(),
+});
+export type ForthcomingOrder = z.infer<typeof ForthcomingOrderSchema>;
+
 export const WorldStateSchema = z.object({
   meta: z.object({
     year: z.number().int(),
@@ -416,8 +434,9 @@ export const WorldStateSchema = z.object({
     .object({
       springBarleyShare: z.number().min(0).max(1).default(0.6),
       autumnWheatShare: z.number().min(0).max(1).default(0.45),
+      rotation: z.enum(["two_field", "three_field"]).default("two_field"),
     })
-    .default({ springBarleyShare: 0.6, autumnWheatShare: 0.45 }),
+    .default({ springBarleyShare: 0.6, autumnWheatShare: 0.45, rotation: "two_field" }),
   /** Signed store / sown / household changes from the last Advance season. Empty on a fresh game. */
   last_season_deltas: z.record(z.string(), z.number()).default({}),
   /**
@@ -439,6 +458,11 @@ export const WorldStateSchema = z.object({
   estateAbandoned: z.boolean().default(false),
   /** Closed seasons' estate books, oldest first. Empty until the first Advance season. */
   estate_history: z.array(EstateSeasonSnapshotSchema).default([]),
+  /**
+   * Confirmed mechanical changes waiting on a later season beat.
+   * Old saves default to [].
+   */
+  forthcoming_orders: z.array(ForthcomingOrderSchema).default([]),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 
@@ -457,6 +481,7 @@ export const PROPOSAL_TYPES = [
   "event_effect",
   "start_hunt",
   "settle_households",
+  "defer_proposal",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -522,6 +547,7 @@ export const AdjustSowingProposalSchema = ProposalBase.extend({
   rye: z.coerce.number().nonnegative().optional(),
   barley: z.coerce.number().nonnegative().optional(),
   oats: z.coerce.number().nonnegative().optional(),
+  rotation: z.enum(["two_field", "three_field"]).optional(),
 });
 
 export const TransferResourcesProposalSchema = ProposalBase.extend({
@@ -617,7 +643,7 @@ export const StartHuntProposalSchema = ProposalBase.extend({
   customNotes: z.string().optional(),
 });
 
-export const MechanicalProposalSchema = z.discriminatedUnion("type", [
+export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   AssignLabourProposalSchema,
   SetStandingOrderProposalSchema,
   StartProjectProposalSchema,
@@ -634,6 +660,43 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   SettleHouseholdsProposalSchema,
 ]);
 
+export const DeferProposalSchema = ProposalBase.extend({
+  type: z.literal("defer_proposal"),
+  beat: z.enum(FORTHCOMING_BEATS).optional(),
+  seasonsRemaining: z.coerce.number().int().min(1).optional(),
+  applyAfterSeasons: z.coerce.number().int().min(1).optional(),
+  trigger: z
+    .union([
+      z.enum(FORTHCOMING_BEATS),
+      z.object({
+        beat: z.enum(FORTHCOMING_BEATS).optional(),
+        seasonsRemaining: z.coerce.number().int().min(1).optional(),
+        applyAfterSeasons: z.coerce.number().int().min(1).optional(),
+      }),
+    ])
+    .optional(),
+  text: z.string().optional(),
+  proposal: InnerMechanicalProposalSchema,
+});
+
+export const MechanicalProposalSchema = z.discriminatedUnion("type", [
+  AssignLabourProposalSchema,
+  SetStandingOrderProposalSchema,
+  StartProjectProposalSchema,
+  AdjustProjectProposalSchema,
+  AdjustSowingProposalSchema,
+  TransferResourcesProposalSchema,
+  AddModifierProposalSchema,
+  RemoveModifierProposalSchema,
+  RegisterResourceProposalSchema,
+  RegisterFeatureProposalSchema,
+  RegisterNpcProposalSchema,
+  EventEffectProposalSchema,
+  StartHuntProposalSchema,
+  SettleHouseholdsProposalSchema,
+  DeferProposalSchema,
+]);
+
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
 export type SetStandingOrderProposal = z.infer<typeof SetStandingOrderProposalSchema>;
 export type StartProjectProposal = z.infer<typeof StartProjectProposalSchema>;
@@ -648,6 +711,8 @@ export type RegisterNpcProposal = z.infer<typeof RegisterNpcProposalSchema>;
 export type EventEffectProposal = z.infer<typeof EventEffectProposalSchema>;
 export type StartHuntProposal = z.infer<typeof StartHuntProposalSchema>;
 export type SettleHouseholdsProposal = z.infer<typeof SettleHouseholdsProposalSchema>;
+export type InnerMechanicalProposal = z.infer<typeof InnerMechanicalProposalSchema>;
+export type DeferProposal = z.infer<typeof DeferProposalSchema>;
 
 export type MechanicalProposal =
   | AssignLabourProposal
@@ -663,7 +728,8 @@ export type MechanicalProposal =
   | RegisterNpcProposal
   | EventEffectProposal
   | StartHuntProposal
-  | SettleHouseholdsProposal;
+  | SettleHouseholdsProposal
+  | DeferProposal;
 
 export const LlmResponseSchema = z.object({
   speech: z.string(),

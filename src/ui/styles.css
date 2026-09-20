@@ -407,6 +407,7 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   padding-bottom: 0.55rem;
   border-bottom: 1px dotted #2e291f;
 }
+.forthcoming-actions { margin-top: 0.35rem; }
 .muted { color: var(--muted); }
 .flag { color: var(--accent); }
 .flag.warn { color: #d98973; }

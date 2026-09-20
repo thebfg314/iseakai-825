@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import startingEstate from "../../data/starting-estate.json";
+import { archiveEstateSeason } from "../engine/estateBooks";
+import { applyProposal } from "../engine/applyDelta";
+import { labourPool, labourRemaining } from "../engine/labour";
+import { WorldStateSchema, type Project, type WorldState } from "../engine/schema";
+import { emptyMeter } from "../llm/usage";
+import type { GameView } from "../shared/types";
+import { BooksPanel } from "./BooksPanel";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { applyProposal } from "../engine/applyDelta";
 import { labourPool, labourRemaining } from "../engine/labour";
@@ -206,12 +215,14 @@ describe("labours list", () => {
 describe("customs list", () => {
   it("reads standing orders from the books, not from chat", () => {
     const state = estate();
-    const { orders, laws } = customsBookEntries(state);
+    const { forthcoming, orders, laws } = customsBookEntries(state);
+    expect(forthcoming).toEqual([]);
     expect(orders).toHaveLength(1);
     expect(orders[0].body).toMatch(/two-field rotation/);
     expect(orders[0].lasting).toBe(true);
-    expect(customsEmptyLines({ orders, laws }).orders).toBeNull();
-    expect(customsEmptyLines({ orders, laws }).laws).toMatch(/no lasting custom/i);
+    expect(customsEmptyLines({ forthcoming, orders, laws }).orders).toBeNull();
+    expect(customsEmptyLines({ forthcoming, orders, laws }).forthcoming).toMatch(/no forthcoming order/i);
+    expect(customsEmptyLines({ forthcoming, orders, laws }).laws).toMatch(/no lasting custom/i);
     expect(orders[0].body).not.toMatch(JARGON);
     expect(orders[0].title).not.toMatch(JARGON);
   });
@@ -238,5 +249,68 @@ describe("customs list", () => {
     expect(laws[0].title).toBe("A lasting custom");
     expect(laws[0].body).toMatch(/Keep the Lord's day|No heavy labour on Sunday/);
     expect(laws[0].body).not.toMatch(JARGON);
+  });
+
+  it("lists a confirmed forthcoming order while it waits", () => {
+    const state = estate();
+    const parked = applyProposal(
+      state,
+      {
+        type: "defer_proposal",
+        summary: "After this harvest: three-field rotation on the ploughland.",
+        beat: "after_harvest",
+        text: "After this harvest: three-field rotation on the ploughland.",
+        proposal: {
+          type: "adjust_sowing",
+          summary: "Keep a three-field rotation.",
+          holdingId: "fontenay",
+          rotation: "three_field",
+        },
+      },
+      "steward",
+    );
+    expect(parked.ok).toBe(true);
+    const { forthcoming } = customsBookEntries(state);
+    expect(forthcoming).toHaveLength(1);
+    expect(forthcoming[0].title).toBe("An order yet to be kept");
+    expect(forthcoming[0].body).toMatch(/After this harvest: three-field rotation/);
+    expect(forthcoming[0].body).not.toMatch(JARGON);
+    expect(JSON.stringify(forthcoming)).not.toMatch(/defer_proposal/);
+  });
+
+  it("paints Forthcoming on the Customs tab with a strike control", () => {
+    const state = estate();
+    applyProposal(
+      state,
+      {
+        type: "defer_proposal",
+        summary: "After this harvest: three-field rotation on the ploughland.",
+        beat: "after_harvest",
+        text: "After this harvest: three-field rotation on the ploughland.",
+        proposal: {
+          type: "adjust_sowing",
+          summary: "Keep a three-field rotation.",
+          holdingId: "fontenay",
+          rotation: "three_field",
+        },
+      },
+      "steward",
+    );
+    const html = renderToStaticMarkup(
+      createElement(BooksPanel, {
+        view: viewOf(state),
+        initialTab: "customs",
+        onCancelForthcoming: () => undefined,
+      }),
+    );
+    expect(html).toContain("Forthcoming");
+    expect(html).toContain("An order yet to be kept");
+    expect(html).toMatch(/After this harvest:/);
+    expect(html).toMatch(/three-field rotation/);
+    expect(html).toContain("Strike it");
+    expect(html).toContain("Estate");
+    expect(html).toContain("Labours");
+    expect(html).toContain("Customs");
+    expect(html).not.toMatch(JARGON);
   });
 });

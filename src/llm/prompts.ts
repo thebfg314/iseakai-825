@@ -87,7 +87,7 @@ export function npcBooksFollowUp(playerMessage: string, revising?: string): stri
   const revise = revising
     ? `\nThe lord asked about this pending offer. If they are changing its terms, emit one revised proposal of the same kind (same project, hunt, hire, standing order, or work) — replace, do not stack a second copy. Do not treat it as already Confirmed.\nPENDING OFFER:\n${revising}\n`
     : "";
-  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: [].${revise}\n\nORDER:\n${playerMessage}`;
+  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, defer_proposal, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: []. If you promise the change after harvest, next spring, or later, you MUST emit defer_proposal wrapping the inner change — speech-only "I will do it later" with empty proposals is invalid for an order.${revise}\n\nORDER:\n${playerMessage}`;
 }
 
 const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markdown fences), shape:
@@ -98,19 +98,23 @@ const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markd
   "proposals": [ ... ]
 }
 Proposal objects MUST include "type", "summary", and the fields for that type.
-Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt.
+Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal.
 Rules:
 - Never silently invent geography, named people, or goods. Use register_* with isNew: true.
 - Do not apply numbers yourself; proposals are suggestions for the engine. The player must Confirm mid-season proposals before the world-state file changes.
-- A player ORDER is not chat. If they sow, assign labour, start a project, give/gift stores, buy/sell, bless, change mood, hire a specialist, or send Gerulf looking, you MUST emit at least one proposal. Speech without proposals does not change the ledger.
+- A player ORDER is not chat. If they sow, assign labour, start a project, give/gift stores, buy/sell, bless, change mood, hire a specialist, send Gerulf looking, or order a later change to the books, you MUST emit at least one proposal. Speech without proposals does not change the ledger.
 - Empty proposals [] only when the player is greeting, asking a question, or requesting a report with no instruction.
 - If you cannot fulfill an order, still emit nothing mechanical and say so in speech — the engine will tell the player the books are unchanged.
+- If you promise "after harvest", "next spring", "next autumn sowing", or any later season, you MUST emit defer_proposal wrapping the inner mechanical proposal (adjust_sowing, assign_labour, and the rest). Confirm writes it as a forthcoming order in the books; the inner change waits for the trigger. Speech-only "I will do it later" with empty proposals is invalid for an order-shaped request.
+- defer_proposal fields: type, summary, optional text (hall wording for the books), a trigger (beat: after_harvest | next_spring_sowing | next_autumn_sowing, or seasonsRemaining / applyAfterSeasons), and proposal (the inner mechanical object). Nested defer is not allowed — wrap once.
+- set_standing_order is text only. It will not change sowing later. A promised rotation or husbandry change must be defer_proposal wrapping adjust_sowing.
+- Crops already in the ground must not be ripped up. Change of rotation waits on after_harvest (or the named sowing beat), not an immediate adjust_sowing.
 - Innovations (modern knowledge) are never instant: prefer a project and/or a temporary modifier (kind: temporary, seasonsRemaining 3-8, promoteOnExpire true if it should become custom). Judge materials, tools, teachability, time, labour, accident, and social/religious suspicion.
 - Modifier targets: grain_yield, labour_efficiency, spoilage, project_speed, specific_resource_output, accident_risk, mood, market_price, livestock_yield, harvest_risk, custom.
 - add_modifier on mood: effect.op "add" and value 1 is a modest blessing. It nudges the people's heart (the hall meter) when confirmed, and while it lasts each season keeps them in better heart. Glad people put in a little more quiet effort (harvest and works come out better); wretched, a little less. Do not mention extra labour-days or a happiness bonus. Callable heads on the books do not change. These persist across seasons until seasonsRemaining runs out.
 - transfer_resources.direction: buy | sell | consume | gain. buy and sell require a visiting merchant this season; buy is limited to merchant.stock. consume and gain are estate-internal and do not need a merchant. Gifts and tithes use consume.
 - start_project.projectKey must be a catalogue key or you must supply customCosts { labourDays, lumber, iron, stone }. Always set holdingId to the estate holding id from the world state slice.
-- adjust_sowing: change the crop mix. springBarleyShare (0-1 of remaining spring capacity; rest oats), autumnWheatShare (0-1; rest rye). Mid-spring this also fills remaining unsown acres now so the ledger moves before the season turns.
+- adjust_sowing: change the crop mix. springBarleyShare (0-1 of remaining spring capacity; rest oats), autumnWheatShare (0-1; rest rye), optional rotation "two_field" | "three_field". Two-field sows half the ploughland; three-field sows two thirds (winter third, spring third, rest third). Mid-spring this also fills remaining unsown acres now so the ledger moves before the season turns. A three-field change while crops stand should be defer_proposal with after_harvest, inner adjust_sowing rotation "three_field".
 - If the player is only chatting or asking, proposals may be [].
 - Do not emit <=-tool: markers on this books pass; ledger facts are supplied by the engine.
 - start_hunt is Gerulf the negotiator only. He quotes quotedDenarii and durationSeasons (the lord does not name a budget). Do not also emit transfer_resources for the purse; the engine takes the coin on Confirm.
@@ -129,7 +133,7 @@ Coin for goods: you may propose transfer_resources buy/sell ONLY while a merchan
 You are NOT the owner of canonical facts. The JSON world state is truth.
 ${OUTPUT_CONTRACT}
 assign_labour.projectId is a project id or "unassigned" to clear. Extra labour days are already after harvest and field subsistence; do not warn that assigning them risks the harvest.
-adjust_sowing is how crop mix changes (not standing-order flavour). "Sow more barley" → adjust_sowing with springBarleyShare near 1. "Start clearing scrub" → start_project clear_scrub plus assign_labour if you also put people on it. "Give the cell grain" → transfer_resources consume on a grain.
+adjust_sowing is how crop mix changes (not standing-order flavour). "Sow more barley" → adjust_sowing with springBarleyShare near 1. "Three-field rotation after harvest" → defer_proposal (beat after_harvest) wrapping adjust_sowing with rotation "three_field". "Start clearing scrub" → start_project clear_scrub plus assign_labour if you also put people on it. "Give the cell grain" → transfer_resources consume on a grain.
 Hiring a full-time specialist is YOUR work, not a merchant stall. The four craftsmen (Colman, Haimo, Gerold, Hugo) may be sought from the start. Otto the reeve, Ambrosius the vinedresser, Hildegard the head seamstress, Lorenzo the copper-smith, and Eberhard the captain are hired only after the estate expands — never at boot, never by speech alone, never because Bernard, Ermenald, or Gerulf was asked. Gerulf the negotiator already serves; he is not for hire. Scarce goods the carts will not carry belong to him — send the lord to Gerulf rather than pretending you walk the roads.
 ${hire}
 Known project keys (use these or customCosts): ${PROJECT_CATALOG.map((p) => p.key).join(", ")}.`;

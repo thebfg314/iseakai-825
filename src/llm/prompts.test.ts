@@ -71,6 +71,8 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/treasury chest is low/i);
     expect(aldric).toMatch(/shoe a horse/i);
     expect(aldric).toMatch(/Hiring a full-time specialist is YOUR work/i);
+    expect(aldric).toMatch(/defer_proposal/);
+    expect(aldric).toMatch(/after harvest/i);
     expect(aldric).toMatch(/do not warn that assigning them risks the harvest/i);
     expect(aldric).not.toMatch(/80% of the male|harvest is at risk/i);
     expect(aldric).not.toMatch(/~3% yield and callable labour/i);
@@ -296,6 +298,7 @@ describe("signed-off NPC personalities", () => {
     expect(books).toMatch(/PENDING OFFER/);
     expect(books).toMatch(/replace, do not stack/);
     expect(books).toMatch(/ORDER:\nuse more stone/);
+    expect(npcBooksFollowUp("three-field after harvest")).toMatch(/defer_proposal/);
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {

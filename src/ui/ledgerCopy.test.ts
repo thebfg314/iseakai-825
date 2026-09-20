@@ -117,6 +117,21 @@ describe("steward ledger voice", () => {
     ).toBe("12 men to the work.");
     expect(playerFacingSummary({ type: "assign_labour", summary: "assign_labour" })).toBe("");
     expect(proposalTypeName("settle_households")).toBe("People at the gate");
+    expect(proposalTypeName("defer_proposal")).toBe("A forthcoming order");
+    expect(
+      proposalBlurb({
+        type: "defer_proposal",
+        summary: "After this harvest: three-field rotation on the ploughland.",
+        beat: "after_harvest",
+        text: "After this harvest: three-field rotation on the ploughland.",
+        proposal: {
+          type: "adjust_sowing",
+          summary: "Keep a three-field rotation.",
+          holdingId: "fontenay",
+          rotation: "three_field",
+        },
+      }),
+    ).toMatch(/After this harvest: three-field rotation/);
     expect(proposalTypeName("settle_households")).not.toMatch(/_|settle/i);
     expect(
       proposalBlurb({
