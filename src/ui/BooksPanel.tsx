@@ -31,11 +31,20 @@ import {
   resourceUnit,
   roleName,
   sowingShareLine,
+  sowingRotationLine,
 } from "./ledgerCopy";
 import { GlossaryText } from "./GlossaryText";
 
-export function BooksPanel({ view }: { view: GameView }) {
-  const [tab, setTab] = useState<BooksTab>("estate");
+export function BooksPanel({
+  view,
+  onCancelForthcoming,
+  initialTab = "estate",
+}: {
+  view: GameView;
+  onCancelForthcoming?: (id: string) => void;
+  initialTab?: BooksTab;
+}) {
+  const [tab, setTab] = useState<BooksTab>(initialTab);
   const [estateOffset, setEstateOffset] = useState(0);
   const historyLength = view.state.estate_history?.length ?? 0;
   const seasonKey = `${view.state.meta.year}:${view.state.meta.season}:${view.state.meta.turn}`;
@@ -80,7 +89,15 @@ export function BooksPanel({ view }: { view: GameView }) {
           />
         )}
         {tab === "labours" && <LaboursTab entries={labours} />}
-        {tab === "customs" && <CustomsTab orders={customs.orders} laws={customs.laws} empty={customsEmpty} />}
+        {tab === "customs" && (
+          <CustomsTab
+            forthcoming={customs.forthcoming}
+            orders={customs.orders}
+            laws={customs.laws}
+            empty={customsEmpty}
+            onCancelForthcoming={onCancelForthcoming}
+          />
+        )}
       </div>
     </aside>
   );
@@ -185,6 +202,9 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
           {Object.entries(holding.sown).map(([k, v]) => (
             <Row key={k} k={resourceName(k)} v={`${v} acres`} delta={d(`sown_${k}`)} />
           ))}
+          <p className="ledger-note">
+            <GlossaryText text={sowingRotationLine(s.agriculture?.rotation)} />
+          </p>
           <p className="ledger-note">
             <GlossaryText text={sowingShareLine("spring", s.agriculture?.springBarleyShare ?? 0.6)} />
           </p>
@@ -335,16 +355,47 @@ function LabourCard({ entry }: { entry: LabourBookEntry }) {
 }
 
 function CustomsTab({
+  forthcoming,
   orders,
   laws,
   empty,
+  onCancelForthcoming,
 }: {
+  forthcoming: ReturnType<typeof customsBookEntries>["forthcoming"];
   orders: ReturnType<typeof customsBookEntries>["orders"];
   laws: ReturnType<typeof customsBookEntries>["laws"];
   empty: ReturnType<typeof customsEmptyLines>;
+  onCancelForthcoming?: (id: string) => void;
 }) {
   return (
     <>
+      {forthcoming.length > 0 && (
+        <>
+          <h3>
+            <GlossaryText text="Forthcoming" />
+          </h3>
+          {forthcoming.map((o) => (
+            <article key={o.id} className="custom-entry forthcoming-entry">
+              <div className="row">
+                <span>
+                  <GlossaryText text={o.title} />
+                </span>
+                <span>Waiting</span>
+              </div>
+              <p className="order">
+                <GlossaryText text={o.body} />
+              </p>
+              {onCancelForthcoming ? (
+                <div className="p-actions forthcoming-actions">
+                  <button type="button" onClick={() => onCancelForthcoming(o.id)}>
+                    Strike it
+                  </button>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </>
+      )}
       <h3>
         <GlossaryText text="Standing orders" />
       </h3>

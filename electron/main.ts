@@ -137,6 +137,8 @@ ipcMain.handle("game:confirmProposal", (_e, id: string) => requireGame().confirm
 
 ipcMain.handle("game:rejectProposal", (_e, id: string) => requireGame().rejectProposal(id));
 
+ipcMain.handle("game:cancelForthcomingOrder", (_e, id: string) => requireGame().cancelForthcomingOrder(id));
+
 ipcMain.handle("game:askAboutProposal", (_e, id: string) => requireGame().askAboutProposal(id));
 
 ipcMain.handle("game:confirmMerchantShop", (_e, basket: {

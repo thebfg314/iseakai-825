@@ -3,7 +3,7 @@ import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
 import { autoFillLeftoverLabour, labourDaysFromAssignment } from "./labour";
 import { modifiersFor, applyMultiplyAdd, tickModifiers, yieldMultiplier } from "./modifiers";
 import { peopleEffortFactor } from "./peopleHappiness";
-import { projectSpeed, resourceOutputBonus } from "./applyDelta";
+import { applyProposal, projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
@@ -11,6 +11,8 @@ import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
 import { featureName, landName, resourceName } from "../ui/ledgerCopy";
 import { markProjectSeason, stampProjectEnded } from "./projectProgress";
+import { autumnFieldAcres, fieldRotation, springFieldAcres } from "./agriculture";
+import { fireForthcomingBeat } from "./forthcoming";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -35,12 +37,16 @@ function autumnWheatShare(state: WorldState): number {
 function sowSpring(state: WorldState): string[] {
   const notes: string[] = [];
   const barleyShare = springBarleyShare(state);
+  const rotation = fieldRotation(state);
   for (const h of state.holdings) {
-    const sownCap = h.land.fertile_arable * 0.5;
     const already = h.sown.wheat + h.sown.rye;
-    const remaining = Math.max(0, sownCap - already);
+    const remaining = springFieldAcres(h.land.fertile_arable, rotation, already);
     if (remaining <= 0) {
-      notes.push(`${h.name}: no spring sowing capacity (autumn crops occupy the sown half).`);
+      notes.push(
+        rotation === "three_field"
+          ? `${h.name}: no spring sowing capacity (the sown share is full).`
+          : `${h.name}: no spring sowing capacity (autumn crops occupy the sown half).`,
+      );
       continue;
     }
     const barley = round1(remaining * barleyShare);
@@ -55,8 +61,9 @@ function sowSpring(state: WorldState): string[] {
 function sowAutumn(state: WorldState): string[] {
   const notes: string[] = [];
   const wheatShare = autumnWheatShare(state);
+  const rotation = fieldRotation(state);
   for (const h of state.holdings) {
-    const sownCap = h.land.fertile_arable * 0.5;
+    const sownCap = autumnFieldAcres(h.land.fertile_arable, rotation);
     const wheat = round1(sownCap * wheatShare);
     const rye = round1(sownCap - wheat);
     h.sown.wheat = wheat;
@@ -192,6 +199,11 @@ function advanceProjects(state: WorldState): string[] {
 export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLine[] {
   const lines: SeasonEffectLine[] = [];
   const add = (text: string) => lines.push({ kind: "info", text });
+  const addAll = (more: SeasonEffectLine[]) => {
+    for (const line of more) lines.push(line);
+  };
+
+  addAll(fireForthcomingBeat(state, "season_start", applyProposal));
 
   const households = state.population.households;
   state.flags.hunger = false;
@@ -208,18 +220,24 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   }
 
   const season = state.meta.season;
-  if (season === "spring") sowSpring(state).forEach(add);
+  if (season === "spring") {
+    addAll(fireForthcomingBeat(state, "next_spring_sowing", applyProposal));
+    sowSpring(state).forEach(add);
+  }
   if (season === "summer") {
     const w = harvestCrop(state, "wheat");
     const r = harvestCrop(state, "rye");
     if (w) add(w);
     if (r) add(r);
+    addAll(fireForthcomingBeat(state, "after_harvest", applyProposal));
   }
   if (season === "autumn") {
     const b = harvestCrop(state, "barley");
     const o = harvestCrop(state, "oats");
     if (b) add(b);
     if (o) add(o);
+    addAll(fireForthcomingBeat(state, "after_harvest", applyProposal));
+    addAll(fireForthcomingBeat(state, "next_autumn_sowing", applyProposal));
     sowAutumn(state).forEach(add);
   }
   livestockSeason(state).forEach(add);

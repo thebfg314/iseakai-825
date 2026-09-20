@@ -98,6 +98,13 @@
       "definition": "Half the arable sown, half fallow each year, then swap.\n\nEarly medieval soil rest before wider three-field use."
     },
     {
+      "id": "three_field",
+      "title": "three-field",
+      "aliases": ["three-field rotation", "three field rotation", "three-field", "three-phase rotation"],
+      "rule": "default",
+      "definition": "The ploughland in three: winter seed, spring seed, and a rest. More of the arable is under crop than in two-field tillage."
+    },
+    {
       "id": "villa",
       "title": "villa",
       "aliases": ["villa"],

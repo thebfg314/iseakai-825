@@ -1,9 +1,10 @@
-import { LlmResponseSchema, MechanicalProposalSchema, PROPOSAL_TYPES, type LlmResponse, type MechanicalProposal } from "../engine/schema";
+import { LlmResponseSchema, InnerMechanicalProposalSchema, MechanicalProposalSchema, PROPOSAL_TYPES, type LlmResponse, type MechanicalProposal } from "../engine/schema";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
 import { matchHireableSpecialist, specialistNpc } from "../engine/specialists";
 import { stripEmotionCommands, normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 import { HOLD_AT_ONCE_APOLOGY } from "./providerErrors";
 import { hasMalformedToolMarker, stripToolMarkers } from "./toolProtocol";
+import { flattenDeferInner } from "../engine/forthcoming";
 
 export type ParseLlmResult = {
   response: LlmResponse;
@@ -112,6 +113,12 @@ const TYPE_ALIASES: Record<string, (typeof PROPOSAL_TYPES)[number]> = {
   registernpc: "register_npc",
   hunt: "start_hunt",
   starthunt: "start_hunt",
+  defer: "defer_proposal",
+  defer_proposal: "defer_proposal",
+  deferproposal: "defer_proposal",
+  schedule_order: "defer_proposal",
+  scheduleorder: "defer_proposal",
+  forthcoming: "defer_proposal",
 };
 
 const DIRECTION_ALIASES: Record<string, "buy" | "sell" | "consume" | "gain"> = {
@@ -157,6 +164,17 @@ function guessType(obj: Record<string, unknown>): string | undefined {
   if (obj.text && obj.active != null) return "set_standing_order";
   if (obj.npc || (obj.name && obj.role && (obj.isNew != null || obj.type === "register_npc"))) return "register_npc";
   if (obj.quotedDenarii != null && (obj.goods || obj.resource)) return "start_hunt";
+  if (
+    obj.proposal &&
+    (obj.beat != null ||
+      obj.seasonsRemaining != null ||
+      obj.applyAfterSeasons != null ||
+      obj.trigger != null ||
+      obj.type === "defer_proposal" ||
+      obj.type === "schedule_order")
+  ) {
+    return "defer_proposal";
+  }
   return undefined;
 }
 
@@ -292,6 +310,31 @@ export function coerceProposalInput(raw: unknown): unknown {
   }
   if (next.type === "adjust_sowing") {
     if (next.springBarleyShare == null && next.barleyShare != null) next.springBarleyShare = next.barleyShare;
+    if (typeof next.rotation === "string") {
+      const rot = next.rotation.toLowerCase().replace(/\s+/g, "_").replace(/-/g, "_");
+      if (rot === "three_field" || rot === "threefield" || rot === "three_phase" || rot === "3_field") {
+        next.rotation = "three_field";
+      } else if (rot === "two_field" || rot === "twofield") {
+        next.rotation = "two_field";
+      }
+    }
+  }
+  if (next.type === "defer_proposal" || next.type === "schedule_order") {
+    next.type = "defer_proposal";
+    let innerRaw = flattenDeferInner(next.proposal ?? next.inner ?? next.order);
+    if (!asRecord(innerRaw) && (next.rotation != null || next.springBarleyShare != null || next.autumnWheatShare != null)) {
+      innerRaw = {
+        type: "adjust_sowing",
+        summary: next.summary,
+        holdingId: next.holdingId,
+        rotation: next.rotation,
+        springBarleyShare: next.springBarleyShare,
+        autumnWheatShare: next.autumnWheatShare,
+      };
+    }
+    const innerCoerced = coerceProposalInput(innerRaw);
+    const innerParsed = InnerMechanicalProposalSchema.safeParse(innerCoerced);
+    next.proposal = innerParsed.success ? innerParsed.data : innerCoerced;
   }
   if (next.type === "register_resource" || next.type === "register_feature" || next.type === "register_npc") {
     coerceIsNew(next);

@@ -28,11 +28,14 @@ import {
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
+import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
+import { ensureAgriculture, fieldRotation, sownCapacity, springFieldAcres } from "./agriculture";
 import {
   amountPhrase,
   featureName,
   looksLikeEngineKey,
   roleName,
+  sowingRotationLine,
   sowingShareLine,
   workDisplayName,
 } from "../ui/ledgerCopy";
@@ -199,27 +202,29 @@ export function applyProposal(
   proposal: MechanicalProposal,
   actor: string,
 ): ApplyResult {
+  const authProposal =
+    proposal.type === "defer_proposal" ? innerProposalOfDefer(proposal) ?? proposal : proposal;
   if (actor === "smith") {
-    const blocked = smithAllowed(state, proposal);
+    const blocked = smithAllowed(state, authProposal);
     if (blocked) return fail(state, blocked, blocked);
   }
   if (actor === "chaplain") {
-    const blocked = chaplainAllowed(state, proposal);
+    const blocked = chaplainAllowed(state, authProposal);
     if (blocked) return fail(state, blocked, blocked);
   }
   if (actor === "merchant") {
-    const blocked = merchantAllowed(state, proposal);
+    const blocked = merchantAllowed(state, authProposal);
     if (blocked) return fail(state, blocked, blocked);
   }
   if (isNegotiatorId(actor)) {
-    const blocked = negotiatorAllowed(state, proposal);
+    const blocked = negotiatorAllowed(state, authProposal);
     if (blocked) return fail(state, blocked, blocked);
-  } else if (proposal.type === "start_hunt") {
+  } else if (authProposal.type === "start_hunt") {
     return fail(state, "Only Gerulf walks the roads for scarce goods.", "Only Gerulf walks the roads for scarce goods.");
   }
   const specialistActor = specialistById(actor);
   if (specialistActor) {
-    const blocked = specialistAllowed(state, proposal, specialistActor);
+    const blocked = specialistAllowed(state, authProposal, specialistActor);
     if (blocked) return fail(state, blocked, blocked);
   }
 
@@ -258,6 +263,8 @@ export function applyProposal(
     }
     case "settle_households":
       return ok(state, applySettleHouseholds(state, proposal));
+    case "defer_proposal":
+      return parkForthcomingOrder(state, proposal, actor);
     default:
       return fail(state, "Unknown proposal type.", "Unknown proposal type.");
   }
@@ -398,6 +405,31 @@ function adjustProject(
   return ok(state, `The labour on ${proj.name} is changed.`);
 }
 
+function rewriteRotationStandingOrder(state: WorldState, rotation: "two_field" | "three_field") {
+  const order = state.standing_orders.find((o) => o.active && /two-field|three-field|rotation/i.test(o.text));
+  if (!order) return;
+  if (rotation === "three_field") {
+    order.text = order.text
+      .replace(/two-field rotation/gi, "three-field rotation")
+      .replace(
+        /Sow barley and oats in spring on the remaining sown share\./i,
+        "Sow wheat and rye in autumn on one third, barley and oats in spring on another, and rest a third.",
+      );
+  } else {
+    order.text = order.text.replace(/three-field rotation/gi, "two-field rotation");
+  }
+}
+
+function noteThreeFieldTechnique(state: WorldState) {
+  if (state.known_techniques.some((t) => t.name === "Three-field rotation")) return;
+  state.known_techniques.push({
+    id: newId("tech"),
+    name: "Three-field rotation",
+    discoveredTurn: state.meta.turn,
+    notes: "Winter seed, spring seed, and a rest on the ploughland.",
+  });
+}
+
 function adjustSowing(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "adjust_sowing" }>,
@@ -410,25 +442,31 @@ function adjustSowing(
     p.wheat == null &&
     p.rye == null &&
     p.barley == null &&
-    p.oats == null
+    p.oats == null &&
+    p.rotation == null
   ) {
     return fail(state, "adjust_sowing needs a crop mix or acre figures.", p.summary);
   }
 
   const notes: string[] = [];
-  if (!state.agriculture) {
-    state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45 };
+  const agriculture = ensureAgriculture(state);
+  if (p.rotation) {
+    agriculture.rotation = p.rotation;
+    notes.push(sowingRotationLine(p.rotation).replace(/\.$/, ""));
+    rewriteRotationStandingOrder(state, p.rotation);
+    if (p.rotation === "three_field") noteThreeFieldTechnique(state);
   }
   if (p.springBarleyShare != null) {
-    state.agriculture.springBarleyShare = p.springBarleyShare;
+    agriculture.springBarleyShare = p.springBarleyShare;
     notes.push(sowingShareLine("spring", p.springBarleyShare).replace(/\.$/, ""));
   }
   if (p.autumnWheatShare != null) {
-    state.agriculture.autumnWheatShare = p.autumnWheatShare;
+    agriculture.autumnWheatShare = p.autumnWheatShare;
     notes.push(sowingShareLine("autumn", p.autumnWheatShare).replace(/\.$/, ""));
   }
 
-  const sownCap = holding.land.fertile_arable * 0.5;
+  const rotation = fieldRotation(state);
+  const sownCap = sownCapacity(holding.land.fertile_arable, rotation);
   const next = { ...holding.sown };
   if (p.wheat != null) next.wheat = p.wheat;
   if (p.rye != null) next.rye = p.rye;
@@ -437,17 +475,18 @@ function adjustSowing(
 
   if (state.meta.season === "spring" && p.springBarleyShare != null) {
     const already = next.wheat + next.rye;
-    const remaining = Math.max(0, sownCap - already);
-    next.barley = round1(remaining * state.agriculture.springBarleyShare);
+    const remaining = springFieldAcres(holding.land.fertile_arable, rotation, already);
+    next.barley = round1(remaining * agriculture.springBarleyShare);
     next.oats = round1(remaining - next.barley);
     notes.push(`this spring: ${next.barley} acres barley, ${next.oats} acres oats on the remaining ${round1(remaining)} acres`);
   }
 
   const totalSown = next.wheat + next.rye + next.barley + next.oats;
   if (totalSown > sownCap + 0.05) {
+    const capName = rotation === "three_field" ? "three-field cap" : "two-field cap";
     return fail(
       state,
-      `Sown acres (${round1(totalSown)}) would exceed the two-field cap (${round1(sownCap)} of ${holding.land.fertile_arable} arable).`,
+      `Sown acres (${round1(totalSown)}) would exceed the ${capName} (${round1(sownCap)} of ${holding.land.fertile_arable} arable).`,
       p.summary,
     );
   }
@@ -651,7 +690,7 @@ function eventEffect(
     for (const raw of p.nested) {
       const parsed = parseProposal(raw);
       if (!parsed.proposal) continue;
-      if (parsed.proposal.type === "event_effect") continue;
+      if (parsed.proposal.type === "event_effect" || parsed.proposal.type === "defer_proposal") continue;
       const r = applyProposal(state, parsed.proposal, actor);
       if (r.ok) lines.push(r.logLine.replace(/\.$/, ""));
     }

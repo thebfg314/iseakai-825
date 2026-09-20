@@ -5,6 +5,7 @@ import { seasonsBetween } from "../engine/projectProgress";
 import type { EstateSeasonSnapshot, GameModifier, Project, Season, StandingOrder, WorldState } from "../engine/schema";
 import type { GameView } from "../shared/types";
 import {
+  CUSTOMS_FORTHCOMING_EMPTY,
   CUSTOMS_LAWS_EMPTY,
   CUSTOMS_ORDERS_EMPTY,
   ESTATE_NO_HISTORY_HINT,
@@ -48,7 +49,7 @@ export type EstateLedgerSource = {
   resources: WorldState["resources"];
   custom_resources: WorldState["custom_resources"];
   population: WorldState["population"];
-  agriculture: { springBarleyShare: number; autumnWheatShare: number };
+  agriculture: { springBarleyShare: number; autumnWheatShare: number; rotation?: "two_field" | "three_field" };
   last_season_deltas: Record<string, number>;
   flags: { merchant_present: boolean; hunger: boolean };
   merchant: { present: boolean; name?: string; stock: { resource: string; amount: number }[] };
@@ -79,6 +80,7 @@ export function estateSourceFromLive(view: GameView): EstateLedgerSource {
     agriculture: {
       springBarleyShare: s.agriculture?.springBarleyShare ?? 0.6,
       autumnWheatShare: s.agriculture?.autumnWheatShare ?? 0.45,
+      rotation: s.agriculture?.rotation ?? "two_field",
     },
     last_season_deltas: s.last_season_deltas ?? {},
     flags: { merchant_present: s.flags.merchant_present, hunger: s.flags.hunger },
@@ -236,18 +238,35 @@ function labourMarkViews(proj: Project): LabourMarkView[] {
 
 export type CustomBookEntry = {
   id: string;
-  kind: "order" | "law";
+  kind: "order" | "law" | "forthcoming";
   title: string;
   body: string;
   lasting: boolean;
 };
 
-export function customsBookEntries(state: WorldState): { orders: CustomBookEntry[]; laws: CustomBookEntry[] } {
+export function customsBookEntries(state: WorldState): {
+  forthcoming: CustomBookEntry[];
+  orders: CustomBookEntry[];
+  laws: CustomBookEntry[];
+} {
+  const forthcoming = (state.forthcoming_orders ?? [])
+    .filter((o) => o.status === "waiting")
+    .map(forthcomingEntry);
   const orders = [...state.standing_orders]
     .sort((a, b) => Number(b.active) - Number(a.active))
     .map(orderEntry);
   const laws = state.modifiers.map(lawEntry);
-  return { orders, laws };
+  return { forthcoming, orders, laws };
+}
+
+function forthcomingEntry(order: { id: string; text: string }): CustomBookEntry {
+  return {
+    id: order.id,
+    kind: "forthcoming",
+    title: "An order yet to be kept",
+    body: order.text,
+    lasting: false,
+  };
 }
 
 function orderEntry(order: StandingOrder): CustomBookEntry {
@@ -275,11 +294,17 @@ export function laboursEmptyLine(entries: LabourBookEntry[]): string | null {
   return entries.length ? null : LABOURS_EMPTY;
 }
 
-export function customsEmptyLines(entries: { orders: CustomBookEntry[]; laws: CustomBookEntry[] }): {
+export function customsEmptyLines(entries: {
+  forthcoming: CustomBookEntry[];
+  orders: CustomBookEntry[];
+  laws: CustomBookEntry[];
+}): {
+  forthcoming: string | null;
   orders: string | null;
   laws: string | null;
 } {
   return {
+    forthcoming: entries.forthcoming.length ? null : CUSTOMS_FORTHCOMING_EMPTY,
     orders: entries.orders.length ? null : CUSTOMS_ORDERS_EMPTY,
     laws: entries.laws.length ? null : CUSTOMS_LAWS_EMPTY,
   };

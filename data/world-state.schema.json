@@ -191,7 +191,8 @@
       "additionalProperties": false,
       "properties": {
         "springBarleyShare": { "type": "number", "minimum": 0, "maximum": 1 },
-        "autumnWheatShare": { "type": "number", "minimum": 0, "maximum": 1 }
+        "autumnWheatShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rotation": { "enum": ["two_field", "three_field"] }
       }
     },
     "last_season_deltas": {
@@ -227,6 +228,11 @@
       "type": "array",
       "items": { "$ref": "#/$defs/estateSeasonSnapshot" },
       "description": "Prior seasons' estate books as they stood before each Advance season. Empty until the first Advance season."
+    },
+    "forthcoming_orders": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/forthcomingOrder" },
+      "description": "Confirmed mechanical changes waiting on a later harvest or sowing beat. Omitted on old saves; treat as empty."
     }
   },
   "$defs": {
@@ -509,7 +515,8 @@
           "required": ["springBarleyShare", "autumnWheatShare"],
           "properties": {
             "springBarleyShare": { "type": "number" },
-            "autumnWheatShare": { "type": "number" }
+            "autumnWheatShare": { "type": "number" },
+            "rotation": { "enum": ["two_field", "three_field"] }
           }
         },
         "last_season_deltas": {
@@ -643,6 +650,23 @@
         "id": { "type": "string" },
         "text": { "type": "string" },
         "active": { "type": "boolean" }
+      }
+    },
+    "forthcomingOrder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "npcId", "text", "proposal", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "npcId": { "type": "string" },
+        "text": { "type": "string" },
+        "beat": { "enum": ["after_harvest", "next_spring_sowing", "next_autumn_sowing"] },
+        "seasonsRemaining": { "type": "integer", "minimum": 0 },
+        "proposal": { "type": "object" },
+        "status": { "enum": ["waiting", "applied", "cancelled", "rejected"] },
+        "createdTurn": { "type": "integer" },
+        "createdSeason": { "enum": ["spring", "summer", "autumn", "winter"] },
+        "createdYear": { "type": "integer" }
       }
     },
     "npcMemory": {
