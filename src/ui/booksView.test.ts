@@ -9,12 +9,6 @@ import { WorldStateSchema, type Project, type WorldState } from "../engine/schem
 import { emptyMeter } from "../llm/usage";
 import type { GameView } from "../shared/types";
 import { BooksPanel } from "./BooksPanel";
-import { archiveEstateSeason } from "../engine/estateBooks";
-import { applyProposal } from "../engine/applyDelta";
-import { labourPool, labourRemaining } from "../engine/labour";
-import { WorldStateSchema, type Project, type WorldState } from "../engine/schema";
-import { emptyMeter } from "../llm/usage";
-import type { GameView } from "../shared/types";
 import {
   BOOKS_TAB_LABELS,
   BOOKS_TABS,
