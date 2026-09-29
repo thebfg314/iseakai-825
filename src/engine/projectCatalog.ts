@@ -26,7 +26,7 @@ export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
   { key: "water_lifting", name: "Water-lifting system", labourDays: 120, lumber: 6, iron: 35, stone: 2.5, labourKind: "mostly_men" },
   { key: "fish_pond", name: "Fish pond", labourDays: 90, lumber: 3.5, iron: 10, stone: 1.5, labourKind: "mixed", completesToFeature: "fish_pond" },
   { key: "mill_leat", name: "Mill leat / small canal", labourDays: 150, lumber: 2.5, iron: 12, stone: 1, labourKind: "mostly_men" },
-  { key: "clear_scrub", name: "Clear scrub to arable (1 acre)", labourDays: 35, lumber: 0.5, iron: 4, stone: 0, labourKind: "mixed", completesToLand: { from: "scrub", to: "fertile_arable", acres: 1 } },
+  { key: "clear_scrub", name: "Clear scrub to arable (1 acre)", labourDays: 35, lumber: 0, iron: 0, stone: 0, labourKind: "mixed", completesToLand: { from: "scrub", to: "fertile_arable", acres: 1 } },
   { key: "drain_swamp", name: "Drain swamp (1 acre)", labourDays: 60, lumber: 2, iron: 6.5, stone: 1, labourKind: "mostly_men", completesToLand: { from: "swamp", to: "fertile_arable", acres: 1 } },
   { key: "improve_waste", name: "Improve waste to meadow (1 acre)", labourDays: 22, lumber: 0.5, iron: 2.5, stone: 0, labourKind: "mixed", completesToLand: { from: "waste", to: "meadow", acres: 1 } },
   { key: "irrigation", name: "Irrigation ditches (100 yards)", labourDays: 30, lumber: 1, iron: 5, stone: 0.5, labourKind: "mostly_men" },
@@ -57,7 +57,7 @@ export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
   { key: "watch_post", name: "Watch post", labourDays: 45, lumber: 3.5, iron: 10, stone: 1, labourKind: "mixed", completesToFeature: "watch_post" },
   { key: "quarry", name: "Small stone quarry (opening)", labourDays: 115, lumber: 3.5, iron: 30, stone: 0, labourKind: "mostly_men", completesToFeature: "quarry" },
   { key: "clay_pit", name: "Clay pit", labourDays: 45, lumber: 2, iron: 10, stone: 0, labourKind: "mixed", completesToFeature: "clay_pit" },
-  { key: "charcoal_burning", name: "Organized charcoal burning", labourDays: 60, lumber: 2, iron: 10, stone: 0, labourKind: "mixed" },
+  { key: "charcoal_burning", name: "Organized charcoal burning", labourDays: 60, lumber: 2, iron: 0, stone: 0, labourKind: "mixed" },
   // Clay shaft and bellows, not an iron-hungry building. About one season of the men's spare days (spring pool is ~180).
   { key: "bloomery", name: "Bloomery", labourDays: 120, lumber: 4, iron: 0, stone: 2, charcoal: 2, clay: 3, labourKind: "mostly_men", tag: "forge", completesToFeature: "bloomery" },
   { key: "tannery", name: "Tannery", labourDays: 85, lumber: 5, iron: 17, stone: 1, labourKind: "mostly_men", completesToFeature: "tannery" },

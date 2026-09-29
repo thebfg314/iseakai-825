@@ -61,7 +61,7 @@ describe("isRevisionOf", () => {
       type: "register_npc" as const,
       isNew: true as const,
       summary: "Hire Colman",
-      npc: { id: "quarry_master", name: "Colman", role: "quarry_master", location: "fontenay", notes: "", memories: [] },
+      npc: { id: "quarry_master", name: "Colman", role: "quarry_master", location: "fontenay", notes: "", memories: [], wantsTalk: false },
     };
     expect(
       isRevisionOf(hire, {

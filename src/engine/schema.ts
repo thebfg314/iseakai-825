@@ -355,6 +355,52 @@ export const ForthcomingOrderSchema = z.object({
 });
 export type ForthcomingOrder = z.infer<typeof ForthcomingOrderSchema>;
 
+export const ChurchNeglectKindSchema = z.enum(["tithe", "wool", "sheep", "sunday", "feast_day", "took_from_cell"]);
+
+export const ChurchNeglectSlipSchema = z.object({
+  turn: z.number().int(),
+  year: z.number().int(),
+  season: z.enum(SEASONS),
+  kind: ChurchNeglectKindSchema,
+  note: z.string(),
+});
+
+export const ChurchLetterSchema = z.object({
+  id: z.string(),
+  year: z.number().int(),
+  season: z.enum(SEASONS),
+  turn: z.number().int(),
+  text: z.string(),
+});
+
+export const ChurchStateSchema = z.object({
+  /** `year-season` of the sponsored feast already kept. Empty if none this season. */
+  feastHeldKey: z.string().default(""),
+  /** Joy from that feast which cools on the next Advance season. Half of what was given. */
+  feastFade: z.number().int().nonnegative().default(0),
+  neglect: z.array(ChurchNeglectSlipSchema).default([]),
+  bishopLetterTurn: z.number().int().nullable().default(null),
+  letters: z.array(ChurchLetterSchema).default([]),
+  /** Lasting note the household hears after the bishop writes. Empty until then. */
+  reputation: z.string().default(""),
+  almsTurn: z.number().int().nullable().default(null),
+  surplusSeasonKey: z.string().default(""),
+  surplusSold: z.record(z.string(), z.number()).default({}),
+});
+export type ChurchState = z.infer<typeof ChurchStateSchema>;
+
+const CHURCH_STATE_DEFAULT: ChurchState = {
+  feastHeldKey: "",
+  feastFade: 0,
+  neglect: [],
+  bishopLetterTurn: null,
+  letters: [],
+  reputation: "",
+  almsTurn: null,
+  surplusSeasonKey: "",
+  surplusSold: {},
+};
+
 export const WorldStateSchema = z.object({
   meta: z.object({
     year: z.number().int(),
@@ -392,6 +438,11 @@ export const WorldStateSchema = z.object({
     active_threat: z.boolean(),
     monastery_nearby: z.boolean(),
     hunger: z.boolean(),
+    /**
+     * Pagus-wide dearth. An event may set this later. False means hunger, if any,
+     * is this villa's own. The cell will not open its barn in a regional famine.
+     */
+    regional_famine: z.boolean().default(false),
   }),
   trade: z
     .object({
@@ -467,6 +518,11 @@ export const WorldStateSchema = z.object({
    * Old saves default to [].
    */
   forthcoming_orders: z.array(ForthcomingOrderSchema).default([]),
+  /**
+   * Cell of Saint-Martin: feasts, neglect, the bishop's letters, alms, surplus sold.
+   * Old saves default to a quiet cell.
+   */
+  church: ChurchStateSchema.default(CHURCH_STATE_DEFAULT),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 
@@ -486,6 +542,7 @@ export const PROPOSAL_TYPES = [
   "start_hunt",
   "settle_households",
   "defer_proposal",
+  "sponsor_feast",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -630,6 +687,12 @@ export const SettleHouseholdsProposalSchema = ProposalBase.extend({
   youths: z.coerce.number().int().nonnegative().default(1),
 });
 
+export const SponsorFeastProposalSchema = ProposalBase.extend({
+  type: z.literal("sponsor_feast"),
+  tier: z.enum(["plain", "grand"]),
+  feastName: z.string().optional(),
+});
+
 export const StartHuntProposalSchema = ProposalBase.extend({
   type: z.literal("start_hunt"),
   goods: z.string(),
@@ -662,6 +725,7 @@ export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   EventEffectProposalSchema,
   StartHuntProposalSchema,
   SettleHouseholdsProposalSchema,
+  SponsorFeastProposalSchema,
 ]);
 
 export const DeferProposalSchema = ProposalBase.extend({
@@ -698,6 +762,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   EventEffectProposalSchema,
   StartHuntProposalSchema,
   SettleHouseholdsProposalSchema,
+  SponsorFeastProposalSchema,
   DeferProposalSchema,
 ]);
 
@@ -715,6 +780,7 @@ export type RegisterNpcProposal = z.infer<typeof RegisterNpcProposalSchema>;
 export type EventEffectProposal = z.infer<typeof EventEffectProposalSchema>;
 export type StartHuntProposal = z.infer<typeof StartHuntProposalSchema>;
 export type SettleHouseholdsProposal = z.infer<typeof SettleHouseholdsProposalSchema>;
+export type SponsorFeastProposal = z.infer<typeof SponsorFeastProposalSchema>;
 export type InnerMechanicalProposal = z.infer<typeof InnerMechanicalProposalSchema>;
 export type DeferProposal = z.infer<typeof DeferProposalSchema>;
 
@@ -733,6 +799,7 @@ export type MechanicalProposal =
   | EventEffectProposal
   | StartHuntProposal
   | SettleHouseholdsProposal
+  | SponsorFeastProposal
   | DeferProposal;
 
 export const LlmResponseSchema = z.object({
@@ -747,7 +814,7 @@ export const PendingProposalSchema = z.object({
   id: z.string(),
   npcId: z.string(),
   proposal: MechanicalProposalSchema,
-  status: z.enum(["pending", "applied", "rejected"]),
+  status: z.enum(["pending", "applied", "rejected", "withheld"]),
   rejectReason: z.string().optional(),
 });
 export type PendingProposal = z.infer<typeof PendingProposalSchema>;

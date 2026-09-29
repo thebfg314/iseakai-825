@@ -8,6 +8,7 @@ const api = {
   setScene: (npcId: string) => ipcRenderer.invoke("game:setScene", npcId),
   sendDialogue: (npcId: string, message: string) => ipcRenderer.invoke("game:sendDialogue", npcId, message),
   confirmProposal: (id: string) => ipcRenderer.invoke("game:confirmProposal", id),
+  confirmAllProposals: () => ipcRenderer.invoke("game:confirmAllProposals"),
   rejectProposal: (id: string) => ipcRenderer.invoke("game:rejectProposal", id),
   cancelForthcomingOrder: (id: string) => ipcRenderer.invoke("game:cancelForthcomingOrder", id),
   askAboutProposal: (id: string) => ipcRenderer.invoke("game:askAboutProposal", id),

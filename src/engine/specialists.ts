@@ -78,7 +78,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     hireCostDenarii: 20,
     hireGrainRation: HOUSEHOLD_SEASON_GRAIN,
     requiresExpansion: true,
-    unlockHint: `The village is still small for a reeve. When the households reach ${REEVE_HOUSEHOLD_THRESHOLD} (half again the start), Otto can be sought.`,
+    unlockHint: `The village is still small for a reeve. When the households reach ${REEVE_HOUSEHOLD_THRESHOLD} (half again the start), a village reeve can be sought.`,
     recommendSpeech:
       "The village has grown, my lord — more hearths than we began with. Otto the reeve would keep the hides and dues, and name who is shirking. He is the peasants' man, loyal to the village more than the hall. 20 denarii from the chest and a household grain ration for his house if you would have him: ask me, and Confirm.",
     notes:
@@ -91,7 +91,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     hireCostDenarii: 90,
     requiresExpansion: true,
     unlockHint:
-      "The old acre of vines is not yet a vintage worth a vinedresser. Expand the vineyard beyond the starting acre, then Ambrosius can be sought.",
+      "The old acre of vines is not yet a vintage worth a vinedresser. Expand the vineyard beyond the starting acre, then a vinedresser can be sought.",
     recommendSpeech:
       "The vines are more than the old acre now. Ambrosius the vinedresser would keep the slope and the barrels — a bit learned, a bit vain of the lie of the land, and he will talk weather before grain. 90 denarii hiring gift, if you ask it and Confirm.",
     notes:
@@ -103,7 +103,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     role: "head_seamstress",
     hireCostDenarii: 60,
     requiresExpansion: true,
-    unlockHint: "There is no textile workshop yet. When that work stands, Hildegard the head seamstress can be sought.",
+    unlockHint: "There is no textile workshop yet. When that work stands, a head seamstress can be sought.",
     recommendSpeech:
       "The textile workshop stands. Hildegard the head seamstress would keep the cloth as it should be kept — a sharp tongue, and she will notice a torn cuff before you do. She will not waste good linen on a bad idea. 60 denarii, if you will have her: ask me, and Confirm.",
     notes:
@@ -116,7 +116,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     hireCostDenarii: 180,
     requiresExpansion: true,
     unlockHint:
-      "Bernard's timber forge is not yet a copper shop. When a bloomery or trip-hammer mill stands, Lorenzo can be sought.",
+      "Bernard's timber forge is not yet a copper shop. When a bloomery or trip-hammer mill stands, a copper-smith can be sought.",
     recommendSpeech:
       "The metal-work has gone beyond Bernard's timber hearth. Lorenzo the copper-smith — a Lombard, and proud of it — thinks copper cleaner work than iron, and will flirt with being indispensable. 180 denarii hiring gift, if you ask and Confirm.",
     notes:
@@ -129,7 +129,7 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     hireCostDenarii: 250,
     requiresExpansion: true,
     unlockHint:
-      "A tired hall is not a defence. When a palisade, tower, gatehouse, or watch post stands, Eberhard can be sought.",
+      "A tired hall is not a defence. No captain of the guard yet. When a palisade, tower, gatehouse, or watch post stands, a combat specialist can be sought.",
     recommendSpeech:
       "We have a real defence now, not only a tired hall. Eberhard would captain the watch — he wants men, spears, and a reason to march, and he will tell you honestly how few fighters we have. 250 denarii, should you want him: ask me, and Confirm.",
     notes:
@@ -270,7 +270,7 @@ export function specialistHireBlocked(state: WorldState, spec: HireableSpecialis
   }
   const ration = specialistHireGrainRation(spec);
   if (ration > 0 && grainOnHand(state) < ration) {
-    return `The granary cannot spare a household ration (${ration} modii) for ${spec.name}'s house. Fontenay is thin.`;
+    return `The granary cannot spare a household ration (${ration} modii) for the reeve's house. Fontenay is thin.`;
   }
   return null;
 }
@@ -283,23 +283,24 @@ export function hireSummary(spec: HireableSpecialist): string {
   return `Hire ${spec.name} the ${spec.role.replaceAll("_", " ")} — ${spec.hireCostDenarii} denarii hiring gift from the chest.`;
 }
 
-/** Closed name list for Aldric / the referee. Marks who is available now. */
+/** Closed hire list for Aldric / the referee. Personal names appear only once a post is open or filled. */
 export function stewardHirePrompt(state: WorldState): string {
   const lines = HIREABLE_SPECIALISTS.map((s) => {
     const hired = specialistAlreadyPresent(state, s);
     const unlocked = specialistUnlocked(state, s);
     const status = hired ? "already serving" : unlocked ? "available now" : "not yet — estate not ready";
     const craft = s.notes.split(".")[0] ?? s.role;
-    return `- id ${s.id}, name ${s.name}, role ${s.role} — ${craft} [${status}] · ${hireCostLine(s)}`;
+    const who = hired || unlocked ? `name ${s.name}, ` : "";
+    return `- id ${s.id}, ${who}role ${s.role} — ${craft} [${status}] · ${hireCostLine(s)}`;
   });
   const unlockedExpansion = recommendableHires(state);
   const recommend =
     unlockedExpansion.length > 0
       ? `If the lord has not yet hired them, recommend by name (speech only, no register_npc until the lord asks): ${unlockedExpansion.map((s) => s.name).join(", ")}.`
-      : "Do not recommend Otto, Ambrosius, Hildegard, Lorenzo, or Eberhard until their line reads available now.";
-  return `Closed hire list (never invent another name). Emit register_npc only for a person marked available now, and only when the lord asks to hire:
+      : "Do not name a village reeve, vinedresser, head seamstress, copper-smith, or captain of the guard until that line reads available now. Until then the watch wants a combat specialist, and the other posts stay unnamed.";
+  return `Closed hire list (never invent another name). Emit register_npc only for a person marked available now, and only when the lord asks to hire. If a line has no name, speak of the office and do not invent a person.
 ${lines.join("\n")}
-location is the holding id (fontenay). The engine takes that person's listed denarii from the chest on Confirm (and Otto's household grain ration); do NOT also emit transfer_resources for the gift or the ration. Bernard the smith and Gerulf the negotiator already serve and are not for hire. If that person is already on npcs, not yet available, or the chest cannot spare the coin (or the granary Otto's ration), say so in speech and emit no proposal. Speech without register_npc does not hire anyone.
+location is the holding id (fontenay). The engine takes that person's listed denarii from the chest on Confirm (and the village reeve's household grain ration); do NOT also emit transfer_resources for the gift or the ration. Bernard the smith and Gerulf the negotiator already serve and are not for hire. If that person is already on npcs, not yet available, or the chest cannot spare the coin (or the granary cannot spare the reeve's household ration), say so in speech and emit no proposal. Speech without register_npc does not hire anyone.
 ${recommend}`;
 }
 

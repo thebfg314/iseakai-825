@@ -23,3 +23,4 @@ export * from "./bloomery";
 export * from "./wantsTalk";
 export * from "./peopleHappiness";
 export * from "./peopleMovement";
+export * from "./church";

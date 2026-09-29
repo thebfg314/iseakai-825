@@ -238,7 +238,7 @@ function labourMarkViews(proj: Project): LabourMarkView[] {
 
 export type CustomBookEntry = {
   id: string;
-  kind: "order" | "law" | "forthcoming";
+  kind: "order" | "law" | "forthcoming" | "letter";
   title: string;
   body: string;
   lasting: boolean;
@@ -248,6 +248,7 @@ export function customsBookEntries(state: WorldState): {
   forthcoming: CustomBookEntry[];
   orders: CustomBookEntry[];
   laws: CustomBookEntry[];
+  letters: CustomBookEntry[];
 } {
   const forthcoming = (state.forthcoming_orders ?? [])
     .filter((o) => o.status === "waiting")
@@ -256,7 +257,18 @@ export function customsBookEntries(state: WorldState): {
     .sort((a, b) => Number(b.active) - Number(a.active))
     .map(orderEntry);
   const laws = state.modifiers.map(lawEntry);
-  return { forthcoming, orders, laws };
+  const letters = (state.church?.letters ?? []).map(letterEntry);
+  return { forthcoming, orders, laws, letters };
+}
+
+function letterEntry(letter: { id: string; text: string }): CustomBookEntry {
+  return {
+    id: letter.id,
+    kind: "letter",
+    title: "A letter from Autun",
+    body: letter.text,
+    lasting: true,
+  };
 }
 
 function forthcomingEntry(order: { id: string; text: string }): CustomBookEntry {

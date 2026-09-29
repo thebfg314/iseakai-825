@@ -135,6 +135,8 @@ ipcMain.handle("game:sendDialogue", async (_e, npcId: string, message: string) =
 
 ipcMain.handle("game:confirmProposal", (_e, id: string) => requireGame().confirmProposal(id));
 
+ipcMain.handle("game:confirmAllProposals", () => requireGame().confirmAllProposals());
+
 ipcMain.handle("game:rejectProposal", (_e, id: string) => requireGame().rejectProposal(id));
 
 ipcMain.handle("game:cancelForthcomingOrder", (_e, id: string) => requireGame().cancelForthcomingOrder(id));
