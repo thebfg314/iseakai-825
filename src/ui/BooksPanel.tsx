@@ -29,6 +29,7 @@ import {
   peopleSentence,
   resourceName,
   resourceUnit,
+  armsBookLine,
   roleName,
   sowingShareLine,
   sowingRotationLine,
@@ -191,6 +192,11 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
       {s.npcs.map((n) => (
         <Row key={`${n.name}:${n.role}`} k={n.name} v={roleName(n.role)} />
       ))}
+
+      <h3>Arms</h3>
+      <p className="ledger-note">
+        <GlossaryText text={armsBookLine(s.npcs)} />
+      </p>
 
       <h3>Land — {holding?.name}</h3>
       {holding &&

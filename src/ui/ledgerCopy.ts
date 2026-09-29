@@ -316,6 +316,13 @@ export function peopleSentence(pop: WorldState["population"]): string {
   return `${pop.adult_men} men, ${pop.adult_women} women, and ${pop.youths} youths of working age.`;
 }
 
+/** Arms in the books. The captain is named only after he has been taken into the household. */
+export function armsBookLine(npcs: { name: string; role: string }[]): string {
+  const captain = npcs.find((n) => n.role === "captain" && n.name.trim());
+  if (!captain) return "No captain of the guard yet.";
+  return `${captain.name} is captain of the guard.`;
+}
+
 export function labourSentence(
   pool: { men: number; women: number; youths: number },
   remaining: { men: number; women: number; youths: number },

@@ -16,6 +16,7 @@ import {
   proposalBlurb,
   proposalTypeName,
   resourceName,
+  armsBookLine,
   roleName,
   seasonBooksLabel,
   sowingShareLine,
@@ -43,6 +44,12 @@ describe("steward ledger voice", () => {
     expect(resourceName("trade_goods")).toBe("wares");
     expect(roleName("village_reeve")).toBe("village reeve");
     expect(roleName("copper_smith")).toBe("copper-smith");
+  });
+
+  it("names a captain of the guard only once he serves", () => {
+    expect(armsBookLine([])).toBe("No captain of the guard yet.");
+    expect(armsBookLine([{ name: "Aldric", role: "steward" }])).toBe("No captain of the guard yet.");
+    expect(armsBookLine([{ name: "Eberhard", role: "captain" }])).toBe("Eberhard is captain of the guard.");
   });
 
   it("speaks sowing shares and market prices without percents or snake_case", () => {
