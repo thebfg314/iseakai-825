@@ -31,6 +31,15 @@ import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
 import { ensureAgriculture, fieldRotation, sownCapacity, springFieldAcres } from "./agriculture";
 import {
+  applyCellAlms,
+  applyCellSurplusSale,
+  applySponsoredFeast,
+  isCellAlmsProposal,
+  isCellSurplusId,
+  noteSundayOrFeastWork,
+  noteTakingFromCell,
+} from "./church";
+import {
   amountPhrase,
   featureName,
   looksLikeEngineKey,
@@ -139,9 +148,9 @@ function chaplainAllowed(state: WorldState, p: MechanicalProposal): string | nul
   }
   switch (p.type) {
     case "transfer_resources": {
-      if (CHAPLAIN_TRANSFER.has(p.resource)) return null;
+      if (CHAPLAIN_TRANSFER.has(p.resource) || isCellSurplusId(p.resource)) return null;
       const custom = state.custom_resources.find((c) => c.id === p.resource);
-      if (custom?.tags?.some((t) => t === "church" || t === "liturgy" || t === "alms")) return null;
+      if (custom?.tags?.some((t) => t === "church" || t === "liturgy" || t === "alms" || t === "cell")) return null;
       return "npc_not_authorized";
     }
     case "start_project": {
@@ -175,6 +184,8 @@ function chaplainAllowed(state: WorldState, p: MechanicalProposal): string | nul
       if (CHAPLAIN_NPC_ROLES.has(p.npc.role)) return null;
       return "npc_not_authorized";
     }
+    case "sponsor_feast":
+      return null;
     default:
       return "npc_not_authorized";
   }
@@ -222,6 +233,13 @@ export function applyProposal(
   } else if (authProposal.type === "start_hunt") {
     return fail(state, "Only Gerulf walks the roads for scarce goods.", "Only Gerulf walks the roads for scarce goods.");
   }
+  if (authProposal.type === "sponsor_feast" && actor !== "chaplain") {
+    return fail(
+      state,
+      "Only Father Ermenald may order a feast at the cell.",
+      "Only Father Ermenald may order a feast at the cell.",
+    );
+  }
   const specialistActor = specialistById(actor);
   if (specialistActor) {
     const blocked = specialistAllowed(state, authProposal, specialistActor);
@@ -240,7 +258,7 @@ export function applyProposal(
     case "adjust_sowing":
       return adjustSowing(state, proposal);
     case "transfer_resources":
-      return transferResources(state, proposal);
+      return transferResources(state, proposal, actor);
     case "add_modifier":
       return addModifier(state, proposal);
     case "remove_modifier":
@@ -263,6 +281,8 @@ export function applyProposal(
     }
     case "settle_households":
       return ok(state, applySettleHouseholds(state, proposal));
+    case "sponsor_feast":
+      return applySponsoredFeast(state, proposal);
     case "defer_proposal":
       return parkForthcomingOrder(state, proposal, actor);
     default:
@@ -323,7 +343,10 @@ function setStandingOrder(
   } else {
     state.standing_orders.push({ id, text: p.text, active: p.active });
   }
-  return ok(state, `Standing order ${p.active ? "set" : "paused"}: ${p.text.slice(0, 80)}.`);
+  const base = `Standing order ${p.active ? "set" : "paused"}: ${p.text.slice(0, 80)}.`;
+  if (!p.active) return ok(state, base);
+  const displeasure = noteSundayOrFeastWork(state, p.text);
+  return ok(state, displeasure.length ? `${base} ${displeasure.join(" ")}` : base);
 }
 
 function startProject(
@@ -497,7 +520,14 @@ function adjustSowing(
 function transferResources(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "transfer_resources" }>,
+  actor: string,
 ): ApplyResult {
+  if (actor === "chaplain" && p.direction === "gain" && isCellSurplusId(p.resource)) {
+    return applyCellSurplusSale(state, p);
+  }
+  if (actor === "chaplain" && isCellAlmsProposal(p)) {
+    return applyCellAlms(state, p);
+  }
   const current = getAmount(state, p.resource);
   if (current === null) return fail(state, `Unknown resource '${p.resource}'. Register it first.`, p.summary);
   const amount = Math.abs(p.amount);
@@ -525,7 +555,9 @@ function transferResources(
   }
   setAmount(state, p.resource, current + amount);
   const why = p.reason && !looksLikeEngineKey(p.reason) ? ` (${p.reason})` : "";
-  return ok(state, `Added ${amountPhrase(p.resource, amount)} to the stores${why}.`);
+  const taken = noteTakingFromCell(state, `${p.summary ?? ""} ${p.reason ?? ""}`);
+  const added = `Added ${amountPhrase(p.resource, amount)} to the stores${why}.`;
+  return ok(state, taken.length ? `${added} ${taken.join(" ")}` : added);
 }
 
 function addModifier(
@@ -663,13 +695,17 @@ function eventEffect(
     lines.push(p.summary.replace(/\.$/, ""));
   }
   if (p.resource && p.amount && p.direction) {
-    const inner = transferResources(state, {
-      type: "transfer_resources",
-      summary: p.summary,
-      resource: p.resource,
-      amount: p.amount,
-      direction: p.direction,
-    });
+    const inner = transferResources(
+      state,
+      {
+        type: "transfer_resources",
+        summary: p.summary,
+        resource: p.resource,
+        amount: p.amount,
+        direction: p.direction,
+      },
+      actor,
+    );
     if (inner.ok) lines.push(inner.logLine.replace(/\.$/, ""));
   }
   if (p.moodDelta) {

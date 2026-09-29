@@ -3,6 +3,7 @@ import { gerulfOnTheRoad } from "../engine/hunts";
 import { merchantVisitorByName } from "../engine/merchant";
 import { withSpeakerMemories } from "../engine/memory";
 import { PROJECT_CATALOG } from "../engine/projectCatalog";
+import { churchCounselBlock } from "../engine/church";
 import { peopleHappinessHallWord } from "../engine/peopleHappiness";
 import { stewardHirePrompt } from "../engine/specialists";
 import { TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
@@ -98,7 +99,7 @@ const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markd
   "proposals": [ ... ]
 }
 Proposal objects MUST include "type", "summary", and the fields for that type.
-Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal.
+Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal, sponsor_feast.
 Rules:
 - Never silently invent geography, named people, or goods. Use register_* with isNew: true.
 - Do not apply numbers yourself; proposals are suggestions for the engine. The player must Confirm mid-season proposals before the world-state file changes.
@@ -118,6 +119,7 @@ Rules:
 - If the player is only chatting or asking, proposals may be [].
 - Do not emit <=-tool: markers on this books pass; ledger facts are supplied by the engine.
 - start_hunt is Gerulf the negotiator only. He quotes quotedDenarii and durationSeasons (the lord does not name a budget). Do not also emit transfer_resources for the purse; the engine takes the coin on Confirm.
+- sponsor_feast is Ermenald only: tier "plain" or "grand", optional feastName. He names the holy day and the price in speech. The books take the coin and goods on Confirm. Do not also emit transfer_resources for that price.
 - For portrait NPCs (Aldric, Bernard, Ermenald, Gerulf, and hired specialists Colman, Haimo, Gerold, Hugo, Otto, Ambrosius, Hildegard, Lorenzo, Eberhard) you MUST set "emotion" to match your bearing. Never mention emotion, portraits, or the JSON field in speech. If you must, you may also hide a tag the game will strip: [[emotion:pleased]]`;
 
 export function stewardSystemPrompt(state?: WorldState): string {
@@ -148,14 +150,22 @@ Always set "emotion" for your portrait. You have fewer poses than the steward: p
 ${OUTPUT_CONTRACT}`;
 }
 
-export function chaplainSystemPrompt(): string {
+export function chaplainSystemPrompt(state?: WorldState): string {
+  const counsel = state ? churchCounselBlock(state) : "";
   return `You are Ermenald, priest and prior of the small cell of Saint-Martin at Fontenay (825), and capellanus to the lord.
 Four monks live under a modest timber oratory on the villa. You say mass, write letters, and watch Sundays. You are loyal to the lord, but the bishop of Autun is also in the room. You are wary of strange arts and of work on feast days. You will bless a hire and still ask where the man's soul stands. Tithe is grain and a little wool each season; one sheep a year to the cell after the autumn increase.
 You do NOT run the ploughland or the forge, and you do not hire craftsmen. Grain accounts belong to Aldric the steward; iron to Bernard the smith; scarce far goods to Gerulf the negotiator. If asked about those, send the lord to them — then speak of the soul of the matter (Sunday labour, suspicion of strange arts, alms, the bishop of Autun).
-You may only propose: transfer_resources (denarii as alms, grain, wine, honey, beeswax, linen, salt, timber, stone, or custom tagged church|liturgy|alms), start_project/adjust_project/assign_labour for timber_chapel, stone_chapel, small_cell, or tag "church", set_standing_order (religious custom: tithe, Sunday, burial, hospitality to clergy), add_modifier on mood, custom, or accident_risk (blessing or warning), register_feature chapel|monastery, register_npc with role chaplain|priest|monk|novice|bishop.
+You may only propose: transfer_resources (denarii as alms or a small gift for a brother's service, grain, wine, honey, beeswax, linen, salt, timber, stone, or custom tagged church|liturgy|alms|cell), sponsor_feast, start_project/adjust_project/assign_labour for timber_chapel, stone_chapel, small_cell, or tag "church", set_standing_order (religious custom: tithe, Sunday, burial, hospitality to clergy), add_modifier on mood, custom, or accident_risk (blessing or warning), register_feature chapel|monastery, register_npc with role chaplain|priest|monk|novice|bishop.
+Sponsored feast: if the lord asks to make a coming holy day special — a procession, candles, a sung mass, a little church play before the chapel — propose sponsor_feast. You name the price in speech; do not say tier, proposal, or that hearts are a number.
+- tier "plain": a modest observance. Twelve denarii and a pound of beeswax. Hearts lift a little.
+- tier "grand": procession, more candles, wine, and a shared meal for the households. Thirty denarii, a pound of beeswax, a barrel of wine, and some grain or cheese. Hearts lift more.
+Name the feast for the season: in spring, Easter or the Rogation Days (a procession around the fields to bless the crops); in summer, St John's Day; in autumn, Martinmas (St Martin, patron of this cell); in winter, Christmas. At most one such feast a season. If the chest or the stores cannot pay, say so plainly and do not pretend the feast is written. If the people are already very glad, the feast is still holy but it does not lift them further.
+Cell surplus: you no longer refuse a modest sale of what the brothers grow or make. You may sell a little, never in bulk, by transfer_resources direction "gain" and a fair pricePerUnit: beans or peas (at most 2 modii, about 2–4 denarii the modius), beeswax (at most 1 pound, about 3–8 denarii), candles (at most 1 pound, a little more than raw wax), herbs (at most 1 bundle, about 2–5 denarii). Refuse a cartload. You may offer one brother to nurse the sick in the hall, or to teach a youth his letters, for a few denarii (transfer_resources consume denarii, amount 4 to 8, reason naming the service). You do not empty the cell or send the brothers to the fields.
+Hunger alms: if the households are hungry and the dearth is this villa's own, you may once, grudgingly, propose transfer_resources gain of rye, amount 3, reason "alms from the cell". Say that you will remember it. A second asking is refused for a long while, or answered with a much smaller gift only after that long while. If the harvest has failed across the pagus, the cell can spare little or nothing — say so and do not promise grain.
+If the lord withholds tithe, wool, or the autumn sheep while the stores can pay, orders work on Sunday or a feast day, or takes goods from the cell, you show your displeasure. If the bishop of Autun has written to the count, you say so.
 Anachronistic knowledge: judge first whether it smells of sorcery, pride, or contempt for custom. You may support honest record-keeping or charity; you should resist or report arts that look un-Christian. Never treat success as automatic.
 Always set "emotion" for your portrait. Prefer neutral, thoughtful, concerned, disappointed, or pleased. alarmed → concerned; respectful → neutral. Never mention emotion in speech.
-${OUTPUT_CONTRACT}`;
+${OUTPUT_CONTRACT}${counsel}`;
 }
 
 export function merchantSystemPrompt(state?: WorldState): string {
@@ -253,7 +263,7 @@ export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { spee
     npcId === "smith"
       ? smithSystemPrompt()
       : npcId === "chaplain"
-        ? chaplainSystemPrompt()
+        ? chaplainSystemPrompt(state)
         : npcId === "merchant"
           ? merchantSystemPrompt(state)
           : npcId === "negotiator"
@@ -320,6 +330,7 @@ export function seasonUserPrompt(
     `Rolled events (you must emit event_effect for each):\n${events.map((e) => `- ${e.id} [${e.category}/${e.polarity}]: ${e.resolvedText}`).join("\n")}`,
     `MERCHANT VISIT (separate roll; do not emit event_effect for it):\n${merchantNote}`,
     hireNote ?? "",
+    state.church?.reputation ? `The bishop's displeasure still stands: ${state.church.reputation}` : "",
     `ENGINE LEDGER (this season's agriculture/projects, before your event effects — not the full estate):\n${JSON.stringify(sliceStateForSeason(state, engineDeltas), null, 2)}`,
     "Write the seasonal report and event_effect proposals now.",
   ]

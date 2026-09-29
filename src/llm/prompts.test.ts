@@ -49,7 +49,7 @@ const HOUSEHOLD_NOTES = {
   smith:
     "Proud of what the forge can do, honest about what it cannot but also enjoys technical challenges that stretch his skills. Iron and charcoal are usually short, so he hoards both. Speaks in short sentences but gets excited about new projects that he thinks will work.",
   chaplain:
-    "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands.",
+    "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands. The cell grows beans and peas and will sell a modest surplus of those, of candles or beeswax, or of herbs — never in bulk. A brother may nurse the sick or teach a youth his letters.",
   negotiator: GERULF_NOTES,
 } as const;
 

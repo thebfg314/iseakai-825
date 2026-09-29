@@ -111,6 +111,10 @@ const TYPE_ALIASES: Record<string, (typeof PROPOSAL_TYPES)[number]> = {
   retain: "register_npc",
   employ: "register_npc",
   registernpc: "register_npc",
+  feast: "sponsor_feast",
+  sponsorfeast: "sponsor_feast",
+  sponsor_feast: "sponsor_feast",
+  holyday: "sponsor_feast",
   hunt: "start_hunt",
   starthunt: "start_hunt",
   defer: "defer_proposal",
@@ -164,6 +168,7 @@ function guessType(obj: Record<string, unknown>): string | undefined {
   if (obj.text && obj.active != null) return "set_standing_order";
   if (obj.npc || (obj.name && obj.role && (obj.isNew != null || obj.type === "register_npc"))) return "register_npc";
   if (obj.quotedDenarii != null && (obj.goods || obj.resource)) return "start_hunt";
+  if (obj.tier === "plain" || obj.tier === "grand") return "sponsor_feast";
   if (
     obj.proposal &&
     (obj.beat != null ||
@@ -352,6 +357,13 @@ export function coerceProposalInput(raw: unknown): unknown {
       next.resource = next.goods.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "scarce_goods";
     }
     if (next.amount == null) next.amount = 1;
+  }
+  if (next.type === "sponsor_feast") {
+    const tier = typeof next.tier === "string" ? next.tier.toLowerCase() : "";
+    if (tier === "great" || tier === "splendid") next.tier = "grand";
+    else if (tier === "modest" || tier === "small") next.tier = "plain";
+    if (next.feastName == null && typeof next.feast === "string") next.feastName = next.feast;
+    if (next.feastName == null && typeof next.name === "string") next.feastName = next.name;
   }
   if (next.type === "event_effect") {
     const dir = coerceDirection(next.direction);

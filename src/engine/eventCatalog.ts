@@ -102,6 +102,7 @@ export const EVENT_CATALOG: CatalogEvent[] = [
   { id: "rel-son", category: "religious", polarity: "mixed", text: "Opportunity (or pressure) to send a son or relative into the Church." },
 
   // 6 Lordly
+  // TODO: requiem / funeral masses to soften happiness loss from dead levies after a muster or war. Not in the church pack.
   { id: "pol-muster", category: "political", polarity: "negative", text: "Summons to limited military service or to join a local/regional muster." },
   { id: "pol-hospitality", category: "political", polarity: "negative", text: "Demand for hospitality, supplies, or labour from the count or a missus." },
   { id: "pol-boundary", category: "political", polarity: "negative", text: "Dispute with a neighbouring landholder over boundaries, rights, or livestock." },

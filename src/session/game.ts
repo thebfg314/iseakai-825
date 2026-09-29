@@ -11,7 +11,7 @@ import {
   quoteMerchantBasket,
 } from "../engine/merchantShop";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
-import { tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
+import { fadeSponsoredFeastJoy, tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
 import { ARRIVAL_REFUSE_LINE, ABANDONED_GAME_OVER, estateIsAbandoned, markEstateAbandoned, resolvePeopleMovement } from "../engine/peopleMovement";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
@@ -383,7 +383,7 @@ export class GameController {
           requireProposals: true,
           allowRepair: true,
           repairHint:
-            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, or start_hunt) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
+            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, start_hunt, or sponsor_feast) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
         });
 
         const missing = missingCitedDrawers(books.proposals, fetched);
@@ -802,6 +802,7 @@ export class GameController {
         },
       );
       this.applySeasonProposals(parsed.proposals, rolled, effects);
+      this.noteFeastCooling(effects);
       tickPeopleHappinessFromSeason(
         this.state,
         effects.map((e) => e.text),
@@ -832,6 +833,7 @@ export class GameController {
       return { ...this.view(), effects };
     } catch (err) {
       for (const ev of rolled) this.applyEventStub(ev, effects, "The usual change");
+      this.noteFeastCooling(effects);
       tickPeopleHappinessFromSeason(
         this.state,
         effects.map((e) => e.text),
@@ -858,6 +860,16 @@ export class GameController {
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       await this.refreshCredits();
       return { ...this.view(), effects };
+    }
+  }
+
+  private noteFeastCooling(effects: SeasonEffectLine[]) {
+    const faded = fadeSponsoredFeastJoy(this.state);
+    if (faded > 0) {
+      effects.push({
+        kind: "info",
+        text: "The feast's first gladness cools; half of it remains with the people.",
+      });
     }
   }
 
