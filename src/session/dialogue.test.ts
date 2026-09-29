@@ -260,7 +260,7 @@ describe("per-NPC dialogue logs", () => {
     game.state.flags.merchant_present = true;
     game.state.merchant.present = true;
     game.state.merchant.name = "Gero";
-    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay", memories: [] });
+    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay", memories: [], wantsTalk: false });
     const merchant = game.setScene("merchant");
     expect(merchant.sceneNpcId).toBe("merchant");
     expect(merchant.messages).toHaveLength(1);
@@ -282,6 +282,7 @@ describe("npc transaction memories", () => {
       role: "merchant",
       location: "fontenay",
       memories: [],
+      wantsTalk: false,
     });
     game.state.resources.denarii = 200;
 
@@ -707,7 +708,7 @@ describe("expansion hires via Aldric after unlock", () => {
           type: "register_npc",
           summary: "Hire Otto",
           isNew: true,
-          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay", memories: [] },
+          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay", memories: [], wantsTalk: false },
         },
       ],
       [],

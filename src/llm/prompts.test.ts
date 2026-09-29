@@ -39,6 +39,7 @@ function withMerchant(name: (typeof MERCHANT_VISITORS)[number]["name"]): WorldSt
     location: "fontenay",
     notes: visitor.notes,
     memories: [],
+    wantsTalk: false,
   });
   return state;
 }
@@ -77,6 +78,10 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).not.toMatch(/80% of the male|harvest is at risk/i);
     expect(aldric).not.toMatch(/~3% yield and callable labour/i);
     expect(aldric).toMatch(/nudges the people's heart/i);
+    expect(aldric).toMatch(/captain of the guard/);
+    expect(aldric).toMatch(/combat specialist/);
+    expect(aldric).not.toMatch(/\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/);
+    expect(refereeSystemPrompt()).not.toMatch(/\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/);
 
     const bernard = smithSystemPrompt();
     expect(bernard).toContain("You are Bernard");

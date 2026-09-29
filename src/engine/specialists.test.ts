@@ -162,6 +162,25 @@ describe("specialist hire cost ladder", () => {
     expect(stewardHirePrompt(boot())).not.toMatch(/12 denarii|one solidus/i);
   });
 
+  it("does not name expansion hires until their post is open", () => {
+    const prompt = stewardHirePrompt(boot());
+    expect(prompt).not.toMatch(/\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/);
+    expect(prompt).toMatch(/combat specialist/);
+    expect(prompt).toMatch(/captain of the guard/);
+    const blocked = specialistHireBlocked(boot(), specialistById("captain")!);
+    expect(blocked).toMatch(/No captain of the guard yet/);
+    expect(blocked).not.toMatch(/Eberhard/);
+    for (const id of EXPANSION_IDS) {
+      expect(specialistHireBlocked(boot(), specialistById(id)!)).not.toMatch(
+        /\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/,
+      );
+    }
+
+    const watch = boot();
+    watch.holdings[0].features.push("watch_post");
+    expect(stewardHirePrompt(watch)).toMatch(/name Eberhard/);
+  });
+
   it("blocks a thin chest, lets Hugo through on the start chest, and refuses Gerold at boot", () => {
     const state = boot();
     expect(state.resources.denarii).toBe(96);
