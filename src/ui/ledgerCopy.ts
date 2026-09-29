@@ -1,5 +1,6 @@
 import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } from "../engine/schema";
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
+import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
 import { labourCalledPhrase, resolveActiveProject } from "../engine/labour";
 import { matchHireableSpecialist } from "../engine/specialists";
@@ -147,6 +148,7 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   start_hunt: "A hunt",
   settle_households: "People at the gate",
   defer_proposal: "A forthcoming order",
+  sponsor_feast: "A feast at the cell",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -483,6 +485,14 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const hh = p.households === 1 ? "one household" : `${p.households} households`;
       return `Take in ${hh} — a man, a woman, and a youth of working age.`;
     }
+    case "sponsor_feast": {
+      const name =
+        p.feastName && !looksLikeEngineKey(p.feastName) ? p.feastName : state ? suggestedFeastName(state.meta.season) : "the coming holy day";
+      if (p.tier === "grand") {
+        return `A grand feast for ${name}: 30 denarii, a pound of beeswax, a barrel of wine, and a meal for the households from grain or cheese.`;
+      }
+      return `A plain feast for ${name}: 12 denarii and a pound of beeswax.`;
+    }
     case "defer_proposal": {
       if (p.text && p.text.trim() && !looksLikeEngineKey(p.text)) return p.text.trim();
       const inner = p.proposal;
@@ -502,7 +512,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\bsponsor_feast\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {

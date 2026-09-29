@@ -5,7 +5,7 @@ export const MAX_STORED_MEMORIES = 20;
 export const MAX_PROMPT_MEMORIES = 8;
 export const MAX_SUMMARY_CHARS = 220;
 
-const JARGON = /\b(transfer_resources|register_npc|register_feature|register_resource|adjust_sowing|adjust_project|assign_labour|start_project|start_hunt|add_modifier|remove_modifier|set_standing_order|event_effect|defer_proposal|schedule_order|world-state\.json|world-state|JSON|npcId|isNew)\b/gi;
+const JARGON = /\b(transfer_resources|register_npc|register_feature|register_resource|adjust_sowing|adjust_project|assign_labour|start_project|start_hunt|sponsor_feast|add_modifier|remove_modifier|set_standing_order|event_effect|defer_proposal|schedule_order|world-state\.json|world-state|JSON|npcId|isNew)\b/gi;
 
 export function compactMemorySummary(proposal: MechanicalProposal, logLine: string): string {
   const fromProposal = proposal.summary?.trim();

@@ -60,6 +60,10 @@ export type SeasonRoll = {
   other: RolledEvent | null;
 };
 
+/**
+ * `flags.regional_famine` is not rolled yet. A later famine event may set it.
+ * While it stays false, hunger is this villa's own.
+ */
 export function rollSeasonEvents(state: WorldState): SeasonRoll {
   const weatherCat = state.meta.season === "winter" ? "winter_weather" : "weather";
   const weatherRaw = fromCategory(weatherCat, polarityRoll()) ?? EVENT_CATALOG.find((e) => e.category === weatherCat)!;

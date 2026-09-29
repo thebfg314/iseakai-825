@@ -13,6 +13,7 @@ import { featureName, landName, resourceName } from "../ui/ledgerCopy";
 import { markProjectSeason, stampProjectEnded } from "./projectProgress";
 import { autumnFieldAcres, fieldRotation, springFieldAcres } from "./agriculture";
 import { fireForthcomingBeat } from "./forthcoming";
+import { auditChurchLabourOrders, closeChurchSeason, resolveChurchGrainAndWool, resolveChurchSheep } from "./church";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -99,10 +100,7 @@ function livestockSeason(state: WorldState): string[] {
       state.resources.sheep += breed;
       notes.push(`Herd increase: +${breed} sheep (young stock).`);
     }
-    if (state.holdings.some((h) => h.features.includes("monastery")) && state.resources.sheep >= 1) {
-      state.resources.sheep -= 1;
-      notes.push("Tithe: 1 sheep to the cell (the year's increase).");
-    }
+    notes.push(...resolveChurchSheep(state));
     const wineAcres = state.holdings.reduce((s, h) => s + h.land.vineyard, 0);
     if (wineAcres > 0) {
       const wine = round1(resourceOutputBonus(state, "wine", wineAcres * 0.6 * livestockYield));
@@ -208,16 +206,7 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   const households = state.population.households;
   state.flags.hunger = false;
   add(consumeGrain(state, round1(households * HOUSEHOLD_SEASON_GRAIN), "Households"));
-  if (state.holdings.some((h) => h.features.includes("monastery") || h.features.includes("chapel"))) {
-    const hasMonastery = state.holdings.some((h) => h.features.includes("monastery"));
-    const house = hasMonastery ? "cell" : "oratory";
-    add(consumeGrain(state, round1(households * 0.15), `Tithe to the ${house}`));
-    const woolRender = 1;
-    if (state.resources.wool >= woolRender) {
-      state.resources.wool = round1(state.resources.wool - woolRender);
-      add(`Tithe: ${woolRender} lb wool to the ${house}.`);
-    }
-  }
+  for (const line of resolveChurchGrainAndWool(state)) add(line);
 
   const season = state.meta.season;
   if (season === "spring") {
@@ -241,6 +230,8 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
     sowAutumn(state).forEach(add);
   }
   livestockSeason(state).forEach(add);
+  auditChurchLabourOrders(state).forEach(add);
+  closeChurchSeason(state);
   advanceProjects(state).forEach(add);
   resolveHunts(state).forEach(add);
   return lines;

@@ -22,3 +22,4 @@ export * from "./hunts";
 export * from "./wantsTalk";
 export * from "./peopleHappiness";
 export * from "./peopleMovement";
+export * from "./church";

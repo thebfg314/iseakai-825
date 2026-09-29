@@ -93,7 +93,26 @@ If a holding has `chapel` or `monastery`, each season also consumes **0.15 modiu
 
 If a holding has `monastery` (not chapel alone), once per year in Autumn the cell also takes **1 sheep** after the §3.4 herd increase — the year's animal-increase tithe. Skip if the flock is empty.
 
+An active standing order that expressly withholds the grain tithe, the wool render, or that sheep causes the engine to skip that render. If the stores could have paid, that skip is church neglect (§3.7). A thin store is not neglect.
+
 Religious events are more frequent when a monastery stands on the estate (weight 3).
+
+### 3.7 The cell of Saint-Martin
+
+Ermenald (the chaplain) proposes; the lord Confirms. The engine writes the books. Speech stays in the hall's language.
+
+**Sponsored feast** (`sponsor_feast`, Ermenald only). One per season. The holy day he names follows the season: spring Easter or the Rogation Days, summer St John's Day, autumn Martinmas, winter Christmas.
+
+- Plain: 12 denarii and 1 lb beeswax. The people take heart by 4, unless that would pass 80.
+- Grand: 30 denarii, 1 lb beeswax, 1 barrel of wine, and a households' meal of 2 modii of grain or else 2 lb cheese. The people take heart by 8, with the same ceiling.
+
+If the heart is already at 80 or above, the feast still costs its goods but does not lift them further, and does not lower them. Other joys may still pass 80. On the next Advance season, half of the joy that was actually given cools; half remains. A feast the chest or stores cannot pay is refused and changes nothing.
+
+**Neglect.** The engine counts what it can see: a withheld tithe, wool render, or autumn sheep when the stores could pay; an order to work on Sunday or a feast day; goods taken from the cell. One slip displeases Ermenald and lowers the people's heart by 2. Three slips inside about a year (four seasons) bring a letter from the bishop of Autun to the count, written in the Customs books, a further drop of 5, and a lasting note Ermenald and the season's chronicle can see. A season kept well lets one slip fall away, and slips older than a year fall away on their own.
+
+**Cell surplus.** Ermenald may sell a little beans, peas, beeswax, candles, or herbs at a fair price through Confirm. Amounts stay small (a modius or two, a pound, a bundle) and a second sale of the same good waits on the next season. He may also offer a brother to nurse the sick or teach a youth letters, for a few denarii. He does not sell in bulk.
+
+**Alms in hunger.** If `flags.hunger` is set and `flags.regional_famine` is false, the cell may once give 3 modii, grudgingly. Ermenald remembers. A second request inside eight seasons is refused; after that, only 1 modius. If `regional_famine` is true (a flag a later event may set; the default is false, meaning the dearth is local), the cell gives nothing.
 
 ---
 
@@ -184,7 +203,8 @@ Proposal `type` values:
 | `start_project` | steward; smith if forge-related; chaplain if church-related | costs from catalogue or declared custom |
 | `adjust_project` | steward; smith if that project is forge-related; chaplain if church-related | rush, cancel, labour this season |
 | `adjust_sowing` | steward | Crop mix. `springBarleyShare` (0–1 of remaining spring capacity; rest oats), `autumnWheatShare` (0–1; rest rye). Mid-spring also fills remaining unsown acres so the ledger moves before Advance season. |
-| `transfer_resources` | steward; merchant (buy/sell only); smith (metal/fuel/hides/trade_goods only); chaplain (alms, grain, wine, wax, linen, timber, stone) | buy / sell require a visiting merchant; consume / gain do not |
+| `transfer_resources` | steward; merchant (buy/sell only); smith (metal/fuel/hides/trade_goods only); chaplain (alms, grain, wine, wax, linen, timber, stone, modest cell surplus) | buy / sell require a visiting merchant; consume / gain do not. Chaplain gain of beans, peas, wax, candles, or herbs is a small sale at a fair price. Chaplain gain of grain while the villa is hungry is cell alms (§3.7). |
+| `sponsor_feast` | chaplain only | plain or grand holy day at the cell. One per season. See §3.7. |
 | `add_modifier` | steward; smith (forge targets only); chaplain (mood, custom, accident_risk) | temporary or permanent |
 | `remove_modifier` | steward | |
 | `register_resource` | steward; smith (craft/metal) | new custom good |
@@ -205,7 +225,7 @@ The smith scene may only emit: `transfer_resources` (iron, charcoal, copper, tin
 
 ### 7.2 Chaplain allow-list
 
-The chaplain (capellanus / prior of an on-estate cell) may only emit: `transfer_resources` (denarii, grain, wine, honey, beeswax, linen, salt, timber, stone, custom tagged church|liturgy|alms), `start_project` / `adjust_project` / `assign_labour` for `timber_chapel`, `stone_chapel`, `small_cell`, or `tag: church`, `set_standing_order` (tithe, Sunday, burial, clerical hospitality), `add_modifier` on `mood`, `custom`, or `accident_risk`, `register_feature` (`chapel`, `monastery`), `register_npc` with role chaplain|priest|monk|novice|bishop. Anything else is rejected with reason `npc_not_authorized`. He does not run the demesne.
+The chaplain (capellanus / prior of an on-estate cell) may only emit: `transfer_resources` (denarii, grain, wine, honey, beeswax, linen, salt, timber, stone, custom tagged church|liturgy|alms|cell, and a modest sale of beans, peas, candles, or herbs), `sponsor_feast` (plain or grand), `start_project` / `adjust_project` / `assign_labour` for `timber_chapel`, `stone_chapel`, `small_cell`, or `tag: church`, `set_standing_order` (tithe, Sunday, burial, clerical hospitality), `add_modifier` on `mood`, `custom`, or `accident_risk`, `register_feature` (`chapel`, `monastery`), `register_npc` with role chaplain|priest|monk|novice|bishop. Anything else is rejected with reason `npc_not_authorized`. He does not run the demesne. Feast prices, the one-feast season, the 80 ceiling, neglect, and hunger alms are engine rules (§3.7), not numbers he may invent.
 
 ### 7.3 Merchant allow-list
 

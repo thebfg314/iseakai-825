@@ -109,7 +109,12 @@
         "merchant_present": { "type": "boolean" },
         "active_threat": { "type": "boolean" },
         "monastery_nearby": { "type": "boolean" },
-        "hunger": { "type": "boolean" }
+        "hunger": { "type": "boolean" },
+        "regional_famine": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pagus-wide dearth. Events may set this later. False means hunger, if any, is this villa's own."
+        }
       }
     },
     "trade": {
@@ -233,6 +238,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/forthcomingOrder" },
       "description": "Confirmed mechanical changes waiting on a later harvest or sowing beat. Omitted on old saves; treat as empty."
+    },
+    "church": {
+      "$ref": "#/$defs/churchState",
+      "description": "Cell of Saint-Martin: sponsored feasts, neglect, the bishop's letters, hunger alms, and surplus sold this season. Omitted on old saves; treat as a quiet cell."
     }
   },
   "$defs": {
@@ -650,6 +659,49 @@
         "id": { "type": "string" },
         "text": { "type": "string" },
         "active": { "type": "boolean" }
+      }
+    },
+    "churchState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "feastHeldKey": { "type": "string" },
+        "feastFade": { "type": "integer", "minimum": 0 },
+        "neglect": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["turn", "year", "season", "kind", "note"],
+            "properties": {
+              "turn": { "type": "integer" },
+              "year": { "type": "integer" },
+              "season": { "$ref": "#/$defs/season" },
+              "kind": { "enum": ["tithe", "wool", "sheep", "sunday", "feast_day", "took_from_cell"] },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "bishopLetterTurn": { "type": ["integer", "null"] },
+        "letters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "year", "season", "turn", "text"],
+            "properties": {
+              "id": { "type": "string" },
+              "year": { "type": "integer" },
+              "season": { "$ref": "#/$defs/season" },
+              "turn": { "type": "integer" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        "reputation": { "type": "string" },
+        "almsTurn": { "type": ["integer", "null"] },
+        "surplusSeasonKey": { "type": "string" },
+        "surplusSold": { "type": "object", "additionalProperties": { "type": "number" } }
       }
     },
     "forthcomingOrder": {

@@ -31,6 +31,7 @@ import { clamp } from "./util";
  *   harsh custom         −5  Sunday labour, extra/heavy dues, corvée, work on feast days
  *   extra-day labour     −6 / −3  extra heads called vs the season's leftover pool
  *   war / muster         −8  flags.active_threat, or a muster event this tick
+ *   TODO: a requiem or funeral mass could soften this after dead levies. Not built.
  *   mood modifiers       mapped add/multiply/set on target `mood` (blessings, unease)
  *
  * Mid-season charity: a confirmed consume tagged as alms/charity nudges +3 at once.
@@ -202,7 +203,20 @@ export function peopleHappinessSeasonDelta(state: WorldState, extras: PeopleHapp
   return peopleHappinessPressures(state, extras).reduce((sum, p) => sum + p.delta, 0);
 }
 
+/**
+ * On the Advance after a sponsored feast, half the joy that was given cools.
+ * The other half has already stayed in the meter. Does nothing when no feast is cooling.
+ */
+export function fadeSponsoredFeastJoy(state: WorldState): number {
+  const fade = state.church?.feastFade ?? 0;
+  if (fade <= 0) return 0;
+  state.church.feastFade = 0;
+  applyPeopleHappinessDelta(state, -fade);
+  return fade;
+}
+
 export function tickPeopleHappiness(state: WorldState, extras: PeopleHappinessExtras = {}): number {
+  fadeSponsoredFeastJoy(state);
   const delta = peopleHappinessSeasonDelta(state, extras);
   applyPeopleHappinessDelta(state, delta);
   return delta;
