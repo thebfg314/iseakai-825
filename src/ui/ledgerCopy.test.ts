@@ -96,8 +96,8 @@ describe("steward ledger voice", () => {
       source: "Ermenald's blessing",
     })).toBe("the people are in better heart (2 seasons yet)");
     expect(projectProgressLine(35, 70)).toBe("half raised · 35 days still owed");
-    expect(labourOnWorkLine({ men: 12, women: 0, youths: 0 })).toBe("12 men called this season");
-    expect(labourOnWorkLine({ men: 0, women: 0, youths: 0 })).toBe("no extra hands called this season");
+    expect(labourOnWorkLine({ men: 12, women: 0, youths: 0 })).toBe("12 days of the men's work this season");
+    expect(labourOnWorkLine({ men: 0, women: 0, youths: 0 })).toBe("no extra days of work set this season");
     expect(seasonBooksLabel("spring", 825)).toBe("Spring 825");
     expect(confirmBanner(1)).toMatch(/Confirm is Aldric writing it in the books/);
     expect(confirmBanner(1)).not.toMatch(/world-state/);
@@ -121,7 +121,7 @@ describe("steward ledger voice", () => {
         women: 0,
         youths: 0,
       }),
-    ).toBe("12 men to the work.");
+    ).toBe("Set 12 days of the men's work this season to the work.");
     expect(playerFacingSummary({ type: "assign_labour", summary: "assign_labour" })).toBe("");
     expect(proposalTypeName("settle_households")).toBe("People at the gate");
     expect(proposalTypeName("defer_proposal")).toBe("A forthcoming order");
@@ -170,7 +170,7 @@ describe("steward ledger voice", () => {
     expect(playerFacingReason("Unknown project 'flour_mill' and no customCosts declared.")).toMatch(/flour mill/i);
     expect(playerFacingReason("REJECT smith assign_labour: npc_not_authorized")).toBe("That is not theirs to order.");
     expect(playerFacingReason("Not enough callable labour (pool men 180, women 80, youths 40).")).toMatch(
-      /180 men, 80 women, and 40 youths/,
+      /180 days, the women's to 80, and the youths' to 40/,
     );
     expect(playerFacingReason("The merchant has no 4 trade_goods on the carts.")).toMatch(/wares/);
     for (const reason of [
@@ -196,7 +196,7 @@ describe("apply success and fail voice the lord can read", () => {
       "steward",
     );
     expect(started.ok).toBe(true);
-    expect(started.logLine).toMatch(/I have called/i);
+    expect(started.logLine).toMatch(/I have set \d+ days of the men's work this season/i);
     expect(started.logLine).toMatch(/flour mill/i);
     expect(started.logLine).not.toMatch(JARGON);
     expect(started.logLine).not.toMatch(/Materials reserved/i);
@@ -208,7 +208,7 @@ describe("apply success and fail voice the lord can read", () => {
       "steward",
     );
     expect(assigned.ok).toBe(true);
-    expect(assigned.logLine).toMatch(/I have called/i);
+    expect(assigned.logLine).toMatch(/I have set \d+ days of the men's work this season/i);
     expect(assigned.logLine).toMatch(/flour mill/i);
     expect(assigned.logLine).not.toMatch(JARGON);
     expect(assigned.logLine).not.toContain(mill.id);

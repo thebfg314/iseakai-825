@@ -153,7 +153,7 @@ function advanceProjects(state: WorldState): string[] {
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
       markProjectSeason(state, proj);
-      notes.push(`${proj.name}: no extra hands called this season.`);
+      notes.push(`${proj.name}: no extra days of work set this season.`);
       continue;
     }
     const kind = labourKindFor(proj);

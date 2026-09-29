@@ -26,9 +26,13 @@ export const MOSTLY_MEN_NO_WOMEN_KEYS = new Set(["quarry", "wooden_tower", "drai
 
 const EMPTY_POOL: LabourPool = { men: 0, women: 0, youths: 0 };
 
+function labourEfficiency(state: WorldState): number {
+  return applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
+}
+
 export function labourPool(state: WorldState): LabourPool {
   const mid = LABOUR_MIDPOINTS[state.meta.season];
-  const eff = applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
+  const eff = labourEfficiency(state);
   return {
     men: Math.round(state.population.adult_men * mid.men * eff),
     women: Math.round(state.population.adult_women * mid.women * eff),
@@ -36,6 +40,7 @@ export function labourPool(state: WorldState): LabourPool {
   };
 }
 
+/** Sum of assigned work-days. The men/women/youths fields are days of that kind of work, not heads. */
 export function labourUsed(state: WorldState): LabourPool {
   const used: LabourPool = { men: 0, women: 0, youths: 0 };
   for (const a of state.labour.assigned) {
@@ -56,12 +61,11 @@ export function labourRemaining(state: WorldState): LabourPool {
   };
 }
 
-export function labourDaysFromAssignment(
-  kind: LabourKind,
-  men: number,
-  women: number,
-  youths: number,
-): number {
+/**
+ * Assigned figures are already days of that kind of work.
+ * Women count 1.0 except 0.6 on mostly-men work; youths 0.4.
+ */
+export function labourDaysFromAssignment(kind: LabourKind, men: number, women: number, youths: number): number {
   const womanFactor = kind === "mostly_men" ? 0.6 : 1;
   const youthFactor = 0.4;
   return men + women * womanFactor + youths * youthFactor;
@@ -77,17 +81,11 @@ function normalizeProjectRef(ref: string): string {
   return ref.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
-function summaryRefersToTheWork(summary?: string): boolean {
-  if (!summary) return false;
-  return /\b(the|that|this)\s+(work|mill|project|job)\b/i.test(summary);
-}
-
 /**
  * Match assign_labour / adjust_project refs: generated id, catalog key, or display name.
- * Does not guess among several active works; a lone labour-day work is used only when
- * the summary clearly means "the" work.
+ * A vague summary never redirects onto whatever work happens to be open.
  */
-export function resolveActiveProject(state: WorldState, projectIdRef: string, summary?: string): Project | undefined {
+export function resolveActiveProject(state: WorldState, projectIdRef: string, _summary?: string): Project | undefined {
   const ref = projectIdRef.trim();
   if (!ref || ref === "unassigned") return undefined;
   const active = state.projects.filter((p) => p.status === "active");
@@ -104,8 +102,6 @@ export function resolveActiveProject(state: WorldState, projectIdRef: string, su
   if (byName.length === 1) return byName[0];
   if (byName.length > 1) return undefined;
 
-  const labourWorks = active.filter(isLabourDayProject);
-  if (labourWorks.length === 1 && summaryRefersToTheWork(summary)) return labourWorks[0];
   return undefined;
 }
 
@@ -129,13 +125,13 @@ export function autoFillRoles(kind: LabourKind, projectKey: string): LabourRole[
   return ["men", "women"];
 }
 
-function coversNeed(kind: LabourKind, heads: LabourPool, remainingDays: number): boolean {
-  return labourDaysFromAssignment(kind, heads.men, heads.women, heads.youths) + 1e-9 >= remainingDays;
+function coversNeed(kind: LabourKind, days: LabourPool, remainingDays: number): boolean {
+  return labourDaysFromAssignment(kind, days.men, days.women, days.youths) + 1e-9 >= remainingDays;
 }
 
 /**
- * Extra heads (youths / women / men) to take from `available` so `already`
- * plus the result covers `remainingDays`, without dumping surplus people.
+ * Extra days (youths / women / men) to take from `available` so `already`
+ * plus the result covers `remainingDays`, without dumping surplus days.
  */
 export function leftoverHeadsForNeed(
   kind: LabourKind,
@@ -162,22 +158,36 @@ export function leftoverHeadsForNeed(
   return added;
 }
 
-export function labourCalledPhrase(men: number, women: number, youths: number): string {
+function dayCount(n: number): string {
+  const shown = Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1);
+  return `${shown} ${n === 1 ? "day" : "days"}`;
+}
+
+function joinParts(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+/** Days of each kind of work, e.g. "60 days of the men's work". */
+export function labourDaysPhrase(men: number, women: number, youths: number): string {
   const parts: string[] = [];
-  if (men) parts.push(`${men} ${men === 1 ? "man" : "men"}`);
-  if (women) parts.push(`${women} ${women === 1 ? "woman" : "women"}`);
-  if (youths) parts.push(`${youths} ${youths === 1 ? "youth" : "youths"}`);
-  if (!parts.length) return "";
-  const who =
-    parts.length === 1 ? parts[0] : parts.length === 2 ? `${parts[0]} and ${parts[1]}` : `${parts[0]}, ${parts[1]}, and ${parts[2]}`;
-  return `${who} called this season`;
+  if (men) parts.push(`${dayCount(men)} of the ${men === 1 ? "man's" : "men's"} work`);
+  if (women) parts.push(`${dayCount(women)} of the ${women === 1 ? "woman's" : "women's"} work`);
+  if (youths) parts.push(`${dayCount(youths)} of the ${youths === 1 ? "youth's" : "youths'"} work`);
+  return joinParts(parts);
+}
+
+export function labourCalledPhrase(men: number, women: number, youths: number): string {
+  const phrase = labourDaysPhrase(men, women, youths);
+  return phrase ? `${phrase} this season` : "";
 }
 
 export function labourCalledSentence(workName: string, men: number, women: number, youths: number): string {
-  const phrase = labourCalledPhrase(men, women, youths);
+  const phrase = labourDaysPhrase(men, women, youths);
   if (!phrase) return "";
   const dest = workName.replace(/^(the|a|an)\s+/i, "");
-  return `I have called ${phrase.replace(" called this season", "")} to the ${dest}.`;
+  return `I have set ${phrase} this season to the ${dest}.`;
 }
 
 function assignmentOn(state: WorldState, projectId: string): LabourAssignment | undefined {
@@ -250,27 +260,41 @@ export type PendingLabourHint = {
   proposal: { type: string; projectId?: string; men?: number; women?: number; youths?: number; summary?: string };
 };
 
+function aliasKey(ref: string): string {
+  return ref.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Bind a pending hands line to a project created in the same pack.
+ * Only an id that belongs to that project matches. An unmatched id is left alone
+ * so it cannot land on some other work that happened to be created first.
+ */
 export function pendingAssignLabourForNewProject(
   pending: PendingLabourHint[],
   newProjectId: string,
-  activeProjectIds: Set<string>,
+  aliases: Iterable<string> = [],
 ): { type: "assign_labour"; projectId: string; men: number; women: number; youths: number; summary?: string } | null {
+  const accepted = new Set<string>([aliasKey(newProjectId), aliasKey(newProjectId).replace(/ /g, "_")]);
+  for (const alias of aliases) {
+    if (!alias.trim()) continue;
+    accepted.add(aliasKey(alias));
+    accepted.add(aliasKey(alias).replace(/ /g, "_"));
+  }
   for (const item of pending) {
     if (item.status !== "pending") continue;
     const p = item.proposal;
     if (p.type !== "assign_labour") continue;
     const id = p.projectId;
     if (!id || id === "unassigned") continue;
-    if (id === newProjectId || !activeProjectIds.has(id)) {
-      return {
-        type: "assign_labour",
-        projectId: id,
-        men: p.men ?? 0,
-        women: p.women ?? 0,
-        youths: p.youths ?? 0,
-        summary: p.summary,
-      };
-    }
+    if (!accepted.has(aliasKey(id)) && !accepted.has(aliasKey(id).replace(/ /g, "_"))) continue;
+    return {
+      type: "assign_labour",
+      projectId: newProjectId,
+      men: p.men ?? 0,
+      women: p.women ?? 0,
+      youths: p.youths ?? 0,
+      summary: p.summary,
+    };
   }
   return null;
 }

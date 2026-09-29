@@ -2,12 +2,13 @@ import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } fr
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
 import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
-import { labourCalledPhrase, resolveActiveProject } from "../engine/labour";
+import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { matchHireableSpecialist } from "../engine/specialists";
 
 export const BOOKS_TITLE = "The books";
 
-export const CONFIRM_HELP = "Speech does not change the chest. Confirm is Aldric writing it in the books.";
+export const CONFIRM_HELP =
+  "Speech does not change the chest. Confirm writes one change. Confirm all writes every change still before you. Denying a work sets aside the hands proposed for it.";
 
 export const HUNGER_LINE = "The households are hungry — grain will not last.";
 
@@ -351,7 +352,7 @@ export function marketLine(resource: string, min: number, max: number): string {
 }
 
 export function labourOnWorkLine(assign?: { men: number; women: number; youths: number } | null): string {
-  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra hands called this season";
+  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra days of work set this season";
   return labourCalledPhrase(assign.men, assign.women, assign.youths);
 }
 
@@ -460,8 +461,8 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
     case "assign_labour": {
       const proj = state ? resolveActiveProject(state, p.projectId, p.summary)?.name ?? "the work" : "the work";
       const dest = proj.replace(/^(the|a|an)\s+/i, "");
-      const who = labourCalledPhrase(p.men, p.women, p.youths).replace(" called this season", "") || "no extra hands";
-      return `${who} to the ${dest}.`;
+      const who = labourDaysPhrase(p.men, p.women, p.youths) || "no extra days";
+      return `Set ${who} this season to the ${dest}.`;
     }
     case "set_standing_order":
       return p.text;
@@ -583,9 +584,9 @@ export function playerFacingReason(reason: string): string {
 
   const labour = trimmed.match(/Not enough callable labour \(pool men ([\d.]+), women ([\d.]+), youths ([\d.]+)\)/i);
   if (labour) {
-    return `There are not enough extra hands. I can still call ${labour[1]} men, ${labour[2]} women, and ${labour[3]} youths.`;
+    return `There are not enough days of work this season. The men's work comes to ${labour[1]} days, the women's to ${labour[2]}, and the youths' to ${labour[3]}.`;
   }
-  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough extra hands left to call.";
+  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough days of work left this season.";
 
   if (/The merchant has no /i.test(trimmed)) return rewriteSnakeKeys(trimmed);
   if (/^Cannot (sell|consume) /i.test(trimmed)) {

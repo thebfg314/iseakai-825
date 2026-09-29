@@ -123,7 +123,7 @@
       "title": "overgrown scrub",
       "aliases": ["overgrown scrub", "scrub"],
       "rule": "land_scrub",
-      "definition": "Brush that can be cleared to arable.\n\nIn the land labels, scrub is overgrown cover waiting on labour and iron, not a cleaning verb."
+      "definition": "Brush that can be cleared to arable.\n\nIn the land labels, scrub is overgrown cover waiting on labour, not a cleaning verb. Clearing it does not spend the iron or stone in the stores."
     },
     {
       "id": "marling",

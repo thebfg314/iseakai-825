@@ -164,9 +164,9 @@ After the roll, the LLM must return `event_effect` proposals that change numbers
 Baseline costs: Constitution §4.5. Keys live in `src/engine/projectCatalog.ts`.
 
 Progress is `labour_days_done / labour_days_required`.  
-Materials (lumber as softwood+hardwood cart-loads, iron lb, stone cart-loads) are reserved when the project starts if stocks allow; otherwise the start is rejected.
+Materials (lumber as softwood+hardwood cart-loads, iron lb, stone cart-loads) are reserved when the project starts if stocks allow; otherwise the start is rejected. The books name only the stores actually set aside. Clearing scrub reserves nothing. Charcoal burning reserves timber for the mound and no iron or stone. A known catalogue key keeps those store charges even if a proposal names a higher iron or stone cost for them.
 
-Callable labour assigned to a project this season is converted 1:1 into labour-days, with women counting 1.0 on listed “men + women” work and 0.6 on “mostly men” heavy work; youths 0.4.
+Callable labour assigned to a project this season is days of that kind of work, converted 1:1 into labour-days, with women counting 1.0 on listed “men + women” work and 0.6 on “mostly men” heavy work; youths 0.4. The figure cannot exceed the callable days of that kind still free this season. The books name those figures as days of work. A hands line names the work it belongs to (the id of the `start_project` in the same pack, or that work's catalogue key). If that work was not created, the days are not written onto a different work.
 
 Completion applies the feature to the holding (mill, forge, chapel, converted acres, etc.).
 
@@ -212,7 +212,7 @@ Proposal `type` values:
 | `register_npc` | steward; chaplain (monk/priest/novice/bishop) | must set `isNew: true`; player confirm required |
 | `event_effect` | season referee only | auto-applied after Advance season |
 
-Mid-season proposals wait for explicit player Confirm or Reject.  
+Mid-season proposals wait for explicit player Confirm or Deny. Each change may be confirmed or denied on its own; Confirm all writes every change still waiting. Denying a work also sets aside the hands and other changes proposed for that same work. If a work cannot be begun, those dependent changes are skipped with one explanation.  
 Rejected proposals are logged and not applied.
 
 If the model returns speech with no valid proposal, the engine repairs once, then may draft a conservative proposal from a clear order (sow / clear scrub / give grain / blessing). The player still Confirms. If nothing can be drafted, the UI shows a system line that the books are unchanged.

@@ -222,7 +222,7 @@ describe("auto-assign leftover onto works", () => {
     );
     expect(result.ok).toBe(true);
     expect(result.logLine).not.toMatch(/proj-|\{|JSON|assign_labour/i);
-    expect(result.logLine).toMatch(/called/i);
+    expect(result.logLine).toMatch(/days of the men's work/i);
     const mill = state.projects.find((p) => p.key === "flour_mill");
     expect(mill).toBeTruthy();
     const assign = state.labour.assigned.find((a) => a.projectId === mill!.id);
@@ -378,18 +378,19 @@ describe("auto-assign leftover onto works", () => {
     }
   });
 
-  it("matches a pending assign_labour to the new work when the id is not another active project", () => {
+  it("binds pending hands only when the id belongs to the new work", () => {
     const sibling = pendingAssignLabourForNewProject(
       [{ status: "pending", proposal: { type: "assign_labour", projectId: "new-mill", men: 10, women: 0, youths: 0 } }],
       "proj-1",
-      new Set(["proj-1", "other"]),
+      ["new-mill"],
     );
     expect(sibling?.men).toBe(10);
+    expect(sibling?.projectId).toBe("proj-1");
     expect(
       pendingAssignLabourForNewProject(
-        [{ status: "pending", proposal: { type: "assign_labour", projectId: "other", men: 4, women: 0, youths: 0 } }],
+        [{ status: "pending", proposal: { type: "assign_labour", projectId: "charcoal_burning", men: 60, women: 0, youths: 0 } }],
         "proj-1",
-        new Set(["proj-1", "other"]),
+        ["clear_scrub", "Clear scrub to arable (1 acre)"],
       ),
     ).toBeNull();
   });
@@ -431,11 +432,12 @@ describe("resolveActiveProject and assign_labour by key/name", () => {
     expect(resolveActiveProject(state, mill.id)?.id).toBe(mill.id);
   });
 
-  it("uses the lone labour-day work only when the summary means the work", () => {
+  it("does not redirect a different id onto the only open work", () => {
     const state = boot();
     const mill = startMill(state);
-    expect(resolveActiveProject(state, "hands", "Put men on the mill")?.id).toBe(mill.id);
-    expect(resolveActiveProject(state, "hands", "Ten men somewhere")).toBeUndefined();
+    expect(resolveActiveProject(state, "hands", "Put men on the mill")).toBeUndefined();
+    expect(resolveActiveProject(state, "charcoal_burning", "Sixty men to the work")).toBeUndefined();
+    expect(resolveActiveProject(state, mill.id)?.id).toBe(mill.id);
   });
 
   it("assign_labour with projectId flour_mill writes onto the created proj id", () => {
@@ -529,7 +531,7 @@ describe("Confirm batch order: start_project before assign_labour", () => {
       holdingId: "fontenay",
     });
     expect(game.pending[0].proposal.type).toBe("assign_labour");
-    const result = game.confirmProposal(game.pending[0].id);
+    const result = game.confirmAllProposals();
     expect(result.error).toBeUndefined();
     const mill = game.state.projects.find((p) => p.key === "flour_mill" && p.status === "active");
     expect(mill).toBeTruthy();

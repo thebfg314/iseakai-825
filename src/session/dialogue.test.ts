@@ -93,7 +93,7 @@ describe("dialogue parse → queue → confirm → world-state", () => {
 
     game.confirmProposal(pending[0].id);
     expect(game.state.projects.some((p) => p.key === "clear_scrub" && p.status === "active")).toBe(true);
-    expect(game.state.resources.iron).toBeLessThan(ironBefore);
+    expect(game.state.resources.iron).toBe(ironBefore);
   });
 
   it("shows a ledger line when JSON is missing and no order can be drafted", () => {

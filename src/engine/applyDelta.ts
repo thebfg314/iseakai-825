@@ -359,10 +359,11 @@ function startProject(
   if (!catalog && !p.customCosts) {
     return fail(state, `Unknown project '${p.projectKey}' and no customCosts declared.`, p.summary);
   }
-  const labourDays = p.customCosts?.labourDays ?? catalog!.labourDays;
-  const lumber = p.customCosts?.lumber ?? catalog!.lumber;
-  const iron = p.customCosts?.iron ?? catalog!.iron;
-  const stone = p.customCosts?.stone ?? catalog!.stone;
+  const costs = storeCostsFor(p, catalog);
+  const labourDays = costs.labourDays;
+  const lumber = costs.lumber;
+  const iron = costs.iron;
+  const stone = costs.stone;
   const wood = state.resources.softwood + state.resources.hardwood;
   if (wood < lumber) return fail(state, `Need ${lumber} cart-loads of timber; have ${round1(wood)}.`, p.summary);
   if (state.resources.iron < iron) return fail(state, `Need ${iron} lb iron; have ${state.resources.iron}.`, p.summary);
@@ -393,8 +394,56 @@ function startProject(
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
-  const started = `${name} is begun. The timber, iron, and stone are set aside.`;
+  const started = `${name} is begun.${storesSetAside(lumber, iron, stone)}`;
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
+}
+
+function storeCostsFor(
+  p: Extract<MechanicalProposal, { type: "start_project" }>,
+  catalog: ReturnType<typeof lookupProject>,
+): { labourDays: number; lumber: number; iron: number; stone: number } {
+  const custom = p.customCosts;
+  if (!catalog) return custom!;
+  const costs = {
+    labourDays: custom?.labourDays ?? catalog.labourDays,
+    lumber: custom?.lumber ?? catalog.lumber,
+    iron: custom?.iron ?? catalog.iron,
+    stone: custom?.stone ?? catalog.stone,
+  };
+  // Clearing yields brush; it does not spend the stores. Charcoal piles timber and does not spend iron or stone.
+  if (catalog.key === "clear_scrub") return { ...costs, lumber: 0, iron: 0, stone: 0 };
+  if (catalog.key === "charcoal_burning") return { ...costs, iron: 0, stone: 0 };
+  return costs;
+}
+
+function amountWord(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function storeParts(lumber: number, iron: number, stone: number): string[] {
+  const parts: string[] = [];
+  if (lumber > 0) parts.push(`${amountWord(lumber)} cart-load${lumber === 1 ? "" : "s"} of timber`);
+  if (iron > 0) parts.push(`${amountWord(iron)} lb of iron`);
+  if (stone > 0) parts.push(`${amountWord(stone)} cart-load${stone === 1 ? "" : "s"} of stone`);
+  return parts;
+}
+
+function joinStores(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function storesSetAside(lumber: number, iron: number, stone: number): string {
+  const parts = storeParts(lumber, iron, stone);
+  if (!parts.length) return "";
+  return ` The ${joinStores(parts)} ${parts.length === 1 ? "is" : "are"} set aside.`;
+}
+
+function storesReturned(lumber: number, iron: number, stone: number): string {
+  const parts = storeParts(lumber, iron, stone);
+  if (!parts.length) return "";
+  return ` Half the unused ${joinStores(parts)} comes back to the stores.`;
 }
 
 function adjustProject(
@@ -412,7 +461,7 @@ function adjustProject(
     proj.status = "cancelled";
     stampProjectEnded(state, proj);
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
-    return ok(state, `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`);
+    return ok(state, `${proj.name} is stopped.${storesReturned(proj.materials.lumber, proj.materials.iron, proj.materials.stone)}`);
   }
   if (p.rush !== undefined) proj.rush = p.rush;
   if (p.labourThisSeason) {
