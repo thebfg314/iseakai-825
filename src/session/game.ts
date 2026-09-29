@@ -82,6 +82,14 @@ import {
 import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
 import {
+  confirmGate,
+  dependentDeclineLine,
+  dependentSkipLine,
+  dependentStart,
+  matchingStarts,
+  workLabelOf,
+} from "../engine/proposalPack";
+import {
   completedProjectBeats,
   dismissNewsWantsTalk,
   releaseConfirmWantsTalk,
@@ -146,7 +154,7 @@ export class GameController {
     this.persist();
     return {
       state: this.state,
-      pending: this.pending.filter((p) => p.status === "pending"),
+      pending: this.pending.filter((p) => p.status === "pending" || p.status === "withheld"),
       messages: messagesForScene(this.messages, this.sceneNpcId),
       sceneNpcId: this.sceneNpcId,
       labour: { pool: labourPool(this.state), remaining: labourRemaining(this.state) },
@@ -618,14 +626,43 @@ export class GameController {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
-    const item = this.pending.find((p) => p.id === id && p.status === "pending");
-    if (!item) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
+    const item = this.pending.find((p) => p.id === id && (p.status === "pending" || p.status === "withheld"));
+    if (!item || item.status !== "pending") {
+      if (item?.status === "withheld") {
+        return { ...this.view(), error: item.rejectReason || "That change is set aside." };
+      }
+      return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
+    }
+    const gate = confirmGate(item, this.pending);
+    if (gate.blocked) return { ...this.view(), error: gate.note ?? "That change is set aside." };
+    return this.finishConfirm([item], item.id);
+  }
+
+  confirmAllProposals(): GameView & { error?: string } {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), error: ABANDONED_GAME_OVER };
+    }
     const batch = sortPendingForApply(this.pending.filter((p) => p.status === "pending"));
+    if (!batch.length) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
+    return this.finishConfirm(batch);
+  }
+
+  private finishConfirm(batch: PendingProposal[], errorOnId?: string): GameView & { error?: string } {
     const before = cloneState(this.state);
+    const noted = new Set<string>();
     let error: string | undefined;
     for (const next of batch) {
+      if (next.status !== "pending") continue;
+      const dep = dependentStart(next, this.pending);
+      if (dep && dep.status !== "pending" && dep.status !== "applied") {
+        this.withholdFollowOns(dep, noted);
+        if (errorOnId && next.id === errorOnId) error = next.rejectReason || dependentSkipLine(workLabelOf(dep));
+        continue;
+      }
       const result = this.applyOnePending(next);
-      if (next.id === id && result.error) error = result.error;
+      if (errorOnId && next.id === errorOnId && result.error) error = result.error;
+      if (!result.ok && next.proposal.type === "start_project") this.withholdFollowOns(next, noted);
     }
     this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
     for (const npcId of new Set(batch.map((p) => p.npcId))) {
@@ -669,8 +706,9 @@ export class GameController {
     return result.ok ? this.view() : { ...this.view(), error: playerFacingReason(result.reason ?? logLine) };
   }
 
-  private applyOnePending(item: PendingProposal): { error?: string } {
-    if (item.status !== "pending") return {};
+  private applyOnePending(item: PendingProposal): { ok: boolean; error?: string } {
+    if (item.status !== "pending") return { ok: false };
+    const beforeIds = new Set(this.state.projects.map((p) => p.id));
     const beforeNpc = cloneState(this.state);
     const result = applyProposal(this.state, item.proposal, item.npcId);
     this.state = result.state;
@@ -678,7 +716,8 @@ export class GameController {
     item.rejectReason = result.reason;
     const logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
     if (result.ok && item.proposal.type === "start_project") {
-      this.rewritePendingLabourProjectIds();
+      const created = this.state.projects.find((p) => !beforeIds.has(p.id));
+      if (created) this.retargetFollowOns(item, created.id);
     }
     if (result.ok && item.proposal.type === "register_npc") {
       const spec = matchHireableSpecialist(item.proposal.npc);
@@ -696,17 +735,32 @@ export class GameController {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
       this.flushHireRecommendations(newlyUnlockedHires(beforeNpc, this.state));
     }
-    return result.ok ? {} : { error: playerFacingReason(result.reason ?? logLine) };
+    return result.ok ? { ok: true } : { ok: false, error: playerFacingReason(result.reason ?? logLine) };
   }
 
-  private rewritePendingLabourProjectIds() {
+  /** Point hands at the work just begun, and only when they named that work. */
+  private retargetFollowOns(start: PendingProposal, projectId: string) {
     for (const item of this.pending) {
       if (item.status !== "pending") continue;
-      const p = item.proposal;
-      if (p.type !== "assign_labour" && p.type !== "adjust_project") continue;
-      if (p.projectId === "unassigned") continue;
-      const resolved = resolveActiveProject(this.state, p.projectId, p.summary);
-      if (resolved) p.projectId = resolved.id;
+      if (item.proposal.type !== "assign_labour" && item.proposal.type !== "adjust_project") continue;
+      if (item.proposal.projectId === "unassigned") continue;
+      const matches = matchingStarts(item.proposal.projectId, this.pending);
+      if (matches.length === 1 && matches[0].id === start.id) item.proposal.projectId = projectId;
+    }
+  }
+
+  private withholdFollowOns(start: PendingProposal, noted: Set<string>) {
+    if (start.proposal.type !== "start_project") return;
+    const deps = this.pending.filter((p) => p.status === "pending" && dependentStart(p, this.pending)?.id === start.id);
+    if (!deps.length) return;
+    const line = dependentSkipLine(workLabelOf(start));
+    for (const dep of deps) {
+      dep.status = "withheld";
+      dep.rejectReason = line;
+    }
+    if (!noted.has(start.id)) {
+      noted.add(start.id);
+      this.ledgerNote(line, start.npcId);
     }
   }
 
@@ -720,12 +774,25 @@ export class GameController {
       item.status = "rejected";
       item.rejectReason = "Player rejected";
       this.log(item.npcId, "REJECT", item.proposal.summary);
-      this.ledgerNote(
-        item.proposal.type === "settle_households"
-          ? ARRIVAL_REFUSE_LINE
-          : `You declined: ${playerFacingSummary(item.proposal) || "that change"}.`,
-        item.npcId,
-      );
+      const followOns =
+        item.proposal.type === "start_project"
+          ? this.pending.filter((p) => p.status === "pending" && dependentStart(p, this.pending)?.id === item.id)
+          : [];
+      if (item.proposal.type === "start_project" && followOns.length) {
+        const line = dependentDeclineLine(workLabelOf(item));
+        for (const dep of followOns) {
+          dep.status = "withheld";
+          dep.rejectReason = line;
+        }
+        this.ledgerNote(line, item.npcId);
+      } else {
+        this.ledgerNote(
+          item.proposal.type === "settle_households"
+            ? ARRIVAL_REFUSE_LINE
+            : `You declined: ${playerFacingSummary(item.proposal) || "that change"}.`,
+          item.npcId,
+        );
+      }
       if (this.askedAboutId === id) this.askedAboutId = null;
       releaseConfirmWantsTalk(this.state, item.npcId, this.pending);
     }
@@ -750,8 +817,12 @@ export class GameController {
       return { ...this.view(), effects: [{ kind: "info", text: ABANDONED_GAME_OVER }] };
     }
     const effects: SeasonEffectLine[] = [];
-    const lapsing = this.pending.filter((p) => p.status === "pending");
-    this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
+    const lapsing = this.pending.filter((p) => p.status === "pending" || p.status === "withheld");
+    this.pending = this.pending.map((p) =>
+      p.status === "pending" || p.status === "withheld"
+        ? { ...p, status: "rejected" as const, rejectReason: p.status === "withheld" ? p.rejectReason ?? "Season advanced" : "Season advanced" }
+        : p,
+    );
     this.askedAboutId = null;
     for (const npcId of new Set(lapsing.map((p) => p.npcId))) {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);

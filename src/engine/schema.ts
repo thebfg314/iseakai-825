@@ -810,7 +810,7 @@ export const PendingProposalSchema = z.object({
   id: z.string(),
   npcId: z.string(),
   proposal: MechanicalProposalSchema,
-  status: z.enum(["pending", "applied", "rejected"]),
+  status: z.enum(["pending", "applied", "rejected", "withheld"]),
   rejectReason: z.string().optional(),
 });
 export type PendingProposal = z.infer<typeof PendingProposalSchema>;

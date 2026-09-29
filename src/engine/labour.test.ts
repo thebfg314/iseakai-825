@@ -62,10 +62,11 @@ function project(partial: Partial<Project> & Pick<Project, "id" | "key" | "name"
 }
 
 describe("extra labour days and harvest risk", () => {
-  it("does not set harvest_risk or cut yield when most extra male days are assigned", () => {
+  it("does not set harvest_risk or cut yield when every man is called", () => {
     const state = withActiveProject(boot());
     expect(state.meta.season).toBe("spring");
     expect(labourPool(state).men).toBe(180);
+    expect(state.population.adult_men).toBe(12);
 
     const beforeYield = yieldMultiplier(state, "rye");
     const assigned = applyProposal(
@@ -74,7 +75,7 @@ describe("extra labour days and harvest risk", () => {
         type: "assign_labour",
         summary: "Put men on the scrub",
         projectId: "proj-scrub",
-        men: 150,
+        men: 12,
         women: 0,
         youths: 0,
       },
@@ -82,14 +83,14 @@ describe("extra labour days and harvest risk", () => {
     );
 
     expect(assigned.ok).toBe(true);
-    expect(state.labour.assigned).toEqual([{ projectId: "proj-scrub", men: 150, women: 0, youths: 0 }]);
-    expect(labourRemaining(state).men).toBe(30);
+    expect(state.labour.assigned.find((a) => a.projectId === "proj-scrub")?.men).toBe(12);
+    expect(labourRemaining(state).men).toBe(0);
     expect(state.labour.harvest_risk).toBe(false);
     expect(yieldMultiplier(state, "rye")).toBe(beforeYield);
     expect(maxRisk(state, "harvest_risk")).toBe(0);
   });
 
-  it("still rejects assignments past the extra-day pool", () => {
+  it("rejects a call for more men than live on the demesne", () => {
     const state = withActiveProject(boot());
     const result = applyProposal(
       state,
@@ -97,14 +98,14 @@ describe("extra labour days and harvest risk", () => {
         type: "assign_labour",
         summary: "Too many men",
         projectId: "proj-scrub",
-        men: 181,
+        men: 60,
         women: 0,
         youths: 0,
       },
       "steward",
     );
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/Not enough callable labour/);
+    expect(result.reason).toMatch(/Too many people called \(asked men 60 free 12/);
     expect(state.labour.assigned).toEqual([]);
     expect(state.labour.harvest_risk).toBe(false);
   });
@@ -239,7 +240,8 @@ describe("auto-assign leftover onto works", () => {
     state.projects.push(project({ id: "scrub-1", key: "clear_scrub", name: "Clear scrub", labourDaysRequired: 10 }));
     const fill = autoAssignLeftoverToProject(state, "scrub-1");
     expect(fill?.added.youths).toBeGreaterThan(0);
-    expect(fill?.added.youths).toBe(25);
+    expect(fill?.added.youths).toBeLessThanOrEqual(state.population.youths);
+    expect(fill?.added.youths).toBe(9);
     expect(fill?.added.women).toBe(0);
     expect(fill?.added.men).toBe(0);
     expect(fill?.sentence).toMatch(/youths/i);
@@ -310,9 +312,10 @@ describe("auto-assign leftover onto works", () => {
     );
     const notes = autoFillLeftoverLabour(state);
     expect(notes.length).toBeGreaterThan(0);
-    const pool = 2 * 15;
-    expect(state.labour.assigned.find((a) => a.projectId === "older")?.men).toBe(8);
-    expect(state.labour.assigned.find((a) => a.projectId === "newer")?.men).toBe(pool - 8);
+    expect(state.labour.assigned.find((a) => a.projectId === "older")?.men).toBe(1);
+    expect(state.labour.assigned.find((a) => a.projectId === "newer")?.men).toBe(1);
+    expect((state.labour.assigned.find((a) => a.projectId === "older")?.men ?? 0) +
+      (state.labour.assigned.find((a) => a.projectId === "newer")?.men ?? 0)).toBe(state.population.adult_men);
   });
 
   it("prefers an explicit assign_labour floor, then tops up leftover", () => {
@@ -378,18 +381,19 @@ describe("auto-assign leftover onto works", () => {
     }
   });
 
-  it("matches a pending assign_labour to the new work when the id is not another active project", () => {
+  it("binds pending hands only when the id belongs to the new work", () => {
     const sibling = pendingAssignLabourForNewProject(
       [{ status: "pending", proposal: { type: "assign_labour", projectId: "new-mill", men: 10, women: 0, youths: 0 } }],
       "proj-1",
-      new Set(["proj-1", "other"]),
+      ["new-mill"],
     );
     expect(sibling?.men).toBe(10);
+    expect(sibling?.projectId).toBe("proj-1");
     expect(
       pendingAssignLabourForNewProject(
-        [{ status: "pending", proposal: { type: "assign_labour", projectId: "other", men: 4, women: 0, youths: 0 } }],
+        [{ status: "pending", proposal: { type: "assign_labour", projectId: "charcoal_burning", men: 60, women: 0, youths: 0 } }],
         "proj-1",
-        new Set(["proj-1", "other"]),
+        ["clear_scrub", "Clear scrub to arable (1 acre)"],
       ),
     ).toBeNull();
   });
@@ -431,11 +435,12 @@ describe("resolveActiveProject and assign_labour by key/name", () => {
     expect(resolveActiveProject(state, mill.id)?.id).toBe(mill.id);
   });
 
-  it("uses the lone labour-day work only when the summary means the work", () => {
+  it("does not redirect a different id onto the only open work", () => {
     const state = boot();
     const mill = startMill(state);
-    expect(resolveActiveProject(state, "hands", "Put men on the mill")?.id).toBe(mill.id);
-    expect(resolveActiveProject(state, "hands", "Ten men somewhere")).toBeUndefined();
+    expect(resolveActiveProject(state, "hands", "Put men on the mill")).toBeUndefined();
+    expect(resolveActiveProject(state, "charcoal_burning", "Sixty men to the work")).toBeUndefined();
+    expect(resolveActiveProject(state, mill.id)?.id).toBe(mill.id);
   });
 
   it("assign_labour with projectId flour_mill writes onto the created proj id", () => {
@@ -529,7 +534,7 @@ describe("Confirm batch order: start_project before assign_labour", () => {
       holdingId: "fontenay",
     });
     expect(game.pending[0].proposal.type).toBe("assign_labour");
-    const result = game.confirmProposal(game.pending[0].id);
+    const result = game.confirmAllProposals();
     expect(result.error).toBeUndefined();
     const mill = game.state.projects.find((p) => p.key === "flour_mill" && p.status === "active");
     expect(mill).toBeTruthy();

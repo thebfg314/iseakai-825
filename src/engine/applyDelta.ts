@@ -6,7 +6,7 @@ import {
   type WorldState,
 } from "./schema";
 import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
-import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRemaining, resolveActiveProject } from "./labour";
+import { autoAssignLeftoverToProject, labourCalledSentence, peoplePool, peopleRemaining, resolveActiveProject } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { applyMerchantTransferLine } from "./merchantShop";
@@ -303,19 +303,22 @@ function assignLabour(
     return fail(state, "No such active project.", p.summary);
   }
   const projectId = proj.id;
-  const remaining = labourRemaining(state);
+  const pop = peoplePool(state);
+  const free = peopleRemaining(state);
   const existing = state.labour.assigned.find((a) => a.projectId === projectId);
   const already = existing ?? { men: 0, women: 0, youths: 0 };
-  const needMen = p.men - (existing ? already.men : 0);
-  const needWomen = p.women - (existing ? already.women : 0);
-  const needYouths = p.youths - (existing ? already.youths : 0);
-  if (needMen > remaining.men + 0.01 || needWomen > remaining.women + 0.01 || needYouths > remaining.youths + 0.01) {
-    const pool = labourPool(state);
-    return fail(
-      state,
-      `Not enough callable labour (pool men ${pool.men}, women ${pool.women}, youths ${pool.youths}).`,
-      p.summary,
-    );
+  const room = {
+    men: free.men + (existing ? already.men : 0),
+    women: free.women + (existing ? already.women : 0),
+    youths: free.youths + (existing ? already.youths : 0),
+  };
+  if (p.men > room.men + 0.01 || p.women > room.women + 0.01 || p.youths > room.youths + 0.01) {
+    const elsewhere = {
+      men: Math.max(0, pop.men - room.men),
+      women: Math.max(0, pop.women - room.women),
+      youths: Math.max(0, pop.youths - room.youths),
+    };
+    return fail(state, tooManyPeopleReason({ men: p.men, women: p.women, youths: p.youths }, room, elsewhere), p.summary);
   }
   if (existing) {
     existing.men = p.men;
@@ -359,10 +362,11 @@ function startProject(
   if (!catalog && !p.customCosts) {
     return fail(state, `Unknown project '${p.projectKey}' and no customCosts declared.`, p.summary);
   }
-  const labourDays = p.customCosts?.labourDays ?? catalog!.labourDays;
-  const lumber = p.customCosts?.lumber ?? catalog!.lumber;
-  const iron = p.customCosts?.iron ?? catalog!.iron;
-  const stone = p.customCosts?.stone ?? catalog!.stone;
+  const costs = storeCostsFor(p, catalog);
+  const labourDays = costs.labourDays;
+  const lumber = costs.lumber;
+  const iron = costs.iron;
+  const stone = costs.stone;
   const wood = state.resources.softwood + state.resources.hardwood;
   if (wood < lumber) return fail(state, `Need ${lumber} cart-loads of timber; have ${round1(wood)}.`, p.summary);
   if (state.resources.iron < iron) return fail(state, `Need ${iron} lb iron; have ${state.resources.iron}.`, p.summary);
@@ -393,8 +397,68 @@ function startProject(
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
-  const started = `${name} is begun. The timber, iron, and stone are set aside.`;
+  const started = `${name} is begun.${storesSetAside(lumber, iron, stone)}`;
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
+}
+
+function storeCostsFor(
+  p: Extract<MechanicalProposal, { type: "start_project" }>,
+  catalog: ReturnType<typeof lookupProject>,
+): { labourDays: number; lumber: number; iron: number; stone: number } {
+  const custom = p.customCosts;
+  if (!catalog) return custom!;
+  const costs = {
+    labourDays: custom?.labourDays ?? catalog.labourDays,
+    lumber: custom?.lumber ?? catalog.lumber,
+    iron: custom?.iron ?? catalog.iron,
+    stone: custom?.stone ?? catalog.stone,
+  };
+  // Clearing yields brush; it does not spend the stores. Charcoal piles timber and does not spend iron or stone.
+  if (catalog.key === "clear_scrub") return { ...costs, lumber: 0, iron: 0, stone: 0 };
+  if (catalog.key === "charcoal_burning") return { ...costs, iron: 0, stone: 0 };
+  return costs;
+}
+
+function amountWord(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function storeParts(lumber: number, iron: number, stone: number): string[] {
+  const parts: string[] = [];
+  if (lumber > 0) parts.push(`${amountWord(lumber)} cart-load${lumber === 1 ? "" : "s"} of timber`);
+  if (iron > 0) parts.push(`${amountWord(iron)} lb of iron`);
+  if (stone > 0) parts.push(`${amountWord(stone)} cart-load${stone === 1 ? "" : "s"} of stone`);
+  return parts;
+}
+
+function joinStores(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function storesSetAside(lumber: number, iron: number, stone: number): string {
+  const parts = storeParts(lumber, iron, stone);
+  if (!parts.length) return "";
+  return ` The ${joinStores(parts)} ${parts.length === 1 ? "is" : "are"} set aside.`;
+}
+
+function storesReturned(lumber: number, iron: number, stone: number): string {
+  const parts = storeParts(lumber, iron, stone);
+  if (!parts.length) return "";
+  return ` Half the unused ${joinStores(parts)} comes back to the stores.`;
+}
+
+function headCount(n: number): string {
+  return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1);
+}
+
+function tooManyPeopleReason(
+  asked: { men: number; women: number; youths: number },
+  free: { men: number; women: number; youths: number },
+  elsewhere: { men: number; women: number; youths: number },
+): string {
+  return `Too many people called (asked men ${headCount(asked.men)} free ${headCount(free.men)} elsewhere ${headCount(elsewhere.men)}; women ${headCount(asked.women)} free ${headCount(free.women)} elsewhere ${headCount(elsewhere.women)}; youths ${headCount(asked.youths)} free ${headCount(free.youths)} elsewhere ${headCount(elsewhere.youths)}).`;
 }
 
 function adjustProject(
@@ -412,7 +476,7 @@ function adjustProject(
     proj.status = "cancelled";
     stampProjectEnded(state, proj);
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
-    return ok(state, `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`);
+    return ok(state, `${proj.name} is stopped.${storesReturned(proj.materials.lumber, proj.materials.iron, proj.materials.stone)}`);
   }
   if (p.rush !== undefined) proj.rush = p.rush;
   if (p.labourThisSeason) {

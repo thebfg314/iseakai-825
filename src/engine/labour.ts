@@ -25,10 +25,74 @@ export const LIGHT_YOUTH_ASSIST_KEYS = new Set(["textile_workshop", "pottery_kil
 export const MOSTLY_MEN_NO_WOMEN_KEYS = new Set(["quarry", "wooden_tower", "drain_swamp"]);
 
 const EMPTY_POOL: LabourPool = { men: 0, women: 0, youths: 0 };
+const UNIT_HEAD: LabourPool = { men: 1, women: 1, youths: 1 };
+
+function labourEfficiency(state: WorldState): number {
+  return applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
+}
+
+/** Callable days one free person of each kind can give this season (Constitution §4.3 midpoints). */
+export function callableDaysPerHead(state: WorldState): LabourPool {
+  const mid = LABOUR_MIDPOINTS[state.meta.season];
+  const eff = labourEfficiency(state);
+  return { men: mid.men * eff, women: mid.women * eff, youths: mid.youths * eff };
+}
+
+export function peoplePool(state: WorldState): LabourPool {
+  return {
+    men: state.population.adult_men,
+    women: state.population.adult_women,
+    youths: state.population.youths,
+  };
+}
+
+export function peopleUsed(state: WorldState): LabourPool {
+  const used: LabourPool = { men: 0, women: 0, youths: 0 };
+  for (const a of state.labour.assigned) {
+    used.men += a.men;
+    used.women += a.women;
+    used.youths += a.youths;
+  }
+  return used;
+}
+
+export function peopleRemaining(state: WorldState): LabourPool {
+  const pop = peoplePool(state);
+  const used = peopleUsed(state);
+  return {
+    men: Math.max(0, pop.men - used.men),
+    women: Math.max(0, pop.women - used.women),
+    youths: Math.max(0, pop.youths - used.youths),
+  };
+}
+
+/** Old saves stored day-slots in the head fields. Keep the sum inside the living people. */
+export function capAssignmentsToPopulation(state: WorldState): void {
+  const room = { ...peoplePool(state) };
+  for (const row of state.labour.assigned) {
+    row.men = Math.min(row.men, room.men);
+    room.men -= row.men;
+    row.women = Math.min(row.women, room.women);
+    room.women -= row.women;
+    row.youths = Math.min(row.youths, room.youths);
+    room.youths -= row.youths;
+  }
+  state.labour.assigned = state.labour.assigned.filter((row) => row.men || row.women || row.youths);
+}
+
+function cappedHeads(state: WorldState): LabourPool {
+  const pop = peoplePool(state);
+  const used = peopleUsed(state);
+  return {
+    men: Math.min(used.men, pop.men),
+    women: Math.min(used.women, pop.women),
+    youths: Math.min(used.youths, pop.youths),
+  };
+}
 
 export function labourPool(state: WorldState): LabourPool {
   const mid = LABOUR_MIDPOINTS[state.meta.season];
-  const eff = applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
+  const eff = labourEfficiency(state);
   return {
     men: Math.round(state.population.adult_men * mid.men * eff),
     women: Math.round(state.population.adult_women * mid.women * eff),
@@ -37,13 +101,13 @@ export function labourPool(state: WorldState): LabourPool {
 }
 
 export function labourUsed(state: WorldState): LabourPool {
-  const used: LabourPool = { men: 0, women: 0, youths: 0 };
-  for (const a of state.labour.assigned) {
-    used.men += a.men;
-    used.women += a.women;
-    used.youths += a.youths;
-  }
-  return used;
+  const each = callableDaysPerHead(state);
+  const heads = cappedHeads(state);
+  return {
+    men: Math.round(heads.men * each.men),
+    women: Math.round(heads.women * each.women),
+    youths: Math.round(heads.youths * each.youths),
+  };
 }
 
 export function labourRemaining(state: WorldState): LabourPool {
@@ -56,15 +120,20 @@ export function labourRemaining(state: WorldState): LabourPool {
   };
 }
 
+/**
+ * Heads × callable days. Women count 1.0 except 0.6 on mostly-men work; youths 0.4.
+ * `perHead` defaults to 1 so fill-order tests can speak in abstract day-slots.
+ */
 export function labourDaysFromAssignment(
   kind: LabourKind,
   men: number,
   women: number,
   youths: number,
+  perHead: LabourPool = UNIT_HEAD,
 ): number {
   const womanFactor = kind === "mostly_men" ? 0.6 : 1;
   const youthFactor = 0.4;
-  return men + women * womanFactor + youths * youthFactor;
+  return men * perHead.men + women * perHead.women * womanFactor + youths * perHead.youths * youthFactor;
 }
 
 export function isLabourDayProject(project: Project): boolean {
@@ -77,17 +146,11 @@ function normalizeProjectRef(ref: string): string {
   return ref.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
-function summaryRefersToTheWork(summary?: string): boolean {
-  if (!summary) return false;
-  return /\b(the|that|this)\s+(work|mill|project|job)\b/i.test(summary);
-}
-
 /**
  * Match assign_labour / adjust_project refs: generated id, catalog key, or display name.
- * Does not guess among several active works; a lone labour-day work is used only when
- * the summary clearly means "the" work.
+ * A vague summary never redirects onto whatever work happens to be open.
  */
-export function resolveActiveProject(state: WorldState, projectIdRef: string, summary?: string): Project | undefined {
+export function resolveActiveProject(state: WorldState, projectIdRef: string, _summary?: string): Project | undefined {
   const ref = projectIdRef.trim();
   if (!ref || ref === "unassigned") return undefined;
   const active = state.projects.filter((p) => p.status === "active");
@@ -104,8 +167,6 @@ export function resolveActiveProject(state: WorldState, projectIdRef: string, su
   if (byName.length === 1) return byName[0];
   if (byName.length > 1) return undefined;
 
-  const labourWorks = active.filter(isLabourDayProject);
-  if (labourWorks.length === 1 && summaryRefersToTheWork(summary)) return labourWorks[0];
   return undefined;
 }
 
@@ -129,8 +190,8 @@ export function autoFillRoles(kind: LabourKind, projectKey: string): LabourRole[
   return ["men", "women"];
 }
 
-function coversNeed(kind: LabourKind, heads: LabourPool, remainingDays: number): boolean {
-  return labourDaysFromAssignment(kind, heads.men, heads.women, heads.youths) + 1e-9 >= remainingDays;
+function coversNeed(kind: LabourKind, heads: LabourPool, remainingDays: number, perHead: LabourPool): boolean {
+  return labourDaysFromAssignment(kind, heads.men, heads.women, heads.youths, perHead) + 1e-9 >= remainingDays;
 }
 
 /**
@@ -143,6 +204,7 @@ export function leftoverHeadsForNeed(
   remainingDays: number,
   available: LabourPool,
   already: LabourPool = EMPTY_POOL,
+  perHead: LabourPool = UNIT_HEAD,
 ): LabourPool {
   const added: LabourPool = { men: 0, women: 0, youths: 0 };
   if (remainingDays <= 1e-9) return added;
@@ -150,10 +212,10 @@ export function leftoverHeadsForNeed(
   const pool: LabourPool = { ...available };
   for (const role of autoFillRoles(kind, projectKey)) {
     if (role === "women" && kind === "mostly_men") {
-      const still = remainingDays - labourDaysFromAssignment(kind, current.men, current.women, current.youths);
+      const still = remainingDays - labourDaysFromAssignment(kind, current.men, current.women, current.youths, perHead);
       if (still > MOSTLY_MEN_WOMAN_ASSIST_DAYS + 1e-9) continue;
     }
-    while (pool[role] > 0 && !coversNeed(kind, current, remainingDays)) {
+    while (pool[role] > 0 && !coversNeed(kind, current, remainingDays, perHead)) {
       current[role] += 1;
       added[role] += 1;
       pool[role] -= 1;
@@ -214,7 +276,14 @@ export function autoAssignLeftoverToProject(state: WorldState, projectId: string
   const kind = labourKindFor(project);
   const already = assignmentOn(state, projectId) ?? { men: 0, women: 0, youths: 0 };
   const remainingDays = projectDaysStillNeeded(project);
-  const added = leftoverHeadsForNeed(kind, project.key, remainingDays, labourRemaining(state), already);
+  const added = leftoverHeadsForNeed(
+    kind,
+    project.key,
+    remainingDays,
+    peopleRemaining(state),
+    already,
+    callableDaysPerHead(state),
+  );
   const total: LabourPool = {
     men: already.men + added.men,
     women: already.women + added.women,
@@ -234,7 +303,7 @@ export function autoFillLeftoverLabour(state: WorldState): string[] {
   for (const project of state.projects) {
     if (!isLabourDayProject(project)) continue;
     if (projectDaysStillNeeded(project) <= 1e-9) continue;
-    const leftover = labourRemaining(state);
+    const leftover = peopleRemaining(state);
     if (leftover.men <= 0 && leftover.women <= 0 && leftover.youths <= 0) break;
     const result = autoAssignLeftoverToProject(state, project.id);
     if (!result) continue;
@@ -250,27 +319,41 @@ export type PendingLabourHint = {
   proposal: { type: string; projectId?: string; men?: number; women?: number; youths?: number; summary?: string };
 };
 
+function aliasKey(ref: string): string {
+  return ref.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Bind a pending hands line to a project created in the same pack.
+ * Only an id that belongs to that project matches. An unmatched id is left alone
+ * so it cannot land on some other work that happened to be created first.
+ */
 export function pendingAssignLabourForNewProject(
   pending: PendingLabourHint[],
   newProjectId: string,
-  activeProjectIds: Set<string>,
+  aliases: Iterable<string> = [],
 ): { type: "assign_labour"; projectId: string; men: number; women: number; youths: number; summary?: string } | null {
+  const accepted = new Set<string>([aliasKey(newProjectId), aliasKey(newProjectId).replace(/ /g, "_")]);
+  for (const alias of aliases) {
+    if (!alias.trim()) continue;
+    accepted.add(aliasKey(alias));
+    accepted.add(aliasKey(alias).replace(/ /g, "_"));
+  }
   for (const item of pending) {
     if (item.status !== "pending") continue;
     const p = item.proposal;
     if (p.type !== "assign_labour") continue;
     const id = p.projectId;
     if (!id || id === "unassigned") continue;
-    if (id === newProjectId || !activeProjectIds.has(id)) {
-      return {
-        type: "assign_labour",
-        projectId: id,
-        men: p.men ?? 0,
-        women: p.women ?? 0,
-        youths: p.youths ?? 0,
-        summary: p.summary,
-      };
-    }
+    if (!accepted.has(aliasKey(id)) && !accepted.has(aliasKey(id).replace(/ /g, "_"))) continue;
+    return {
+      type: "assign_labour",
+      projectId: newProjectId,
+      men: p.men ?? 0,
+      women: p.women ?? 0,
+      youths: p.youths ?? 0,
+      summary: p.summary,
+    };
   }
   return null;
 }

@@ -1,6 +1,6 @@
 import type { SeasonEffectLine, WorldState } from "./schema";
 import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
-import { autoFillLeftoverLabour, labourDaysFromAssignment } from "./labour";
+import { autoFillLeftoverLabour, callableDaysPerHead, capAssignmentsToPopulation, labourDaysFromAssignment } from "./labour";
 import { modifiersFor, applyMultiplyAdd, tickModifiers, yieldMultiplier } from "./modifiers";
 import { peopleEffortFactor } from "./peopleHappiness";
 import { applyProposal, projectSpeed, resourceOutputBonus } from "./applyDelta";
@@ -147,6 +147,7 @@ function livestockSeason(state: WorldState): string[] {
 
 function advanceProjects(state: WorldState): string[] {
   const notes: string[] = [];
+  capAssignmentsToPopulation(state);
   notes.push(...autoFillLeftoverLabour(state));
   for (const proj of state.projects.filter((p) => p.status === "active")) {
     if (proj.tag === "hunt" || proj.hunt) continue;
@@ -157,7 +158,7 @@ function advanceProjects(state: WorldState): string[] {
       continue;
     }
     const kind = labourKindFor(proj);
-    let days = labourDaysFromAssignment(kind, assign.men, assign.women, assign.youths);
+    let days = labourDaysFromAssignment(kind, assign.men, assign.women, assign.youths, callableDaysPerHead(state));
     const rush = proj.rush ? 1.15 : 1;
     days *= projectSpeed(state, rush) * peopleEffortFactor(state);
     proj.labourDaysDone = round1(proj.labourDaysDone + days);

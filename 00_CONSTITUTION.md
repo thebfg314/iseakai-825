@@ -230,7 +230,7 @@ Judge project scale by labour demand relative to the estate’s current callable
 #### Agricultural & Land Improvement
 | Project | Labour-days | Lumber | Iron | Stone | Main Labour | Outside Specialists |
 |---------|-------------|--------|------|-------|-------------|---------------------|
-| Clear scrub → arable (per acre) | 25–45 | 0–1 | 2–6 | 0 | Men + youths | None |
+| Clear scrub → arable (per acre) | 25–45 | 0 | 0 | 0 | Men + youths | None |
 | Drain swamp/marsh (per acre) | 40–80 | 1–3 | 3–10 | 0–2 | Mostly men | Optional |
 | Improve waste → meadow/pasture (per acre) | 15–30 | 0–1 | 1–4 | 0 | Men + youths | None |
 | Irrigation ditches (per 100 yards) | 20–40 | 0–2 | 2–8 | 0–1 | Mostly men | None |
@@ -271,10 +271,12 @@ Judge project scale by labour demand relative to the estate’s current callable
 |---------|-------------|--------|------|-------|-------------|---------------------|
 | Small stone quarry (opening) | 80–150 | 2–5 | 20–40 | — | Mostly men | Optional quarryman |
 | Clay pit | 30–60 | 1–3 | 5–15 | 0 | Men + youths | None |
-| Organized charcoal burning | 40–80 | 1–3 | 5–15 | 0 | Men + youths | None |
+| Organized charcoal burning | 40–80 | 1–3 | 0 | 0 | Men + youths | None |
 | Small bloomery | 100–180 | 3–7 | 20–50 | 1–4 | Mostly men | Experienced iron-worker preferred |
 | Tannery | 60–110 | 3–7 | 10–25 | 0–2 | Mostly men | Optional tanner |
 | Pottery kiln | 40–80 | 2–5 | 5–15 | 1–3 | Men + women | Optional potter |
+
+Clearing scrub does not draw timber, iron, or stone from the stores. Axes and billhooks are tools the hall already keeps, and the acre yields brush rather than spending it. Organized charcoal burning piles timber for the mound (the lumber cost) and does not spend bar iron or stone; a collier's axe is not ten pounds of iron consumed.
 
 ---
 
