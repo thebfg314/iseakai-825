@@ -26,21 +26,54 @@ describe("Gerulf the negotiator", () => {
     expect(ensureGerulfInHousehold(state)).toBe(false);
   });
 
-  it("refuses barley and iron, and quotes the purse himself", () => {
+  it("refuses barley, quotes iron himself, and keeps scarce goods dear", () => {
     expect(looksLikeHuntOrder("Find me some pepper.")).toBe(true);
     expect(extractHuntRequest("Find me some pepper.")).toMatchObject({ goods: "pepper", resource: "pepper" });
     expect(huntFulfillReason(boot(), "Find me barley for the granary.")).toMatch(/Aldric/i);
-    expect(huntFulfillReason(boot(), "Find me iron for the forge.")).toMatch(/Bernard/i);
+    expect(huntFulfillReason(boot(), "Find me iron for the forge.")).toBeNull();
     expect(inferHuntProposals(boot(), "Find me barley.")).toEqual([]);
 
     const state = boot();
+    const iron = inferHuntProposals(state, "Find me 4 pounds of iron.");
+    expect(iron).toHaveLength(1);
+    expect(iron[0]).toMatchObject({ type: "start_hunt", resource: "iron", amount: 4 });
+    if (iron[0].type !== "start_hunt") throw new Error("expected start_hunt");
+    const mid = (state.market.iron.min + state.market.iron.max) / 2;
+    expect(iron[0].quotedDenarii).toBeGreaterThan(mid * 4);
+    expect(iron[0].quotedDenarii).toBeLessThan(mid * 4 * 1.5);
+    expect(iron[0].durationSeasons).toBe(1);
+
     const proposals = inferHuntProposals(state, "Find me pepper.");
     expect(proposals).toHaveLength(1);
     expect(proposals[0]).toMatchObject({ type: "start_hunt", goods: "pepper" });
     if (proposals[0].type !== "start_hunt") throw new Error("expected start_hunt");
-    expect(proposals[0].quotedDenarii).toBeGreaterThan(0);
+    expect(proposals[0].quotedDenarii).toBeGreaterThan(iron[0].quotedDenarii);
     expect(proposals[0].durationSeasons).toBeGreaterThanOrEqual(1);
     expect(proposals[0].summary).toMatch(/denarii/i);
+  });
+
+  it("Confirm spends the purse and a successful return adds the iron", () => {
+    const state = boot();
+    const chest = state.resources.denarii;
+    const ironBefore = state.resources.iron;
+    const proposals = inferHuntProposals(state, "Find me 4 pounds of iron for the bloomery.");
+    expect(proposals).toHaveLength(1);
+    if (proposals[0].type !== "start_hunt") throw new Error("expected start_hunt");
+    const quote = proposals[0].quotedDenarii;
+    const amount = proposals[0].amount;
+    expect(applyProposal(state, proposals[0], NEGOTIATOR_ID).ok).toBe(true);
+    expect(state.resources.denarii).toBe(chest - quote);
+    expect(state.resources.iron).toBe(ironBefore);
+    expect(state.npcs.find((n) => n.id === NEGOTIATOR_ID)?.location).toBe(GERULF_ROAD_LOCATION);
+    expect(huntFulfillReason(state, "Find me silk instead.")).toMatch(/already on the road/i);
+
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    const duration = state.projects.find((p) => p.hunt)?.hunt?.durationSeasons ?? 1;
+    for (let i = 0; i < duration; i++) resolveHunts(state);
+    vi.restoreAllMocks();
+    expect(state.resources.iron).toBe(ironBefore + amount);
+    expect(state.resources.denarii).toBe(chest - quote);
+    expect(state.npcs.find((n) => n.id === NEGOTIATOR_ID)?.location).toBe("fontenay");
   });
 
   it("escrows the quoted purse on Confirm and creates a hunt project", () => {

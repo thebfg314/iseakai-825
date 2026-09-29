@@ -1,6 +1,7 @@
 import type { DeferProposal, InnerMechanicalProposal, MechanicalProposal, WorldState } from "./schema";
 import { lookupProject } from "./projectCatalog";
 import { huntFulfillReason, inferHuntProposals, isNegotiatorId, looksLikeHuntOrder } from "./hunts";
+import { bloomeryNotReadyReason, inferSmithProposals, looksLikeBloomeryOrder } from "./bloomery";
 import { hireFulfillReason, inferHireProposals, looksLikeHireOrder, specialistById } from "./specialists";
 import { isDeferProposal } from "./forthcoming";
 import { inferSponsoredFeast, looksLikeSponsoredFeastOrder } from "./church";
@@ -24,6 +25,7 @@ export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean 
   const t = text.trim();
   if (!t) return false;
   if (npcId && isNegotiatorId(npcId) && looksLikeHuntOrder(t)) return true;
+  if (npcId === "smith" && looksLikeBloomeryOrder(t)) return true;
   if (npcId === "chaplain" && looksLikeSponsoredFeastOrder(t)) return true;
   if (npcId === "chaplain" && /\b(alms|open the barn|feed the hungry)\b/i.test(t)) return true;
   if (looksLikeHireOrder(t)) return true;
@@ -136,7 +138,11 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
     return inferHuntProposals(state, playerText);
   }
 
-  if (npcId === "smith" || specialistById(npcId)) {
+  if (npcId === "smith") {
+    return inferSmithProposals(state, playerText);
+  }
+
+  if (specialistById(npcId)) {
     return [];
   }
 
@@ -287,6 +293,10 @@ export function cannotFulfillReason(state: WorldState, npcId: string, playerText
   }
   const hireWhy = hireFulfillReason(state, npcId, playerText);
   if (hireWhy) return hireWhy;
+  if (npcId === "smith" && looksLikeBloomeryOrder(playerText)) {
+    const why = bloomeryNotReadyReason(state);
+    if (why) return why;
+  }
   if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor)\b/.test(t)) {
     return "Bernard does not keep the fields. Speak to Aldric the steward.";
   }

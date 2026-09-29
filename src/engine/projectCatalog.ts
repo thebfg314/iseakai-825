@@ -7,6 +7,10 @@ export type ProjectCatalogEntry = {
   lumber: number;
   iron: number;
   stone: number;
+  /** Cart-loads taken from the charcoal store when the work begins. */
+  charcoal?: number;
+  /** Cart-loads of clay dug with the work (wet ground), not a store. */
+  clay?: number;
   labourKind: "mostly_men" | "men_women" | "mixed";
   tag?: string;
   completesToFeature?: string;
@@ -54,7 +58,8 @@ export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
   { key: "quarry", name: "Small stone quarry (opening)", labourDays: 115, lumber: 3.5, iron: 30, stone: 0, labourKind: "mostly_men", completesToFeature: "quarry" },
   { key: "clay_pit", name: "Clay pit", labourDays: 45, lumber: 2, iron: 10, stone: 0, labourKind: "mixed", completesToFeature: "clay_pit" },
   { key: "charcoal_burning", name: "Organized charcoal burning", labourDays: 60, lumber: 2, iron: 0, stone: 0, labourKind: "mixed" },
-  { key: "bloomery", name: "Small bloomery", labourDays: 140, lumber: 5, iron: 35, stone: 2.5, labourKind: "mostly_men", tag: "forge", completesToFeature: "bloomery" },
+  // Clay shaft and bellows, not an iron-hungry building. About one season of the men's spare days (spring pool is ~180).
+  { key: "bloomery", name: "Bloomery", labourDays: 120, lumber: 4, iron: 0, stone: 2, charcoal: 2, clay: 3, labourKind: "mostly_men", tag: "forge", completesToFeature: "bloomery" },
   { key: "tannery", name: "Tannery", labourDays: 85, lumber: 5, iron: 17, stone: 1, labourKind: "mostly_men", completesToFeature: "tannery" },
   { key: "pottery_kiln", name: "Pottery kiln", labourDays: 60, lumber: 3.5, iron: 10, stone: 2, labourKind: "men_women", completesToFeature: "pottery_kiln" },
 ];

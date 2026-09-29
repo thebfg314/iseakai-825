@@ -80,6 +80,15 @@ import {
   specialistNpc,
 } from "../engine/specialists";
 import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
+import {
+  BERNARD_BLOOMERY_SUGGESTION,
+  BERNARD_BOG_ORE_SPEECH,
+  asksAboutBogOre,
+  bloomeryNotReadyReason,
+  bloomeryStartProposal,
+  bloomerySuggestReady,
+  isBloomeryStart,
+} from "../engine/bloomery";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
 import {
   confirmGate,
@@ -108,6 +117,8 @@ export class GameController {
   historyTail: string[] = [];
   /** In-memory: expansion hires already recommended this session. Does not write world-state. */
   recommendedHireIds = new Set<string>();
+  /** In-memory: Bernard has already put a bloomery on the table this session. */
+  bloomerySuggested = false;
   /** Pending card the lord asked about; next talk with that NPC can revise it. */
   askedAboutId: string | null = null;
   npcEmotions: Record<string, AldricEmotion> = {
@@ -509,7 +520,9 @@ export class GameController {
   ) {
     if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
+    if (npcId === "smith") this.ensureBogOreSpeech(playerText);
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
+    if (npcId === "smith") proposals = this.dropPrematureBloomery(proposals);
     if (isNegotiatorId(npcId)) {
       proposals = proposals.filter((p) => p.type === "start_hunt").map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
     }
@@ -522,6 +535,10 @@ export class GameController {
         proposals = inferred;
         fromEngine = true;
       }
+    }
+    if (npcId === "smith") {
+      const suggested = this.bloomerySuggestionProposal(proposals);
+      if (suggested) proposals = [...proposals, suggested];
     }
     const asked = this.discussedPending(npcId);
     let replaceId = asked?.id;
@@ -558,6 +575,70 @@ export class GameController {
         npcId,
       );
     }
+  }
+
+  /** Bernard names bog ore in plain words when the lord asks. Skips if he just said it. */
+  private ensureBogOreSpeech(playerText: string) {
+    if (!asksAboutBogOre(playerText)) return;
+    const recent = [...this.messages].reverse().find((m) => m.role === "npc" && m.npcId === "smith");
+    if (recent && /bog ore|rusty mud|wet ground/i.test(recent.text)) return;
+    this.npcEmotions.smith = "thoughtful";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "smith",
+      npcName: this.npcName("smith"),
+      text: BERNARD_BOG_ORE_SPEECH,
+      emotion: "thoughtful",
+      at: new Date().toISOString(),
+    });
+  }
+
+  /** Drop a bloomery the smith offered before charcoal and the chest allow it. */
+  private dropPrematureBloomery(proposals: MechanicalProposal[]): MechanicalProposal[] {
+    if (bloomerySuggestReady(this.state)) return proposals;
+    let dropped = false;
+    const kept = proposals.filter((p) => {
+      if (!isBloomeryStart(p)) return true;
+      dropped = true;
+      return false;
+    });
+    if (dropped && kept.length) this.ledgerNote(bloomeryNotReadyReason(this.state) ?? "Not yet.", "smith");
+    return kept;
+  }
+
+  /**
+   * Once a session, when charcoal and the chest allow, Bernard puts the bloomery forward.
+   * Returns the proposal for the caller to queue; does not write the books.
+   */
+  private bloomerySuggestionProposal(already: MechanicalProposal[]): MechanicalProposal | null {
+    if (this.bloomerySuggested || !bloomerySuggestReady(this.state)) return null;
+    if (already.some((p) => isBloomeryStart(p))) {
+      this.bloomerySuggested = true;
+      return null;
+    }
+    if (this.pending.some((p) => p.status === "pending" && isBloomeryStart(p.proposal))) {
+      this.bloomerySuggested = true;
+      return null;
+    }
+    this.bloomerySuggested = true;
+    this.npcEmotions.smith = "pleased";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "smith",
+      npcName: this.npcName("smith"),
+      text: BERNARD_BLOOMERY_SUGGESTION,
+      emotion: "pleased",
+      at: new Date().toISOString(),
+    });
+    return bloomeryStartProposal(this.state);
+  }
+
+  /** Season's end: the same offer, queued here because no talk is in flight. */
+  private flushBloomerySuggestion() {
+    const proposal = this.bloomerySuggestionProposal([]);
+    if (proposal) this.queueProposal("smith", proposal);
   }
 
   /** Engine-authored Aldric lines when an expansion hire first unlocks. Chat only; does not write the ledger. */
@@ -665,6 +746,7 @@ export class GameController {
       if (!result.ok && next.proposal.type === "start_project") this.withholdFollowOns(next, noted);
     }
     this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+    this.flushBloomerySuggestion();
     for (const npcId of new Set(batch.map((p) => p.npcId))) {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);
     }
@@ -734,6 +816,7 @@ export class GameController {
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
       this.flushHireRecommendations(newlyUnlockedHires(beforeNpc, this.state));
+      this.flushBloomerySuggestion();
     }
     return result.ok ? { ok: true } : { ok: false, error: playerFacingReason(result.reason ?? logLine) };
   }
@@ -897,6 +980,7 @@ export class GameController {
         at: new Date().toISOString(),
       });
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
+      this.flushBloomerySuggestion();
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
@@ -926,6 +1010,7 @@ export class GameController {
         });
       }
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
+      this.flushBloomerySuggestion();
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);

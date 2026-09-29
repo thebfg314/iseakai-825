@@ -90,6 +90,9 @@ describe("signed-off NPC personalities", () => {
     expect(bernard).toMatch(/short sentences/i);
     expect(bernard).toMatch(/do not hire craftsmen/i);
     expect(bernard).toMatch(/speak to Aldric/i);
+    expect(bernard).toMatch(/bloomery/i);
+    expect(bernard).toMatch(/bog ore/i);
+    expect(bernard).toMatch(/rusty mud/i);
 
     const ermenald = chaplainSystemPrompt();
     expect(ermenald).toContain("You are Ermenald");
@@ -105,6 +108,9 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/does not name a budget|YOU quote the denarii/i);
     expect(gerulf).toMatch(/start_hunt/);
     expect(gerulf).toMatch(/Aldric's world/i);
+    expect(gerulf).toMatch(/iron and other ordinary goods/i);
+    expect(gerulf).toMatch(/already away|already on the road/i);
+    expect(gerulf).not.toMatch(/Do NOT hunt iron/i);
     expect(npcSystemPrompt("negotiator")).toBe(gerulf);
   });
 

@@ -239,6 +239,10 @@ export const ProjectSchema = z.object({
     lumber: z.number(),
     iron: z.number(),
     stone: z.number(),
+    /** Cart-loads of charcoal set aside. Older saves omit this. */
+    charcoal: z.number().optional(),
+    /** Cart-loads of clay dug with the work. Not a store. Older saves omit this. */
+    clay: z.number().optional(),
   }),
   materialsReserved: z.boolean(),
   status: z.enum(["active", "completed", "cancelled"]),

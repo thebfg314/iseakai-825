@@ -598,7 +598,7 @@ export function playerFacingReason(reason: string): string {
   if (/Need .+ denarii; have /i.test(trimmed) || /Need .+ hiring gift/i.test(trimmed)) {
     return rewriteSnakeKeys(trimmed);
   }
-  if (/Need .+ (timber|iron|stone)/i.test(trimmed)) return rewriteSnakeKeys(trimmed);
+  if (/Need .+ (timber|iron|stone|charcoal)/i.test(trimmed)) return rewriteSnakeKeys(trimmed);
 
   let out = rewriteSnakeKeys(
     trimmed

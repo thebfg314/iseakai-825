@@ -417,7 +417,9 @@
           "properties": {
             "lumber": { "type": "number" },
             "iron": { "type": "number" },
-            "stone": { "type": "number" }
+            "stone": { "type": "number" },
+            "charcoal": { "type": "number" },
+            "clay": { "type": "number" }
           }
         },
         "materialsReserved": { "type": "boolean" },
