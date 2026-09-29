@@ -797,5 +797,82 @@ describe("Gerulf hunt via Confirm", () => {
     expect(game.state.custom_resources.some((c) => c.id === "pepper" && c.amount > 0)).toBe(true);
     expect(game.state.npcs.find((n) => n.id === "negotiator")?.location).toBe("fontenay");
   });
+
+  it("buys iron on Confirm: the purse leaves, and the return puts iron in the stores", () => {
+    const game = tempGame();
+    const chest = game.state.resources.denarii;
+    const iron = game.state.resources.iron;
+    const mid = (game.state.market.iron.min + game.state.market.iron.max) / 2;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Iron. I will name the purse.", proposals: [] }));
+    game.ingestParsedDialogue("negotiator", parsed, "Find me 4 pounds of iron for the work.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal.type).toBe("start_hunt");
+    expect(pending[0].npcId).toBe("negotiator");
+    if (pending[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    const quote = pending[0].proposal.quotedDenarii;
+    const amount = pending[0].proposal.amount;
+    expect(quote).toBeGreaterThan(mid * amount);
+    expect(quote).toBeLessThan(mid * amount * 1.5);
+    expect(game.state.resources.denarii).toBe(chest);
+    expect(game.state.resources.iron).toBe(iron);
+
+    const result = game.confirmProposal(pending[0].id);
+    expect(result.error).toBeUndefined();
+    expect(game.state.resources.denarii).toBe(chest - quote);
+    expect(game.state.npcs.find((n) => n.id === "negotiator")?.location).toBe("road");
+
+    game.ingestParsedDialogue("negotiator", parsed, "Find me salt instead.");
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "start_hunt")).toHaveLength(0);
+    expect(game.messages.some((m) => /already on the road/i.test(m.text))).toBe(true);
+
+    vi.spyOn(Math, "random").mockReturnValue(0.1);
+    const duration = game.state.projects.find((p) => p.hunt)?.hunt?.durationSeasons ?? 1;
+    for (let i = 0; i < duration; i++) resolveAgricultureAndProjects(game.state);
+    vi.restoreAllMocks();
+    expect(game.state.resources.iron).toBe(iron + amount);
+    expect(game.state.resources.denarii).toBe(chest - quote);
+  });
+});
+
+describe("Bernard's bloomery", () => {
+  it("does not propose a bloomery from the opening chest", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The hearth is thin.", proposals: [] }));
+    game.ingestParsedDialogue("smith", parsed, "Build a bloomery.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.messages.some((m) => /not yet/i.test(m.text) && /charcoal/i.test(m.text))).toBe(true);
+    expect(game.state.holdings[0].features).not.toContain("bloomery");
+  });
+
+  it("explains bog ore in plain words", () => {
+    const game = tempGame();
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "Ask, and I will say.", proposals: [] }));
+    game.ingestParsedDialogue("smith", parsed, "What is bog ore?");
+    expect(game.messages.some((m) => /rusty mud/i.test(m.text) && /bloomery/i.test(m.text))).toBe(true);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+  });
+
+  it("puts a bloomery on the table once charcoal and the chest allow, and Confirm only sets the stores aside", () => {
+    const game = tempGame();
+    game.state.resources.charcoal = 6;
+    game.state.resources.denarii = 180;
+    game.state.resources.softwood = 8;
+    game.state.resources.stone = 4;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "The hearth is ready for a word.", proposals: [] }));
+    game.ingestParsedDialogue("smith", parsed, "Good day, Bernard.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal).toMatchObject({ type: "start_project", projectKey: "bloomery" });
+    expect(game.messages.some((m) => /bloomery/i.test(m.text) && /clay/i.test(m.text))).toBe(true);
+    expect(game.state.holdings[0].features).not.toContain("bloomery");
+
+    const charcoal = game.state.resources.charcoal;
+    const result = game.confirmProposal(pending[0].id);
+    expect(result.error).toBeUndefined();
+    expect(game.state.projects.some((p) => p.key === "bloomery" && p.status === "active")).toBe(true);
+    expect(game.state.resources.charcoal).toBeLessThan(charcoal);
+    expect(game.state.holdings[0].features).not.toContain("bloomery");
+  });
 });
 

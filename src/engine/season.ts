@@ -7,6 +7,7 @@ import { applyProposal, projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
+import { smeltBloomeries } from "./bloomery";
 import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
 import { featureName, landName, resourceName } from "../ui/ledgerCopy";
@@ -241,6 +242,7 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
     sowAutumn(state).forEach(add);
   }
   livestockSeason(state).forEach(add);
+  smeltBloomeries(state).forEach(add);
   advanceProjects(state).forEach(add);
   resolveHunts(state).forEach(add);
   return lines;

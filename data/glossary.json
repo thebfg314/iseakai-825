@@ -79,9 +79,9 @@
     {
       "id": "bloomery",
       "title": "bloomery",
-      "aliases": ["bloom iron", "bloomeries", "bloomery"],
+      "aliases": ["bloom iron", "bloomeries", "bloomery", "bog ore", "bog iron"],
       "rule": "default",
-      "definition": "A bloomery is a small charcoal furnace that turns ore into a spongy lump of iron called a bloom. Not a modern blast furnace.\n\nBloom iron is that rough product."
+      "definition": "A bloomery is a small clay shaft and bellows. It burns charcoal and bog ore — rusty mud from wet ground — into a spongy lump of iron called a bloom. Not a modern blast furnace.\n\nBloom iron is that rough product. A season's firing yields only a few pounds."
     },
     {
       "id": "mill_leat",

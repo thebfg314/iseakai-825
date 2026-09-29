@@ -340,10 +340,15 @@ function startProject(
   const lumber = p.customCosts?.lumber ?? catalog!.lumber;
   const iron = p.customCosts?.iron ?? catalog!.iron;
   const stone = p.customCosts?.stone ?? catalog!.stone;
+  const charcoal = catalog?.charcoal ?? 0;
+  const clay = catalog?.clay ?? 0;
   const wood = state.resources.softwood + state.resources.hardwood;
   if (wood < lumber) return fail(state, `Need ${lumber} cart-loads of timber; have ${round1(wood)}.`, p.summary);
   if (state.resources.iron < iron) return fail(state, `Need ${iron} lb iron; have ${state.resources.iron}.`, p.summary);
   if (state.resources.stone < stone) return fail(state, `Need ${stone} cart-loads of stone; have ${state.resources.stone}.`, p.summary);
+  if (state.resources.charcoal < charcoal) {
+    return fail(state, `Need ${charcoal} cart-loads of charcoal; have ${state.resources.charcoal}.`, p.summary);
+  }
 
   let remainingLumber = lumber;
   const fromSoft = Math.min(state.resources.softwood, remainingLumber);
@@ -352,6 +357,7 @@ function startProject(
   state.resources.hardwood -= remainingLumber;
   state.resources.iron -= iron;
   state.resources.stone -= stone;
+  if (charcoal > 0) state.resources.charcoal = round1(state.resources.charcoal - charcoal);
 
   const id = newId("proj");
   state.projects.push({
@@ -361,7 +367,13 @@ function startProject(
     holdingId: holding.id,
     labourDaysRequired: labourDays,
     labourDaysDone: 0,
-    materials: { lumber, iron, stone },
+    materials: {
+      lumber,
+      iron,
+      stone,
+      ...(charcoal > 0 ? { charcoal } : {}),
+      ...(clay > 0 ? { clay } : {}),
+    },
     materialsReserved: true,
     status: "active",
     tag: p.tag ?? catalog?.tag,
@@ -370,7 +382,10 @@ function startProject(
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
-  const started = `${name} is begun. The timber, iron, and stone are set aside.`;
+  const started =
+    clay > 0 || charcoal > 0
+      ? `${name} is begun. Timber, stone, and charcoal are set aside. The clay for the shaft will be dug with the work.`
+      : `${name} is begun. The timber, iron, and stone are set aside.`;
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
 }
 
@@ -381,15 +396,20 @@ function adjustProject(
   const proj = resolveActiveProject(state, p.projectId, p.summary);
   if (!proj) return fail(state, "Unknown project.", p.summary);
   if (p.cancel) {
+    const hadCharcoal = (proj.materials.charcoal ?? 0) > 0;
     if (proj.materialsReserved && proj.status === "active") {
       state.resources.softwood += proj.materials.lumber * 0.5;
       state.resources.iron += proj.materials.iron * 0.5;
       state.resources.stone += proj.materials.stone * 0.5;
+      if (hadCharcoal) state.resources.charcoal = round1(state.resources.charcoal + (proj.materials.charcoal ?? 0) * 0.5);
     }
     proj.status = "cancelled";
     stampProjectEnded(state, proj);
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
-    return ok(state, `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`);
+    const back = hadCharcoal
+      ? `${proj.name} is stopped; half the unused timber, stone, and charcoal come back to the stores.`
+      : `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`;
+    return ok(state, back);
   }
   if (p.rush !== undefined) proj.rush = p.rush;
   if (p.labourThisSeason) {

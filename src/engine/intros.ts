@@ -5,7 +5,7 @@ export const HOUSEHOLD_INTROS: Record<string, string> = {
   steward:
     "My lord. I am Aldric, steward of Fontenay. I have kept these books while the hall waited on a master; grain, labour, and the chest are my care. When you want a craftsman found, ask me — not the forge, and not the cell.",
   smith:
-    "Bernard. I keep the forge. Iron's short. Charcoal too. Tell me what you need made, and I'll say if the hearth can do it.",
+    "Bernard. I keep the forge. Iron's short. Charcoal too. Bought iron is what this hearth knows. When charcoal and the chest allow, I may speak of a bloomery. Tell me what you need made, and I'll say if the hearth can do it.",
   chaplain:
     "I am Ermenald, prior of Saint-Martin's cell and your chaplain. Four brothers and a timber oratory. The bishop of Autun hears what is done on Sundays. For grain, see Aldric; for iron, Bernard. For the soul of a matter, I am here.",
   quarry_master:
@@ -27,7 +27,7 @@ export const HOUSEHOLD_INTROS: Record<string, string> = {
   captain:
     "Eberhard. I've seen enough of war to prefer a quiet watch — and enough to keep my edge if trouble comes. Point me at the gate. Parade dress can wait.",
   negotiator:
-    "My name Gerulf, my lord. If the merchants on the road do not carry it, I will. Name the thing you want, and I will say what it costs and how long I need — then I go looking. Do not send me for barley; that is Aldric's world.",
+    "My name Gerulf, my lord. Give me a brief and a purse and I will walk the roads — iron and ordinary goods at a fair price plus a little for the road, and the hard finds the carts will not carry. I am not a stall in the yard. Name the thing, and I will say what it costs and how long I need. Do not send me for barley; that is Aldric's world. If I am already away, leave the brief as it stands.",
 };
 
 export const MERCHANT_INTROS: Record<string, string> = {

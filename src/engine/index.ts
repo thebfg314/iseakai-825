@@ -19,6 +19,7 @@ export * from "./orderIntent";
 export * from "./memory";
 export * from "./intros";
 export * from "./hunts";
+export * from "./bloomery";
 export * from "./wantsTalk";
 export * from "./peopleHappiness";
 export * from "./peopleMovement";
