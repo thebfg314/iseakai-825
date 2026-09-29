@@ -62,11 +62,10 @@ function project(partial: Partial<Project> & Pick<Project, "id" | "key" | "name"
 }
 
 describe("extra labour days and harvest risk", () => {
-  it("does not set harvest_risk or cut yield when every man is called", () => {
+  it("does not set harvest_risk or cut yield when most extra male days are assigned", () => {
     const state = withActiveProject(boot());
     expect(state.meta.season).toBe("spring");
     expect(labourPool(state).men).toBe(180);
-    expect(state.population.adult_men).toBe(12);
 
     const beforeYield = yieldMultiplier(state, "rye");
     const assigned = applyProposal(
@@ -75,7 +74,7 @@ describe("extra labour days and harvest risk", () => {
         type: "assign_labour",
         summary: "Put men on the scrub",
         projectId: "proj-scrub",
-        men: 12,
+        men: 150,
         women: 0,
         youths: 0,
       },
@@ -83,14 +82,14 @@ describe("extra labour days and harvest risk", () => {
     );
 
     expect(assigned.ok).toBe(true);
-    expect(state.labour.assigned.find((a) => a.projectId === "proj-scrub")?.men).toBe(12);
-    expect(labourRemaining(state).men).toBe(0);
+    expect(state.labour.assigned).toEqual([{ projectId: "proj-scrub", men: 150, women: 0, youths: 0 }]);
+    expect(labourRemaining(state).men).toBe(30);
     expect(state.labour.harvest_risk).toBe(false);
     expect(yieldMultiplier(state, "rye")).toBe(beforeYield);
     expect(maxRisk(state, "harvest_risk")).toBe(0);
   });
 
-  it("rejects a call for more men than live on the demesne", () => {
+  it("still rejects assignments past the extra-day pool", () => {
     const state = withActiveProject(boot());
     const result = applyProposal(
       state,
@@ -98,14 +97,14 @@ describe("extra labour days and harvest risk", () => {
         type: "assign_labour",
         summary: "Too many men",
         projectId: "proj-scrub",
-        men: 60,
+        men: 181,
         women: 0,
         youths: 0,
       },
       "steward",
     );
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/Too many people called \(asked men 60 free 12/);
+    expect(result.reason).toMatch(/Not enough callable labour/);
     expect(state.labour.assigned).toEqual([]);
     expect(state.labour.harvest_risk).toBe(false);
   });
@@ -223,7 +222,7 @@ describe("auto-assign leftover onto works", () => {
     );
     expect(result.ok).toBe(true);
     expect(result.logLine).not.toMatch(/proj-|\{|JSON|assign_labour/i);
-    expect(result.logLine).toMatch(/called/i);
+    expect(result.logLine).toMatch(/days of the men's work/i);
     const mill = state.projects.find((p) => p.key === "flour_mill");
     expect(mill).toBeTruthy();
     const assign = state.labour.assigned.find((a) => a.projectId === mill!.id);
@@ -240,8 +239,7 @@ describe("auto-assign leftover onto works", () => {
     state.projects.push(project({ id: "scrub-1", key: "clear_scrub", name: "Clear scrub", labourDaysRequired: 10 }));
     const fill = autoAssignLeftoverToProject(state, "scrub-1");
     expect(fill?.added.youths).toBeGreaterThan(0);
-    expect(fill?.added.youths).toBeLessThanOrEqual(state.population.youths);
-    expect(fill?.added.youths).toBe(9);
+    expect(fill?.added.youths).toBe(25);
     expect(fill?.added.women).toBe(0);
     expect(fill?.added.men).toBe(0);
     expect(fill?.sentence).toMatch(/youths/i);
@@ -312,10 +310,9 @@ describe("auto-assign leftover onto works", () => {
     );
     const notes = autoFillLeftoverLabour(state);
     expect(notes.length).toBeGreaterThan(0);
-    expect(state.labour.assigned.find((a) => a.projectId === "older")?.men).toBe(1);
-    expect(state.labour.assigned.find((a) => a.projectId === "newer")?.men).toBe(1);
-    expect((state.labour.assigned.find((a) => a.projectId === "older")?.men ?? 0) +
-      (state.labour.assigned.find((a) => a.projectId === "newer")?.men ?? 0)).toBe(state.population.adult_men);
+    const pool = 2 * 15;
+    expect(state.labour.assigned.find((a) => a.projectId === "older")?.men).toBe(8);
+    expect(state.labour.assigned.find((a) => a.projectId === "newer")?.men).toBe(pool - 8);
   });
 
   it("prefers an explicit assign_labour floor, then tops up leftover", () => {

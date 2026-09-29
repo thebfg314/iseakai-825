@@ -2,7 +2,7 @@ import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } fr
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
 import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
-import { labourCalledPhrase, resolveActiveProject } from "../engine/labour";
+import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { matchHireableSpecialist } from "../engine/specialists";
 
 export const BOOKS_TITLE = "The books";
@@ -352,7 +352,7 @@ export function marketLine(resource: string, min: number, max: number): string {
 }
 
 export function labourOnWorkLine(assign?: { men: number; women: number; youths: number } | null): string {
-  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra hands called this season";
+  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra days of work set this season";
   return labourCalledPhrase(assign.men, assign.women, assign.youths);
 }
 
@@ -461,8 +461,8 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
     case "assign_labour": {
       const proj = state ? resolveActiveProject(state, p.projectId, p.summary)?.name ?? "the work" : "the work";
       const dest = proj.replace(/^(the|a|an)\s+/i, "");
-      const who = labourCalledPhrase(p.men, p.women, p.youths).replace(" called this season", "") || "no extra hands";
-      return `${who} to the ${dest}.`;
+      const who = labourDaysPhrase(p.men, p.women, p.youths) || "no extra days";
+      return `Set ${who} this season to the ${dest}.`;
     }
     case "set_standing_order":
       return p.text;
@@ -545,46 +545,6 @@ const EXACT_REASONS: Record<string, string> = {
   "Cleared labour assignments.": "I have sent the extra hands back to their households.",
 };
 
-function headCount(n: number, one: string, many: string): string {
-  const shown = Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1);
-  return `${shown} ${n === 1 ? one : many}`;
-}
-
-function joinHeads(parts: string[]): string {
-  if (parts.length <= 1) return parts[0] ?? "";
-  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
-  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
-}
-
-/** Hall speech for a headcount refusal. Internal reason stays numeric for the log. */
-export function speechForTooManyPeople(reason: string): string | null {
-  const match = reason
-    .trim()
-    .match(
-      /^Too many people called \(asked men ([\d.]+) free ([\d.]+) elsewhere ([\d.]+); women ([\d.]+) free ([\d.]+) elsewhere ([\d.]+); youths ([\d.]+) free ([\d.]+) elsewhere ([\d.]+)\)\.?$/,
-    );
-  if (!match) return null;
-  const roles = [
-    { asked: Number(match[1]), free: Number(match[2]), elsewhere: Number(match[3]), one: "man", many: "men" },
-    { asked: Number(match[4]), free: Number(match[5]), elsewhere: Number(match[6]), one: "woman", many: "women" },
-    { asked: Number(match[7]), free: Number(match[8]), elsewhere: Number(match[9]), one: "youth", many: "youths" },
-  ].filter((role) => role.asked > role.free + 1e-9);
-  if (!roles.length) return "There are not enough free people for that.";
-  const asked = joinHeads(roles.map((role) => headCount(role.asked, role.one, role.many)));
-  const limits = roles.map((role) => {
-    if (role.free <= 1e-9 && role.elsewhere > 0) {
-      return `no ${role.many} are still free (${headCount(role.elsewhere, role.one, role.many)} already called to other work)`;
-    }
-    if (role.elsewhere > 0) {
-      const verb = role.free === 1 ? "is" : "are";
-      return `only ${headCount(role.free, role.one, role.many)} ${verb} still free (${headCount(role.elsewhere, role.one, role.many)} already called to other work)`;
-    }
-    return `only ${headCount(role.free, role.one, role.many)} on the demesne`;
-  });
-  const limitSentence = joinHeads(limits);
-  return `I cannot call ${asked}. ${limitSentence.charAt(0).toUpperCase()}${limitSentence.slice(1)}.`;
-}
-
 function rewriteSnakeKeys(text: string): string {
   return text.replace(/\b[a-z]+(?:_[a-z0-9]+)+\b/g, (key) => {
     if (RESOURCE_NAMES[key] || FEATURE_NAMES[key] || LAND_NAMES[key] || ROLE_NAMES[key] || PROPOSAL_TYPE_NAMES[key]) {
@@ -607,8 +567,6 @@ export function playerFacingReason(reason: string): string {
   const trimmed = reason.trim();
   if (!trimmed) return "The books will not take that change.";
   if (EXACT_REASONS[trimmed]) return EXACT_REASONS[trimmed];
-  const tooMany = speechForTooManyPeople(trimmed);
-  if (tooMany) return tooMany;
 
   const reject = trimmed.match(/^REJECT\s+\S+\s+\S+:\s*(.+)$/i) ?? trimmed.match(/^REJECT\s+.+:\s*(.+)$/i);
   if (reject) return playerFacingReason(reject[1]);
@@ -626,9 +584,9 @@ export function playerFacingReason(reason: string): string {
 
   const labour = trimmed.match(/Not enough callable labour \(pool men ([\d.]+), women ([\d.]+), youths ([\d.]+)\)/i);
   if (labour) {
-    return `There are not enough extra hands. I can still call ${labour[1]} men, ${labour[2]} women, and ${labour[3]} youths.`;
+    return `There are not enough days of work this season. The men's work comes to ${labour[1]} days, the women's to ${labour[2]}, and the youths' to ${labour[3]}.`;
   }
-  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough extra hands left to call.";
+  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough days of work left this season.";
 
   if (/The merchant has no /i.test(trimmed)) return rewriteSnakeKeys(trimmed);
   if (/^Cannot (sell|consume) /i.test(trimmed)) {

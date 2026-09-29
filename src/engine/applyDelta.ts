@@ -6,7 +6,7 @@ import {
   type WorldState,
 } from "./schema";
 import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
-import { autoAssignLeftoverToProject, labourCalledSentence, peoplePool, peopleRemaining, resolveActiveProject } from "./labour";
+import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRemaining, resolveActiveProject } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
 import { applyMerchantTransferLine } from "./merchantShop";
@@ -303,22 +303,19 @@ function assignLabour(
     return fail(state, "No such active project.", p.summary);
   }
   const projectId = proj.id;
-  const pop = peoplePool(state);
-  const free = peopleRemaining(state);
+  const remaining = labourRemaining(state);
   const existing = state.labour.assigned.find((a) => a.projectId === projectId);
   const already = existing ?? { men: 0, women: 0, youths: 0 };
-  const room = {
-    men: free.men + (existing ? already.men : 0),
-    women: free.women + (existing ? already.women : 0),
-    youths: free.youths + (existing ? already.youths : 0),
-  };
-  if (p.men > room.men + 0.01 || p.women > room.women + 0.01 || p.youths > room.youths + 0.01) {
-    const elsewhere = {
-      men: Math.max(0, pop.men - room.men),
-      women: Math.max(0, pop.women - room.women),
-      youths: Math.max(0, pop.youths - room.youths),
-    };
-    return fail(state, tooManyPeopleReason({ men: p.men, women: p.women, youths: p.youths }, room, elsewhere), p.summary);
+  const needMen = p.men - (existing ? already.men : 0);
+  const needWomen = p.women - (existing ? already.women : 0);
+  const needYouths = p.youths - (existing ? already.youths : 0);
+  if (needMen > remaining.men + 0.01 || needWomen > remaining.women + 0.01 || needYouths > remaining.youths + 0.01) {
+    const pool = labourPool(state);
+    return fail(
+      state,
+      `Not enough callable labour (pool men ${pool.men}, women ${pool.women}, youths ${pool.youths}).`,
+      p.summary,
+    );
   }
   if (existing) {
     existing.men = p.men;
@@ -447,18 +444,6 @@ function storesReturned(lumber: number, iron: number, stone: number): string {
   const parts = storeParts(lumber, iron, stone);
   if (!parts.length) return "";
   return ` Half the unused ${joinStores(parts)} comes back to the stores.`;
-}
-
-function headCount(n: number): string {
-  return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1);
-}
-
-function tooManyPeopleReason(
-  asked: { men: number; women: number; youths: number },
-  free: { men: number; women: number; youths: number },
-  elsewhere: { men: number; women: number; youths: number },
-): string {
-  return `Too many people called (asked men ${headCount(asked.men)} free ${headCount(free.men)} elsewhere ${headCount(elsewhere.men)}; women ${headCount(asked.women)} free ${headCount(free.women)} elsewhere ${headCount(elsewhere.women)}; youths ${headCount(asked.youths)} free ${headCount(free.youths)} elsewhere ${headCount(elsewhere.youths)}).`;
 }
 
 function adjustProject(

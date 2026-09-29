@@ -25,69 +25,9 @@ export const LIGHT_YOUTH_ASSIST_KEYS = new Set(["textile_workshop", "pottery_kil
 export const MOSTLY_MEN_NO_WOMEN_KEYS = new Set(["quarry", "wooden_tower", "drain_swamp"]);
 
 const EMPTY_POOL: LabourPool = { men: 0, women: 0, youths: 0 };
-const UNIT_HEAD: LabourPool = { men: 1, women: 1, youths: 1 };
 
 function labourEfficiency(state: WorldState): number {
   return applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
-}
-
-/** Callable days one free person of each kind can give this season (Constitution §4.3 midpoints). */
-export function callableDaysPerHead(state: WorldState): LabourPool {
-  const mid = LABOUR_MIDPOINTS[state.meta.season];
-  const eff = labourEfficiency(state);
-  return { men: mid.men * eff, women: mid.women * eff, youths: mid.youths * eff };
-}
-
-export function peoplePool(state: WorldState): LabourPool {
-  return {
-    men: state.population.adult_men,
-    women: state.population.adult_women,
-    youths: state.population.youths,
-  };
-}
-
-export function peopleUsed(state: WorldState): LabourPool {
-  const used: LabourPool = { men: 0, women: 0, youths: 0 };
-  for (const a of state.labour.assigned) {
-    used.men += a.men;
-    used.women += a.women;
-    used.youths += a.youths;
-  }
-  return used;
-}
-
-export function peopleRemaining(state: WorldState): LabourPool {
-  const pop = peoplePool(state);
-  const used = peopleUsed(state);
-  return {
-    men: Math.max(0, pop.men - used.men),
-    women: Math.max(0, pop.women - used.women),
-    youths: Math.max(0, pop.youths - used.youths),
-  };
-}
-
-/** Old saves stored day-slots in the head fields. Keep the sum inside the living people. */
-export function capAssignmentsToPopulation(state: WorldState): void {
-  const room = { ...peoplePool(state) };
-  for (const row of state.labour.assigned) {
-    row.men = Math.min(row.men, room.men);
-    room.men -= row.men;
-    row.women = Math.min(row.women, room.women);
-    room.women -= row.women;
-    row.youths = Math.min(row.youths, room.youths);
-    room.youths -= row.youths;
-  }
-  state.labour.assigned = state.labour.assigned.filter((row) => row.men || row.women || row.youths);
-}
-
-function cappedHeads(state: WorldState): LabourPool {
-  const pop = peoplePool(state);
-  const used = peopleUsed(state);
-  return {
-    men: Math.min(used.men, pop.men),
-    women: Math.min(used.women, pop.women),
-    youths: Math.min(used.youths, pop.youths),
-  };
 }
 
 export function labourPool(state: WorldState): LabourPool {
@@ -100,14 +40,15 @@ export function labourPool(state: WorldState): LabourPool {
   };
 }
 
+/** Sum of assigned work-days. The men/women/youths fields are days of that kind of work, not heads. */
 export function labourUsed(state: WorldState): LabourPool {
-  const each = callableDaysPerHead(state);
-  const heads = cappedHeads(state);
-  return {
-    men: Math.round(heads.men * each.men),
-    women: Math.round(heads.women * each.women),
-    youths: Math.round(heads.youths * each.youths),
-  };
+  const used: LabourPool = { men: 0, women: 0, youths: 0 };
+  for (const a of state.labour.assigned) {
+    used.men += a.men;
+    used.women += a.women;
+    used.youths += a.youths;
+  }
+  return used;
 }
 
 export function labourRemaining(state: WorldState): LabourPool {
@@ -121,19 +62,13 @@ export function labourRemaining(state: WorldState): LabourPool {
 }
 
 /**
- * Heads × callable days. Women count 1.0 except 0.6 on mostly-men work; youths 0.4.
- * `perHead` defaults to 1 so fill-order tests can speak in abstract day-slots.
+ * Assigned figures are already days of that kind of work.
+ * Women count 1.0 except 0.6 on mostly-men work; youths 0.4.
  */
-export function labourDaysFromAssignment(
-  kind: LabourKind,
-  men: number,
-  women: number,
-  youths: number,
-  perHead: LabourPool = UNIT_HEAD,
-): number {
+export function labourDaysFromAssignment(kind: LabourKind, men: number, women: number, youths: number): number {
   const womanFactor = kind === "mostly_men" ? 0.6 : 1;
   const youthFactor = 0.4;
-  return men * perHead.men + women * perHead.women * womanFactor + youths * perHead.youths * youthFactor;
+  return men + women * womanFactor + youths * youthFactor;
 }
 
 export function isLabourDayProject(project: Project): boolean {
@@ -190,13 +125,13 @@ export function autoFillRoles(kind: LabourKind, projectKey: string): LabourRole[
   return ["men", "women"];
 }
 
-function coversNeed(kind: LabourKind, heads: LabourPool, remainingDays: number, perHead: LabourPool): boolean {
-  return labourDaysFromAssignment(kind, heads.men, heads.women, heads.youths, perHead) + 1e-9 >= remainingDays;
+function coversNeed(kind: LabourKind, days: LabourPool, remainingDays: number): boolean {
+  return labourDaysFromAssignment(kind, days.men, days.women, days.youths) + 1e-9 >= remainingDays;
 }
 
 /**
- * Extra heads (youths / women / men) to take from `available` so `already`
- * plus the result covers `remainingDays`, without dumping surplus people.
+ * Extra days (youths / women / men) to take from `available` so `already`
+ * plus the result covers `remainingDays`, without dumping surplus days.
  */
 export function leftoverHeadsForNeed(
   kind: LabourKind,
@@ -204,7 +139,6 @@ export function leftoverHeadsForNeed(
   remainingDays: number,
   available: LabourPool,
   already: LabourPool = EMPTY_POOL,
-  perHead: LabourPool = UNIT_HEAD,
 ): LabourPool {
   const added: LabourPool = { men: 0, women: 0, youths: 0 };
   if (remainingDays <= 1e-9) return added;
@@ -212,10 +146,10 @@ export function leftoverHeadsForNeed(
   const pool: LabourPool = { ...available };
   for (const role of autoFillRoles(kind, projectKey)) {
     if (role === "women" && kind === "mostly_men") {
-      const still = remainingDays - labourDaysFromAssignment(kind, current.men, current.women, current.youths, perHead);
+      const still = remainingDays - labourDaysFromAssignment(kind, current.men, current.women, current.youths);
       if (still > MOSTLY_MEN_WOMAN_ASSIST_DAYS + 1e-9) continue;
     }
-    while (pool[role] > 0 && !coversNeed(kind, current, remainingDays, perHead)) {
+    while (pool[role] > 0 && !coversNeed(kind, current, remainingDays)) {
       current[role] += 1;
       added[role] += 1;
       pool[role] -= 1;
@@ -224,22 +158,36 @@ export function leftoverHeadsForNeed(
   return added;
 }
 
-export function labourCalledPhrase(men: number, women: number, youths: number): string {
+function dayCount(n: number): string {
+  const shown = Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1);
+  return `${shown} ${n === 1 ? "day" : "days"}`;
+}
+
+function joinParts(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+/** Days of each kind of work, e.g. "60 days of the men's work". */
+export function labourDaysPhrase(men: number, women: number, youths: number): string {
   const parts: string[] = [];
-  if (men) parts.push(`${men} ${men === 1 ? "man" : "men"}`);
-  if (women) parts.push(`${women} ${women === 1 ? "woman" : "women"}`);
-  if (youths) parts.push(`${youths} ${youths === 1 ? "youth" : "youths"}`);
-  if (!parts.length) return "";
-  const who =
-    parts.length === 1 ? parts[0] : parts.length === 2 ? `${parts[0]} and ${parts[1]}` : `${parts[0]}, ${parts[1]}, and ${parts[2]}`;
-  return `${who} called this season`;
+  if (men) parts.push(`${dayCount(men)} of the ${men === 1 ? "man's" : "men's"} work`);
+  if (women) parts.push(`${dayCount(women)} of the ${women === 1 ? "woman's" : "women's"} work`);
+  if (youths) parts.push(`${dayCount(youths)} of the ${youths === 1 ? "youth's" : "youths'"} work`);
+  return joinParts(parts);
+}
+
+export function labourCalledPhrase(men: number, women: number, youths: number): string {
+  const phrase = labourDaysPhrase(men, women, youths);
+  return phrase ? `${phrase} this season` : "";
 }
 
 export function labourCalledSentence(workName: string, men: number, women: number, youths: number): string {
-  const phrase = labourCalledPhrase(men, women, youths);
+  const phrase = labourDaysPhrase(men, women, youths);
   if (!phrase) return "";
   const dest = workName.replace(/^(the|a|an)\s+/i, "");
-  return `I have called ${phrase.replace(" called this season", "")} to the ${dest}.`;
+  return `I have set ${phrase} this season to the ${dest}.`;
 }
 
 function assignmentOn(state: WorldState, projectId: string): LabourAssignment | undefined {
@@ -276,14 +224,7 @@ export function autoAssignLeftoverToProject(state: WorldState, projectId: string
   const kind = labourKindFor(project);
   const already = assignmentOn(state, projectId) ?? { men: 0, women: 0, youths: 0 };
   const remainingDays = projectDaysStillNeeded(project);
-  const added = leftoverHeadsForNeed(
-    kind,
-    project.key,
-    remainingDays,
-    peopleRemaining(state),
-    already,
-    callableDaysPerHead(state),
-  );
+  const added = leftoverHeadsForNeed(kind, project.key, remainingDays, labourRemaining(state), already);
   const total: LabourPool = {
     men: already.men + added.men,
     women: already.women + added.women,
@@ -303,7 +244,7 @@ export function autoFillLeftoverLabour(state: WorldState): string[] {
   for (const project of state.projects) {
     if (!isLabourDayProject(project)) continue;
     if (projectDaysStillNeeded(project) <= 1e-9) continue;
-    const leftover = peopleRemaining(state);
+    const leftover = labourRemaining(state);
     if (leftover.men <= 0 && leftover.women <= 0 && leftover.youths <= 0) break;
     const result = autoAssignLeftoverToProject(state, project.id);
     if (!result) continue;

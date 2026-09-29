@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
-import { peopleRemaining } from "./labour";
+import { labourPool, labourRemaining } from "./labour";
 import { lookupProject } from "./projectCatalog";
 import { WorldStateSchema, type WorldState } from "./schema";
 import { defaultAppSettings } from "../llm/settings";
@@ -112,7 +112,6 @@ describe("hands stay on the work they named", () => {
     const clearing = session.state.projects.find((p) => p.key === "clear_scrub")!;
     const onClearing = session.state.labour.assigned.find((a) => a.projectId === clearing.id);
     expect(onClearing?.men ?? 0).not.toBe(60);
-    expect(onClearing?.men ?? 0).toBeLessThanOrEqual(session.state.population.adult_men);
     expect(session.pending.filter((p) => p.status === "withheld")).toHaveLength(2);
     const skips = session.messages.filter((m) => /was not begun, so I have not called hands/i.test(m.text));
     expect(skips).toHaveLength(1);
@@ -154,8 +153,8 @@ describe("hands stay on the work they named", () => {
   });
 });
 
-describe("headcount", () => {
-  it("never calls 60 men, 25 women, or 27 youths from a 12 / 13 / 9 demesne", () => {
+describe("days of work in the books", () => {
+  it("writes 60, 25, and 27 as days of work", () => {
     const state = boot();
     state.projects.push({
       id: "proj-scrub",
@@ -172,7 +171,7 @@ describe("headcount", () => {
       state,
       {
         type: "assign_labour",
-        summary: "Everyone to the scrub",
+        summary: "Days to the scrub",
         projectId: "proj-scrub",
         men: 60,
         women: 25,
@@ -180,29 +179,25 @@ describe("headcount", () => {
       },
       "steward",
     );
-    expect(called.ok).toBe(false);
-    expect(state.labour.assigned).toEqual([]);
-    const speech = playerFacingReason(called.reason!);
-    expect(speech).toMatch(/cannot call 60 men, 25 women, and 27 youths/i);
-    expect(speech).toMatch(/12 men/);
-    expect(speech).toMatch(/13 women/);
-    expect(speech).toMatch(/9 youths/);
-    expect(speech).not.toMatch(JARGON);
+    expect(called.ok).toBe(true);
+    expect(state.labour.assigned).toContainEqual({ projectId: "proj-scrub", men: 60, women: 25, youths: 27 });
+    expect(called.logLine).toBe(
+      "I have set 60 days of the men's work, 25 days of the women's work, and 27 days of the youths' work this season to the Clear scrub to arable (1 acre).",
+    );
+    expect(called.logLine).not.toMatch(/I have called|60 men|25 women|27 youths/i);
+    expect(called.logLine).not.toMatch(JARGON);
 
     const begun = applyProposal(
       boot(),
-      { type: "start_project", summary: "Clear an acre", projectKey: "clear_scrub", holdingId: "fontenay" },
+      { type: "start_project", summary: "Clear an acre", projectKey: "clear_scrub", name: "Clear scrub to arable (1 acre)", holdingId: "fontenay" },
       "steward",
     );
     expect(begun.ok).toBe(true);
-    expect(begun.logLine).not.toMatch(/25 women|27 youths|60 men/);
-    const row = begun.state.labour.assigned[0];
-    expect(row.men).toBeLessThanOrEqual(12);
-    expect(row.women).toBeLessThanOrEqual(13);
-    expect(row.youths).toBeLessThanOrEqual(9);
+    expect(begun.logLine).toMatch(/I have set \d+ days of the/i);
+    expect(begun.logLine).not.toMatch(/I have called/i);
   });
 
-  it("counts people already called to other work", () => {
+  it("refuses days past the season's remaining work", () => {
     const state = boot();
     state.projects.push(
       {
@@ -210,7 +205,7 @@ describe("headcount", () => {
         key: "clear_scrub",
         name: "Clear scrub to arable (1 acre)",
         holdingId: "fontenay",
-        labourDaysRequired: 35,
+        labourDaysRequired: 400,
         labourDaysDone: 0,
         materials: { lumber: 0, iron: 0, stone: 0 },
         materialsReserved: true,
@@ -228,17 +223,20 @@ describe("headcount", () => {
         status: "active",
       },
     );
-    state.labour.assigned.push({ projectId: "proj-scrub", men: 8, women: 0, youths: 0 });
+    const pool = labourPool(state).men;
+    state.labour.assigned.push({ projectId: "proj-scrub", men: pool, women: 0, youths: 0 });
     const called = applyProposal(
       state,
-      { type: "assign_labour", summary: "Eight men to the mound", projectId: "proj-char", men: 8, women: 0, youths: 0 },
+      { type: "assign_labour", summary: "More men's days to the mound", projectId: "proj-char", men: 1, women: 0, youths: 0 },
       "steward",
     );
     expect(called.ok).toBe(false);
-    expect(playerFacingReason(called.reason!)).toMatch(/only 4 men are still free/i);
-    expect(playerFacingReason(called.reason!)).toMatch(/8 men already called to other work/i);
-    expect(state.labour.assigned).toEqual([{ projectId: "proj-scrub", men: 8, women: 0, youths: 0 }]);
-    expect(peopleRemaining(state).men).toBe(4);
+    expect(labourRemaining(state).men).toBe(0);
+    const speech = playerFacingReason(called.reason!);
+    expect(speech).toMatch(new RegExp(`${pool} days`));
+    expect(speech).toMatch(/days of work/i);
+    expect(speech).not.toMatch(JARGON);
+    expect(state.labour.assigned).toEqual([{ projectId: "proj-scrub", men: pool, women: 0, youths: 0 }]);
   });
 });
 
