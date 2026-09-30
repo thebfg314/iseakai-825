@@ -32,6 +32,7 @@ import { llmChat, type AppSettings } from "../llm";
 import { fetchProviderBalance } from "../llm/credits";
 import { consumeLastLlmCall, LlmMeterStore } from "../llm/usage";
 import {
+  earlierTalkBlock,
   npcBooksFollowUp,
   npcFactsFollowUp,
   npcUserPrompt,
@@ -73,6 +74,8 @@ import {
   pendingHuntReports,
   quoteHunt,
   resolveHuntDifficulty,
+  seasonsAskedByLord,
+  seasonsNamedInText,
   unaffordableHuntSpeech,
   withComputedHuntPrice,
   type HuntDifficulty,
@@ -383,6 +386,7 @@ export class GameController {
     const system = npcSystemPrompt(npcId, this.state);
     const discussed = this.discussedPending(npcId);
     const extraBits = [
+      earlierTalkForSpeaker(this.messages, npcId, this.npcName(npcId), playerText),
       npcId === "merchant"
         ? "You are visiting only this season. Request the merchant drawer if you need cart stock. Buy only from that stock. Sell any estate resource except denarii."
         : undefined,
@@ -470,23 +474,45 @@ export class GameController {
           );
         }
 
-        if (huntAsk) {
-          const difficulty = this.resolvedHuntDifficulty(playerText, answer.speech, books.proposals);
-          const req = extractHuntRequest(playerText);
-          if (req && difficulty) {
-            const brief = quoteHunt(this.state, { ...req, difficulty });
-            if (this.state.resources.denarii < brief.quotedDenarii) {
-              this.pushNpcSpeech(npcId, { speech: unaffordableHuntSpeech(brief), emotion: "concerned" });
-              return this.finishTalk();
+        if (isNegotiatorId(npcId)) {
+          const modelHunt = books.proposals.find((p) => p.type === "start_hunt");
+          const judged =
+            modelHunt?.type === "start_hunt" ? modelHunt.durationSeasons : seasonsNamedInText(answer.speech);
+          if (huntAsk) {
+            const difficulty = this.resolvedHuntDifficulty(playerText, answer.speech, books.proposals);
+            const req = extractHuntRequest(playerText);
+            if (req && difficulty) {
+              const brief = quoteHunt(
+                this.state,
+                { ...req, difficulty },
+                { judged, asked: seasonsAskedByLord(playerText) },
+              );
+              if (this.state.resources.denarii < brief.quotedDenarii) {
+                this.pushNpcSpeech(npcId, { speech: unaffordableHuntSpeech(brief), emotion: "concerned" });
+                return this.finishTalk();
+              }
+              answer = { ...answer, speech: withComputedHuntPrice(answer.speech, brief) };
+              for (const proposal of books.proposals) {
+                if (proposal.type === "start_hunt") proposal.difficulty = difficulty;
+              }
             }
-            answer = { ...answer, speech: withComputedHuntPrice(answer.speech, brief) };
-            for (const proposal of books.proposals) {
-              if (proposal.type === "start_hunt") proposal.difficulty = difficulty;
-            }
+            this.pushNpcSpeech(npcId, answer);
+            this.ingestParsedDialogue(npcId, books, playerText, difficulty, judged);
+            return this.finishTalk();
           }
-          this.pushNpcSpeech(npcId, answer);
-          this.ingestParsedDialogue(npcId, books, playerText, difficulty);
-          return this.finishTalk();
+          if (modelHunt?.type === "start_hunt") {
+            const brief = quoteHunt(
+              this.state,
+              {
+                goods: modelHunt.goods,
+                resource: modelHunt.resource,
+                amount: modelHunt.amount,
+                difficulty: modelHunt.difficulty,
+              },
+              { judged: modelHunt.durationSeasons, asked: seasonsAskedByLord(playerText) },
+            );
+            answer = { ...answer, speech: withComputedHuntPrice(answer.speech, brief) };
+          }
         }
 
         this.pushNpcSpeech(npcId, answer);
@@ -531,7 +557,8 @@ export class GameController {
   ): boolean {
     if (!isNegotiatorId(npcId)) return false;
     const spokenDifficulty = difficultyFromSpeech(spoken?.speech ?? "");
-    const forced = huntProposalForAsk(this.state, playerText, spokenDifficulty);
+    const judged = seasonsNamedInText(spoken?.speech ?? "");
+    const forced = huntProposalForAsk(this.state, playerText, spokenDifficulty, judged);
     if (!forced?.length) {
       const why = huntFulfillReason(this.state, playerText, spokenDifficulty);
       if (!why) return false;
@@ -541,7 +568,11 @@ export class GameController {
     const playerAt = this.messages.map((m) => m.role).lastIndexOf("player");
     const req = extractHuntRequest(playerText);
     const brief = req
-      ? quoteHunt(this.state, { ...req, difficulty: resolveHuntDifficulty(req.resource, spokenDifficulty) })
+      ? quoteHunt(
+          this.state,
+          { ...req, difficulty: resolveHuntDifficulty(req.resource, spokenDifficulty) },
+          { judged, asked: seasonsAskedByLord(playerText) },
+        )
       : null;
     const speech = brief ? withComputedHuntPrice(spoken?.speech ?? "", brief) : (spoken?.speech ?? "");
     const priced =
@@ -639,6 +670,7 @@ export class GameController {
     parsed: { proposals: MechanicalProposal[]; parseErrors: string[]; incomplete?: boolean },
     playerText: string,
     huntDifficulty?: HuntDifficulty,
+    huntJudged?: number,
   ) {
     if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
@@ -651,14 +683,17 @@ export class GameController {
       const modelHunt = proposals.find((p) => p.type === "start_hunt");
       huntChoice =
         huntDifficulty ?? (modelHunt?.type === "start_hunt" ? modelHunt.difficulty : undefined);
-      const forced = huntProposalForAsk(this.state, playerText, huntChoice);
+      const judged =
+        huntJudged ?? (modelHunt?.type === "start_hunt" ? modelHunt.durationSeasons : undefined);
+      const forced = huntProposalForAsk(this.state, playerText, huntChoice, judged);
       if (forced !== null) {
         proposals = forced;
         huntSettled = true;
       } else {
+        const asked = seasonsAskedByLord(playerText);
         proposals = proposals
           .filter((p) => p.type === "start_hunt")
-          .map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
+          .map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p, asked) : p));
       }
     }
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
@@ -1484,6 +1519,25 @@ export class GameController {
 /** Full store stays on the controller; the view only shows the active scene. */
 export function messagesForScene(messages: ChatMessage[], sceneNpcId: string): ChatMessage[] {
   return messages.filter((m) => m.npcId === sceneNpcId);
+}
+
+/** This speaker's own recent lines, not the line the lord just sent, and not anyone else's talk. */
+function earlierTalkForSpeaker(
+  messages: ChatMessage[],
+  npcId: string,
+  npcName: string,
+  currentPlayerText: string,
+): string {
+  const lines = messages.filter((m) => m.npcId === npcId && (m.role === "player" || m.role === "npc"));
+  const prior = [...lines];
+  const last = prior[prior.length - 1];
+  if (last?.role === "player" && last.text === currentPlayerText) prior.pop();
+  return earlierTalkBlock(
+    prior.map((m) => ({
+      speaker: m.role === "player" ? "The lord" : m.npcName || npcName,
+      text: m.text,
+    })),
+  );
 }
 
 function ensureSummary(p: MechanicalProposal): MechanicalProposal {

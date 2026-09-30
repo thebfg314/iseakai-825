@@ -256,6 +256,40 @@ describe("per-NPC dialogue logs", () => {
     expect(smith.messages.some((m) => opening.test(m.text))).toBe(false);
   });
 
+  it("keeps Bernard's own talk in front of him and leaves other people's words out", async () => {
+    const game = tempGame();
+    const spy = vi.spyOn(game as unknown as { callLlm: (...args: unknown[]) => Promise<unknown> }, "callLlm");
+    const reply = (speech: string) => ({
+      speech,
+      emotion: "thoughtful",
+      proposals: [],
+      raw: "{}",
+      parseErrors: [],
+    });
+    spy
+      .mockResolvedValueOnce(reply("The north furlong is thin, my lord."))
+      .mockResolvedValueOnce(reply("A good idea, but it needs more charcoal and more iron."))
+      .mockResolvedValueOnce(reply("More charcoal than we have stacked, my lord."));
+
+    await game.sendDialogue("steward", "The north furlong of rye is thin this spring.");
+    const plough =
+      "A long heavy coulter, a wider one-sided share, a wooden board that turns the earth, thin iron plates, and a socketed share. I have been thinking on this plough.";
+    await game.sendDialogue("smith", plough);
+    await game.sendDialogue("smith", "How much charcoal?");
+
+    const last = spy.mock.calls.at(-1)?.[0] as { role: string; content: string }[];
+    const user = last.filter((m) => m.role === "user").map((m) => m.content).join("\n");
+    expect(user).toMatch(/coulter/);
+    expect(user).toMatch(/one-sided share/);
+    expect(user).toMatch(/wooden board/);
+    expect(user).toMatch(/A good idea, but it needs more charcoal and more iron/);
+    expect(user).toMatch(/How much charcoal\?/);
+    expect(user).toMatch(/not a new change for the books/i);
+    expect(user).not.toMatch(/north furlong/);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.npcs.find((n) => n.id === "smith")?.memories ?? []).toEqual([]);
+  });
+
   it("does not leak steward chat onto an empty merchant tab", () => {
     const game = tempGame();
     game.state.flags.merchant_present = true;

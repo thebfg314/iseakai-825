@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
-import { GERULF_NOTES, GERULF_ROAD_LOCATION, HUNT_DIFFICULTY_MULTIPLIER, NEGOTIATOR_ID, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, inferHuntProposals, looksLikeHuntOrder, ordinaryHuntPurse, parseHuntDifficulty, quoteHunt, resolveHuntDifficulty, resolveHunts, startHunt, withComputedHuntPrice } from "./hunts";
+import { GERULF_NOTES, GERULF_ROAD_LOCATION, HUNT_DIFFICULTY_MULTIPLIER, NEGOTIATOR_ID, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, huntProposalForAsk, inferHuntProposals, looksLikeHuntOrder, normalizeHuntProposal, ordinaryHuntPurse, parseHuntDifficulty, quoteHunt, resolveHuntDifficulty, resolveHunts, resolveRoadSeasons, roadSeasonWords, seasonsAskedByLord, seasonsNamedInText, startHunt, withComputedHuntPrice } from "./hunts";
 import { WorldStateSchema, type WorldState } from "./schema";
 import { resolveAgricultureAndProjects } from "./season";
 
@@ -227,5 +227,100 @@ describe("Gerulf the negotiator", () => {
     expect(invented).not.toMatch(/\b42\b/);
     expect(inventedAgain).not.toMatch(/\b28\b/);
     expect(invented).toMatch(/forge stand idle/);
+    expect(invented).toMatch(/one season/);
+    expect(first.durationSeasons).toBe(1);
+  });
+
+  it("starts with 25 lb of iron and 138 denarii", () => {
+    const state = boot();
+    expect(state.resources.iron).toBe(25);
+    expect(state.resources.denarii).toBe(138);
+  });
+
+  it("takes the seasons from the road he judged, not from the purse or the weight", () => {
+    const state = boot();
+    const small = quoteHunt(state, { goods: "iron", resource: "iron", amount: 1 }, { judged: 3 });
+    expect(small.quotedDenarii).toBe(Math.round(8 * 1.1));
+    expect(small.quotedDenarii).toBeLessThan(60);
+    expect(small.durationSeasons).toBe(3);
+
+    const dear = quoteHunt(state, { goods: "iron", resource: "iron", amount: 40 }, { judged: 1 });
+    expect(dear.quotedDenarii).toBe(Math.round(40 * 8 * 1.1));
+    expect(dear.quotedDenarii).toBe(352);
+    expect(dear.durationSeasons).toBe(1);
+
+    const wide = quoteHunt(state, { goods: "iron", resource: "iron", amount: 1000 });
+    const wider = quoteHunt(state, { goods: "iron", resource: "iron", amount: 1000 }, { judged: 2 });
+    const widest = quoteHunt(state, { goods: "iron", resource: "iron", amount: 1000 }, { judged: 3 });
+    expect(wide.quotedDenarii).toBe(wider.quotedDenarii);
+    expect(widest.quotedDenarii).toBe(wide.quotedDenarii);
+    expect(wide.quotedDenarii).toBe(ordinaryHuntPurse(state.market.iron.max, wide.amount, "easy"));
+    expect(wide.durationSeasons).toBe(1);
+    expect(wider.durationSeasons).toBe(2);
+    expect(widest.durationSeasons).toBe(3);
+    expect(resolveRoadSeasons(undefined, undefined, 1)).toBe(1);
+    expect(resolveRoadSeasons(4, 1, 1)).toBe(4);
+  });
+
+  it("lets the lord shorten a nearby errand and leaves a far road as judged", () => {
+    const state = boot();
+    const nearby = quoteHunt(state, { goods: "iron", resource: "iron", amount: 10 }, { judged: 2, asked: 1 });
+    expect(nearby.quotedDenarii).toBe(88);
+    expect(nearby.durationSeasons).toBe(1);
+    expect(quoteHunt(state, { goods: "iron", resource: "iron", amount: 10 }, { judged: 2 }).durationSeasons).toBe(2);
+    expect(quoteHunt(state, { goods: "iron", resource: "iron", amount: 10 }, { judged: 1, asked: 4 }).durationSeasons).toBe(1);
+
+    const horses = quoteHunt(state, { goods: "horses", resource: "horses", amount: 1 }, { judged: 3, asked: 1 });
+    expect(horses.quotedDenarii).toBe(ordinaryHuntPurse(state.market.horses.max, 1, "medium"));
+    expect(horses.durationSeasons).toBe(3);
+    const silk = quoteHunt(state, { goods: "silk", resource: "silk", amount: 1 }, { asked: 1 });
+    expect(silk.durationSeasons).toBe(3);
+    const pepper = quoteHunt(state, { goods: "pepper", resource: "pepper", amount: 1 }, { asked: 1 });
+    expect(pepper.durationSeasons).toBe(1);
+    expect(pepper.quotedDenarii).toBe(Math.round(42 * 1.4));
+  });
+
+  it("does not let an ordinary-goods season shorten an unfree hunt", () => {
+    const state = boot();
+    const one = quoteHunt(state, { goods: "unfree", resource: "mancipia", amount: 1 }, { judged: 1, asked: 1 });
+    expect(one.quotedDenarii).toBe(112);
+    expect(one.durationSeasons).toBe(2);
+    const three = quoteHunt(
+      state,
+      { goods: "three slaves", resource: "slaves", amount: 3 },
+      { judged: 1, asked: 1 },
+    );
+    expect(three.quotedDenarii).toBeGreaterThan(300);
+    expect(three.durationSeasons).toBe(3);
+    const asked = "Find three slaves in one season.";
+    expect(seasonsAskedByLord(asked)).toBe(1);
+    state.resources.denarii = 1000;
+    const queued = huntProposalForAsk(state, asked, "medium", 1);
+    expect(queued?.[0]).toMatchObject({ type: "start_hunt", resource: "mancipia", durationSeasons: 3 });
+  });
+
+  it("makes his speech name the same seasons as the card", () => {
+    const state = boot();
+    const far = quoteHunt(state, { goods: "horses", resource: "horses", amount: 1 }, { judged: 3, asked: 1 });
+    const spoken = withComputedHuntPrice("I can have the horses in one season for 10 denarii.", far);
+    expect(spoken).toMatch(/three seasons/);
+    expect(spoken).not.toMatch(/\bone season\b/);
+    expect(spoken).toContain(`${far.quotedDenarii} denarii`);
+    expect(spoken).not.toMatch(/\b10 denarii\b/);
+    expect(huntProposal(far).summary).toMatch(/3 seasons/);
+
+    const quiet = withComputedHuntPrice("Aye.", quoteHunt(state, { goods: "iron", resource: "iron", amount: 4 }, { judged: 2 }));
+    expect(quiet).toContain(roadSeasonWords(2));
+    expect(seasonsNamedInText("back within a single season")).toBe(1);
+    expect(seasonsNamedInText("five seasons, then one season")).toBe(1);
+  });
+
+  it("keeps the card's seasons when he leaves", () => {
+    const state = boot();
+    state.resources.denarii = 500;
+    const brief = quoteHunt(state, { goods: "iron", resource: "iron", amount: 40 }, { judged: 1 });
+    expect(brief.durationSeasons).toBe(1);
+    expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
+    expect(state.projects.find((p) => p.hunt)?.hunt?.durationSeasons).toBe(1);
   });
 });

@@ -8,6 +8,8 @@ import {
   chaplainSystemPrompt,
   merchantSystemPrompt,
   negotiatorSystemPrompt,
+  EARLIER_TALK_CHAR_BUDGET,
+  earlierTalkBlock,
   npcBooksFollowUp,
   npcSystemPrompt,
   npcUserPrompt,
@@ -123,6 +125,18 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/steppe_horses/);
     expect(gerulf).not.toMatch(/YOU quote the denarii/);
     expect(gerulf).not.toMatch(/Do NOT hunt iron/i);
+    expect(gerulf).toMatch(/Burgundy/);
+    expect(gerulf).toMatch(/across the sea/i);
+    expect(gerulf).toMatch(/steppe/i);
+    expect(gerulf).toMatch(/thousand pounds of iron/i);
+    expect(gerulf).toMatch(/two seasons or three/i);
+    expect(gerulf).toMatch(/do not use a fixed weight/i);
+    expect(gerulf).not.toMatch(/under 60/i);
+    expect(gerulf).not.toMatch(/60 to 119/);
+    const spoken = npcSystemPrompt("negotiator", undefined, { speechOnly: true });
+    expect(spoken).toMatch(/thousand pounds of iron/i);
+    expect(spoken).toMatch(/Burgundy/);
+    expect(spoken).not.toMatch(/under 60/i);
     expect(npcSystemPrompt("negotiator")).toBe(gerulf);
   });
 
@@ -321,7 +335,24 @@ describe("signed-off NPC personalities", () => {
     expect(books).toMatch(/PENDING OFFER/);
     expect(books).toMatch(/replace, do not stack/);
     expect(books).toMatch(/ORDER:\nuse more stone/);
+    expect(books).toMatch(/already spoken is not a new change/i);
     expect(npcBooksFollowUp("three-field after harvest")).toMatch(/defer_proposal/);
+  });
+
+  it("keeps a long design in this talk and drops older lines once that design is in", () => {
+    const design = `coulter ${"share ".repeat(2000)}wooden board`;
+    expect(design.length).toBeGreaterThan(EARLIER_TALK_CHAR_BUDGET);
+    const kept = earlierTalkBlock([
+      { speaker: "Bernard", text: "OLD_FORGE_NOTE_SHOULD_DROP" },
+      { speaker: "The lord", text: design },
+      { speaker: "Bernard", text: "A good idea, but it needs more charcoal." },
+    ]);
+    expect(kept).toMatch(/coulter/);
+    expect(kept).toMatch(/wooden board/);
+    expect(kept).toMatch(/A good idea, but it needs more charcoal/);
+    expect(kept).toMatch(/not a new change for the books/i);
+    expect(kept).not.toMatch(/OLD_FORGE_NOTE_SHOULD_DROP/);
+    expect(kept).not.toMatch(/JSON|proposal|duration|NPC/i);
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {

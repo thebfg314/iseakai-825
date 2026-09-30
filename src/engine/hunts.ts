@@ -110,6 +110,82 @@ export function huntRoadPhrase(difficulty: HuntDifficulty): string {
   return "a fair road";
 }
 
+/** How long he is away, in hall words. One through four. */
+const ROAD_SEASON_WORDS = ["one", "two", "three", "four"] as const;
+
+export function clampTravelSeasons(n: number): number {
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(4, Math.max(1, Math.round(n)));
+}
+
+export function roadSeasonWords(seasons: number): string {
+  const count = clampTravelSeasons(seasons);
+  return count === 1 ? "one season" : `${ROAD_SEASON_WORDS[count - 1]} seasons`;
+}
+
+const SEASON_WORD_VALUE: Record<string, number> = {
+  "a single": 1,
+  single: 1,
+  one: 1,
+  a: 1,
+  an: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+};
+
+function seasonMentionPattern(): RegExp {
+  return /\b(a\s+single|single|one|two|three|four|five|six|seven|eight|nine|ten|a|an|\d+)\s+seasons?\b/gi;
+}
+
+/** Last count of seasons the speaker named, if it is between 1 and 4. */
+export function seasonsNamedInText(text: string): number | undefined {
+  if (!text) return undefined;
+  let found: number | undefined;
+  for (const match of text.matchAll(seasonMentionPattern())) {
+    const raw = match[1].toLowerCase().replace(/\s+/g, " ");
+    const n = /^\d+$/.test(raw) ? Number(raw) : SEASON_WORD_VALUE[raw];
+    if (n != null && n >= 1 && n <= 4) found = n;
+  }
+  return found;
+}
+
+export function seasonsAskedByLord(text: string): number | undefined {
+  return seasonsNamedInText(text);
+}
+
+/**
+ * The model's judgment of the road, then a nearby or short errand may be shortened.
+ * A far road (three or four seasons: sea or steppe) is not shortened.
+ * When he named no time, `fallback` is used — never a count of denarii.
+ */
+export function resolveRoadSeasons(judged: number | undefined, asked: number | undefined, fallback: number): number {
+  const base = clampTravelSeasons(judged ?? fallback);
+  if (asked == null || !Number.isFinite(asked)) return base;
+  const want = clampTravelSeasons(asked);
+  if (want >= base) return base;
+  if (base >= 3) return base;
+  return want;
+}
+
+export type RoadSeasonChoice = {
+  /** Seasons Gerulf judged for this errand, before the lord asks to shorten a short road. */
+  judged?: number;
+  /** Seasons the lord asked for, already limited to 1–4. */
+  asked?: number;
+};
+
+function alignRoadSeasons(speech: string, seasons: number): string {
+  const phrase = roadSeasonWords(seasons);
+  let named = false;
+  const replaced = speech.replace(seasonMentionPattern(), () => {
+    named = true;
+    return phrase;
+  });
+  if (named) return replaced;
+  return `${replaced} I am away ${phrase}.`;
+}
+
 const HUNT_VERB =
   /\b(find|fetch|seek|procure|source|hunt|buy|purchase|track\s+down|look\s+for|bring(?:\s+me)?|get\s+me|send\s+(?:out\s+)?for)\b/i;
 
@@ -375,17 +451,19 @@ export function huntRedirectReason(text: string): string | null {
   return null;
 }
 
-export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
+export function quoteHunt(state: WorldState, req: HuntRequest, road?: RoadSeasonChoice): HuntBrief {
   const amount = clampAmount(req.amount);
   const resource = req.resource;
   const goods = req.goods.trim() || resource.replaceAll("_", " ");
   const difficulty = resolveHuntDifficulty(resource || goods, req.difficulty);
   const riskNote =
     "No deal works if the numbers are not right — and even then a mishap on the road or a false rumour can stop it cold.";
+  const people = isMancipia(resource) || looksLikeMancipia(resource) || looksLikeMancipia(goods);
 
-  if (isMancipia(resource)) {
+  if (people) {
     // People are dear and slow to find: a horse's price and more, two to three seasons on the road.
     // This purse is the mancipia formula, not quantity × band high × difficulty.
+    // A lord asking for one season, or a judgment meant for ordinary goods, does not shorten it.
     const per = Math.round(((MANCIPIA_PRICE.min + MANCIPIA_PRICE.max) / 2) * 1.35 + 4);
     const quotedDenarii = per * amount;
     return {
@@ -404,7 +482,8 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
     const custom = range ? undefined : state.custom_resources.find((c) => c.id === resource);
     const bandMax = range?.max ?? custom?.priceMax ?? 8;
     const quotedDenarii = ordinaryHuntPurse(bandMax, amount, difficulty);
-    const durationSeasons = quotedDenarii >= 120 ? 3 : quotedDenarii >= 60 ? 2 : 1;
+    // Nearby staples are one season until Gerulf judges a longer road. The purse does not set the time.
+    const durationSeasons = resolveRoadSeasons(road?.judged, road?.asked, 1);
     return {
       goods,
       resource,
@@ -430,7 +509,7 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
     amount,
     difficulty,
     quotedDenarii,
-    durationSeasons: Math.min(8, seasons),
+    durationSeasons: resolveRoadSeasons(road?.judged, road?.asked, clampTravelSeasons(seasons)),
     riskNote,
     unit,
     customName: goods,
@@ -459,21 +538,23 @@ const PRICE_PHRASE = new RegExp(`\\b(?:\\d+(?:\\.\\d+)?|${PRICE_WORDS})\\s+denar
  */
 export function withComputedHuntPrice(speech: string, brief: HuntBrief): string {
   const figure = `${brief.quotedDenarii} denarii`;
+  const line = speech.trim();
+  if (!line) {
+    const qty = huntQuantityPhrase(brief.amount, brief.goods, brief.unit);
+    return `Aye. ${qty} — ${figure} from the chest, and I am back within ${roadSeasonWords(brief.durationSeasons)}.`;
+  }
   let hit = false;
   PRICE_PHRASE.lastIndex = 0;
-  const stamped = speech.replace(PRICE_PHRASE, () => {
+  const stamped = line.replace(PRICE_PHRASE, () => {
     hit = true;
     return figure;
   });
-  if (hit) return stamped;
-  const line = speech.trim();
-  if (!line) {
-    const seasons = brief.durationSeasons === 1 ? "one season" : `${brief.durationSeasons} seasons`;
-    const qty = huntQuantityPhrase(brief.amount, brief.goods, brief.unit);
-    return `Aye. ${qty} — ${figure} from the chest, and I am back within ${seasons}.`;
-  }
-  if (new RegExp(`\\b${brief.quotedDenarii}\\s+denarii\\b`).test(line)) return line;
-  return `${line} ${figure} from the chest.`;
+  const priced = hit
+    ? stamped
+    : new RegExp(`\\b${brief.quotedDenarii}\\s+denarii\\b`).test(stamped)
+      ? stamped
+      : `${stamped} ${figure} from the chest.`;
+  return alignRoadSeasons(priced, brief.durationSeasons);
 }
 
 export function unaffordableHuntSpeech(brief: HuntBrief): string {
@@ -490,13 +571,14 @@ export function huntProposalForAsk(
   state: WorldState,
   playerText: string,
   chosen?: unknown,
+  judged?: number,
 ): MechanicalProposal[] | null {
   if (!looksLikeHuntOrder(playerText)) return null;
   const req = extractHuntRequest(playerText);
   if (!req || GRAIN_RESOURCES.has(req.resource)) return [];
   const difficulty = resolveHuntDifficulty(req.resource, chosen);
   if (huntFulfillReason(state, playerText, difficulty)) return [];
-  return [huntProposal(quoteHunt(state, { ...req, difficulty }))];
+  return [huntProposal(quoteHunt(state, { ...req, difficulty }, { judged, asked: seasonsAskedByLord(playerText) }))];
 }
 
 export function huntProposal(brief: HuntBrief): StartHuntProposal {
@@ -520,7 +602,7 @@ export function huntProposal(brief: HuntBrief): StartHuntProposal {
   };
 }
 
-export function normalizeHuntProposal(state: WorldState, p: StartHuntProposal): StartHuntProposal {
+export function normalizeHuntProposal(state: WorldState, p: StartHuntProposal, asked?: number): StartHuntProposal {
   const wantsPeople = looksLikeMancipia(p.goods) || looksLikeMancipia(p.resource ?? "");
   const req: HuntRequest = {
     goods: wantsPeople ? "unfree (mancipia)" : p.goods,
@@ -528,7 +610,8 @@ export function normalizeHuntProposal(state: WorldState, p: StartHuntProposal): 
     amount: p.amount,
     difficulty: resolveHuntDifficulty(p.resource || p.goods, p.difficulty),
   };
-  const brief = quoteHunt(state, req);
+  // Unfree time is the mancipia formula. An ordinary-goods "one season" must not shorten it.
+  const brief = quoteHunt(state, req, wantsPeople ? undefined : { judged: p.durationSeasons, asked });
   return huntProposal(brief);
 }
 
@@ -537,7 +620,7 @@ export function inferHuntProposals(state: WorldState, playerText: string): Mecha
   const req = extractHuntRequest(playerText);
   if (!req) return [];
   if (GRAIN_RESOURCES.has(req.resource)) return [];
-  return [huntProposal(quoteHunt(state, req))];
+  return [huntProposal(quoteHunt(state, req, { asked: seasonsAskedByLord(playerText) }))];
 }
 
 export function huntFulfillReason(state: WorldState, playerText: string, chosen?: unknown): string | null {
@@ -574,12 +657,18 @@ export function negotiatorAllowed(state: WorldState, p: MechanicalProposal): str
 }
 
 export function startHunt(state: WorldState, p: StartHuntProposal): { ok: true; logLine: string } | { ok: false; reason: string; logLine: string } {
-  const brief = quoteHunt(state, {
-    goods: p.goods,
-    resource: p.resource,
-    amount: p.amount,
-    difficulty: p.difficulty,
-  });
+  const people = isMancipia(p.resource) || looksLikeMancipia(p.goods) || looksLikeMancipia(p.resource);
+  const brief = quoteHunt(
+    state,
+    {
+      goods: p.goods,
+      resource: p.resource,
+      amount: p.amount,
+      difficulty: p.difficulty,
+    },
+    // The card already holds the road he judged. Confirm keeps that time. People stay on their own count.
+    people ? undefined : { judged: p.durationSeasons },
+  );
   if (activeHunt(state)) {
     return {
       ok: false,

@@ -89,7 +89,36 @@ export function npcBooksFollowUp(playerMessage: string, revising?: string): stri
   const revise = revising
     ? `\nThe lord asked about this pending offer. If they are changing its terms, emit one revised proposal of the same kind (same project, hunt, hire, standing order, or work) — replace, do not stack a second copy. Do not treat it as already Confirmed.\nPENDING OFFER:\n${revising}\n`
     : "";
-  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, defer_proposal, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: []. If you promise the change after harvest, next spring, or later, you MUST emit defer_proposal wrapping the inner change — speech-only "I will do it later" with empty proposals is invalid for an order.${revise}\n\nORDER:\n${playerMessage}`;
+  return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, defer_proposal, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: []. If you promise the change after harvest, next spring, or later, you MUST emit defer_proposal wrapping the inner change — speech-only "I will do it later" with empty proposals is invalid for an order. What was already spoken is not a new change for the books. Set down a change only for the order below.${revise}\n\nORDER:\n${playerMessage}`;
+}
+
+/** Enough of one conversation that a long design and the next question both still fit. */
+export const EARLIER_TALK_CHAR_BUDGET = 8000;
+
+/**
+ * Recent lines of this speaker's own talk. Already on the hall floor:
+ * the model may remember them, and must not turn them into new book orders.
+ */
+export function earlierTalkBlock(lines: { speaker: string; text: string }[]): string {
+  if (!lines.length) return "";
+  const kept: { speaker: string; text: string }[] = [];
+  let used = 0;
+  let seenLord = false;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    const size = line.speaker.length + line.text.length + 3;
+    // Keep going until the lord's latest design is included, even when that design is long.
+    if (seenLord && used + size > EARLIER_TALK_CHAR_BUDGET) break;
+    kept.push(line);
+    used += size;
+    if (line.speaker === "The lord") seenLord = true;
+  }
+  kept.reverse();
+  const body = kept.map((l) => `${l.speaker}: ${l.text}`).join("\n");
+  return [
+    "ALREADY SPOKEN between you and the lord, in this talk only. These words are not a new change for the books. Do not write them down again. Only the lord's latest words, below, can be set in the books.",
+    body,
+  ].join("\n");
 }
 
 const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markdown fences), shape:
@@ -120,7 +149,7 @@ Rules:
 - adjust_sowing: change the crop mix. springBarleyShare (0-1 of remaining spring capacity; rest oats), autumnWheatShare (0-1; rest rye), optional rotation "two_field" | "three_field". Two-field sows half the ploughland; three-field sows two thirds (winter third, spring third, rest third). Mid-spring this also fills remaining unsown acres now so the ledger moves before the season turns. A three-field change while crops stand should be defer_proposal with after_harvest, inner adjust_sowing rotation "three_field".
 - If the player is only chatting or asking, proposals may be [].
 - Do not emit <=-tool: markers on this books pass; ledger facts are supplied by the engine.
-- start_hunt is Gerulf the negotiator only. Emit goods, resource, amount, and difficulty ("easy", "medium", or "difficult"). Difficulty is the only choice you make about cost. Do not name the price and do not emit quotedDenarii. The engine sets the purse: base is quantity times the high end of that good's market band (not the low end, and not a point in the middle). Multipliers are easy 1.1, medium 1.4, difficult 1.7. Price is round(base times that multiplier) to a whole denarius. If you omit difficulty, iron, grain, salt, and timber are easy; every other good is medium. Iron is an easy road unless you judge this errand harder. durationSeasons is how long he is away. Do not also emit transfer_resources for the purse; the engine takes the coin on Confirm. The lord does not name a budget.
+- start_hunt is Gerulf the negotiator only. Emit goods, resource, amount, and difficulty ("easy", "medium", or "difficult"). Difficulty is the only choice you make about cost. Do not name the price and do not emit quotedDenarii. The engine sets the purse: base is quantity times the high end of that good's market band (not the low end, and not a point in the middle). Multipliers are easy 1.1, medium 1.4, difficult 1.7. Price is round(base times that multiplier) to a whole denarius. If you omit difficulty, iron, grain, salt, and timber are easy; every other good is medium. Iron is an easy road unless you judge this errand harder. durationSeasons is how many seasons he is away (1, 2, 3, or 4), judged by the road and by how hard the goods are to find, not by the denarii. Burgundy or a merchant at the gate is 1; elsewhere in Francia or a short road is 2; across the sea or the steppe is 3. A very large quantity of a common good is a longer search — you judge it; there is no weight cutoff and no purse band. The lord may shorten a nearby errand (one or two seasons); a sea or steppe journey (three or four) is not shortened to one season. The unfree are not on this scale: two or three seasons, never fewer than two. Do not also emit transfer_resources for the purse; the engine takes the coin on Confirm. The lord does not name a budget.
 - sponsor_feast is Ermenald only: tier "plain" or "grand", optional feastName. He names the holy day and the price in speech. The books take the coin and goods on Confirm. Do not also emit transfer_resources for that price.
 - For portrait NPCs (Aldric, Bernard, Ermenald, Gerulf, and any specialist already of this household) you MUST set "emotion" to match your bearing. Never mention emotion, portraits, or the JSON field in speech. If you must, you may also hide a tag the game will strip: [[emotion:pleased]]`;
 
@@ -193,12 +222,18 @@ ${OUTPUT_CONTRACT}`;
 export function negotiatorSystemPrompt(): string {
   return `You are Gerulf, negotiator in the lord's household at Fontenay (825). You are highly charismatic and incredibly confident, with a wry sense of humor. About the work: no deal works if the numbers are not right, and even then mishaps on the road and false rumours can stop a deal cold. You do not wait for the right cart — you take a purse and a brief and walk the roads. You talk contacts, tolls, rumor, and true worth inland. You are proud when you bring something hard back; sour if the lord changes the brief mid-hunt.
 You find scarce goods visiting merchants are unlikely to carry, and you are proud when you bring a hard find home. You also walk for iron and other ordinary goods when the lord gives you a brief and a purse. You are not a merchant's stall in the yard — you go out and fetch a quantity. The lord names the thing and the quantity. You do not name the price. You may only choose a difficulty for the errand: easy, medium, or difficult. The engine sets the purse at quantity times the high end of that good's market band, times 1.1 if easy, 1.4 if medium, or 1.7 if difficult, rounded to a whole denarius. It does not use the low end. If you omit difficulty, iron, grain, salt, and timber are easy, and every other good is medium. Iron is an easy road unless this particular errand is harder. That number is what you say and what Confirm shows. Flavor the errand — tolls, the road, the forge standing idle — but never invent a denarii figure. He does not name a budget. He may Confirm, Deny, or ask about the offer. If the chest cannot pay, say so and take nothing.
-The unfree count as scarce goods you can seek inland (goods "unfree", resource "mancipia"): dear — a horse's price and more a head — and two or three seasons on the road. The engine sets the exact quote from your brief. You still do not name the denarii.
+How long you are away follows the road and how hard the thing is to find, not the price. You judge that. The books use the same count you name in speech. Say one season, two seasons, three seasons, or four — never a word like duration.
+Goods already traded in Burgundy, or sold by a merchant at the gate, are one season, even when they are dear, if the chest can pay and someone will sell. A large purchase of iron is not most of a year merely because it costs a great deal.
+Goods from elsewhere in Francia, or a short road, are two seasons.
+Goods from across the sea or the steppe — Arabian horses, silk from the east, and the like — are three seasons, even at a bargain price. A cheap purse does not make a long road short.
+A modest amount of a common good stays nearby, one season. A very large quantity of that same good, such as a thousand pounds of iron, cannot all be had in one market, so you go further. Mark that wider search as two seasons or three, not as a purchase at a neighbor's gate. Judge the errand. Do not stretch the time from the denarii, and do not use a fixed weight as a rule.
+If the lord asks to do a nearby errand in one season, you may agree, and the books must show one season. Do not agree to one season for a voyage across the sea or a journey to the steppe; those stay as long as you judged.
+The unfree count as scarce goods you can seek inland (goods "unfree", resource "mancipia"): dear — a horse's price and more a head — and two or three seasons on the road. They are not on the scale above, and you do not promise fewer than two seasons, even if the lord asks. The engine sets the exact quote from your brief. You still do not name the denarii.
 Horses and far goods for new kinds of soldier: request the arms drawer; its "wanting" list names goods with ask "Gerulf the negotiator" (e.g. steppe_horses for horse archers). Hunt them with that EXACT resource id so they land in the right store. They are dear — Avar or Magyar stock, horn for composite bows, a master of a strange craft — and take seasons. Choose a difficulty; the engine sets the purse.
 Do NOT hunt barley, wheat, rye, oats, or ordinary grain — that is Aldric's world. If asked for grain, send the lord to Aldric, wryly.
 You do NOT manage fields, hiring, or the household books. Those belong to Aldric.
 If you are already on the road (location is not the holding, or a hunt project is active), do not take a new brief. Say so plainly: you are already away, and you will not turn back. Changing the brief while you are away sours you. You may speak of the roads and the errand you already have.
-You may only propose start_hunt (goods, resource, amount, difficulty easy|medium|difficult, durationSeasons, optional riskNote). Do NOT name quotedDenarii and do NOT emit transfer_resources for the purse — the engine sets the price and takes it from the chest on Confirm. Do not invent a player budget. Name a real duration (1-4 seasons for most inland hunts) but never a denarii figure.
+You may only propose start_hunt (goods, resource, amount, difficulty easy|medium|difficult, durationSeasons, optional riskNote). durationSeasons is that road judgment: 1, 2, 3, or 4. Do NOT name quotedDenarii and do NOT emit transfer_resources for the purse — the engine sets the price and takes it from the chest on Confirm. Do not invent a player budget. Never invent a denarii figure, and do not set the seasons from the price.
 Always set "emotion" for your portrait. Prefer neutral, thoughtful, concerned, disappointed, or pleased (happy). Proud return → pleased; sour at a changed brief → disappointed; risk on the road → concerned. alarmed → concerned; respectful → neutral. Never mention emotion in speech.
 ${OUTPUT_CONTRACT}`;
 }

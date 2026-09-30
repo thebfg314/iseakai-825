@@ -25,6 +25,12 @@ function speechJson(speech: string) {
   return JSON.stringify({ speech, emotion: "pleased", proposals: [] });
 }
 
+function huntReply(proposal: Record<string, unknown>) {
+  const body = JSON.stringify({ speech: "Set down.", proposals: [proposal] });
+  llmChatMock.mockResolvedValueOnce(body);
+  llmChatMock.mockResolvedValueOnce(body);
+}
+
 function huntJson(quotedDenarii: number) {
   return JSON.stringify({
     speech: "Set down.",
@@ -212,5 +218,151 @@ describe("Gerulf's spoken purse", () => {
     expect(saltSpoken).toMatch(/cannot spare/i);
     expect(saltSpoken).toMatch(/take nothing/i);
     expect(saltSpoken).not.toMatch(/\b10 denarii\b/);
+  });
+
+  it("puts the same seasons on the card and in his mouth for a nearby iron order", async () => {
+    const ask = "Buy 10 pounds of iron.";
+    const price = ordinaryHuntPurse(8, 10, "easy");
+    expect(price).toBe(88);
+    const game = tempGame();
+    const chest = game.state.resources.denarii;
+    llmChatMock.mockResolvedValueOnce(
+      speechJson("Aye. Ten pounds of iron, and I am back within one season. Give me 42 denarii."),
+    );
+    huntReply({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      resource: "iron",
+      amount: 10,
+      quotedDenarii: 42,
+      durationSeasons: 2,
+    });
+    await game.sendDialogue("negotiator", ask);
+    const card = game.pending.find((p) => p.status === "pending");
+    expect(card?.proposal).toMatchObject({
+      type: "start_hunt",
+      resource: "iron",
+      amount: 10,
+      quotedDenarii: price,
+      durationSeasons: 2,
+    });
+    if (!card || card.proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(card.proposal.summary).toMatch(/2 seasons/);
+    const spoken = game.messages.filter((m) => m.role === "npc").map((m) => m.text).join("\n");
+    expect(spoken).toMatch(/two seasons/);
+    expect(spoken).not.toMatch(/\bone season\b/);
+    expect(spoken).toContain(`${price} denarii`);
+    expect(game.state.resources.denarii).toBe(chest);
+
+    game.rejectProposal(card.id);
+    const shortened = tempGame();
+    llmChatMock.mockResolvedValueOnce(speechJson("Aye. One season, if the gate will sell. Forty denarii."));
+    huntReply({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      resource: "iron",
+      amount: 10,
+      quotedDenarii: 42,
+      durationSeasons: 2,
+    });
+    await shortened.sendDialogue("negotiator", "can you get me ten pounds of iron in a single season?");
+    const next = shortened.pending.find((p) => p.status === "pending");
+    expect(next?.proposal).toMatchObject({
+      type: "start_hunt",
+      amount: 10,
+      quotedDenarii: price,
+      durationSeasons: 1,
+    });
+    const nextSpeech = shortened.messages.filter((m) => m.role === "npc").map((m) => m.text).join("\n");
+    expect(nextSpeech).toMatch(/one season/);
+    expect(nextSpeech).not.toMatch(/two seasons/);
+    expect(shortened.state.resources.denarii).toBe(chest);
+  });
+
+  it("keeps a sea road at the seasons he judged, even when the lord asks for one", async () => {
+    const game = tempGame();
+    game.state.resources.denarii = 1000;
+    const chest = game.state.resources.denarii;
+    const price = ordinaryHuntPurse(game.state.market.horses.max, 1, "medium");
+    llmChatMock.mockResolvedValueOnce(speechJson("Arabian horses, from across the sea. I can do it in one season for 10 denarii."));
+    huntReply({
+      type: "start_hunt",
+      summary: "Fetch horses",
+      goods: "horses",
+      resource: "horses",
+      amount: 1,
+      quotedDenarii: 10,
+      difficulty: "medium",
+      durationSeasons: 3,
+    });
+    await game.sendDialogue("negotiator", "Bring Arabian horses from North Africa. Do it in one season.");
+    const card = game.pending.find((p) => p.status === "pending");
+    expect(card?.proposal).toMatchObject({
+      type: "start_hunt",
+      amount: 1,
+      quotedDenarii: price,
+      durationSeasons: 3,
+    });
+    if (!card || card.proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(card.proposal.summary).toMatch(/3 seasons/);
+    const spoken = game.messages.filter((m) => m.role === "npc").map((m) => m.text).join("\n");
+    expect(spoken).toMatch(/three seasons/);
+    expect(spoken).not.toMatch(/\bone season\b/);
+    expect(spoken).toContain(`${price} denarii`);
+    expect(spoken).not.toMatch(/\b10 denarii\b/);
+    expect(game.state.resources.denarii).toBe(chest);
+    expect(game.confirmProposal(card.id).error).toBeUndefined();
+    expect(game.state.projects.find((p) => p.hunt)?.hunt?.durationSeasons).toBe(3);
+  });
+
+  it("uses his judgment for a thousand pounds of iron and does not invent seasons from the weight", async () => {
+    const game = tempGame();
+    game.state.resources.denarii = 20000;
+    const price = ordinaryHuntPurse(8, 500, "easy");
+    llmChatMock.mockResolvedValueOnce(
+      speechJson("A thousand pounds will not be in one market. I am away three seasons. Give me 10 denarii."),
+    );
+    huntReply({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      resource: "iron",
+      amount: 1000,
+      quotedDenarii: 10,
+      durationSeasons: 3,
+    });
+    await game.sendDialogue("negotiator", "Buy 1000 pounds of iron.");
+    const card = game.pending.find((p) => p.status === "pending");
+    expect(card?.proposal).toMatchObject({
+      type: "start_hunt",
+      resource: "iron",
+      quotedDenarii: price,
+      durationSeasons: 3,
+    });
+    const spoken = game.messages.filter((m) => m.role === "npc").map((m) => m.text).join("\n");
+    expect(spoken).toMatch(/three seasons/);
+    expect(spoken).not.toMatch(/\bone season\b/);
+    expect(spoken).toContain(`${price} denarii`);
+
+    const nearby = tempGame();
+    nearby.state.resources.denarii = 20000;
+    llmChatMock.mockResolvedValueOnce(speechJson("I will take it from the gate in one season. Ten denarii."));
+    huntReply({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      resource: "iron",
+      amount: 1000,
+      quotedDenarii: 10,
+      durationSeasons: 1,
+    });
+    await nearby.sendDialogue("negotiator", "Buy 1000 pounds of iron.");
+    expect(nearby.pending.find((p) => p.status === "pending")?.proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: price,
+      durationSeasons: 1,
+    });
   });
 });
