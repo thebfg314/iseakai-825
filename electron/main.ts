@@ -10,6 +10,8 @@ import { emptyMeter } from "../src/llm/usage";
 import { mergeSettings, normalizeSettings, type SettingsPatch } from "../src/llm/settings";
 import type { AppSettings } from "../src/llm/types";
 import { GameController } from "../src/session/game";
+import { LabController } from "../src/session/lab";
+import { llmChat } from "../src/llm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +21,8 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 let mainWindow: BrowserWindow | null = null;
 let controller: GameController | null = null;
+/** Battle Lab session; forged units live only while it is open. */
+let lab: LabController | null = null;
 
 function settingsPath() {
   return path.join(app.getPath("userData"), "settings.json");
@@ -151,6 +155,23 @@ ipcMain.handle("game:confirmMerchantShop", (_e, basket: {
 
 ipcMain.handle("game:advanceSeason", async () => requireGame().advanceSeason());
 
+ipcMain.handle("game:answerCall", (_e, accept: boolean) => requireGame().answerCall(accept));
+ipcMain.handle("game:musterAndRide", async (_e, bringIds: string[]) => requireGame().musterAndRide(bringIds ?? []));
+ipcMain.handle("game:battleContinue", async () => requireGame().battleContinue());
+ipcMain.handle("game:battleChoose", async (_e, key: "A" | "B") => requireGame().battleChoose(key));
+ipcMain.handle("game:battleRound", async (_e, orders: unknown[]) => requireGame().battleRound(orders ?? []));
+ipcMain.handle("game:scoutRole", (_e, role: "narrower" | "finalizer") => requireGame().scoutRole(role));
+ipcMain.handle("game:scoutNarrow", (_e, keep: number[]) => requireGame().scoutNarrow(keep ?? []));
+ipcMain.handle("game:scoutFinalize", (_e, pick: number) => requireGame().scoutFinalize(pick));
+ipcMain.handle("game:deployFile", (_e, unitId: string, cell: { row: number; col: number }) => requireGame().deployFile(unitId, cell));
+ipcMain.handle("game:deployRest", () => requireGame().deployRest());
+ipcMain.handle("game:addressFile", (_e, unitId: string, amount: number) => requireGame().addressFile(unitId, amount));
+ipcMain.handle("game:beginBattle", async () => requireGame().beginBattle());
+ipcMain.handle("game:dayEnd", async (_e, choice: "hold" | "reposition" | "withdraw", pick?: number) => requireGame().dayEnd(choice, pick));
+ipcMain.handle("game:grantFullCommand", (_e, on: boolean) => requireGame().grantFullCommand(on));
+ipcMain.handle("game:battleFinish", (_e, disposition?: "settle" | "sell") => requireGame().battleFinish(disposition));
+ipcMain.handle("game:raiseCall", (_e, kind: "summons" | "raid" | "bandits") => requireGame().raiseCall(kind));
+
 ipcMain.handle("settings:get", () => loadSettings());
 
 ipcMain.handle("settings:set", (_e, patch: SettingsPatch) => {
@@ -176,3 +197,38 @@ ipcMain.handle("llm:getMeter", async () => {
 ipcMain.handle("app:quit", () => {
   app.quit();
 });
+
+// ---------------------------------------------------------------------------
+// Battle Lab
+// ---------------------------------------------------------------------------
+
+function requireLab(): LabController {
+  if (!lab) lab = new LabController((messages, opts) => llmChat(loadSettings(), messages, opts));
+  return lab;
+}
+
+ipcMain.handle("lab:open", () => {
+  lab?.dispose();
+  lab = new LabController((messages, opts) => llmChat(loadSettings(), messages, opts));
+  return lab.view();
+});
+ipcMain.handle("lab:close", () => {
+  lab?.dispose();
+  lab = null;
+  return true;
+});
+ipcMain.handle("lab:getView", () => requireLab().view());
+ipcMain.handle("lab:setConfig", (_e, patch: unknown) => requireLab().setConfig(patch));
+ipcMain.handle("lab:paintCell", (_e, row: number, col: number, terrain: string[], cliffBelow?: boolean) => requireLab().paintCell(row, col, terrain, cliffBelow));
+ipcMain.handle("lab:build", () => requireLab().build());
+ipcMain.handle("lab:step", (_e, orders: unknown[]) => requireLab().step(orders ?? []));
+ipcMain.handle("lab:autoRun", (_e, maxRounds?: number) => requireLab().autoRun(maxRounds));
+ipcMain.handle("lab:rewind", (_e, steps?: number) => requireLab().rewind(steps));
+ipcMain.handle("lab:dayEnd", (_e, choice: "hold" | "reposition" | "withdraw") => requireLab().dayEnd(choice));
+ipcMain.handle("lab:reset", () => requireLab().reset());
+ipcMain.handle("lab:exportScenario", () => requireLab().exportScenario());
+ipcMain.handle("lab:importScenario", (_e, text: string) => requireLab().importScenario(text));
+ipcMain.handle("lab:forge", (_e, prompt: string) => requireLab().forgeUnit(prompt));
+ipcMain.handle("lab:approveForge", () => requireLab().approveForge());
+ipcMain.handle("lab:rejectForge", () => requireLab().rejectForge());
+ipcMain.handle("lab:discardSheet", (_e, id: string) => requireLab().discardCustomSheet(id));

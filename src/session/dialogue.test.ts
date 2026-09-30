@@ -669,7 +669,7 @@ describe("expansion hires via Aldric after unlock", () => {
         name: "Eberhard",
         order: "Hire Eberhard the captain.",
         unlock: (g) => {
-          g.state.holdings[0].features.push("watch_post");
+          g.state.military.units.push({ id: "u1", sheetId: "peasant_levy", name: "The villa's men", veteran: false, strength: 20, raisedTurn: 1 });
         },
       },
     ];

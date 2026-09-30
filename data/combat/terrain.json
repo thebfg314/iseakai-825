@@ -1,0 +1,61 @@
+{
+  "$comment": "Terrain (design doc §9.1) and weather (§9.2). Terrain is per cell; weather is one global condition for the whole battle. Defender-only bonuses use the occupancy rule in §9.3.",
+  "terrain": [
+    {
+      "id": "grassland",
+      "name": "Grassland",
+      "summary": "No effect; the baseline case."
+    },
+    {
+      "id": "hills",
+      "name": "Hills / High Ground",
+      "summary": "Defender only: ranged +1 Range; melee ATK x1.5 and DEF x1.5.",
+      "defenderOnly": { "rangeBonus": 1, "atkMultiplier": 1.5, "defMultiplier": 1.5 }
+    },
+    {
+      "id": "woodland",
+      "name": "Woodlands",
+      "summary": "Ranged units' effective Range -1 while firing from or into it. No movement penalty.",
+      "rangeReduction": 1
+    },
+    {
+      "id": "heavy_brush",
+      "name": "Heavy Brushland",
+      "summary": "Double movement cost; +5 DEF against ranged attacks for units inside. Stacks with woodland.",
+      "moveCostMultiplier": 2,
+      "rangedDefBonus": 5,
+      "stacksWith": ["woodland"]
+    },
+    {
+      "id": "cliffs",
+      "name": "Impassable Cliffs",
+      "summary": "Blocks movement across one full row boundary within a single column, rolled per column.",
+      "blocksRowBoundary": true
+    },
+    {
+      "id": "swamp",
+      "name": "Swamp",
+      "summary": "Double movement cost; defending unit gains +1 DEF per 5 points of its own base DEF.",
+      "moveCostMultiplier": 2,
+      "defBonusPer5BaseDef": 1
+    },
+    {
+      "id": "stream",
+      "name": "Stream",
+      "summary": "+1 movement cost to cross.",
+      "moveCostAdd": 1
+    },
+    {
+      "id": "river",
+      "name": "River / Water's Edge",
+      "summary": "Impassable for battle purposes. Fords may later be a passable sub-feature.",
+      "impassable": true
+    }
+  ],
+  "weather": [
+    { "id": "sunshine", "name": "Sunshine", "summary": "Baseline, no effect." },
+    { "id": "rain", "name": "Rain", "summary": "Ranged units' effective ATK x0.85.", "rangedAtkMultiplier": 0.85 },
+    { "id": "fog", "name": "Fog", "summary": "Scouting Duel candidate pool reduced from 6 to 4.", "scoutingPoolSize": 4 },
+    { "id": "high_winds", "name": "High Winds", "summary": "Ranged units' effective Range -1.", "rangeReduction": 1 }
+  ]
+}

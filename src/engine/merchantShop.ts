@@ -2,6 +2,7 @@ import type { ApplyResult, CanonicalResource, WorldState } from "./schema";
 import { CANONICAL_RESOURCES } from "./schema";
 import { clamp, round1 } from "./util";
 import { amountPhrase, resourceName } from "../ui/ledgerCopy";
+import { isMancipia, MANCIPIA_ID, MANCIPIA_PRICE, mancipiaCount, setMancipia } from "./mancipia";
 
 export const MERCHANT_BASE_PURSE = 1000;
 export const MERCHANT_PURSE_BONUS = 200;
@@ -53,6 +54,7 @@ export function emptyMerchantBasket(): MerchantShopBasket {
 export function midpointPrice(state: WorldState, resource: string): number {
   const range = state.market[resource];
   if (range) return (range.min + range.max) / 2;
+  if (isMancipia(resource)) return (MANCIPIA_PRICE.min + MANCIPIA_PRICE.max) / 2;
   const custom = state.custom_resources.find((c) => c.id === resource);
   if (custom) return (custom.priceMin + custom.priceMax) / 2;
   return 0;
@@ -74,7 +76,7 @@ export function stepSizeFor(resource: string, demand: number): number {
   if (resource === "charcoal") return lerp(8, 12);
   if (CART_LOADS.has(resource)) return lerp(8, 20);
   if (POUNDS.has(resource)) return lerp(5, 15);
-  if (LIVESTOCK.has(resource)) return lerp(1, 3);
+  if (LIVESTOCK.has(resource) || isMancipia(resource)) return lerp(1, 3);
   if (SMALL_MEDIUM.has(resource)) return lerp(6, 16);
   return lerp(5, 15);
 }
@@ -196,6 +198,7 @@ function isCanonical(id: string): id is CanonicalResource {
 
 export function getAmount(state: WorldState, resource: string): number | null {
   if (isCanonical(resource)) return state.resources[resource];
+  if (isMancipia(resource)) return mancipiaCount(state);
   const custom = state.custom_resources.find((c) => c.id === resource);
   return custom ? custom.amount : null;
 }
@@ -204,6 +207,10 @@ export function setAmount(state: WorldState, resource: string, amount: number): 
   const v = round1(Math.max(0, amount));
   if (isCanonical(resource)) {
     state.resources[resource] = v;
+    return true;
+  }
+  if (isMancipia(resource)) {
+    setMancipia(state, v);
     return true;
   }
   const custom = state.custom_resources.find((c) => c.id === resource);
@@ -499,6 +506,7 @@ export function tradeableStoreIds(state: WorldState): string[] {
     if (id === "denarii") continue;
     ids.push(id);
   }
+  if (mancipiaCount(state) > 0) ids.push(MANCIPIA_ID);
   for (const custom of state.custom_resources) {
     if (!ids.includes(custom.id)) ids.push(custom.id);
   }

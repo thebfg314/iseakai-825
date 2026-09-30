@@ -2,6 +2,7 @@ import { labourRemaining } from "../engine/labour";
 import { memoriesForSpeaker, npcWithoutMemories } from "../engine/memory";
 import { FORGE_FEATURES } from "../engine/projectCatalog";
 import { CANONICAL_RESOURCES, type MechanicalProposal, type WorldState } from "../engine/schema";
+import { captainWanted, hasCaptain, levyMenUnderArms, raisableSpecs, unitWants, upkeepDue } from "../engine/military";
 
 /** Stiff marker. One line, comma-separated drawers, this wrapper only. */
 export const TOOL_MARKER_EXAMPLE = "<=-tool: grain, sown, livestock, chest -=>";
@@ -22,6 +23,7 @@ export const TOOL_DRAWERS = [
   "my_deals",
   "projects",
   "flags",
+  "arms",
 ] as const;
 
 export type ToolDrawer = (typeof TOOL_DRAWERS)[number];
@@ -212,6 +214,44 @@ function drawerPayload(state: WorldState, name: ToolDrawer, npcId?: string): unk
         }));
     case "flags":
       return state.flags;
+    case "arms":
+      return {
+        lord: { renown: state.player.renown, rank: state.player.rankLevel, wounds: state.player.wounds.length, strength: `${state.player.personal.hp}/${state.player.personal.maxHp}` },
+        captain_present: hasCaptain(state),
+        units: state.military.units.map((u) => ({ id: u.id, name: u.name, kind: u.sheetId, men: u.strength, veteran: u.veteran })),
+        drilling: state.military.training.map((t) => ({ id: t.id, name: t.name, kind: t.sheetId, men: t.men, seasons_left: t.seasonsRequired - t.seasonsElapsed })),
+        upkeep_per_season: upkeepDue(state),
+        villa_men_free_for_levy: Math.max(0, state.population.adult_men - levyMenUnderArms(state)),
+        horses: state.resources.horses,
+        iron: state.resources.iron,
+        denarii: state.resources.denarii,
+        active_threat: state.flags.active_threat,
+        open_call: state.battle_call ? state.battle_call.kind : null,
+        raisable: raisableSpecs(state).map((s) => ({
+          sheetId: s.sheetId,
+          label: s.label,
+          men: s.men,
+          denarii_per_man: s.denariiPerMan,
+          iron_per_man: s.ironPerMan,
+          horses_per_man: s.horsesPerMan,
+          seasons_of_drill: s.seasons,
+          upkeep_per_man_per_season: s.upkeepPerMan,
+          needs_captain: s.needsCaptain,
+          note: s.note,
+        })),
+        // Design review, item 12: what the district still lacks before a sheet can be raised, and who supplies it.
+        wanting: unitWants(state).map((w) => ({
+          for: w.sheetId,
+          resource: w.resource,
+          name: w.name,
+          per_man: w.perMan,
+          in_store: w.have,
+          ask: w.askOf,
+          note: w.note,
+        })),
+        captain_wanted: captainWanted(state),
+        invented_sheets: state.military.customSheets.map((s) => s.id),
+      };
   }
 }
 
@@ -291,6 +331,15 @@ export function drawersCitedByProposal(p: MechanicalProposal): ToolDrawer[] {
       break;
     case "register_resource":
       add("stores");
+      break;
+    case "raise_unit":
+    case "disband_unit":
+    case "call_to_arms":
+    case "register_unit_sheet":
+      add("arms");
+      break;
+    case "free_mancipia":
+      add("people");
       break;
     default:
       break;
