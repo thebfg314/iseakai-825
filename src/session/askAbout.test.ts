@@ -38,6 +38,7 @@ function queueMill(game: GameController) {
 }
 
 function queueHunt(game: GameController) {
+  game.state.resources.denarii = Math.max(game.state.resources.denarii, 2000);
   const parsed = parseLlmResponse(JSON.stringify({ speech: "Pepper. I will name the purse.", proposals: [] }));
   game.ingestParsedDialogue("negotiator", parsed, "Find me pepper.");
 }

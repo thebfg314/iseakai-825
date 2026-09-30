@@ -95,6 +95,7 @@ describe("wantsTalk tab badges", () => {
     game.setScene("negotiator");
     expect(flagOf(game, "negotiator")).toBe(false);
     const brief = quoteHunt(game.state, { goods: "pepper", resource: "pepper", amount: 1 });
+    game.state.resources.denarii = Math.max(game.state.resources.denarii, brief.quotedDenarii);
     expect(startHunt(game.state, huntProposal(brief)).ok).toBe(true);
     vi.spyOn(Math, "random").mockReturnValue(0.1);
     for (let i = 0; i < brief.durationSeasons; i++) resolveHunts(game.state);

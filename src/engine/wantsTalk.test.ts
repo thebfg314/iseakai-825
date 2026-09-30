@@ -86,6 +86,7 @@ describe("wantsTalk flag", () => {
     dismissNewsWantsTalk(state, "negotiator", []);
     expect(flagOf(state, "negotiator")).toBe(false);
     const brief = quoteHunt(state, { goods: "pepper", resource: "pepper", amount: 1 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
     expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
     vi.spyOn(Math, "random").mockReturnValue(0.1);
     for (let i = 0; i < brief.durationSeasons; i++) resolveHunts(state);

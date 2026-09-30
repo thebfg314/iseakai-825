@@ -109,9 +109,9 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/do not name the price/i);
     expect(gerulf).toMatch(/high end/i);
     expect(gerulf).toMatch(/1\.1/);
-    expect(gerulf).toMatch(/1\.4/);
+    expect(gerulf).toMatch(/\b14\b/);
     expect(gerulf).toMatch(/1\.7/);
-    expect(gerulf).not.toMatch(/\b14x\b/);
+    expect(gerulf).not.toMatch(/medium 1\.4/);
     expect(gerulf).not.toMatch(/flat 10%/);
     expect(gerulf).toMatch(/difficulty/i);
     expect(gerulf).toMatch(/market band/i);

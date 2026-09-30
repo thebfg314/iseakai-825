@@ -28,11 +28,11 @@ const IRON_WORDS = /\b(iron|charcoal|bloom(?:\s*iron)?)\b/i;
 
 /**
  * Road difficulty on top of what a buyer pays when they need the good now.
- * Easy 1.1, medium 1.4, difficult 1.7. Medium is 1.4 (a mistyped "14x" is not a multiplier).
+ * Easy 1.1, medium 14, difficult 1.7. Medium is fourteen times the base.
  */
 export const HUNT_DIFFICULTY_MULTIPLIER = {
   easy: 1.1,
-  medium: 1.4,
+  medium: 14,
   difficult: 1.7,
 } as const;
 
@@ -63,11 +63,19 @@ export function defaultHuntDifficulty(resource: string): HuntDifficulty {
   return "medium";
 }
 
-/** Words only. "hard" is difficult. Digits, "14", and "14x" are not a difficulty. */
+function isMediumTimes(text: string): boolean {
+  const compact = text.trim().toLowerCase().replace(/×/g, "x").replace(/\s+/g, "");
+  return compact === "14" || compact === "14x" || compact === "x14" || compact === "14times";
+}
+
+/** "hard" is difficult. "14" and "14x" are the medium road. Other numbers are not a difficulty. */
 export function parseHuntDifficulty(raw: unknown): HuntDifficulty | undefined {
+  if (typeof raw === "number") return raw === 14 ? "medium" : undefined;
   if (typeof raw !== "string") return undefined;
-  const text = raw.trim().toLowerCase();
-  if (!text || /\d/.test(text)) return undefined;
+  const text = raw.trim().toLowerCase().replace(/×/g, "x");
+  if (!text) return undefined;
+  if (isMediumTimes(text)) return "medium";
+  if (/\d/.test(text)) return undefined;
   if (text === "easy") return "easy";
   if (text === "medium" || text === "moderate") return "medium";
   if (text === "difficult" || text === "hard") return "difficult";
@@ -80,7 +88,7 @@ export function resolveHuntDifficulty(resource: string, chosen?: unknown): HuntD
   return parseHuntDifficulty(chosen) ?? defaultHuntDifficulty(resource);
 }
 
-const DIFFICULTY_WORD = /\b(easy|medium|moderate|difficult|hard)\b/gi;
+const DIFFICULTY_WORD = /\b(14x|x14|easy|medium|moderate|difficult|hard)\b|\b14\s+times\b/gi;
 
 /** Last difficulty word in his speech, if he named one and the books did not. */
 export function difficultyFromSpeech(speech: string): HuntDifficulty | undefined {

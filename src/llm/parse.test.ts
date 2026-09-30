@@ -220,7 +220,7 @@ describe("parseLlmResponse never shows JSON to the player", () => {
     });
   });
 
-  it("keeps a hunt when the model omits the purse, and drops a numeric difficulty", () => {
+  it("keeps a hunt when the model omits the purse, and reads 14x as medium", () => {
     const omitted = parseProposal({
       type: "start_hunt",
       summary: "Fetch iron",
@@ -245,7 +245,7 @@ describe("parseLlmResponse never shows JSON to the player", () => {
       durationSeasons: 1,
     });
     expect(bogus.error).toBeUndefined();
-    expect(bogus.proposal && bogus.proposal.type === "start_hunt" ? bogus.proposal.difficulty : "set").toBeUndefined();
+    expect(bogus.proposal).toMatchObject({ difficulty: "medium" });
 
     const hard = parseProposal({
       type: "start_hunt",
