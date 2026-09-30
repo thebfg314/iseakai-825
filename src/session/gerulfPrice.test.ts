@@ -181,9 +181,9 @@ describe("Gerulf's spoken purse", () => {
 
     const salt = tempGame();
     const saltChest = salt.state.resources.denarii;
-    const saltPrice = ordinaryHuntPurse(salt.state.market.salt.max, 19, "difficult");
+    const saltPrice = ordinaryHuntPurse(salt.state.market.salt.max, 28, "difficult");
     expect(saltPrice).toBeGreaterThan(saltChest);
-    expect(ordinaryHuntPurse(salt.state.market.salt.max, 19, "easy")).toBeLessThanOrEqual(saltChest);
+    expect(ordinaryHuntPurse(salt.state.market.salt.max, 28, "easy")).toBeLessThanOrEqual(saltChest);
     llmChatMock.mockResolvedValueOnce(speechJson("A hard road for that much salt. Ten denarii."));
     llmChatMock.mockResolvedValueOnce(
       JSON.stringify({
@@ -194,7 +194,7 @@ describe("Gerulf's spoken purse", () => {
             summary: "Fetch salt",
             goods: "salt",
             resource: "salt",
-            amount: 19,
+            amount: 28,
             quotedDenarii: 10,
             difficulty: "difficult",
             durationSeasons: 1,
@@ -202,7 +202,7 @@ describe("Gerulf's spoken purse", () => {
         ],
       }),
     );
-    await salt.sendDialogue("negotiator", "Buy 19 lb of salt.");
+    await salt.sendDialogue("negotiator", "Buy 28 lb of salt.");
     expect(llmChatMock).toHaveBeenCalled();
     expect(salt.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(salt.state.resources.denarii).toBe(saltChest);

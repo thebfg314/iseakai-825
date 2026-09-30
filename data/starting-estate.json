@@ -35,7 +35,7 @@
     }
   ],
   "resources": {
-    "denarii": 96,
+    "denarii": 138,
     "wheat": 5,
     "rye": 8,
     "barley": 4,
@@ -54,7 +54,7 @@
     "softwood": 2,
     "hardwood": 1,
     "charcoal": 1,
-    "iron": 8,
+    "iron": 20,
     "copper": 0,
     "tin": 0,
     "salt": 4,

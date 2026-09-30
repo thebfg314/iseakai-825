@@ -127,12 +127,12 @@ describe("mid-season hidden ledger tools", () => {
   it("fills grain and chest together from a batch marker", async () => {
     const game = tempGame();
     llmChatMock.mockResolvedValueOnce("<=-tool: grain, chest -=>");
-    llmChatMock.mockResolvedValueOnce("The chest holds ninety-six denarii, and the rye is eight modii.");
+    llmChatMock.mockResolvedValueOnce("The chest holds one hundred thirty-eight denarii, and the rye is eight modii.");
     await game.sendDialogue("steward", "How fare the chest and the grain?");
     expect(llmChatMock).toHaveBeenCalledTimes(2);
     const facts = callText(1);
     expect(facts).toMatch(/"rye"\s*:\s*8/);
-    expect(facts).toMatch(/"denarii"\s*:\s*96/);
+    expect(facts).toMatch(/"denarii"\s*:\s*138/);
     expect(facts).toMatch(/RECORD DRAWERS/);
   });
 

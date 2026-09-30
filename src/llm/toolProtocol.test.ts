@@ -72,7 +72,7 @@ describe("engine drawers from live WorldState", () => {
     const state = boot();
     const pack = collectDrawers(state, ["grain", "chest"]);
     expect(pack.grain).toMatchObject({ wheat: 5, rye: 8, barley: 4, oats: 3 });
-    expect(pack.chest).toEqual({ denarii: 96 });
+    expect(pack.chest).toEqual({ denarii: 138 });
     expect(pack).not.toHaveProperty("not_a_drawer");
   });
 

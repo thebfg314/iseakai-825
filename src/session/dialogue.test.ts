@@ -28,11 +28,11 @@ function worldFile(c: GameController) {
 }
 
 describe("dialogue parse → queue → confirm → world-state", () => {
-  it("keeps Fontenay start numbers after parse (arable 32, 10 households, 96 denarii)", () => {
+  it("keeps Fontenay start numbers after parse (arable 32, 10 households, 138 denarii)", () => {
     const state = WorldStateSchema.parse(structuredClone(startingEstate));
     expect(state.holdings[0].land.fertile_arable).toBe(32);
     expect(state.population.households).toBe(10);
-    expect(state.resources.denarii).toBe(96);
+    expect(state.resources.denarii).toBe(138);
     expect(state.agriculture.springBarleyShare).toBe(0.6);
   });
 
@@ -248,7 +248,7 @@ describe("per-NPC dialogue logs", () => {
     expect(game.state.estate_history[0].year).toBe(825);
     expect(game.state.peopleHappiness).toBeGreaterThanOrEqual(0);
     expect(game.state.peopleHappiness).toBeLessThanOrEqual(100);
-    expect(game.state.estate_history[0].resources.denarii).toBe(96);
+    expect(game.state.estate_history[0].resources.denarii).toBe(138);
     expect(game.state.estate_history[0].population.households).toBe(10);
     expect(game.state.meta.season).toBe("summer");
     const smith = game.setScene("smith");
@@ -439,9 +439,9 @@ describe("hire specialists via Aldric Confirm", () => {
     expect(game.messages.some((m) => /chest cannot spare|denarii/i.test(m.text))).toBe(true);
   });
 
-  it("hires Hugo for 80 denarii from the start chest and leaves 16", () => {
+  it("hires Hugo for 80 denarii from the start chest and leaves 58", () => {
     const game = tempGame();
-    expect(game.state.resources.denarii).toBe(96);
+    expect(game.state.resources.denarii).toBe(138);
     const parsed = parseLlmResponse(JSON.stringify({ speech: "Hugo will come.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "Hire Hugo the potter.");
     const pending = game.pending.filter((p) => p.status === "pending");
@@ -449,18 +449,18 @@ describe("hire specialists via Aldric Confirm", () => {
     const result = game.confirmProposal(pending[0].id);
     expect(result.error).toBeUndefined();
     expect(game.state.npcs.some((n) => n.id === "potter" && n.name === "Hugo")).toBe(true);
-    expect(game.state.resources.denarii).toBe(16);
-    expect(worldFile(game).resources.denarii).toBe(16);
+    expect(game.state.resources.denarii).toBe(58);
+    expect(worldFile(game).resources.denarii).toBe(58);
   });
 
   it("refuses Gerold at boot because 200 denarii is more than the start chest", () => {
     const game = tempGame();
-    expect(game.state.resources.denarii).toBe(96);
+    expect(game.state.resources.denarii).toBe(138);
     const parsed = parseLlmResponse(JSON.stringify({ speech: "The chest is too thin for a mason.", proposals: [] }));
     game.ingestParsedDialogue("steward", parsed, "Hire Gerold the mason.");
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.state.npcs.some((n) => n.id === "mason")).toBe(false);
-    expect(game.state.resources.denarii).toBe(96);
+    expect(game.state.resources.denarii).toBe(138);
     expect(game.messages.some((m) => /chest cannot spare 200 denarii/i.test(m.text))).toBe(true);
   });
 
@@ -522,7 +522,7 @@ describe("hire specialists via Aldric Confirm", () => {
     game.ingestParsedDialogue("steward", parsed, "Hire Hugo the potter.");
     game.confirmProposal(game.pending[0].id);
     expect(game.state.npcs.some((n) => n.id === "potter" && n.name === "Hugo")).toBe(true);
-    expect(game.state.resources.denarii).toBe(16);
+    expect(game.state.resources.denarii).toBe(58);
     const potter = game.setScene("potter");
     expect(potter.sceneNpcId).toBe("potter");
     expect(potter.messages).toHaveLength(1);
@@ -1054,6 +1054,7 @@ describe("Gerulf hunt via Confirm", () => {
 
     const poor = tempGame();
     const poorChest = poor.state.resources.denarii;
+    const dearSalt = ordinaryHuntPurse(poor.state.market.salt.max, 28, "difficult");
     poor.ingestParsedDialogue(
       "negotiator",
       parseLlmResponse(
@@ -1065,7 +1066,7 @@ describe("Gerulf hunt via Confirm", () => {
               summary: "Fetch salt",
               goods: "salt",
               resource: "salt",
-              amount: 19,
+              amount: 28,
               quotedDenarii: 10,
               difficulty: "difficult",
               durationSeasons: 1,
@@ -1073,13 +1074,14 @@ describe("Gerulf hunt via Confirm", () => {
           ],
         }),
       ),
-      "Buy 19 lb of salt.",
+      "Buy 28 lb of salt.",
     );
+    expect(dearSalt).toBeGreaterThan(poorChest);
     expect(poor.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(poor.state.resources.denarii).toBe(poorChest);
     expect(poor.state.projects).toHaveLength(0);
-    expect(poor.messages.some((m) => m.text.includes(`${saltPrice} denarii`) && /take nothing/i.test(m.text))).toBe(true);
-    expect(ordinaryHuntPurse(poor.state.market.salt.max, 19, "easy")).toBeLessThanOrEqual(poorChest);
+    expect(poor.messages.some((m) => m.text.includes(`${dearSalt} denarii`) && /take nothing/i.test(m.text))).toBe(true);
+    expect(ordinaryHuntPurse(poor.state.market.salt.max, 28, "easy")).toBeLessThanOrEqual(poorChest);
   });
 });
 

@@ -13,13 +13,13 @@ describe("estate season books", () => {
   it("archives the figures as they stood, not later live totals", () => {
     const live = boot();
     const before = boot();
-    expect(before.resources.denarii).toBe(96);
+    expect(before.resources.denarii).toBe(138);
     live.resources.denarii = 40;
     archiveEstateSeason(live, before);
     expect(live.estate_history).toHaveLength(1);
     expect(live.estate_history[0].season).toBe("spring");
     expect(live.estate_history[0].year).toBe(825);
-    expect(live.estate_history[0].resources.denarii).toBe(96);
+    expect(live.estate_history[0].resources.denarii).toBe(138);
     expect(live.estate_history[0].population.households).toBe(10);
     expect(live.estate_history[0].holdings[0].sown.wheat).toBe(6);
     expect(live.resources.denarii).toBe(40);

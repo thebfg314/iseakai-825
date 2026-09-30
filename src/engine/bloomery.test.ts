@@ -45,11 +45,13 @@ describe("bloomery", () => {
   it("waits on charcoal and a purse, and does not demand both a hoard and a fortune", () => {
     const state = boot();
     expect(state.resources.charcoal).toBeLessThan(BLOOMERY_DECENT_CHARCOAL);
-    expect(state.resources.denarii).toBeLessThan(BLOOMERY_DECENT_PURSE);
+    expect(state.resources.denarii).toBe(138);
     expect(charcoalSupplyReady(state)).toBe(false);
+    expect(bloomerySuggestReady(state)).toBe(false);
     expect(bloomeryNotReadyReason(state)).toMatch(/charcoal/i);
     expect(inferSmithProposals(state, "Build a bloomery.")).toEqual([]);
 
+    state.resources.denarii = BLOOMERY_DECENT_PURSE - 1;
     state.resources.charcoal = BLOOMERY_DECENT_CHARCOAL;
     expect(bloomerySuggestReady(state)).toBe(false);
     expect(bloomeryNotReadyReason(state)).toMatch(/chest/i);

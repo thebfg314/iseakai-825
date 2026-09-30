@@ -169,7 +169,7 @@ describe("estate season pager", () => {
     expect(fresh.showForward).toBe(false);
     expect(fresh.canGoBack).toBe(false);
     expect(fresh.label).toBe("Spring 825");
-    expect(fresh.source?.resources.denarii).toBe(96);
+    expect(fresh.source?.resources.denarii).toBe(138);
     expect(fresh.hint).toMatch(/not yet kept/i);
   });
 });
