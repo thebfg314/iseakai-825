@@ -529,3 +529,61 @@ export class GameController {
       return this.finishTalk();
     }
   }
+
+  /** Books difficulty wins. Otherwise the last difficulty word in his speech. Staples default easy. */
+  private resolvedHuntDifficulty(
+    playerText: string,
+    speech: string,
+    proposals: MechanicalProposal[],
+  ): HuntDifficulty | undefined {
+    const req = extractHuntRequest(playerText);
+    if (!req) return undefined;
+    const fromBooks = proposals.find((p) => p.type === "start_hunt");
+    const chosen =
+      fromBooks?.type === "start_hunt" && fromBooks.difficulty
+        ? fromBooks.difficulty
+        : difficultyFromSpeech(speech);
+    return resolveHuntDifficulty(req.resource, chosen);
+  }
+
+  /**
+   * Books pass failed, or never ran. The purse is still the engine's figure.
+   * Queue Confirm if this ask can be paid; do not invent a second card.
+   */
+  private recoverHuntOffer(
+    npcId: string,
+    playerText: string,
+    spoken?: { speech: string; emotion?: AldricEmotion },
+  ): boolean {
+    if (!isNegotiatorId(npcId)) return false;
+    const spokenDifficulty = difficultyFromSpeech(spoken?.speech ?? "");
+    const judged = seasonsNamedInText(spoken?.speech ?? "");
+    const forced = huntProposalForAsk(this.state, playerText, spokenDifficulty, judged);
+    if (!forced?.length) {
+      const why = huntFulfillReason(this.state, playerText, spokenDifficulty);
+      if (!why) return false;
+      this.pushNpcSpeech(npcId, { speech: why, emotion: "concerned" });
+      return true;
+    }
+    const playerAt = this.messages.map((m) => m.role).lastIndexOf("player");
+    const req = extractHuntRequest(playerText);
+    const brief = req
+      ? quoteHunt(
+          this.state,
+          { ...req, difficulty: resolveHuntDifficulty(req.resource, spokenDifficulty) },
+          { judged, asked: seasonsAskedByLord(playerText) },
+        )
+      : null;
+    const speech = brief ? withComputedHuntPrice(spoken?.speech ?? "", brief) : (spoken?.speech ?? "");
+    const priced =
+      brief != null &&
+      this.messages.slice(playerAt + 1).some((m) => m.role === "npc" && m.text.includes(`${brief.quotedDenarii} denarii`));
+    if (!priced && speech) {
+      this.pushNpcSpeech(npcId, { speech, emotion: spoken?.emotion ?? "pleased" });
+    }
+    if (!this.pending.some((p) => p.status === "pending" && p.proposal.type === "start_hunt")) {
+      for (const proposal of forced) this.queueProposal(npcId, proposal);
+      this.ledgerNote("1 proposed change awaits Confirm. Nothing is written to the books until then.", npcId);
+    }
+    return true;
+  }
