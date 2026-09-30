@@ -208,6 +208,8 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   const households = state.population.households;
   state.flags.hunger = false;
   add(consumeGrain(state, round1(households * HOUSEHOLD_SEASON_GRAIN), "Households"));
+  const mancipia = state.population.mancipia ?? 0;
+  if (mancipia > 0) add(consumeGrain(state, round1(mancipia * HOUSEHOLD_SEASON_GRAIN), "The unfree at the lord's board"));
   if (state.holdings.some((h) => h.features.includes("monastery") || h.features.includes("chapel"))) {
     const hasMonastery = state.holdings.some((h) => h.features.includes("monastery"));
     const house = hasMonastery ? "cell" : "oratory";

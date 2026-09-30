@@ -56,6 +56,9 @@ export const HAPPINESS_LABOUR_FIRM = -3;
 export const HAPPINESS_WAR = -8;
 export const HAPPINESS_MOOD_PER_ADD = 3;
 export const HAPPINESS_ALMS = 3;
+/** Free tenants resent being undercut by the unfree: −1 per five mancipia held, capped. */
+export const HAPPINESS_UNFREE_PER_FIVE = -1;
+export const HAPPINESS_UNFREE_CAP = -6;
 
 /** Quiet yield / project-progress multiplier at happiness 0 (wretched). */
 export const PEOPLE_EFFORT_AT_ZERO = 0.9;
@@ -75,6 +78,7 @@ export type HappinessPressureId =
   | "harsh"
   | "labour"
   | "war"
+  | "unfree"
   | "mood";
 
 export type HappinessPressure = { id: HappinessPressureId; delta: number };
@@ -191,6 +195,9 @@ export function peopleHappinessPressures(state: WorldState, extras: PeopleHappin
   else if (ratio >= LABOUR_FIRM_RATIO) push("labour", HAPPINESS_LABOUR_FIRM);
 
   if (state.flags.active_threat || extras.muster) push("war", HAPPINESS_WAR);
+
+  const mancipia = state.population.mancipia ?? 0;
+  if (mancipia >= 5) push("unfree", Math.max(HAPPINESS_UNFREE_CAP, Math.floor(mancipia / 5) * HAPPINESS_UNFREE_PER_FIVE));
 
   const mood = moodModifiersHappinessDelta(state);
   if (mood) push("mood", mood);

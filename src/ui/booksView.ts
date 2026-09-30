@@ -1,4 +1,7 @@
 import { huntProgressLine } from "../engine/hunts";
+import { levyMenUnderArms, raiseSpecFor, upkeepDue } from "../engine/military";
+import { unitSheet } from "../combat/registry";
+import { rankTitle } from "../combat/renown";
 import { merchantCartsForBooks } from "../engine/merchantShop";
 import { clampEstateOffset, estatePagerFlags, snapshotAtOffset, stepEstateOffset } from "../engine/estateBooks";
 import { seasonsBetween } from "../engine/projectProgress";
@@ -22,14 +25,77 @@ import {
   seasonsOfWorkPhrase,
 } from "./ledgerCopy";
 
-export const BOOKS_TABS = ["estate", "labours", "customs"] as const;
+export const BOOKS_TABS = ["estate", "labours", "customs", "arms"] as const;
 export type BooksTab = (typeof BOOKS_TABS)[number];
 
 export const BOOKS_TAB_LABELS: Record<BooksTab, string> = {
   estate: "Estate",
   labours: "Labours",
   customs: "Customs",
+  arms: "Arms",
 };
+
+export type ArmsBook = {
+  lord: { renown: number; rankTitle: string; rankLevel: number; strength: string; wounds: string[]; dead: boolean };
+  units: { id: string; name: string; kind: string; men: number; veteran: boolean; upkeep: number }[];
+  drilling: { id: string; name: string; kind: string; men: number; seasonsLeft: number }[];
+  upkeepPerSeason: number;
+  levyFree: number;
+  invented: string[];
+  history: { id: string; when: string; kind: string; outcome: string; renownDelta: number; summary: string }[];
+  emptyLine?: string;
+};
+
+export const ARMS_EMPTY = "No men stand under your banner. The villa's levy can be called up through Aldric; paid spearmen, archers, and horsemen need Eberhard the captain to drill them.";
+
+export function armsBook(state: WorldState): ArmsBook {
+  const kindName = (id: string) => raiseSpecFor(id)?.label ?? unitSheet(id)?.name ?? id.replaceAll("_", " ");
+  const units = state.military.units.map((u) => ({
+    id: u.id,
+    name: u.name,
+    kind: kindName(u.sheetId),
+    men: u.strength,
+    veteran: u.veteran,
+    upkeep: Math.round(u.strength * (raiseSpecFor(u.sheetId)?.upkeepPerMan ?? 0)),
+  }));
+  const drilling = state.military.training.map((t) => ({
+    id: t.id,
+    name: t.name,
+    kind: kindName(t.sheetId),
+    men: t.men,
+    seasonsLeft: Math.max(0, t.seasonsRequired - t.seasonsElapsed),
+  }));
+  return {
+    lord: {
+      renown: state.player.renown,
+      rankLevel: state.player.rankLevel,
+      rankTitle: rankTitle(state.player.rankLevel as 1 | 2 | 3 | 4 | 5),
+      strength: `${state.player.personal.hp}/${state.player.personal.maxHp}`,
+      wounds: state.player.wounds.map((w) => {
+        const state_ = w.permanent ? "will not heal" : w.seasonsHeld === 0 ? "fresh; may close by next season" : "still open; one more season to mend or set";
+        return `${w.location}${w.cause ? ` — ${w.cause}` : ""} (${state_})`;
+      }),
+      dead: state.player.dead || state.player.maimed || state.player.captive,
+    },
+    units,
+    drilling,
+    upkeepPerSeason: upkeepDue(state),
+    levyFree: Math.max(0, state.population.adult_men - levyMenUnderArms(state)),
+    invented: state.military.customSheets.map((s) => s.name),
+    history: [...state.battle_history]
+      .reverse()
+      .slice(0, 8)
+      .map((b) => ({
+        id: b.id,
+        when: `${b.season.charAt(0).toUpperCase()}${b.season.slice(1)} ${b.year}`,
+        kind: b.kind,
+        outcome: b.outcome.replaceAll("_", " "),
+        renownDelta: b.renownDelta,
+        summary: b.summary,
+      })),
+    emptyLine: units.length || drilling.length ? undefined : ARMS_EMPTY,
+  };
+}
 
 export function isBooksTab(value: string): value is BooksTab {
   return (BOOKS_TABS as readonly string[]).includes(value);

@@ -1,5 +1,6 @@
 import { grainOnHand, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { resolveActiveProject } from "./labour";
+import { captainWanted } from "./military";
 import type { MechanicalProposal, Npc, WorldState } from "./schema";
 
 /** Fontenay start: 10 households. A reeve is sought at half again that number. */
@@ -10,7 +11,6 @@ export const REEVE_HOUSEHOLD_THRESHOLD = Math.ceil(STARTING_HOUSEHOLDS * 1.5);
 export const STARTING_VINEYARD_ACRES = 1;
 
 const METAL_EXPANSION_FEATURES = new Set(["bloomery", "mill_forge"]);
-const DEFENSE_FEATURES = new Set(["palisade", "tower", "wooden_tower", "gatehouse", "watch_post"]);
 
 export type HireableSpecialist = {
   id: string;
@@ -129,9 +129,9 @@ export const HIREABLE_SPECIALISTS: HireableSpecialist[] = [
     hireCostDenarii: 250,
     requiresExpansion: true,
     unlockHint:
-      "A tired hall is not a defence. When a palisade, tower, gatehouse, or watch post stands, Eberhard can be sought.",
+      "There is no one for a captain to drill. Call up the villa's men as a levy, or begin gathering what a new kind of soldier wants (the arms drawer lists it), and Eberhard can be sought.",
     recommendSpeech:
-      "We have a real defence now, not only a tired hall. Eberhard would captain the watch — he wants men, spears, and a reason to march, and he will tell you honestly how few fighters we have. 250 denarii, should you want him: ask me, and Confirm.",
+      "You have men under your own banner now, my lord — or the makings of them — and no one to drill them. Eberhard would be your captain of arms: he wants men, spears, and a reason to march, and he will tell you honestly how few fighters we have. He is the one to turn a levy into spearmen, or something stranger into a file that holds. 250 denarii, should you want him: ask me, and Confirm.",
     notes:
       "A veteran who has seen it all. Content with peaceful duty but doesn't shirk battle either. Cool headed and would rather polish and sharpen his weapons than stand at attention in parade dress. Pragmatic and experienced.",
   },
@@ -224,7 +224,8 @@ export function specialistUnlocked(state: WorldState, spec: HireableSpecialist):
     case "copper_smith":
       return hasAnyFeature(state, METAL_EXPANSION_FEATURES);
     case "captain":
-      return hasAnyFeature(state, DEFENSE_FEATURES);
+      // Design review, item 12: the trigger is training your own unit, not building a wall.
+      return captainWanted(state);
     default:
       return false;
   }
@@ -430,6 +431,7 @@ const MASON_PROJECTS = new Set([
   "stone_chapel",
   "stone_bridge",
   "partial_stone_hall",
+  "stone_wall",
   "gatehouse",
   "causeway",
   "terracing",
@@ -456,7 +458,7 @@ const CRAFT_SCOPES: Record<string, CraftScope> = {
     transfer: ["softwood", "hardwood", "iron"],
     features: ["carpenter_workshop"],
   },
-  mason: { projects: MASON_PROJECTS, tag: "stone", transfer: ["stone", "iron"], features: ["quarry"] },
+  mason: { projects: MASON_PROJECTS, tag: "stone", transfer: ["stone", "iron"], features: ["quarry", "stone_wall"] },
   potter: { projects: POTTER_PROJECTS, tag: "pottery", transfer: ["trade_goods", "charcoal"], features: ["pottery_kiln", "clay_pit"] },
   village_reeve: { projects: REEVE_PROJECTS, tag: "village", transfer: ["hides", "wool"], features: ["labourer_housing"] },
   vinedresser: { projects: VINEDRESSER_PROJECTS, tag: "wine", transfer: ["wine"], features: [] },
@@ -514,6 +516,9 @@ export function specialistAllowed(
   const scope = CRAFT_SCOPES[spec.id];
   if (!scope) return "npc_not_authorized";
   const { projects: keys, tag, transfer, features } = scope;
+
+  // Arms proposals are judged by applyDelta's armsAllowed (the captain's remit), not by craft scope.
+  if (p.type === "raise_unit" || p.type === "disband_unit" || p.type === "call_to_arms" || p.type === "register_unit_sheet") return null;
 
   switch (p.type) {
     case "transfer_resources": {

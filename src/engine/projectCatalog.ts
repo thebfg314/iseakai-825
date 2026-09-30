@@ -12,6 +12,8 @@ export type ProjectCatalogEntry = {
   completesToFeature?: string;
   completesToLand?: { from: keyof WorldState["holdings"][0]["land"]; to: keyof WorldState["holdings"][0]["land"]; acres?: number };
   specialist?: string;
+  /** The work cannot begin unless an NPC of this id/role serves the house (e.g. a stone mason for a stone wall). */
+  requiresSpecialist?: string;
 };
 
 /** Midpoints of Constitution §4.5 ranges. */
@@ -51,6 +53,8 @@ export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
   { key: "wooden_tower", name: "Raised platform + wooden tower", labourDays: 215, lumber: 14, iron: 45, stone: 5, labourKind: "mostly_men", completesToFeature: "tower" },
   { key: "gatehouse", name: "Gatehouse / strong gate", labourDays: 110, lumber: 7.5, iron: 37, stone: 2.5, labourKind: "mostly_men", completesToFeature: "gatehouse" },
   { key: "watch_post", name: "Watch post", labourDays: 45, lumber: 3.5, iron: 10, stone: 1, labourKind: "mixed", completesToFeature: "watch_post" },
+  // Design review, item 8: the villa's timber works are the wooden face it fights behind; a mason's wall upgrades it to stone.
+  { key: "stone_wall", name: "Stone wall about the villa (100 yards)", labourDays: 320, lumber: 4, iron: 55, stone: 40, labourKind: "mostly_men", tag: "stone", completesToFeature: "stone_wall", specialist: "mason", requiresSpecialist: "mason" },
   { key: "quarry", name: "Small stone quarry (opening)", labourDays: 115, lumber: 3.5, iron: 30, stone: 0, labourKind: "mostly_men", completesToFeature: "quarry" },
   { key: "clay_pit", name: "Clay pit", labourDays: 45, lumber: 2, iron: 10, stone: 0, labourKind: "mixed", completesToFeature: "clay_pit" },
   { key: "charcoal_burning", name: "Organized charcoal burning", labourDays: 60, lumber: 2, iron: 10, stone: 0, labourKind: "mixed" },

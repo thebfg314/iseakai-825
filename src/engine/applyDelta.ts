@@ -29,6 +29,8 @@ import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
+import { applyDisbandUnit, applyRaiseUnit, applyRegisterUnitSheet, CALL_TEXT, raiseCallDirect } from "./military";
+import { applyFreeMancipia, isMancipia, MANUMISSION_HAPPINESS_CAP, MANUMISSION_HAPPINESS_PER_HEAD, mancipiaCount, setMancipia } from "./mancipia";
 import { ensureAgriculture, fieldRotation, sownCapacity, springFieldAcres } from "./agriculture";
 import {
   amountPhrase,
@@ -76,6 +78,7 @@ function isCanonical(id: string): id is CanonicalResource {
 
 function getAmount(state: WorldState, resource: string): number | null {
   if (isCanonical(resource)) return state.resources[resource];
+  if (isMancipia(resource)) return mancipiaCount(state);
   const custom = state.custom_resources.find((c) => c.id === resource);
   return custom ? custom.amount : null;
 }
@@ -84,6 +87,10 @@ function setAmount(state: WorldState, resource: string, amount: number): boolean
   const v = round1(Math.max(0, amount));
   if (isCanonical(resource)) {
     state.resources[resource] = v;
+    return true;
+  }
+  if (isMancipia(resource)) {
+    setMancipia(state, v);
     return true;
   }
   const custom = state.custom_resources.find((c) => c.id === resource);
@@ -99,6 +106,8 @@ function hasForge(state: WorldState): boolean {
 function smithAllowed(state: WorldState, p: MechanicalProposal): string | null {
   if (!hasForge(state)) return "No forge on the estate; the smith has no workshop.";
   switch (p.type) {
+    case "register_unit_sheet":
+      return null; // judged by armsAllowed
     case "transfer_resources": {
       if (SMITH_TRANSFER.has(p.resource)) return null;
       const custom = state.custom_resources.find((c) => c.id === p.resource);
@@ -138,6 +147,8 @@ function chaplainAllowed(state: WorldState, p: MechanicalProposal): string | nul
     return "No oratory or cell on the estate; the chaplain has no house.";
   }
   switch (p.type) {
+    case "free_mancipia":
+      return null; // manumission is a pious act the Church blesses
     case "transfer_resources": {
       if (CHAPLAIN_TRANSFER.has(p.resource)) return null;
       const custom = state.custom_resources.find((c) => c.id === p.resource);
@@ -197,6 +208,29 @@ function ok(state: WorldState, summary: string): ApplyResult {
   return { ok: true, logLine: summary, state };
 }
 
+/**
+ * Arms proposals (Phase 4). Eberhard the captain raises, drills, disbands, sounds the call,
+ * and may write an invented unit into the rolls; Aldric may raise or disband the villa's levy
+ * and record an invented unit; Bernard may record an invented unit born at his forge.
+ * Everyone else is refused. Non-arms proposals pass straight through.
+ */
+function armsAllowed(state: WorldState, p: MechanicalProposal, actor: string): string | null {
+  switch (p.type) {
+    case "raise_unit":
+      if (actor === "captain" || actor === "referee") return null;
+      if (actor === "steward") return p.sheetId === "peasant_levy" ? null : "Aldric can call up the villa's levy; drilling paid men is Eberhard's work.";
+      return "npc_not_authorized";
+    case "disband_unit":
+      return actor === "captain" || actor === "steward" || actor === "referee" ? null : "npc_not_authorized";
+    case "call_to_arms":
+      return actor === "captain" || actor === "referee" ? null : "Only the captain of the watch sounds the call.";
+    case "register_unit_sheet":
+      return actor === "captain" || actor === "steward" || actor === "smith" || actor === "referee" ? null : "npc_not_authorized";
+    default:
+      return null;
+  }
+}
+
 export function applyProposal(
   state: WorldState,
   proposal: MechanicalProposal,
@@ -227,8 +261,36 @@ export function applyProposal(
     const blocked = specialistAllowed(state, authProposal, specialistActor);
     if (blocked) return fail(state, blocked, blocked);
   }
+  const armsBlocked = armsAllowed(state, authProposal, actor);
+  if (armsBlocked) return fail(state, armsBlocked, armsBlocked);
 
   switch (proposal.type) {
+    case "raise_unit": {
+      const r = applyRaiseUnit(state, proposal);
+      return r.ok ? ok(state, r.logLine) : fail(state, r.reason, r.reason);
+    }
+    case "disband_unit": {
+      const r = applyDisbandUnit(state, proposal);
+      return r.ok ? ok(state, r.logLine) : fail(state, r.reason, r.reason);
+    }
+    case "call_to_arms": {
+      if (state.battle_call || state.battle_session) return fail(state, "A call is already open.", "A call is already open.");
+      if (state.player.dead) return fail(state, "The lord is dead.", "The lord is dead.");
+      if (state.player.captive) return fail(state, "The lord is in his captors' hands.", "The lord is in his captors' hands.");
+      raiseCallDirect(state, proposal.kind);
+      return ok(state, `Eberhard sounds the call: ${CALL_TEXT[proposal.kind]}`);
+    }
+    case "register_unit_sheet": {
+      const r = applyRegisterUnitSheet(state, proposal);
+      return r.ok ? ok(state, r.logLine) : fail(state, r.reason, r.reason);
+    }
+    case "free_mancipia": {
+      if (actor !== "steward" && actor !== "chaplain" && actor !== "referee") return fail(state, "npc_not_authorized", "npc_not_authorized");
+      const r = applyFreeMancipia(state, proposal.count);
+      if (!r.ok) return fail(state, r.reason, r.reason);
+      applyPeopleHappinessDelta(state, Math.min(MANUMISSION_HAPPINESS_CAP, r.freed * MANUMISSION_HAPPINESS_PER_HEAD));
+      return ok(state, r.logLine);
+    }
     case "assign_labour":
       return assignLabour(state, proposal);
     case "set_standing_order":
@@ -335,6 +397,9 @@ function startProject(
   const catalog = lookupProject(p.projectKey);
   if (!catalog && !p.customCosts) {
     return fail(state, `Unknown project '${p.projectKey}' and no customCosts declared.`, p.summary);
+  }
+  if (catalog?.requiresSpecialist && !state.npcs.some((n) => n.id === catalog.requiresSpecialist || n.role === catalog.requiresSpecialist)) {
+    return fail(state, `${catalog.name} needs a ${catalog.requiresSpecialist.replaceAll("_", " ")} in the lord's service before the work can begin.`, p.summary);
   }
   const labourDays = p.customCosts?.labourDays ?? catalog!.labourDays;
   const lumber = p.customCosts?.lumber ?? catalog!.lumber;

@@ -1,0 +1,28 @@
+{
+  "$comment": "Fortification Point types (design doc §9.4). Three numbers per type: Point HP, Structural DEF (used when the structure itself is the target), Defender DEF Bonus (granted to the Presented unit once it qualifies as Defender by occupancy).",
+  "types": [
+    {
+      "id": "wooden",
+      "name": "Wooden (proper timber palisade)",
+      "pointHp": 80,
+      "structuralDef": 12,
+      "defenderDefBonus": 10
+    },
+    {
+      "id": "stone",
+      "name": "Stone (old Roman-era masonry)",
+      "pointHp": 150,
+      "structuralDef": 20,
+      "defenderDefBonus": 20,
+      "notes": "Rare at 825; typically inherited or captured rather than built."
+    }
+  ],
+  "makeshift": {
+    "pointHpMultiplier": 0.6,
+    "structuralDefMultiplier": 0.6,
+    "defenderDefBonusMultiplier": 0.6,
+    "note": "Improvised or natural version of the base type. Makeshift Wooden: HP 48 / DEF 7 / +6. Makeshift Stone: HP 90 / DEF 12 / +12."
+  },
+  "pointsPerCell": { "min": 2, "max": 3 },
+  "swapPresentedCost": 2
+}

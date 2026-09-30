@@ -3,6 +3,7 @@ import { memoriesForMerchantName, persistMerchantVisitorMemories } from "./memor
 import { clamp, round1 } from "./util";
 import { resourceName } from "../ui/ledgerCopy";
 import { beginMerchantVisitShop, persistMerchantPurseOnLeave } from "./merchantShop";
+import { MANCIPIA_ID, MERCHANT_MANCIPIA_CHANCE } from "./mancipia";
 
 export const MERCHANT_BASE_RANGE: Record<Season, { lo: number; hi: number }> = {
   spring: { lo: 0.25, hi: 0.3 },
@@ -182,6 +183,9 @@ export function generateMerchantStock(): { resource: string; amount: number }[] 
         : 2 + Math.floor(Math.random() * 6);
     stock.push({ resource, amount });
   }
+  // Peddlers sometimes bring a few of the unfree to sell (design review: slaves were bought and sold).
+  // They take the place of one ordinary line so the pack stays thin.
+  if (Math.random() < MERCHANT_MANCIPIA_CHANCE) stock[stock.length - 1] = { resource: MANCIPIA_ID, amount: 1 + Math.floor(Math.random() * 3) };
   return stock;
 }
 

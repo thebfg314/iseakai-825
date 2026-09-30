@@ -87,6 +87,30 @@ import {
   releaseConfirmWantsTalk,
   setNpcWantsTalk,
 } from "../engine/wantsTalk";
+import {
+  acceptCall,
+  addressFile,
+  battleChoose,
+  battleCommandRound,
+  battleContinue,
+  beginBattle,
+  dayEndChoice,
+  deployFile,
+  deployRest,
+  finishBattle,
+  musterAndRide,
+  raiseBattleCall,
+  raiseCallDirect,
+  refuseCall,
+  scoutChooseRole,
+  scoutFinalize,
+  scoutNarrow,
+  type BattleDeps,
+} from "./battle";
+import type { BattleCallKind } from "../engine/schema";
+import { ensureCampaignContent, tickMilitary } from "../engine/military";
+import { healPersonalFully, tickWounds } from "../engine/wounds";
+import { createRng, seedFromString } from "../combat/rng";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 
@@ -121,6 +145,7 @@ export class GameController {
       this.state.agriculture = { springBarleyShare: 0.6, autumnWheatShare: 0.45, rotation: "two_field" };
     }
     ensureGerulfInHousehold(this.state);
+    ensureCampaignContent(this.state);
     if (estateIsAbandoned(this.state)) {
       markEstateAbandoned(this.state);
       return;
@@ -138,6 +163,7 @@ export class GameController {
   }
 
   view(): GameView {
+    ensureCampaignContent(this.state);
     if (estateIsAbandoned(this.state)) markEstateAbandoned(this.state);
     if (this.sceneNpcId === "merchant" && !this.merchantAvailable()) {
       this.sceneNpcId = "steward";
@@ -744,12 +770,132 @@ export class GameController {
     return result.ok ? this.view() : { ...this.view(), error: playerFacingReason(result.reason ?? result.logLine) };
   }
 
+  // ---- Battles (Phase 3) -----------------------------------------------------
+
+  private battleDeps(): BattleDeps {
+    return {
+      chat: (messages, maxTokens) => this.llmRaw(messages, { maxTokens, temperature: 0.7 }),
+      log: (actor, kind, summary) => this.log(actor, kind, summary),
+    };
+  }
+
+  /** Answer or refuse an open call to arms. */
+  answerCall(accept: boolean): GameView & { error?: string } {
+    if (!this.state.battle_call) return { ...this.view(), error: "There is no call to answer." };
+    if (!accept) {
+      const text = refuseCall(this.state, this.battleDeps());
+      this.ledgerNote(text, "steward");
+      return this.view();
+    }
+    const result = acceptCall(this.state, this.battleDeps());
+    if (!result.started) this.ledgerNote(result.text, "steward");
+    return this.view();
+  }
+
+  /** Muster panel confirmed: ride out with the chosen units. */
+  async musterAndRide(bringIds: string[]): Promise<GameView & { error?: string }> {
+    const err = musterAndRide(this.state, this.battleDeps(), bringIds);
+    if (err) return { ...this.view(), error: err };
+    if (this.state.battle_session?.phase !== "fighting") return this.view(); // Full Command scouts and deploys first
+    const cont = await battleContinue(this.state, this.battleDeps());
+    await this.refreshCredits();
+    return cont ? { ...this.view(), error: cont } : this.view();
+  }
+
+  // Full Command: scouting duel, deployment, nightfall.
+  scoutRole(role: "narrower" | "finalizer"): GameView & { error?: string } {
+    const err = scoutChooseRole(this.state, role);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  scoutNarrow(keep: number[]): GameView & { error?: string } {
+    const err = scoutNarrow(this.state, keep);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  scoutFinalize(pick: number): GameView & { error?: string } {
+    const err = scoutFinalize(this.state, pick);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  deployFile(unitId: string, cell: { row: number; col: number }): GameView & { error?: string } {
+    const err = deployFile(this.state, unitId, cell);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  deployRest(): GameView & { error?: string } {
+    const err = deployRest(this.state);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  addressFile(unitId: string, amount: number): GameView & { error?: string } {
+    const err = addressFile(this.state, unitId, amount);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  async beginBattle(): Promise<GameView & { error?: string }> {
+    const err = beginBattle(this.state);
+    if (err) return { ...this.view(), error: err };
+    const cont = await battleContinue(this.state, this.battleDeps());
+    await this.refreshCredits();
+    return cont ? { ...this.view(), error: cont } : this.view();
+  }
+  async dayEnd(choice: "hold" | "reposition" | "withdraw", pick?: number): Promise<GameView & { error?: string }> {
+    const err = await dayEndChoice(this.state, this.battleDeps(), choice, pick);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+  /** Test hook until the Command Claim narrative exists: grant or revoke Full Command. */
+  grantFullCommand(on: boolean): GameView {
+    this.state.player.fullCommandGranted = on;
+    this.log("player", "APPLY", `Full Command ${on ? "granted" : "revoked"} (test hook).`);
+    return this.view();
+  }
+
+  async battleContinue(): Promise<GameView & { error?: string }> {
+    const err = await battleContinue(this.state, this.battleDeps());
+    await this.refreshCredits();
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+
+  /** Sub-/Full Command: the lord's orders for one round. */
+  async battleRound(orders: unknown[]): Promise<GameView & { error?: string }> {
+    const err = await battleCommandRound(this.state, this.battleDeps(), orders ?? []);
+    await this.refreshCredits();
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+
+  async battleChoose(key: "A" | "B"): Promise<GameView & { error?: string }> {
+    const err = await battleChoose(this.state, this.battleDeps(), key);
+    return err ? { ...this.view(), error: err } : this.view();
+  }
+
+  battleFinish(disposition?: "settle" | "sell"): GameView & { error?: string } {
+    const err = finishBattle(this.state, disposition);
+    const record = this.state.battle_history.at(-1);
+    if (err) return { ...this.view(), error: err };
+    if (record) this.ledgerNote(`Written in the chronicle: ${record.summary}`, "steward");
+    if (this.state.player.dead) this.ledgerNote("The lord of Fontenay is dead. The chronicle ends here.", "steward");
+    else if (this.state.player.captive) this.ledgerNote("The ransom could not be met. The lord of Fontenay remains in his captors' hands; the chronicle ends here.", "steward");
+    return this.view();
+  }
+
+  /** Eberhard's door and the test hook: raise a call to arms now. */
+  raiseCall(kind: BattleCallKind): GameView & { error?: string } {
+    if (this.state.battle_call || this.state.battle_session) return { ...this.view(), error: "A call is already open." };
+    raiseCallDirect(this.state, kind);
+    return this.view();
+  }
+
   async advanceSeason(): Promise<SeasonResult> {
     if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
       markEstateAbandoned(this.state);
       return { ...this.view(), effects: [{ kind: "info", text: ABANDONED_GAME_OVER }] };
     }
+    if (this.state.battle_session) {
+      return { ...this.view(), effects: [], error: "The lord is in the field. The season cannot turn until the battle is done." };
+    }
+    if (this.state.battle_call) {
+      // An unanswered call lapses when the season turns, as if refused.
+      const text = refuseCall(this.state, this.battleDeps());
+      this.ledgerNote(text, "steward");
+    }
+    healPersonalFully(this.state);
     const effects: SeasonEffectLine[] = [];
+    effects.push(...tickWounds(this.state, createRng(seedFromString(`wounds:${this.state.meta.year}:${this.state.meta.season}:${this.state.meta.turn}`))));
     const lapsing = this.pending.filter((p) => p.status === "pending");
     this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
     this.askedAboutId = null;
@@ -761,6 +907,7 @@ export class GameController {
     const ledgerBefore = snapshotSeasonLedger(beforeSeason);
     archiveEstateSeason(this.state, beforeSeason);
     effects.push(...resolveAgricultureAndProjects(this.state));
+    effects.push(...tickMilitary(this.state));
     this.speakCompletedProjects(beforeSeason);
     this.speakHuntReturns();
     syncTradeFromFeatures(this.state);
@@ -774,6 +921,11 @@ export class GameController {
     for (const ev of rolled) {
       effects.push({ kind: "event", text: ev.resolvedText });
       this.log("referee", "EVENT", `${ev.id}: ${ev.resolvedText}`);
+    }
+    const call = raiseBattleCall(this.state, rolled.map((e) => e.id));
+    if (call) {
+      effects.push({ kind: "info", text: `A call to arms: ${call.text}` });
+      this.log("engine", "EVENT", `Call to arms raised (${call.kind}).`);
     }
 
     const engineLines = effects.map((e) => e.text);

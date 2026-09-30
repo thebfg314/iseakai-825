@@ -39,6 +39,7 @@ function withMerchant(name: (typeof MERCHANT_VISITORS)[number]["name"]): WorldSt
     location: "fontenay",
     notes: visitor.notes,
     memories: [],
+    wantsTalk: false,
   });
   return state;
 }

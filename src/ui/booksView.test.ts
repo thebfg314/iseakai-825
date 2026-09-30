@@ -70,7 +70,7 @@ function mill(partial: Partial<Project> = {}): Project {
 
 describe("books tabs", () => {
   it("names the three tabs in hall language", () => {
-    expect([...BOOKS_TABS]).toEqual(["estate", "labours", "customs"]);
+    expect([...BOOKS_TABS]).toEqual(["estate", "labours", "customs", "arms"]);
     expect(BOOKS_TAB_LABELS.estate).toBe("Estate");
     expect(BOOKS_TAB_LABELS.labours).toBe("Labours");
     expect(BOOKS_TAB_LABELS.customs).toBe("Customs");

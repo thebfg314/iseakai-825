@@ -43,7 +43,7 @@ describe("expansion hire unlocks", () => {
     for (const id of EXPANSION_IDS) {
       const spec = specialistById(id)!;
       expect(specialistUnlocked(state, spec)).toBe(false);
-      expect(specialistHireBlocked(state, spec)).toMatch(/not yet|still small|old acre|workshop|timber forge|defence|defense/i);
+      expect(specialistHireBlocked(state, spec)).toMatch(/not yet|still small|old acre|workshop|timber forge|no one for a captain/i);
     }
     expect(recommendableHires(state)).toEqual([]);
     expect(inferHireProposals(state, "Hire Otto the reeve.")).toEqual([]);
@@ -93,7 +93,7 @@ describe("expansion hire unlocks", () => {
     expect(specialistUnlocked(state, specialistById("vinedresser")!)).toBe(true);
   });
 
-  it("unlocks Hildegard on textile_workshop, Lorenzo on bloomery or mill_forge, Eberhard on a real defence", () => {
+  it("unlocks Hildegard on textile_workshop, Lorenzo on bloomery or mill_forge, Eberhard once there are men of the lord's own to drill", () => {
     const state = boot();
     expect(specialistUnlocked(state, specialistById("head_seamstress")!)).toBe(false);
     expect(specialistUnlocked(state, specialistById("copper_smith")!)).toBe(false);
@@ -109,12 +109,16 @@ describe("expansion hire unlocks", () => {
     other.holdings[0].features.push("mill_forge");
     expect(specialistUnlocked(other, specialistById("copper_smith")!)).toBe(true);
 
-    const hall = boot();
-    hall.holdings[0].features.push("tower");
-    expect(specialistUnlocked(hall, specialistById("captain")!)).toBe(true);
-    const gate = boot();
-    gate.holdings[0].features.push("palisade");
-    expect(specialistUnlocked(gate, specialistById("captain")!)).toBe(true);
+    // Design review, item 12: a wall alone does not call for a captain; men to drill do.
+    const wall = boot();
+    wall.holdings[0].features.push("palisade", "tower");
+    expect(specialistUnlocked(wall, specialistById("captain")!)).toBe(false);
+    const levy = boot();
+    levy.military.units.push({ id: "u1", sheetId: "peasant_levy", name: "The villa's men", veteran: false, strength: 20, raisedTurn: 1 });
+    expect(specialistUnlocked(levy, specialistById("captain")!)).toBe(true);
+    const gear = boot();
+    gear.custom_resources.push({ id: "crossbow_hardware", name: "crossbow locks and prods", unit: "piece", amount: 3, priceMin: 10, priceMax: 20 });
+    expect(specialistUnlocked(gear, specialistById("captain")!)).toBe(true);
   });
 
   it("lists every expansion person on the closed catalog", () => {

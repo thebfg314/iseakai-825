@@ -31,6 +31,7 @@ function presentMerchant(game: GameController, name: keyof typeof MERCHANT_INTRO
     role: "merchant",
     location: "fontenay",
     memories: [],
+    wantsTalk: false,
   });
 }
 

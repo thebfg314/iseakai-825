@@ -70,8 +70,10 @@ import {
 import { GlossaryProvider, GlossaryText } from "./GlossaryText";
 import { EmptyVillaScreen } from "./emptyVilla";
 import { ShopPanel } from "./ShopPanel";
+import { BattleLab } from "./lab/BattleLab";
+import { BattleScreen } from "./battle/BattleScreen";
 
-type Screen = "title" | "game";
+type Screen = "title" | "game" | "lab";
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("title");
@@ -86,6 +88,18 @@ export function App() {
   const [displayEmotion, setDisplayEmotion] = useState<AldricEmotion>("neutral");
   const [loopingSeason, setLoopingSeason] = useState<Season | null>(null);
   const [seasonTransitionPlay, setSeasonTransitionPlay] = useState<SeasonTransitionPlay | null>(null);
+  /** The main screen pans right to the field while a battle session is open. */
+  const [onField, setOnField] = useState(false);
+  const inBattle = Boolean(view?.state.battle_session);
+  useEffect(() => {
+    if (inBattle) {
+      setOnField(true);
+      playSfx(HALL_HORN, true);
+    } else {
+      setOnField(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pan follows the session opening/closing only
+  }, [inBattle]);
   const scroller = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
@@ -326,6 +340,30 @@ export function App() {
     if (cues.coins) playSfx(COINS);
   }
 
+  function answerCall(accept: boolean) {
+    void withBusy(() => window.api.answerCall(accept));
+  }
+
+  function musterRide(bringIds: string[]) {
+    void withBusy(() => window.api.musterAndRide(bringIds));
+  }
+
+  function battleContinue() {
+    void withBusy(() => window.api.battleContinue());
+  }
+
+  function battleChoose(key: "A" | "B") {
+    void withBusy(() => window.api.battleChoose(key));
+  }
+
+  function battleRound(orders: unknown[]) {
+    void withBusy(() => window.api.battleRound(orders));
+  }
+
+  function battleFinish(disposition?: "settle" | "sell") {
+    void withBusy(() => window.api.battleFinish(disposition));
+  }
+
   async function send() {
     if (!view || !draft.trim() || busy || sendLock.current) return;
     const text = draft.trim();
@@ -367,8 +405,27 @@ export function App() {
       onVolume={async (patch) => {
         setSettings((await window.api.setSettings(patch)) as AppSettings);
       }}
+      onRaiseCall={
+        screen === "game" && view && !view.state.battle_session
+          ? (kind) => {
+              setSettingsOpen(false);
+              void withBusy(() => window.api.raiseCall(kind));
+            }
+          : undefined
+      }
+      fullCommandGranted={view?.state.player.fullCommandGranted}
+      onGrantFullCommand={screen === "game" && view ? (on) => void withBusy(() => window.api.grantFullCommand(on)) : undefined}
     />
   );
+
+  if (screen === "lab") {
+    return (
+      <>
+        <BattleLab onExit={() => setScreen("title")} />
+        {settingsModal}
+      </>
+    );
+  }
 
   if (screen === "title") {
     return (
@@ -383,6 +440,9 @@ export function App() {
           </button>
           <button disabled={busy} onClick={() => void startLoad()}>
             Load Game
+          </button>
+          <button disabled={busy} onClick={() => setScreen("lab")} title="Jump straight into a battle to test the combat system">
+            Battle Lab
           </button>
           <button disabled={busy} onClick={() => setSettingsOpen(true)}>
             Settings
@@ -407,6 +467,32 @@ export function App() {
     );
   }
 
+  if ((view.state.player.dead || view.state.player.maimed || view.state.player.captive) && !view.state.battle_session) {
+    return (
+      <>
+        <div className="title-screen empty-villa" role="dialog" aria-label={view.state.player.dead ? "The lord is dead" : view.state.player.captive ? "The lord is a captive" : "The lord is maimed"} style={{ backgroundImage: `url(${TITLE_MENU_BACKGROUND})` }}>
+          <p className="empty-villa-words">
+            {view.state.player.dead
+              ? "The lord of Fontenay fell in battle. The villa passes to other hands, and the chronicle of this house ends here."
+              : view.state.player.captive
+                ? "Taken in battle, and the chest could not meet the ransom. No one came with the rest. The lord of Fontenay stays in his captors' hands; the villa passes to other hands, and the chronicle of this house ends here."
+                : "Two wounds that never healed. The lord of Fontenay can no longer sit a horse nor hold a court; the villa passes to other hands, and the chronicle of this house ends here."}
+          </p>
+          <nav className="title-menu">
+            <button className="primary" disabled={busy} onClick={() => setScreen("title")}>
+              Title
+            </button>
+            <button disabled={busy} onClick={() => void startNew()}>
+              New Game
+            </button>
+          </nav>
+        </div>
+        {error && <p className="error">{error}</p>}
+        {settingsModal}
+      </>
+    );
+  }
+
   if (view.state.estateAbandoned) {
     return (
       <>
@@ -425,6 +511,9 @@ export function App() {
 
   return (
     <GlossaryProvider>
+    <div className="stage-wrap">
+    <div className={onField ? "stage on-field" : "stage"}>
+    <div className="stage-panel">
     <div className="app">
       <header className="topbar">
         <div className="topbar-title">
@@ -446,6 +535,11 @@ export function App() {
           onTransitionEnd={() => setSeasonTransitionPlay(null)}
         />
         <div className="top-actions">
+          {inBattle && (
+            <button className="primary to-field" onClick={() => setOnField(true)} disabled={busy}>
+              To the field
+            </button>
+          )}
           <button onClick={() => setScreen("title")} disabled={busy}>
             Title
           </button>
@@ -471,6 +565,21 @@ export function App() {
         </div>
       )}
       {busy && <div className="banner muted">Waiting on the court…</div>}
+      {view.state.battle_call && !inBattle && (
+        <div className="banner call-to-arms">
+          <span className="call-text">
+            <strong>A call to arms.</strong> {view.state.battle_call.text}
+          </span>
+          <span className="call-actions">
+            <button className="primary" disabled={busy} onClick={() => answerCall(true)}>
+              Answer the call
+            </button>
+            <button disabled={busy} onClick={() => answerCall(false)}>
+              Refuse
+            </button>
+          </span>
+        </div>
+      )}
       {view.pending.length > 0 && (
         <div className="banner pending">
           <GlossaryText text={confirmBanner(view.pending.length)} />
@@ -645,9 +754,35 @@ export function App() {
           }}
         />
       </div>
-
-      {settingsModal}
     </div>
+    </div>
+    <div className="stage-panel field-panel" aria-hidden={!onField}>
+      {inBattle && (
+        <BattleScreen
+          view={view}
+          busy={busy}
+          onReturn={() => setOnField(false)}
+          onMuster={musterRide}
+          onContinue={battleContinue}
+          onChoose={battleChoose}
+          onRound={battleRound}
+          onFinish={battleFinish}
+          full={{
+            onScoutRole: (role) => void withBusy(() => window.api.scoutRole(role)),
+            onScoutNarrow: (keep) => void withBusy(() => window.api.scoutNarrow(keep)),
+            onScoutFinalize: (pick) => void withBusy(() => window.api.scoutFinalize(pick)),
+            onDeploy: (unitId, cell) => void withBusy(() => window.api.deployFile(unitId, cell)),
+            onDeployRest: () => void withBusy(() => window.api.deployRest()),
+            onAddress: (unitId, amount) => void withBusy(() => window.api.addressFile(unitId, amount)),
+            onBegin: () => void withBusy(() => window.api.beginBattle()),
+            onDayEnd: (choice, pick) => void withBusy(() => window.api.dayEnd(choice, pick)),
+          }}
+        />
+      )}
+    </div>
+    </div>
+    </div>
+    {settingsModal}
     </GlossaryProvider>
   );
 }
@@ -878,6 +1013,9 @@ function SettingsModal({
   onSave,
   onLoadModels,
   onVolume,
+  onRaiseCall,
+  fullCommandGranted,
+  onGrantFullCommand,
 }: {
   settings: AppSettings;
   models: { id: string }[];
@@ -886,6 +1024,11 @@ function SettingsModal({
   onSave: (s: AppSettings) => Promise<void>;
   onLoadModels: () => Promise<void>;
   onVolume: (patch: { masterVolume?: number; musicVolume?: number }) => Promise<void>;
+  /** Testing hook: raise a call to arms in the running game. */
+  onRaiseCall?: (kind: "summons" | "raid" | "bandits") => void;
+  /** Testing hook until the Command Claim narrative exists. */
+  fullCommandGranted?: boolean;
+  onGrantFullCommand?: (on: boolean) => void;
 }) {
   const [provider, setProvider] = useState<LlmProvider>(settings.provider);
   const [providers, setProviders] = useState(settings.providers);
@@ -1034,6 +1177,22 @@ function SettingsModal({
                 </option>
               ))}
             </select>
+          </label>
+        )}
+        {onRaiseCall && (
+          <div className="settings-testing">
+            <p className="settings-help">Testing the field: raise a call to arms now instead of waiting for the season to bring one.</p>
+            <div className="p-actions">
+              <button onClick={() => onRaiseCall("summons")}>Summons from the count</button>
+              <button onClick={() => onRaiseCall("raid")}>Northmen on the river</button>
+              <button onClick={() => onRaiseCall("bandits")}>Outlaws on the road</button>
+            </div>
+          </div>
+        )}
+        {onGrantFullCommand && (
+          <label className="lab-check settings-testing">
+            <input type="checkbox" checked={Boolean(fullCommandGranted)} onChange={(e) => onGrantFullCommand(e.target.checked)} />
+            Full Command granted (test hook; the Command Claim narrative will set this later)
           </label>
         )}
         <div className="p-actions">

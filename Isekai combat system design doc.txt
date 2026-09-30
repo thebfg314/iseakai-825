@@ -1,0 +1,1135 @@
+Isekai 825: Carolingian France — Design Doc
+Combat System, Stat Framework & LLM-NPC Integration (Working Draft)
+1. Core Architecture
+LLM-NPC Layer: Player converses freely with NPCs (steward, blacksmith, etc.). The LLM can call tools to pull historical/game data, then proposes structured game-state diffs (new tech, policy, unit types). Player approves/denies each diff before it's applied.
+Deterministic Combat Engine: Plain code, not LLM-driven. Owns all math — stats, tags, formulas, round resolution. The LLM narrates and translates player intent into legal orders the engine understands; it does not adjudicate outcomes.
+Seam between the two: The LLM's job when a player invents new tech/units is to propose a tag list + base stat block (data), not to decide what those tags do in combat (that's the engine's job, defined once in the tag registry). This keeps free-form conversation from being able to bypass game balance.
+2. Historical Momentum System
+
+Major historical events (e.g., Battle of Fontenoy, 841 civil war) are assigned a momentum score (1–10) reflecting how structurally overdetermined the outcome is.
+
+High momentum (8–10): Outcome will occur in some form almost regardless of player action. Player actions can reroute the outcome (delay it, change its flavor/mechanism, change who's physically present) but not erase it.
+Example: Player helps Louis the Pious win Fontenoy tactically. The underlying succession pressure remains — Louis may survive but be forced into similar concessions later, or may win the battle but die of wounds shortly after, with his sons taking over on the original rough schedule anyway.
+Low momentum (1–3): More contingent on immediate local factors; a single strong play can plausibly change it outright.
+Changing a high-momentum event's actual outcome (not just its flavor) requires the player to have already lowered that event's momentum score through unrelated prior actions over preceding years (shifting a duke's loyalty, funding a faction, altering supply lines). This is a long-game mechanic, not a single dice roll — prevents trivializing history via one lucky battle.
+Momentum should be visible to the player in some abstracted form (chronicle commentary, NPC reactions) so "you mattered, but history is bigger than you" lands as a felt design beat, not a hidden dice roll.
+3. Phase Structure
+
+Each phase is a menu screen, not a map you click around on.
+
+Muster — Who shows up and with what. Driven by your existing stats (stewardship, granary reserves, loyalty of vassals) plus season and distance. This is where all your prior governance decisions from the LLM-NPC layer quietly pay off or bite you. Mostly not an active choice point — see §4 below. Logistics layer: Muster isn't just "who shows up" but "what they show up sustained by" — arrow stock, food, remount horses, and other consumables should be tracked here rather than as per-battle combat mechanics. A unit's raw stats assume adequate supply; whether that supply actually holds up over a campaign (especially a siege or extended multi-battle push) is a muster/logistics concern, not something limited_ammo or similar tags should model per-round (see the ammo correction under §7.6). This is currently unbuilt — flagged in §11.
+Approach/Scouting — Send scouts, bribe locals, ask the Church for intelligence. Risk/reward choices that reveal enemy composition and let you pick terrain: intercept at a ford, wait behind a palisade, ambush in a wood. Terrain choice should swing outcomes hard — that's true to the period and gives menu choices real weight without needing a grid.
+Deployment — Formation (shield wall, skirmish screen, cavalry reserve). This is where "sometimes you're the general, sometimes you're not" comes in cleanly via the Command Tier variable (full detail in §4):
+Full command: you set formation and terrain for the whole force.
+Sub-command: you only control your own contingent (e.g., "hold the left"), while the overall battle plan is set by your liege/NPC commander and resolved abstractly around you.
+Rank and file: no command at all — your choices become personal (fight, hold, flee, try for a heroic kill) and affect your character's survival/glory/reputation rather than the battle's macro outcome.
+Battle Rounds — Resolved in abstract exchanges, not real-time skirmish. Each round: a short menu (press the attack / hold / feint / commit reserve / request quarter) with visible modifiers so players can learn the system, a dice roll shaped by your combat-power score, and morale updates. Most Carolingian-era engagements were decided by rout, not annihilation — morale is the central resource, more than HP. (Full mechanics in §5–7.)
+Aftermath — Casualties, loot, prisoners, and reputation consequences that feed back into the broader game state: your liege's opinion of you, unrest at home, disease among returning levies. (See §10 for how this ledger splits out.)
+4. Command Tiers
+
+All battlefield systems (intel, deployment, round choices) are filtered through a single variable: Command Tier. One engine, three views.
+
+Tier	Intel	Deployment	Round Choices	What's at Stake
+Rank and File	None — only rumor/flavor, possibly wrong (can apply a morale modifier)	None — told where you're placed; cosmetic choices only (weapon, position near banner)	Personal: press forward, hold, flee, drag a comrade back	Your character's survival, reputation, glory — not the battle
+Sub-Command	Real numbers for your own column only; can spend resources to scout ahead of your column	Deploy your own contingent (flank/center, deep/wide, hold/advance) within someone else's overall plan	Column-level: hold, countercharge, fall back to reform, request reserves from command	Your column's fate; some influence on the wider battle
+Full Command	Full scouting tree — cost/risk/reward, sets terrain and initial matchup	Sets the whole field	Battle-level: commit reserves, general retreat, exploit a gap, sue for parley	The battle's outcome
+
+Muster is mostly not a choice point — it's the accumulated result of prior governance/relationship decisions (stewardship, granary reserves, vassal loyalty, season, distance).
+
+4.1 Rank-and-File: Vignette Framework
+
+Rank-and-File is designed as the game's tutorial layer for the combat system, delivered as a choose-your-own-adventure-style pool of short narrative vignettes rather than the full grid UI.
+
+What unit the player is actually part of: Caballarii (§7.7) by default, not Peasant Levy. Historical grounding: the Carolingian capitulary system's wealth-tiered military obligation made cavalry service itself a status marker — anyone with enough land to count as noble, even minimally, was expected to serve mounted. A starting player character arrives on his own horse with his own modest gear, one more mounted man in the line — not commanding anyone, not part of an elite household retinue (no status for that yet). Elite Foot (§7.9) is a legitimate narrative exception, not the default — appropriate for a noble serving directly in a greater lord's household before holding land of his own, or a genuinely impoverished noble-in-name-only who can't afford a horse.
+
+Vignette presentation pipeline: a vignette isn't shown to the player raw the instant it's drawn. The sequence is: (1) randomly draw a vignette from the applicable phase pool, (2) the LLM-NPC layer generates a short bridging narration connecting the current battle state to that vignette's setup — closing whatever gap exists between wherever the story currently is and the drawn card's opening beat, (3) then the vignette's own pre-written text and choices are presented. This exists so drawn vignettes never feel like a jarring cut from an unrelated scene — the bridge is always generated fresh, never pre-written, since it has to react to whatever actually just happened.
+
+Only phases with a real choice belong in the drawn vignette pool. Pre-Battle/Muster & Approach and Post-Battle were originally included, but neither actually offers the character any agency — the real decisions there (where to intercept, terrain, scouting) belong entirely to Full Command, and post-battle outcomes (Wounds rolled, veteran acquired, escape/kill/capture already resolved) are already determined by mechanics that fired during the fight itself. A "vignette" in either slot would just be narrating results the dice already decided. Both are cut from the drawn pool and instead handled as standard narrated paragraphs the game always generates — scene-setting and outcome reporting, not player choices.
+
+This leaves 4 real choice-phases. Mid-Battle Crisis draws more than once, scaling with how long the battle runs — an initial 1–3 cap was playtested directly and found too sparse against the actual felt arc of a battle; raised to up to 6, with the 24-card pool sized specifically to support that without repeats feeling likely:
+
+Phase	Draws	Mechanic it teaches
+Opening Exchange / Deployment	1	Placed in formation with no say; first incoming ranged fire — skirmish_volley (§7.4) felt from the receiving end; a first felt sense of ATK/DEF/Damage (§6) — armor matters, numbers matter, even a weak hit sometimes connects
+Mid-Battle Crisis	Up to 6 (scales with battle length; playtested as too sparse at 1–3 given the full battle arc)	Flanking/Disordered scrum from inside it (§8.4–8.5); terrain underfoot (§9.1); the personal wound-risk roll (§8.7); the unit's own tags in action (e.g., drilled_spear unlocking hold_formation to brace a charge, §7.7) — tags aren't abstract, they're why something is currently possible or not. Pool expanded to 24 cards (from an initial 8) specifically so multiple High-Renown opportunities are mathematically reachable in one battle, not capped at one by pool size alone
+Turning Point	1	The core design principle stated plainly: personal choices affect the player's own survival/glory, not the battle's outcome; carries a discrete Renown award (see below)
+Rout/Aftermath (conditional — only if it routs)	0–1	The escape/kill/capture math (§8.7) as a felt choice, not a silent roll. Generated dynamically by the LLM-NPC layer, not a fixed card pool — same reasoning as Sub-Command's objectives (§4.2): this phase's real content depends on the exact battle state (who's pursuing, the actual computed escape/kill/capture fractions), which a generic pre-written card can't track. Content note for the LLM: translate the actual computed fractions into a felt choice — never invent its own odds that might disagree with the real math. Gated by Historical Momentum (§2), still needing its own quantification formula (flagged in §11): §4's core principle — personal choices affect survival/glory, never the battle's macro outcome — was already unconditional regardless of momentum. This adds a narrower nuance: how much a player's choices can even sway their own specific unit's local fate (hold vs. break) also scales with momentum. At high momentum, the unit's fate is effectively locked to the larger battle's outcome — Rout/Aftermath narrates it happening (flanked by enemy Caballarii, etc.), no real mechanical lever. At low momentum, it's technically possible — rare — for an exceptional choice to be the reason this one unit holds when it might not have, though never the whole battle or the army's fate. Personal survival, Renown, and glory remain fully player-driven at every momentum level; only the unit's local fate bends.
+
+Renown-tier ceiling, worth stating explicitly: with only 2 High-tier vignettes across the whole pool (as originally written), the maximum reachable High-Renown opportunities in one battle was capped at 2 regardless of luck — not by design, just an artifact of how few High-tier cards existed. Expanding Mid-Battle Crisis to 24 cards with 5 High-tier entries (up from 1) fixes this: drawing up to 3 from that pool plus Turning Point's 1 makes up to 4 High-Renown opportunities in a single lucky battle genuinely reachable.
+
+Renown at this tier has three parts, previewing every Renown source the player will fully control later — scaled down and partial, not the full mechanic. §5.2.1's Renown_delta = morale_dealt − morale_taken requires commanding units, which a Rank-and-File character doesn't — they're a member of one Caballarii unit, not its commander. Applying that formula directly here would be meaningless. Instead:
+
+Personal combat performance. §8.7's existing "along for the ride" framing — the unit's own ATK/DEF resolve combat, the player's only personal exposure being the flat 5%-per-round wound check — has no hook for personal damage dealt or avoided. Add one, reusing the same formula shape as everything else in this system rather than inventing new math, run once per round the player's unit is Engaged, alongside (not replacing) the existing wound-risk check:
+   personal_damage_dealt = hit_multiplier(player_ATK, engaged_enemy_DEF) × player_Damage_roll
+   personal_damage_taken = hit_multiplier(engaged_enemy_ATK, player_DEF) × engaged_enemy_Damage_roll
+
+Accumulated across the battle into a personal delta.
+
+Turning Point discrete award. A flat +/- Renown outcome from the vignette choice itself ("press forward over the fallen knight" vs. "hold") — simple, legible cause-and-effect teaching the concept before the continuous formula matters.
+
+Total_delta = personal_combat_delta (accumulated across the battle) + Turning_Point_discrete_award
+
+(Second design review, item 7: an earlier draft added a diminished share of the file's own objective — Objective_bonus × 0.15–0.2 under its NPC leader. Cut. One man in the line has no say in his file's orders, and the file's collective performance does not touch his name; that begins at Sub-Command.)
+
+The full continuous unit-command formula and the full, undiminished Objective_bonus are what the player graduates into at Sub-Command — this tier's two-part version is a deliberately smaller preview of the same underlying sources, not a separate system.
+
+Pool size: roughly 40 vignettes total, split across these 4 phases (weighted toward Mid-Battle Crisis given its multiple draws, up to 6). A battle draws 4–8 vignettes typically, depending on how long the fight runs.
+
+The cut Pre-Battle and Post-Battle phases still carry real information — morale as a resource, the Command Pool existing above the character if Addressed (§5.2.2), Wounds list entries (§5.2), veteran acquisition (§7.19), an NPC reaction feeding the Renown delta — just delivered as standard narration rather than a drawn choice card.
+
+Graduation to Sub-Command is a combined trigger, not a pure Renown threshold — consistent with §5.2.1 already establishing command capacity as resource-driven, not rank-driven. Renown is the narrative door-opener (enough of it gets a lord to notice and make the offer); affording/mustering one real unit is the mechanical unlock that makes accepting it possible. Neither alone is sufficient.
+
+The actual 40 vignette cards are content, not mechanics — they belong in a separate file, not this design doc. Flagged in §11.
+
+4.2 Sub-Command: Objective & Grading Framework
+
+Sub-Command wraps the existing grid combat system (§8) — no new combat mechanics needed here, only an objective-and-grading layer around it.
+
+Objectives must be generated dynamically by the LLM-NPC layer, not drawn from a fixed pre-written pool. A fixed objective library has to reference specific unit types to mean anything ("hold the line with your spearmen" is meaningless if the unit in question is, say, a custom scythe-fronted war chariot the player invented via the tech-invention system, §1). Once players can build genuinely novel units, the space of possible battlefield situations is unbounded — dynamic generation isn't a nice-to-have, it's structurally required the moment custom units exist at all.
+
+Grading criteria, evaluated by the LLM against the actual battle log (all of which the combat engine already tracks — no new logging needed):
+
+Whether the assigned column/flank held, collapsed, or advanced as ordered
+Casualties relative to what a reasonable commander should expect
+Renown delta from units under the player's control, using the existing formula (§5.2.1) unmodified
+The player's own personal survival/wounds (§8.7)
+Explicit completion check against the specific objective issued
+
+Renown from objectives is additive, not a replacement for the base formula:
+
+Renown_delta (Sub-Command) = [existing morale_dealt − morale_taken, §5.2.1] + Objective_bonus
+
+Objective_bonus is LLM-judged post-battle, scaled to the objective's stated difficulty, and symmetric with the base formula's existing ability to go negative — a clearly failed critical objective should be a real penalty, not just a missed bonus.
+
+This entire subsystem is primarily an LLM-NPC-layer design item (objective generation, post-battle grading narration) rather than something requiring new combat-engine mechanics — flagged in §11 to keep that split explicit.
+
+5. Stat Blocks
+5.1 Shared axes (both player character and units, with one exception)
+Stat	Meaning
+HP	Abstracted "cohesion" — for units, represents the body's ability to keep functioning as a fighting force, not literal per-soldier hit points
+ATK	Base damage-dealing power per round
+DEF	Reduces incoming damage (armor, shield wall, terrain, fortification)
+Damage	Roll range applied to enemy HP when ATK beats DEF
+Range	0 = melee, 1 = short/skirmish, 2 = long (bows), 3 = extended (crossbow, later muskets) — determines who strikes first before closing
+Speed/Mobility	Determines who can choose to engage/disengage; reinforcement and retreat timing
+Morale	Units only — deliberately not tracked for the player character. For units, this is the real determinant of routing/death (breaking well before HP hits zero, hit by HP loss, losing a commander, allies routing, being flanked). The player character does not have a personal Morale stat, on principle: if it existed and could cross a threshold, it would mechanically override player agency at low values (forced fleeing, etc.) exactly when a choice matters most. The player is assumed to have whatever resolve they choose to have — fleeing when the unit around them breaks, or standing when it doesn't, is always a presented narrative choice, never an automatic stat-triggered outcome.
+5.2 Player-specific stats
+Command/Renown — single merged stat (dropped separate "Prowess" — redundant with ATK/DEF/Damage already present at personal level; dropped judging "skill" between players as pointless). Full mechanics below.
+Wounds — persistent list, not a single number. Each wound is an object with location, cause, and mechanical + narrative effect:
+json
+{
+  "location": "left eye",
+  "cause": "arrow, Battle of Fontenoy",
+  "stat_effect": { "ranged_defense": -1 },
+  "renown_effect": +2,
+  "narrative_flags": ["scarred_veteran", "unlocks_dialogue: how_i_lost_my_eye"]
+}
+
+Wounds accumulate; enough of them can kill or force retirement of a character. Keeps long-campaign stakes real.
+
+5.2.1 Rank and Renown Thresholds
+
+Renown is a single accumulating number gating rank. Thresholds are deliberately steep — each rank is a much larger climb than the last:
+
+Rank	Title	Renown Required
+1	Minor Noble (start)	1
+2	Viscount	100
+3	Count	500
+4	Duke	1000
+5	King	2000
+
+Titles are sticky — never revoked by Renown dropping. Standing relative to your title (i.e., holding a rank with Renown well below where you earned it) is a narrative/political concern for the LLM-NPC layer, not a combat-system one: it should feed increased risk of rivals testing you, plots, disloyalty, etc., rather than any mechanical stat penalty.
+
+Units controllable is a resource question, not a rank one. Command capacity is driven by stewardship, wealth, and muster capability (§3) — a minor noble frequently can't reliably field more than a handful of levy, regardless of personal Renown. Rank correlates loosely (higher ranks tend to have more resources) but doesn't directly cause command capacity. Most play below Count rank is realistically Rank-and-File; Sub-Command can be pushed toward earlier through strong resource management, but shouldn't be assumed as a default at low rank.
+
+Renown delta per battle:
+
+Renown_delta = total_morale_damage_dealt_by_your_units − total_morale_damage_taken_by_your_units
+
+Counts only units you personally control (per the "main character syndrome" simplification — other commanders', allied or enemy, Renown/Command stats are never tracked). This formula does real work on its own: crushing a weak enemy cleanly (near-zero damage taken) nets strongly positive Renown; a weak enemy who still hurts you meaningfully before falling eats into that gain automatically; and punching above your weight — dealing heavy damage to a superior force even in a battle you ultimately lose — can still net positive Renown, since the formula never checks who technically won.
+
+Personal cowardice (failing to answer a muster call, abandoning an ally, refusing to pay a levy fee) is handled entirely by the LLM-NPC layer as a narrative/political consequence, not a Renown-delta combat penalty.
+
+Renown floor: 1. Never drops below the Rank 1 threshold regardless of how many battles go badly — a losing streak can stall advancement but doesn't erase a starting noble's basic standing.
+
+No per-battle cap. A single extraordinary battle can vault Renown dramatically — this is intentional; legends are made this way (a Joan of Arc or Luke Skywalker moment), and the combat system shouldn't artificially throttle a truly exceptional performance. At Rank-and-File specifically, this is expressed through High-tier vignette choices paying a flat 30 Renown (vs. Low's 3 and Medium's 6) when their risky option is taken and succeeds — rarity comes from how few High-tier cards exist in the pool and from requiring both the choice and its success roll, not from a separate chance-based multiplier layered on top. Historically grounded: full elevation to real noble rank from a single battle was genuinely rare — real, but rare enough that period writers reached for King David (shepherd to king) as their justifying example rather than treating it as ordinary.
+
+Battle is the primary, easiest path to Renown, consistent with the historical pattern this game is drawing on. Governance and narrative sources of Renown (a shrewd marriage, a successful harvest policy, besting a rival politically) are real but live in the LLM-NPC layer's design, tracked separately and not detailed in this combat-focused document.
+
+Holding a rank with Renown below its threshold (from a bad losing streak after promotion) doesn't strip the title, but should trigger a random mishap/instability table in the LLM-NPC layer — rivals sensing weakness, assassination attempts, disloyal vassals — reflecting the real risk of holding a rank you're not currently living up to.
+
+Reaching King is not purely a Renown threshold — crossing 2000 makes the ambition plausible, but actually taking the throne should require its own narrative chain of events (there's already a king; someone has to be replaced or succeeded) rather than resolving automatically. Flagged in Open Items as an LLM-NPC-layer design item, not a combat-system one.
+
+5.2.2 Command Pool, Address the Troops & Rally
+
+Command/Renown's battle-facing effect is a Command Pool: a per-battle resource (refreshed fresh at the start of each battle, distinct from your permanent Renown score) that acts as a morale shield, absorbing loss before a unit's own Morale stat takes the hit.
+
+Command Pool = Renown_stat × Rank_multiplier
+
+Suggested Rank_multiplier, so climbing rank makes existing Renown stretch further, not just unlocking bigger numbers: 1.0 / 1.5 / 2.0 / 2.75 / 3.5 across ranks 1–5.
+
+Per-unit cap: a unit can never hold shield beyond its own base Morale — maximum total (base + shield) is 2× starting Morale. No unit becomes unbreakable regardless of how much pool is thrown at it.
+
+The Command Pool has two separate spending windows, and how much to use in each is a real pre-battle decision:
+
+1. "Address the Troops" (pre-battle, any unit) — during Deployment (§3, step 3), before any rounds begin. No same-cell restriction — the player hasn't taken a battlefield position yet, this is a speech to the assembled army before everyone marches to their spots. Any unit under command can receive pool at the standard 1:1 rate, up to its 2× base Morale cap.
+
+2. "Rally the Line" (in-battle, same-cell only) — a live Battle Round action, drawing from whatever's left of the pool after the pre-battle spend, spent via a Rally [unit] order (1 action point, same weight as Engaging) at the exact moment it's needed.
+
+Requires the player character to be in the same grid cell as the target unit. No remote/relayed option — since a cell can hold multiple units (§8.1), the player can rally anyone sharing their current cell, including their own attached unit, but nothing beyond it.
+Rate: 1 pool point → 1 morale restored, same 2× base Morale cap.
+Once per unit per round — no repeated stacking on the same target in the same round.
+Reaching a different unit means physically moving there first, using the normal movement rules (§8.2) — cost, banking across rounds, and the double cost to leave a fighting cell all apply exactly as they would to any other move.
+
+The real tradeoff: spend heavily before the battle to harden the whole line broadly — good insurance when it's unclear which flank will actually crack, but leaves little or nothing in reserve once the fighting starts. Hold pool back instead, and there's a strong emergency reserve for whatever specific unit actually breaks — but only if the player can physically reach it in time, since Rally's same-cell rule still applies to whatever's left. Broad and safe now, versus precise and powerful later but gated by positioning.
+
+6. Traits/Tags — What They Actually Do
+
+A tag is not flavor text. It's a bundle of hooks that reach into the resolution formula at specific points, and can also unlock/gate entire order types.
+
+Base round formula (concrete)
+
+Framing: a unit isn't one combatant — it's 50–100+ people. There's no single hit-or-miss moment; a real clash between two bodies of troops is hundreds of simultaneous exchanges netting out to some aggregate effect. The formula below treats hit_multiplier as exactly that: what fraction of a unit's blows connected and mattered this round, averaged across the whole body, not a binary roll.
+
+effective_ATK = base_ATK × modifiers
+effective_DEF = base_DEF × modifiers
+hit_multiplier = effective_ATK / (effective_ATK + effective_DEF)
+rolled_Damage = random value within the unit's stated Damage range
+final_HP_damage = round(rolled_Damage × hit_multiplier), minimum 1 once an attack connects
+morale_delta = -(final_HP_damage × morale_damage_ratio) + f(ally_state, commander_presence, terrain, surprise)
+
+hit_multiplier always falls between 0 and 1: equal ATK and DEF → 0.5 (half the rolled damage gets through); ATK heavily favored → multiplier approaches 1; DEF heavily favored → multiplier approaches 0. Modifiers (tags, gang-up bonuses, charge bonuses, armor) are applied to effective_ATK/effective_DEF before this ratio is computed — see the order of operations below.
+
+Order of operations for one attack:
+
+Start with attacker's base ATK, defender's base DEF.
+Apply ATK modifiers (tags, gang-up bonus, shock on charge, etc.) → effective_ATK.
+Apply DEF modifiers (tags, heavy_armor, gang-up DEF penalty, armor_piercing reducing armor-sourced DEF, etc.) → effective_DEF.
+Compute hit_multiplier.
+Roll rolled_Damage within the attacker's stated range.
+final_HP_damage = round(rolled_Damage × hit_multiplier), min 1.
+morale_delta from final_HP_damage, per the 1:1 rule below, plus any contextual modifiers.
+
+Worked example — Heavy Horse (ATK 18) attacking Peasant Levy (DEF 5), no tag modifiers active:
+
+hit_multiplier = 18 / (18 + 5) = 0.783
+rolled Damage (8–14 range) = 11 (midpoint, for illustration)
+final damage = 11 × 0.783 ≈ 9 HP
+morale loss = 9 (1:1 ratio)
+
+Against Peasant Levy's 60 HP / 35 Morale, that's roughly 4 solid hits from morale collapse well before HP depletes — the intended "breaks before it dies" behavior.
+
+Reverse — Peasant Levy (ATK 8, cut by improvised_weapons ×0.7 = 5.6 effective) attacking Heavy Horse (DEF 15):
+
+hit_multiplier = 5.6 / (5.6 + 15) = 0.272
+rolled Damage (4–7 range) = 5 (midpoint)
+final damage = 5 × 0.272 ≈ 1 HP
+
+Barely scratches them — exactly why a peasant mob needs the gang-up mechanic (§8.3) or overwhelming numbers to matter against real cavalry at all, rather than being a viable one-on-one threat.
+
+Damage deals morale damage 1:1 by default. Every point of HP damage a unit takes also costs it 1 point of Morale (morale_damage_ratio = 1.0 baseline), on top of any morale hits from context (allies routing, losing a commander, surprise, flanking shock per §8.3). This means a unit's effective breaking point is whichever pool empties first — a 60 HP / 35 Morale peasant levy routs after taking ~35 damage, well before it's anywhere near dead, which is the intended behavior: most period engagements were decided by rout, not annihilation.
+
+morale_damage_ratio is itself tag-adjustable — a hardened/veteran tag might reduce it (morale_damage_ratio: 0.6, they've seen blood before and don't panic as easily per-wound), while a fragile/undisciplined-adjacent tag could raise it (morale_damage_ratio: 1.3, every hit rattles them further than the wound alone justifies).
+
+Tags inject conditional modifiers into this formula. Example tag definitions:
+
+json
+"shock": {
+  "on_charge": { "ATK_multiplier": 1.5 },
+  "on_charge_stopped": { "morale_delta": -20 },
+  "requires": "Speed >= 3"
+}
+
+"hit_and_run": {
+  "unlocks_order": "skirmish_and_withdraw",
+  "on_skirmish_and_withdraw": {
+    "deal_damage": true,
+    "receive_return_damage": false,
+    "exit_engagement_range": true
+  },
+  "requires": "Range >= 1 AND Speed >= 3"
+}
+
+"anti_cavalry_spears": {
+  "vs_tag:cavalry": { "DEF_multiplier": 1.8 },
+  "vs_tag:cavalry_on_charge": { "counter_damage": true }
+}
+
+"undisciplined": {
+  "morale_loss_multiplier": 1.5,
+  "on_nearby_ally_routs": { "morale_delta": -15 }
+}
+
+"armor_piercing": {
+  "ignore_DEF_from_tag:armor": 0.5
+}
+
+"loud": {
+  "vs_not_tag:gunpowder_exposed": { "morale_shock": -10 }
+}
+
+"slow_reload": {
+  "fires_every_n_rounds": 2
+}
+What this buys you
+Rock-paper-scissors texture with no hardcoded matchups. Horse archers (mounted, ranged, hit_and_run, light_melee) plink and disengage against heavy horse, but are vulnerable if pinned by other ranged units, and trigger a defensive unit's anti_cavalry_spears bonus via their mounted tag even though they aren't shock cavalry. All interaction, no special-case code.
+New/anachronistic units are just new tag + stat combinations. A musket unit: ranged_gunpowder, loud, armor_piercing, slow_reload. No new engine code — just a new data entry.
+Clean LLM/engine seam. When a player teaches an NPC to build something new, the LLM's actual output is a proposed tag list + base stats, which the player approves. The deterministic engine — not the LLM — enforces what those tags do in an actual fight.
+Tags dynamically generate the order menu. A shield-wall spear brick and a horse-archer unit should offer visibly different 3–4 round-choices in the same battle, because their available orders come from their tags, not a fixed list.
+Recommendation: Tag Registry as a first-class content file
+
+Keep tag definitions in one central registry (JSON/YAML), separate from unit sheets, which just reference tags by name. This is also the natural place for the LLM to check "does something like this already exist" before inventing a near-duplicate tag for a new unit.
+
+7. Unit Sheets (Reference Roster)
+
+Base sheets are cross-cultural archetypes (per §6's compression exercise — most "unique" historical units are the same archetype with a different name). Cultural skins are flavor variants noted under each sheet, not separate mechanics.
+
+7.1 Peasant Levy Infantry (bottom-tier baseline)
+
+The cheapest possible fielded unit — farm implements, no real training, minimal armor. Establishes the floor every other unit is tuned against.
+
+Equipment: billhooks, flails, hay forks, the odd axe — genuine tools repurposed as weapons, not proper arms. Gambison (quilted cloth armor) — cheapest real armor tier.
+
+Stat	Value	Reasoning
+HP	60	Low cohesion — a mob of farmers doesn't hold together long
+ATK	8	Base weak, further cut by improvised_weapons
+DEF	5 (base 2 + gambison +3)	Cheapest armor tier, nothing else
+Damage	4–7	Wide variance — a lucky billhook swing still opens someone up
+Range	0 (melee only)	No thrown/ranged capability worth modeling
+Speed	2	On foot, untrained for rapid maneuver
+Morale	35	Low — no real stake in the fight beyond survival; breaks fast. Combined with 1:1 damage→morale (§6), routs well before HP depletes — accurate to how levy collapse actually played out
+
+Tags: levy, undisciplined, improvised_weapons, gambison
+
+json
+"improvised_weapons": {
+  "ATK_multiplier": 0.7,
+  "vs_tag:unarmored": { "ATK_multiplier": 1.0 },
+  "note": "Farm tools hit fine against soft targets, poorly against anyone with real armor or formation discipline"
+}
+
+"gambison": {
+  "DEF_bonus": 3,
+  "vs_tag:armor_piercing": { "DEF_bonus": 1 },
+  "note": "Cheapest real armor tier — helps against cuts, does little against a solid thrust or a charge"
+}
+
+No default combat upside. Deliberately not given a numbers-advantage or discipline bonus out of the box — a peasant levy is a pure liability you field because you have no better option, not a hidden-value pick. Its actual advantage is economic, not mechanical: by far the cheapest unit to muster, draws on population rather than treasury/equipment stockpiles, and carries minimal upkeep cost. That tradeoff (cheap and disposable vs. combat-worthless) is the whole point of the unit — it should never be a good choice, only a necessary one when nothing else is available.
+
+Upgrade path (not default): A Peasant Levy that survives a battle in which it was Engaged (§8.4) at least once gains the universal veteran tag (§7.19) — not a separate unit sheet, just this same base unit with real combat behind it. numbers_advantage (rewarding a stack of levy for sheer numbers) remains a separate, still-undesigned idea, not automatically bundled with veteran — flagged in Open Items if it's still wanted as its own mechanic.
+
+Cultural skins (flavor only, same sheet): general Slavic tribal levy, ad hoc peasant militia, episcopal/abbey levy in a pinch. Frankish Pedites and Anglo-Saxon Fyrd are a tier above this baseline (see §6 compression notes) and should get their own, slightly better-tuned sheet next.
+
+7.2 Pedites/Fyrd (Trained Spear Levy)
+Stat	Value
+HP	75
+ATK	12
+DEF	8
+Damage	5–9
+Range	0
+Speed	2
+Morale	55
+
+Tags: levy, drilled_spear, gambison, shield
+
+Cultural skins: Frankish Pedites, Anglo-Saxon Fyrd, general "trained freeman levy" baseline.
+
+7.3 Heavy Horse (Elite Mounted Retinue, Scara-tier)
+Stat	Value
+HP	95
+ATK	18
+DEF	15
+Damage	8–14
+Range	0
+Speed	5
+Morale	80
+
+Tags: mounted, shock, heavy_armor
+
+Cultural skins: Frankish Scara/vassal milites, Anglo-Saxon Thegns/Gesith, Umayyad Jund cavalry, Byzantine Tagmata. No dedicated heavier "ceiling" sheet above this tier — deliberately dropped; a unit's power should simply reflect its own earned stats (e.g., a hypothetical far-future gunpowder/industrial unit) rather than being artificially capped against a fixed reference point.
+
+7.4 Sagittarii (Foot Archers)
+Stat	Value
+HP	68
+ATK	10
+DEF	3
+Damage	6–10
+Range	2
+Speed	2
+Morale	40
+
+Tags: ranged, low_melee, skirmish_volley, limited_ammo
+
+Cultural skins: Frankish Sagittarii (self bow, modest numbers). Mounted steppe/Avar-descended horse archer variant is a separate sheet, still open — see Open Items.
+
+7.5 Crossbowmen
+
+Known but rare/marginal technology at this date — solid, common Western European crossbow use is more a 10th–11th century development, so this unit represents a real but uncommon capability rather than a standard muster item. No mechanical flag for that rarity; if the player builds up to field one, they field one.
+
+Stat	Value
+HP	65
+ATK	14
+DEF	4
+Damage	8–14
+Range	2
+Speed	2
+Morale	40
+
+Tags: ranged, low_melee, armor_piercing, slow_reload
+
+Trades Sagittarii's faster reload for much harder per-hit damage and armor penetration — weeks of training to field vs. years for a bow-trained archer, at the cost of firing half as often.
+
+7.6 Frankish Horse Archers
+
+Kept deliberately non-anachronistic: self bow (no recurve), no lifelong steppe-style training from childhood. Represents a purpose-built professional force — adult recruits, deliberately trained and maintained by the lord, mounted on lighter endurance-bred horses rather than warhorse stock. Acquisition (locating/breeding suitable horses, establishing the training pipeline) is a narrative/economy matter for the LLM-NPC layer, not a combat stat — see §11.
+
+Stat	Sagittarii	Heavy Horse	Frankish Horse Archers
+HP	68	95	70
+ATK	10	18	9
+DEF	3	15	6
+Damage	6–10	8–14	6–10
+Range	2	0	2
+Speed	2	5	6
+Morale	40	80	60
+
+Speed 6 — higher than Heavy Horse's 5. A lighter, endurance-bred mount carrying a rider in gambison with just a bow and sword outpaces a mail-armored warhorse carrying full shock-cavalry load; the endurance/shock breeding distinction is about stamina, not top speed, and less weight in the saddle means faster regardless.
+
+Tags: mounted, ranged, hit_and_run, light_melee, limited_ammo, efficient_finisher
+
+json
+"light_melee": {
+  "vs_engaged_in_melee": { "ATK_multiplier": 0.6, "DEF_multiplier": 0.7 },
+  "note": "Sword sidearm makes them viable against fleeing or disorganized troops, still poor against anyone actually set for melee"
+}
+
+"efficient_finisher": {
+  "vs_tag:routing": {
+    "bypasses_ammo_cost": true,
+    "bonus_damage_multiplier": 1.5
+  },
+  "note": "Switches to the sword against already-broken enemies instead of loosing arrows — stacks with mounted's existing rout bonus"
+}
+
+Ammo correction: a typical quiver held roughly 20–30 arrows, not a handful — within a single battle's actual skirmish window, running dry was rare. The real historical failure mode was campaign logistics (resupply not keeping pace over a siege or long campaign), not physically emptying a quiver mid-fight. limited_ammo is corrected accordingly:
+
+json
+"limited_ammo": {
+  "volley_charges": 24,
+  "on_charges_depleted": { "loses_tag": "skirmish_volley", "gains_tag": "low_melee_permanent" },
+  "note": "Represents a full quiver — will essentially never deplete within a single battle. Real depletion risk lives at the campaign/siege logistics layer (resupply, baggage train), not per-battle combat math. See §11."
+}
+
+This same corrected limited_ammo definition supersedes the version referenced under Sagittarii (§7.4) — same tag, same fix applies there too.
+
+7.7 Caballarii (Mid-Tier Cavalry)
+
+The general freeman levy legally obligated to serve mounted under Carolingian capitulary law — the realistic backbone of a minor noble's own musters, distinct from Heavy Horse's household-retinue professionalism.
+
+Stat	Pedites/Fyrd	Caballarii	Heavy Horse
+HP	75	85	95
+ATK	12	15	18
+DEF	8	11	15
+Damage	5–9	6–11	8–14
+Range	0	0	0
+Speed	2	5	5
+Morale	55	65	80
+
+Speed matches Heavy Horse — not because the two are truly identical, but because the real gap doesn't clear the rounding bar. There's a legitimate case that Caballarii, being far less experienced horsemen than a professional household retinue, should ride more cautiously on unfamiliar or broken ground, effectively landing somewhere around Speed 4.5 rather than a full 5. But this system doesn't use fractional stats — Speed is a whole number, and 4.5 rounds up to 5. Two units can be "not entirely equal" in the underlying fiction while still sharing an identical stat, when the real difference is too marginal to justify tracking separately (a new tag, a conditional terrain rule) for a game-mechanical effect that would barely register. Design rule going forward: Speed reflects load and horse quality first; where a genuine but marginal skill gap exists, round rather than add a new mechanic to preserve it.
+
+Tags: mounted, drilled_spear, shield
+
+Deliberately withheld: shock (no dedicated charge training/breeding), heavy_armor (partial mail, not a full hauberk).
+
+Validation against §6's formula: Caballarii (ATK 15) vs. Pedites/Fyrd (DEF 8) → hit_multiplier ≈ 0.65, solidly favoring the cavalry as expected. Heavy Horse (ATK 18) vs. Caballarii (DEF 11) → hit_multiplier ≈ 0.62 — Heavy Horse still wins clearly but not a blowout, letting Caballarii plausibly survive a clash with real cavalry rather than folding instantly.
+
+Open question, not yet decided: drilled_spear was borrowed as-is from Pedites/Fyrd, including its hold_formation order unlock — but holding a static shield-wall-style formation is a very different skill mounted than on foot. A mounted-specific variant of the tag may be worth designing rather than assuming direct transfer; flagged in §11.
+
+7.8 Breton/Gascon Light Cavalry (Melee-Capable Javelin Skirmishers)
+
+Fills a real gap in the tag-combination space: melee-competent light cavalry, distinct from both Frankish Horse Archers (weak in melee by design) and Caballarii (no ranged capability at all). This unit throws javelins, then fights — no melee penalty tag once contact happens, unlike a bow-armed skirmisher. Reskinned from an initially-considered Ghazi/Berber version to a neighboring people Carolingian Francia had genuine, recurring friction with (Breton campaigns under Charlemagne and Louis the Pious are well documented), making this far more likely to actually appear in a Francia-centered campaign.
+
+Equipment: javelins (about a dozen carried, thrown), sword or hand axe as a genuinely-relied-upon melee weapon (not just a last resort), light mount suited to raiding/hill country, gambison.
+
+Stat	Frankish Horse Archers	Breton/Gascon Light Cavalry
+HP	70	70
+ATK	9	11
+DEF	6	6
+Damage	6–10	6–10
+Range	2	1
+Speed	6	6
+Morale	60	60
+
+HP/DEF/Morale match Horse Archers exactly — same armor tier, same light mount class, no equipment difference to justify a number gap. Range is genuinely lower (javelins don't reach as far as a bow) — the stat itself carries that distinction; no separate "limited range" tag is needed, since Range is already its own base stat (§5.1) rather than something a tag grants. ATK is the one deliberate difference, reflecting this unit's actual design intent: melee is a real second phase of combat here, not an emergency fallback.
+
+Tags: mounted, ranged, hit_and_run
+
+json
+"limited_ammo": {
+  "volley_charges": 12,
+  "note": "A dozen javelins carried — like the 24-arrow quiver correction (§7.6), this essentially never depletes within a single battle. Real depletion risk lives at the campaign/logistics layer, not per-round combat math."
+}
+
+Deliberately no low_melee/light_melee tag. Once javelins are spent or the unit closes to melee by choice, it simply fights on its own ATK/DEF — melee isn't a failure state for this archetype, it's the intended second half of the plan.
+
+7.9 Elite Foot (Professional Household Infantry — Hirð/Húskarlar-tier)
+
+Same professional investment as Heavy Horse, planted on the ground instead of a horse. Fills a real gap the roster didn't have: our only "elite, professional, high-morale" tier before this was Heavy Horse, which is fundamentally mounted — historically wrong for Norse elite retainers specifically, since Viking warfare was overwhelmingly infantry-based even when horses were used for transport. Also a valid home for any culture's dismounted household guard, not just Norse.
+
+Stat	Pedites/Fyrd	Elite Foot	Heavy Horse
+HP	75	90	95
+ATK	12	16	18
+DEF	8	16	15
+Damage	5–9	7–13	8–14
+Range	0	0	0
+Speed	2	2	5
+Morale	55	80	80
+
+DEF slightly exceeds Heavy Horse's — deliberately. A mounted elite splits investment between personal armor and a war-trained horse; Elite Foot has no mount to fund, so the same wealth goes entirely into armor and shield. Morale matches Heavy Horse exactly — same professional status and stake in the outcome, just no horse under them.
+
+Tags: drilled_spear, shield, heavy_armor, anti_cavalry_spears
+
+anti_cavalry_spears finally gets a real home here, and a well-justified one: professional foot warriors bracing in disciplined formation against a cavalry charge is a genuinely documented historical strength of this archetype (Hastings' housecarls held Norman cavalry charges for hours before the shield wall broke). No mounted/shock — this unit cannot run down routing enemies the way cavalry does, a real and correct limitation.
+
+Cultural skins: Norse Hirð/Húskarlar (chieftain's personal bodyguard — see §7.10), Anglo-Saxon Housecarls, any culture's dismounted household retinue.
+
+7.10 Ship Crew (Viking Muster Composition)
+
+Turns the earlier "ship-crews as tactical grouping, not a combat archetype" observation into an actual muster rule rather than leaving it as flavor.
+
+The default case for 825 specifically is 1–3 ships, not a large combined army. Early Viking Age raiding (Lindisfarne, 793, was three ships; the 787 Wessex incident was three as well) was small, fast, and deliberately aimed at targets — monasteries above all — chosen because they had no garrison at all. Large multi-ship forces capable of real pitched battles are a mid-9th-century development, arriving after this game's 825 start date, not the period norm. This has a direct combat-system consequence: a small raid against a genuinely undefended target often shouldn't trigger the grid battle system (§8) at all — it's a resolved-outcome raid (loot taken, casualties among the defenseless, done), not a fight requiring a roll. The grid only comes into play once the target has some real defenders to actually contest the landing.
+
+Each Ship Crew fields as one deployable unit (~30–40 warriors, matching the existing population abstraction), using the Pedites/Fyrd stat line, Norse-skinned as raiders — not Peasant Levy. A Viking raider is a volunteer out for loot and status, not a conscript; that profile matches Pedites/Fyrd's proper spear, shield, and gambison far better than Peasant Levy's repurposed farm tools and complete lack of stake in the fight. Peasant Levy-tier stats are only appropriate for a genuinely desperate, thrown-together crew, not the default case.
+A raiding force's total composition = number of ships brought × crew stat line. No stewardship/land-based Muster (§3, step 1) applies — a Viking raiding force is funded by the voyage itself, not governed territory. This scales down as naturally as it scales up: 1 ship = 1 crew-unit raid, exactly as historically typical for this period; a larger combined force (multiple ships, a real army) is the rarer, later-period case, not the default.
+The chieftain's own ship fields Elite Foot (§7.9) instead of a standard crew — this is where the Hirð actually shows up in the composition, whether it's a single-ship raid or part of a larger force.
+Crews deploy together as cohesive blocks rather than being split and rearranged on the grid — the same men who crossed the sea together fight together. This ties naturally into the existing veteran mechanic (§7.19) rather than needing a separate cohesion system: a crew that's raided together before and survived is exactly the kind of unit that should already carry veteran collectively.
+Siege Equipment (§7.11–7.18)
+
+Each piece is a self-contained unit (engine + crew together), same population-abstraction pattern as every other sheet — not a weapon wielded by a separate operator unit. Historical plausibility for 825 varies deliberately across this list: most are period-appropriate or at least plausible surviving Roman-derived knowledge; two (Counterweight Trebuchet, Cannon) are genuinely anachronistic and flagged as such, included specifically to establish how future/reinvented technology should integrate — via the acquisition-difficulty principle (§11), never via nerfed stats once earned.
+
+7.11 Battering Ram
+
+The simplest siege weapon — deliberately unremarkable beyond what siege_weapon already provides.
+
+Stat	Value
+HP	60
+ATK	22
+DEF	6
+Damage	8–12
+Range	0 (must be adjacent to the Fortification Point)
+Speed	2
+Morale	50
+
+Tags: siege_weapon
+
+7.12 Battering Ram with Penthouse
+
+Same ram, protected under a roofed shed ("cat") — a real historical refinement, not flavor.
+
+Stat	Bare Ram	With Penthouse
+HP	60	80
+ATK	22	22 (unchanged — the roof protects the crew, not the striking power)
+DEF	6	16 (6 base + Wooden Fortification's +10 Defender Bonus, §9.4)
+Damage	8–12	8–12
+Range	0	0
+Speed	2	1 (heavier structure, slower to push)
+Morale	50	55
+
+Tags: siege_weapon, mobile_fortification
+
+json
+"mobile_fortification": {
+  "note": "The structure itself counts as a Wooden Fortification Point (§9.4) for defensive purposes — reflected directly in the DEF value above. Speed penalty already priced into the base stat rather than modeled as a separate modifier."
+}
+7.13 Traction Trebuchet
+
+Crew-powered (teams pulling ropes), the historically correct trebuchet type for 825 — likely transmitted via Byzantine/Mediterranean contact. The standard structural-bombardment option for this era.
+
+Stat	Value
+HP	70
+ATK	28
+DEF	5
+Damage	10–14
+Range	3
+Speed	0
+Morale	45
+
+Tags: siege_weapon, slow_reload, stationary_emplacement
+
+7.14 Counterweight Trebuchet — Anachronistic
+
+A 12th–13th century development, genuinely too early for 825. Included specifically as the template for handling future tech: honestly powerful once fielded, but gated entirely behind the acquisition-difficulty principle (§11) — not a standard muster option, only reachable through dedicated player-driven invention via the LLM-NPC layer.
+
+Stat	Traction Trebuchet	Counterweight Trebuchet
+HP	70	90
+ATK	28	40
+DEF	5	5
+Damage	10–14	14–20
+Range	3	4
+Speed	0	0
+Morale	45	45
+
+Tags: siege_weapon, slow_reload_severe, stationary_emplacement
+
+json
+"stationary_emplacement": {
+  "effect": "Speed is 0 for movement/repositioning purposes, but the unit still receives 1 action point per round, usable only for firing — never for movement.",
+  "note": "Repositioning a heavy bombardment engine mid-battle was never realistic — hours to days, oxen teams, partial disassembly. Repositioning can only happen between battles, at the campaign layer, not during one. This tag separates 'can't reposition' from 'can still act every round,' matching how a real emplaced siege engine functioned once sited."
+}
+json
+"slow_reload_severe": {
+  "fires_every_n_rounds": 3,
+  "note": "A counterweight design's real historical trade-off against traction: significantly more power, but a much slower cycle time — winching the counterweight back up takes real time that a traction crew's rope-pull doesn't."
+}
+7.15 Onager
+
+Roman-derived torsion engine — plausible as surviving knowledge in a post-Roman successor state, though less commonly deployed by 825 than the traction-trebuchet family.
+
+Stat	Value
+HP	65
+ATK	24
+DEF	5
+Damage	9–13
+Range	3
+Speed	0
+Morale	45
+
+Tags: siege_weapon, inconsistent_torsion, stationary_emplacement
+
+json
+"inconsistent_torsion": {
+  "damage_roll_multiplier_range": "0.7–1.1, rolled fresh each shot",
+  "note": "Reflects the real historical issue of torsion power (twisted sinew/rope) degrading or varying in tension between shots — genuinely less consistent than a gravity- or crew-powered throwing arm."
+}
+7.16 Ballista
+
+Roman-derived, torsion-powered bolt-thrower — the one siege piece genuinely built for anti-personnel work rather than pure wall-breaking, weaker against fortifications than the Onager as a direct trade-off. Kept mobile (Speed 1) rather than stationary_emplacement like the other bombardment engines — Roman ballistae were sometimes cart-mounted (the carroballista) specifically for battlefield mobility, lighter and more maneuverable than the heavier torsion/gravity throwers. A real historical exception, not an inconsistency.
+
+Stat	Onager	Ballista
+HP	65	55
+ATK	24	18 (lower vs. fortifications, deliberately)
+DEF	5	5
+Damage	9–13	8–12
+Range	3	2
+Speed	1	1
+Morale	45	45
+
+Tags: siege_weapon, precision_bolt, armor_piercing
+
+json
+"precision_bolt": {
+  "effect": "cancels siege_weapon's HP_damage_multiplier reduction vs. normal units — full, unhalved HP damage vs. troops, while still bypassing hardened_structure vs. Fortification Points",
+  "note": "A modifier tag, same pattern as makeshift (§9.4) — overrides one specific part of the tag it's paired with rather than duplicating siege_weapon's full definition. This is the weapon genuinely built for punching through a formation, not just a wall."
+}
+7.17 Siege Tower
+
+Not a damage-dealing weapon at all — a mobile assault structure that brings attackers to wall-top height, bypassing the wall as an obstacle rather than breaching it.
+
+Stat	Value
+HP	85
+ATK	0 (no attack capability of its own)
+DEF	16 (6 base + Wooden Fortification's +10 Defender Bonus, same logic as the Penthouse Ram)
+Damage	—
+Range	0
+Speed	1
+Morale	50
+
+Tags: mobile_fortification, wall_height_negation
+
+json
+"wall_height_negation": {
+  "effect": "while engaged against an enemy Fortification Point, that Point's Defender DEF Bonus (§9.4) to its Presented unit is negated for the duration of the engagement",
+  "note": "The tower brings attackers to the same height as the wall's defenders — the positional advantage that Defender DEF Bonus represents simply doesn't apply anymore. Units riding inside still benefit from mobile_fortification's own protection while approaching."
+}
+7.18 Cannon — Anachronistic
+
+Centuries too early for 825 — the second deliberate template case for future/reinvented technology, alongside Counterweight Trebuchet. Gated the same way: honestly powerful, never nerfed, only reachable through dedicated invention via the LLM-NPC layer (§11).
+
+Stat	Value
+HP	50
+ATK	45
+DEF	5
+Damage	16–24
+Range	3
+Speed	0
+Morale	40
+
+Tags: siege_weapon, loud, slow_reload_severe, dual_shot_type, misfire (Early Cannon variant only), stationary_emplacement
+
+json
+"dual_shot_type": {
+  "solid_shot": "standard siege_weapon behavior — bypasses hardened_structure vs. Fortification Points, HP damage ×0.5 vs. normal units",
+  "grapeshot": "precision_bolt behavior for this shot instead — full HP damage vs. troops, but does NOT bypass hardened_structure this round; treated as an ordinary unit's attack vs. Fortification Points, fully subject to the ATK reduction",
+  "note": "A per-shot player choice, not two separate units — can't optimize for both wall-breaking and anti-personnel on the same shot, mirroring the real trade-off between shot types."
+}
+
+"misfire": {
+  "chance_per_shot": "10–15%",
+  "effect": "deals its own rolled damage to itself/its crew instead of the target",
+  "applies_to": "Early Cannon variant only — reflects genuine historical risk from crude early construction (e.g., a hollowed log reinforced with iron bands, prone to bursting). A later, more reliably cast cannon would not carry this tag, giving the tech its own internal progression rather than arriving fully solved."
+}
+7.19 Tag Registry (Master List)
+
+All tags defined so far, in one place. Full hook definitions (JSON) live with the unit sheet each tag was introduced on; this table is the quick-reference index.
+
+Tag	Effect Summary	Introduced On
+levy	Marks a unit as conscript/obligation-based rather than professional	Peasant Levy
+undisciplined	Higher morale-loss multiplier; nearby allies routing hits morale harder	Peasant Levy
+improvised_weapons	ATK ×0.7; full ATK vs. unarmored targets	Peasant Levy
+gambison	DEF +3; reduced effect vs. armor-piercing	Peasant Levy
+drilled_spear	No ATK penalty; unlocks hold_formation order (DEF +2 while held)	Pedites/Fyrd
+shield	DEF +2; DEF +1 more specifically vs. ranged	Pedites/Fyrd
+mounted	ATK ×1.3 vs. routing enemies; can disengage from combat	Heavy Horse
+shock	ATK ×1.4 on charge (requires Speed ≥ 4); morale −15 if charge is stopped	Heavy Horse
+heavy_armor	DEF +5, Speed −1; reduced effect vs. armor-piercing better than gambison	Heavy Horse
+ranged	Base flag for any unit with Range ≥ 1	Sagittarii
+low_melee	ATK ×0.4, DEF ×0.5 once engaged in melee	Sagittarii
+skirmish_volley	Free damage volley(s) vs. enemies still closing distance; 2 volleys vs. Speed ≤2 enemies	Sagittarii
+limited_ammo	24 volley charges (full quiver — essentially never depletes in one battle); loses skirmish_volley, gains permanent low_melee if it ever does. Real ammo risk lives at campaign/logistics layer, not combat	Sagittarii (corrected on Horse Archers, §7.6)
+armor_piercing	Ignores 50% of DEF from armor-tagged sources	Crossbowmen
+slow_reload	Fires only every 2nd round	Crossbowmen
+hit_and_run	Unlocks skirmish-and-withdraw order (damage without return damage, exits engagement range)	Frankish Horse Archers
+light_melee	ATK ×0.6, DEF ×0.7 once engaged in melee — better than low_melee, still weak	Frankish Horse Archers
+efficient_finisher	Bonus damage vs. routing enemies via melee sidearm, bypasses ammo cost	Frankish Horse Archers
+anti_cavalry_spears	DEF ×1.8 vs. cavalry; counter-damage vs. cavalry on charge	Elite Foot (§7.9)
+loud	Morale shock vs. units without gunpowder_exposed	Referenced, not yet assigned to a sheet
+veteran	morale_damage_ratio ×0.6; HP ×1.05; ATK ×1.05	Universal — see below, not tied to any one sheet
+siege_weapon	Bypasses hardened_structure's ATK reduction vs. Fortification Points; vs. normal units, HP damage ×0.5 but morale damage calculated from the unhalved value	Battering Ram, Traction/Counterweight Trebuchet, Onager, Ballista, Cannon (§7.11–7.18)
+berserker	ATK ×1.2 for the rest of the battle, one-time, triggered by receiving Address the Troops or a Rally	Viking-specific, not a default on any sheet — see below
+mobile_fortification	Unit's structure counts as a Wooden Fortification Point for defensive purposes (DEF reflected directly in the stat block)	Battering Ram with Penthouse, Siege Tower
+stationary_emplacement	Speed 0 for movement, but still receives 1 action point/round usable only for firing — repositioning only possible between battles	Traction Trebuchet, Counterweight Trebuchet, Onager, Cannon
+slow_reload_severe	Fires only every 3rd round	Counterweight Trebuchet, Cannon
+inconsistent_torsion	Damage roll multiplier randomized 0.7–1.1 each shot	Onager
+precision_bolt	Cancels siege_weapon's HP-damage halving vs. normal units — full damage vs. troops, still bypasses hardened_structure vs. structures	Ballista
+wall_height_negation	While engaged against an enemy Fortification Point, negates that Point's Defender DEF Bonus for the duration	Siege Tower
+dual_shot_type	Per-shot choice: solid shot (standard siege_weapon behavior) or grapeshot (full damage vs. troops, loses structure-bypass that shot)	Cannon
+misfire	10–15% chance per shot to deal its own rolled damage to itself/crew instead of the target	Cannon (Early variant only)
+
+Note: Engaged/Unengaged and Flanked are formal per-round states, not persistent tags — assigned/reassigned each round based on movement and combat orders. Flanked triggers a one-time morale shock (not a recurring penalty) run through the standard ATK/DEF formula. Full rules in §8.3.
+
+berserker deliberately needs no new morale math of its own. The historical "less afraid of dying, keeps fighting through wounds" trait already has an exact mechanical home in the existing Command Pool/Rally system (§5.2.2) — a unit under Command Pool shield already takes more damage before its own Morale actually breaks. berserker just adds a Viking-specific ATK kicker on top of receiving that same shield, rather than inventing a parallel morale-resistance system:
+
+json
+"berserker": {
+  "on_receiving_rally_or_address_the_troops": {
+    "ATK_multiplier": 1.2,
+    "duration": "rest of the battle, one-time trigger — repeated rallies on the same unit don't restack it"
+  },
+  "note": "Not a default on Ship Crew or Elite Foot — carried only by specific units/individuals the LLM-NPC layer or campaign narrative flags as berserkers."
+}
+
+No mid-battle crash mechanic, by design. Triggering is entirely gated by player choice and Command Pool availability (Address the Troops fires once pre-battle; Rally fires live but only with pool remaining and same-cell presence, §5.2.2) — there's no repeated or uncontrolled activation within a single battle to punish. The historically-attested post-rage exhaustion is instead a post-battle, campaign-layer effect (slower morale recovery before the next fight) rather than anything inside the combat engine — flagged in §11, tied to the not-yet-built unit-persistence/logistics system.
+
+veteran is universal rather than tied to a specific unit sheet — the first tag in the registry that any base unit can acquire, retiring the earlier idea of a separate "Trained Levy" sheet as its own archetype.
+
+json
+"veteran": {
+  "morale_damage_ratio_multiplier": 0.6,
+  "HP_multiplier": 1.05,
+  "ATK_multiplier": 1.05,
+  "note": "They've seen it before and don't panic or falter the way a fresh unit does. Applies uniformly regardless of base unit type — Peasant Levy, Pedites/Fyrd, Heavy Horse, anyone."
+}
+Morale bonus reuses the existing morale_damage_ratio hook (§6) rather than a flat morale add: veterans take 40% less morale damage per point of HP damage suffered. This compounds across a whole fight rather than being a one-time buffer — a veteran unit still breaks eventually, just noticeably later than a green one taking identical damage.
+HP/ATK bonuses are flat +5% each, but their actual impact isn't flat once run through hit_multiplier = ATK/(ATK+DEF) (§6) — a 5% ATK bump matters most for units already near parity with their opponent's DEF, and barely moves the needle in badly mismatched fights (a veteran Peasant Levy's ATK bump does very little against Heavy Horse's DEF 15, since the ratio is already crushing them regardless of the small bump).
+
+Acquisition: survive a battle in which the unit was Engaged (§8.4) at least once. No training menu, no resource investment — a unit that saw real combat and lived becomes Veteran. This also reflects a real historical point worth stating plainly: there's little evidence of formal drill programs for the general levy in Carolingian Francia specifically — what actually produced better-than-baseline levy quality was almost certainly repeated campaign survival and the cohesion of fighting alongside the same neighbors/kin over multiple engagements, not deliberate training. veteran's survive-a-battle trigger models that mechanism honestly rather than assuming a training system that likely didn't exist.
+
+8. Battlefield Representation (Grid Model)
+
+Supersedes the earlier sector model. A real grid turned out to resolve several problems (archer safety, flank-to-flank movement cost, reserve exposure) more cleanly than the sector abstraction could, without needing special-cased rules for each. Orders are given per unit, filtered by Command Tier (§4). Rank-and-file players never see this screen — same engine, filtered output (they get a status line + personal choices only).
+
+8.1 The Grid
+
+3 columns × 5 rows, columns labeled Left / Center / Right, rows front-to-back:
+
+Row 1:  Own Reserve   (Left | Center | Right)
+Row 2:  Own Front     (Left | Center | Right)
+Row 3:  No Man's Land (Left | Center | Right)
+Row 4:  Enemy Front   (Left | Center | Right)
+Row 5:  Enemy Reserve (Left | Center | Right)
+
+Multiple units can occupy one cell. In Deployment (§3, step 3), each unit is placed into a column and either Row 1 or Row 2 on its own side; the enemy mirrors into Row 4/5. No diagonal movement — only orthogonal moves (forward/back a row, or sideways a column) are legal.
+
+8.2 Movement
+
+Movement points = a unit's Speed stat, refreshed each round. Exception: a unit with the stationary_emplacement tag (§7.19 — Traction/Counterweight Trebuchet, Onager, Cannon) has Speed 0 for movement but still receives 1 action point per round usable only for firing, never movement — without this exception a Speed-0 unit could never act at all under the rule below. Costs:
+
+Action	Cost
+Move into an adjacent cell	2
+Leave a cell where fighting is currently occurring (i.e., disengaging/withdrawing from a fight, not entering one)	4 (double) — entering a contested cell to join a fight costs the normal 2
+Fire a ranged attack	1
+Engage a specific enemy unit sharing your cell (first time this round)	1
+Continue fighting in a clash already engaged in	Free
+
+Movement banks across rounds. A move's full cost doesn't need to be paid in one round — spend partial points toward an in-progress move, and it completes once cumulative spend reaches the total. Example: a Speed-2 unit fires (1 point) and puts the remaining 1 point toward a 2-cost retreat; next round, its fresh 2 points finish that move (1 more needed) with 1 point left over to fire again.
+
+Firing does not create Engagement. Spending 1 point to fire is a one-way action — the target takes damage, but neither unit's Engaged state changes. This avoids the problem of two ranged units in range of each other being forced into a mutual-engagement lock that wouldn't make sense (no melee contact actually occurred).
+
+8.3 Distance & Ranged Attacks
+
+Distance is Manhattan (row-difference + column-difference), consistent with no diagonal movement — a diagonally-adjacent cell is 2 squares away, same as two cells in a straight line.
+
+ranged units (Sagittarii, Crossbowmen, Frankish Horse Archers, javelin cavalry, siege engines) may fire at any enemy unit within their own Range stat (Manhattan squares — 1 for javelins, 2 for bows, 2–4 for siege pieces), without needing to share a cell or be Engaged. The target is chosen each round and stays chosen while the firer is unengaged and the target remains in range (see §11.3). Resolution uses the exact same formula as melee (§6) — hit_multiplier from the firing unit's effective ATK vs. the target's effective DEF, rolled_Damage from the firer's Damage range, 1:1 morale loss on the result. No separate ranged-combat system.
+
+Firing into a mixed/contested cell (splash): if the declared target is Engaged, other units directly Engaged against that same target are at risk of catching stray damage — this reflects the real, documented risk period commanders had to weigh when loosing volleys into an ongoing melee rather than holding fire until contact was fully broken.
+
+Shares: the declared target gets 2 shares; each unit directly Engaged against that specific target (opposing units only — see §8.4, Engaged never applies between friendly units) gets 1 share each.
+A friendly unit engaged with a different target in the same general clash (e.g., piling onto the same enemy from another angle, but not linked to the unit actually being shot at) does not catch splash — shares are tied to direct engagement links, not general cell proximity.
+Roll rolled_Damage once. Each recipient's portion = rolled_Damage × (their_shares / total_shares), then run through that unit's own DEF via the normal formula — final_damage = round(portion × hit_multiplier_for_that_unit) — since a unit caught in the splash may have very different DEF than the actual target.
+
+Worked example: Ranged Unit 2 fires at Unit A, who is Engaged one-on-one with Unit 1. Total shares = 2 (A) + 1 (Unit 1, directly engaged against A) = 3. Rolled Damage = 12. A's portion = 8, run through A's DEF. Unit 1's portion = 4, run through Unit 1's DEF — real splash risk, scaled to how directly involved each unit actually is.
+
+8.4 Engagement Rules
+
+Engaged only ever exists between opposing units — never between two friendly units, regardless of how tightly they're grouped in a gang-up or how close together they stand in a cell.
+
+Turn order per round: Move Phase → Engagement Phase → Damage Phase. All movement and Engage orders are submitted, then resolved together, which produces engagement chains naturally: if Unit A orders Engage on Unit 1, and Unit 1 separately ordered Engage on Unit B, all three resolve into one mutual clash — A and B are both Engaged with 1, and 1 is Engaged with both, without anyone needing to deliberately coordinate targeting.
+
+Gang-up cap: 3 attacking units per defender — a fourth can't physically add a new angle and must wait or target something else in the clash.
+
+Attackers engaged on one defender	Each attacker's ATK bonus	Defender's DEF
+1	—	normal
+2	+15% each	−10%
+3	+25% each	−20%
+4+	not allowed	—
+
+The defender's return strike targets the attacker who Engaged first ("front") — locked in as the default rather than left open, consistent with the same front-loading logic already used for the counter-damage split below. Incoming counter-damage from that retaliation is split across all attackers, front-loaded toward whoever Engaged first:
+
+Attackers engaged	Counter-damage split
+1	100% to the sole attacker
+2	2/3 to front (first to Engage), 1/3 to the second
+3	1/2 to front, 1/4 each to the other two
+
+Flanking morale shock — a one-time trigger fired only the round a defender crosses from 1→2 or 2→3 engaged attackers (not a recurring per-round tax, which would double-count against the damage-based morale loss those attackers are already inflicting via the 1:1 rule, §6):
+
+flank_shock_morale = (new_attacker_avg_Damage × threshold_multiplier) × hit_multiplier(effective_ATK, effective_DEF)
+Crossing to 2 attackers: threshold_multiplier = 3. Crossing to 3: threshold_multiplier = 6.
+hit_multiplier reuses the same ATK-vs-DEF resolution as every other hit — the shock is not guaranteed, it scales with who's doing the flanking. A high-DEF unit (Heavy Horse) blunts a shock from low-ATK attackers (Peasant Levy) almost entirely; a low-DEF unit (Peasant Levy) takes a shock from a high-ATK attacker (Heavy Horse) close to full — reinforcing the "knights barely notice, farmers surrounded by knights are finished" asymmetry rather than working against it.
+8.5 Disordered Status & Scrum Targeting
+
+Disordered is a flag, not a new tracked stat — it applies automatically whenever a unit's current Morale drops to ≤25% of its max. No separate subsystem; it's a threshold read off a number already being updated every round.
+
+Scrum targeting is pairwise, not cluster-wide: it only applies to a specific opposing Engaged link where both units in that link are Disordered. A unit's Disordered status by itself changes nothing about how it's targeted — it only matters for the specific enemy link where the other side is also Disordered.
+
+If both sides of an Engaged link are Disordered, an attack aimed at either one can't distinguish between them — the normal 2-share "declared target" allocation splits evenly, 1 share each, between exactly those two units.
+Any other unit separately Engaged with either member of that pair (e.g., an organized reserve unit flanking in) is entirely unaffected — it doesn't get pulled into the confusion, and its presence doesn't organize the disordered pair either. It remains individually targetable exactly as normal.
+A Disordered unit not currently Engaged (in Reserve, disengaged, etc.) has no additional mechanical effect beyond its already-low Morale — no forced retreat check, no separate penalty. Disordered is purely a targeting-link trigger, not a standalone status effect.
+8.6 Multi-Day Engagements
+
+10 rounds = one day's fighting, not the whole battle. If neither side has routed by round 10, nothing is forcibly resolved — this reflects the real historical pattern of commanders disengaging at nightfall to reassess rather than fighting to a finish, sometimes resuming over multiple days.
+
+At day's end, Full Command chooses:
+
+Hold the ground — stand fast overnight, resume at dawn on the same field, same deployment.
+Reposition to better ground — a mini re-run of Approach/Scouting (§3, step 2): spend the overnight window seeking more favorable terrain, with similar risk/reward to the original scouting choice.
+Withdraw from the engagement entirely — pull out overnight without it needing to be a rout-flavored retreat; this can just be "the general decided this wasn't worth finishing." An inconclusive, deliberately-abandoned battle is exactly the kind of soft outcome the Historical Momentum system (§2) should sometimes allow to fade rather than forcing a hard winner/loser.
+
+Sub-Command and Rank-and-File are told the outcome, not given the choice — e.g., "your commander has ordered the army to hold its position through the night" — consistent with how those tiers work everywhere else in the doc (§4).
+
+Overnight recovery: units regain a flat 15–20% of max Morale overnight (rest, tending the wounded) but no HP recovery — wounds and casualties are permanent. This naturally caps how long a standoff can drag on, since HP attrition never resets even as morale partially does.
+
+What actually stops an indefinite standoff: the campaign/logistics layer (§11, still to be built) — food/supply consumption during a multi-day standoff should force a resolution (attack, withdraw, or starve) rather than letting a player stall without cost.
+
+8.7 Player Attachment & Rout Resolution
+
+The player character attaches to one unit each battle — typically a personal retinue of elite troops, but nothing stops a player from riding with a levy line if that's genuinely all they have. This is what "being at Rank-and-File" or "Sub/Full Command" actually means physically on the grid: the player occupies that unit's cell and shares its fate. It's also the only unit reachable for in-battle Rally (§5.2.2) unless and until the player moves elsewhere — though the pre-battle "Address the Troops" spend has no such restriction, since it happens before anyone takes up a battlefield position.
+
+When a unit routs, its remaining strength splits three ways — escaped, killed, captured — using formulas already defined elsewhere rather than new mechanics:
+
+Escape fraction, driven by total Speed of everything currently pursuing (Engaged against) the routing unit, not just a single attacker's Speed — being surrounded by multiple pursuers (even slow ones) meaningfully impedes escape:
+
+escape_fraction = clamp(0.05, 0.95, 0.5 + (routing_Speed − total_engaged_pursuer_Speed) × 0.1)
+
+total_engaged_pursuer_Speed = sum of Speed across all enemy units Engaged against the routing unit (capped at 3, matching the gang-up limit, §8.4).
+
+Of those not escaped, kill vs. capture splits using the same hit_multiplier formula from §6 — no new math, just a new use of the existing one:
+
+kill_fraction = hit_multiplier(pursuer_effective_ATK, routing_unit_effective_DEF)
+captured_fraction (of the caught) = 1 − kill_fraction
+
+Worked example — Peasant Levy (Speed 2, DEF 5) routs, surrounded by 3 Heavy Horse (Speed 5 each, ATK 18):
+
+escape_fraction = clamp(0.5 + (2 − 15) × 0.1) = 0.05 (floor) — almost no one gets away
+kill_fraction = hit_multiplier(18 × 1.3 [mounted vs. routing bonus], 5) ≈ 0.82
+
+Of the unit: ~5% escape, ~78% killed, ~17% captured — appropriately brutal for levy run down by cavalry.
+
+Reverse — Heavy Horse (Speed 5) routs, chased by 3 Peasant Levy (Speed 2 each, ATK ~5.6 effective):
+
+escape_fraction = 0.5 + (5 − 6) × 0.1 = 0.4
+kill_fraction = hit_multiplier(5.6, 15) ≈ 0.27
+
+Of the unit: ~40% escape, ~16% killed, ~44% captured — captured is the dominant outcome among those actually caught, matching medieval ransom incentives (a fallen knight is worth more alive than dead to the soldier who catches him).
+
+The ×0.1 coefficient in escape_fraction was tuned against single-pursuer scenarios; with multi-unit gang-ups now able to push total pursuer Speed much higher, this likely needs retuning once playtested — see §11.
+
+Personal risk while the player's unit is fighting (not yet routed): at Full Command, the player is "along for the ride" mechanically — the unit's own ATK/DEF resolve combat as normal — but the player is still personally endangered by proximity. Each round the player's attached unit is Engaged, roll a flat 5% chance the player is wounded. If triggered, roll again: a small chance (suggested ~10–15%, tunable) the wound is immediately fatal (game over); otherwise it's added as a normal entry to the persistent Wounds list (§5.2), with the LLM-NPC layer generating the specific flavor (location, narrative effect) as usual. At Rank-and-File specifically, this same Engaged-per-round trigger also drives a separate personal combat-performance calculation feeding that tier's Renown (§4.1) — the wound check remains its own luck-based roll; the performance calculation runs alongside it, not in place of it.
+
+Personal outcome if the player's unit routs, is captured, or is destroyed: the player's individual fate is rolled using the same escape/kill/capture fractions computed for the unit as a whole (§8.7 above) — the player is just one more roll against those odds, not a separate calculation.
+
+Escaped: the player is personally fine. The battle itself is lost, and any units destroyed in it don't come back — but the player suffers a Renown hit (via the normal delta formula, §5.2.1) rather than any special penalty.
+Killed: game over.
+Captured: triggers a ransom check rather than an immediate game over.
+Ransom_cost = Renown_stat × Rank_multiplier × Ransom_constant (the same Rank_multiplier scale as the Command Pool, §5.2.2; Ransom_constant converts this into actual treasury currency and needs tuning once the economy/muster system, §11, is built).
+If the player's treasury can cover it: ransom is paid, player returns, Renown penalty applies, game continues.
+If it can't be fully covered: the shortfall forces heavy taxation to raise the difference, which can push the player's lands into unrest or outright loss of title/holdings — a slower, economy-driven game-over path rather than an instant one. This depends on the economy/logistics system (§11) for the actual mechanics of taxation-driven unrest; flagged there rather than resolved here.
+9. Terrain, Weather & Fortifications
+9.1 Terrain Types
+Terrain	Effect
+Grassland	No effect — the baseline case
+Hills / High Ground	See §9.3, Defender Designation — grants a bonus only to whichever unit qualifies as Defender of that cell
+Woodlands	Ranged units' effective range is reduced by 1 (cover from trees limits sightline, doesn't prevent shooting entirely). No meaningful movement penalty.
+Heavy Brushland	Double movement cost to move through. Stacks with Woodlands (thickly overgrown forest — both effects apply together). Grants +5 DEF vs. ranged attacks to units within it — significant cover, not unstoppable.
+Impassable Cliffs	Blocks movement across one full row-boundary within a single column (e.g., between Row 2 and Row 3 in the Center column only), rolled independently per column. Simplified default rather than a full validation algorithm — good enough to be a real obstacle without needing cross-cell consistency checking.
+Swamp	Double movement cost, plus +1 DEF per 5 points of the defending unit's own base DEF already has (rewards heavily-armored units less than one might expect — bogged-down armor is exactly the historical problem, referenced from the Battle of Avignon).
+Stream	+1 movement cost to cross. Minor slow-down, not a hard blocker.
+River / Water's Edge	Effectively impassable for battle purposes — a hard blocker like Impassable Cliffs, distinct from Stream specifically so that fords can later be modeled as a special passable sub-feature of specific River cells, tying back into the original "intercept at a ford" Scouting concept (§3).
+9.2 Weather
+
+Weather applies uniformly across every cell on the grid for the whole battle — it is a global battle condition, not a per-cell terrain feature.
+
+Weather	Effect
+Sunshine	Baseline, no effect
+Rain	Ranged units' effective ATK ×0.85
+Fog	The Scouting Duel's initial candidate pool (§9.5) is reduced from 6 to 4 — worse information, not a different mechanic
+High Winds	Ranged units' effective Range −1
+9.3 Defender Designation (High Ground & Fortifications)
+
+Certain terrain features (High Ground, Fortification points) grant a bonus only to whichever side qualifies as that cell's Defender — since all units move and act simultaneously each round (no turn-based alternation), Defender status can't be assigned by "who moved first." Instead, it's based on occupancy duration:
+
+Each unit tracks cell_occupancy_rounds — consecutive rounds spent in its current cell, resetting to 0 on any move to a different cell.
+
+A unit is Defender of a terrain feature in its cell if:
+  its own cell_occupancy_rounds − highest opposing unit's cell_occupancy_rounds ≥ 1
+
+If occupancy durations are equal (both sides arrived the same round, or within that margin), neither side gets the bonus — the terrain is contested until one side has clearly held it longer. This naturally rewards securing key terrain early, before the enemy can contest it, rather than racing in and immediately fighting over the bonus.
+
+High Ground bonus (Defender only):
+
+Ranged: +1 range
+Melee: ATK ×1.5, DEF ×1.5
+
+The same occupancy rule governs Fortification points (§9.4) — whoever has held that specific position longer is its Defender.
+
+9.4 Fortifications
+
+Scope for this pass: field fortifications and one castle/fort face — not a full multi-sided castle interior. A castle or fort's outward-facing side occupies all three columns (Left/Center/Right) of either the defending side's Reserve row or Front row (chosen at deployment) — representing that entire face of the structure, not the whole building. Each of those three cells contains 2–3 individual Fortification Points (e.g., a wall segment, a tower, a gatehouse), each independently defendable.
+
+Historical note on Stone specifically: genuine purpose-built stone castle construction is more a 10th–11th century development; what exists at 825 is mostly old Roman-era masonry still standing in a handful of cities, not newly-commissioned stone fortresses. Consistent with the acquisition-difficulty principle already established (§11) — Stone fortifications should be honestly strong once available, but rare and typically inherited/captured rather than built.
+
+Two base types, not three. Natural/earthwork fortifications are folded into the makeshift modifier tag below rather than being their own tier — an improvised version exists for either base type (a dug earthwork instead of a built palisade, a crumbling reused ruin instead of a maintained stone wall), rather than "Natural" being a separate category of construction.
+
+Fortification Point stats — three numbers per type, not one: Point HP (how much punishment the structure itself can take), Structural DEF (used when the structure itself is the target), and Defender DEF Bonus (granted to whoever's currently Presented there).
+
+Type	Point HP	Structural DEF	Defender DEF Bonus
+Wooden (proper timber palisade)	80	12	+10
+Stone (old Roman-era masonry)	150	20	+20
+json
+"makeshift": {
+  "Point_HP_multiplier": 0.6,
+  "Structural_DEF_multiplier": 0.6,
+  "Defender_DEF_Bonus_multiplier": 0.6,
+  "note": "Improvised/natural version of the base type. Makeshift Wooden: HP 48, Structural DEF 7, Defender Bonus +6. Makeshift Stone: HP 90, Structural DEF 12, Defender Bonus +12 — lands almost exactly on proper Wooden's numbers, i.e. a hastily-repurposed ruin roughly matches a well-built new palisade."
+}
+
+Present/Stored mechanic: a Fortification Point can hold multiple units, but only one unit is "Presented" at a time — actively occupying the point, able to fight (melee or ranged) and be targeted. All other units assigned to that point are "Stored" — safe inside, not participating, not targetable.
+
+Swapping which unit is Presented costs 2 movement points from both the incoming and outgoing unit.
+The Presented unit gains the Point's Defender DEF Bonus added to its own DEF, on top of the standard Defender Designation rule (§9.3) — a unit only gets this bonus once it qualifies as Defender of that specific point via occupancy.
+Attacking the Presented unit is normal combat, unaffected by anything below — this is the expected default target for most units (return fire from defenders, ladders, grappling hooks), not the wall itself.
+
+Attacking the Point's structure directly is a separate, much harder proposition — this is deliberate, not an oversight. Timber and stone don't yield to an ordinary sword swing the way flesh does, so a hardened_structure tag applies whenever a unit targets the structure itself rather than its Presented defender:
+
+json
+"hardened_structure": {
+  "applies_to": "attacks targeting the Point's structure directly (not the Presented unit)",
+  "effect": "attacker's effective_ATK is reduced by the Point's Structural DEF *before* the normal hit_multiplier formula runs — max(1, effective_ATK − Structural_DEF)",
+  "bypassed_by": "siege_weapon tag (future siege equipment, §11)"
+}
+
+Worked check — Pedites (ATK 12) attacking a proper Wooden Point's structure (Structural DEF 12):
+
+reduced ATK = max(1, 12 − 12) = 1 → hit_multiplier = 1/(1+12) ≈ 0.077 → ~1 dmg/hit (rounds to minimum)
+
+80 HP ÷ ~1 per hit ≈ 80 hits to breach — essentially never happening in a normal battle, which matches the real historical difficulty of ordinary infantry breaching a proper timber wall.
+
+Heavy Horse (ATK 18) against the same wall:
+
+reduced ATK = max(1, 18 − 12) = 6 → hit_multiplier = 6/18 ≈ 0.33 → ~4 dmg/hit → ~20 hits
+
+Slow, but plausible over an extended siege — cavalry battering a gate, not a single afternoon's work.
+
+Future siege equipment (exempt via siege_weapon), illustrative only — ATK 30, Damage 10–15:
+
+unreduced ATK = 30 → hit_multiplier = 30/42 ≈ 0.71 → ~9 dmg/hit → ~9 hits
+
+Confirms the intended archetype: high ATK, normal/low Damage, usually ranged — specifically built to shrug off a penalty ordinary units can't avoid.
+
+siege_weapon has two distinct target-type behaviors, not one — historical siege engines like mangonels and trebuchets were genuinely effective against walls/structures but comparatively weak troop-killers in open battle: slow to reload, imprecise, and more valuable for suppression, terror, and morale disruption (including historically documented use of firepots or even carcasses/severed heads lobbed for psychological and disease effect) than for actual kill counts:
+
+json
+"siege_weapon": {
+  "vs_Fortification_Point_structure": "bypasses hardened_structure's ATK reduction entirely — full, unreduced ATK vs. Structural DEF",
+  "vs_normal_units": {
+    "HP_damage_multiplier": 0.5,
+    "morale_damage": "calculated from the FULL, unhalved damage value — the terror/suppression effect isn't reduced even though actual lethality is"
+  }
+}
+
+Calculated in two steps against a normal unit target:
+
+full_damage = round(rolled_Damage × hit_multiplier)     ← used for morale
+applied_HP_damage = round(full_damage × 0.5)             ← used for HP loss
+morale_delta = -(full_damage × morale_damage_ratio)      ← uses the UNhalved value
+
+Worked example — siege engine (ATK 30) hits Pedites/Fyrd (DEF 8): hit_multiplier ≈ 0.79; rolled Damage 12 → full_damage ≈ 9 → applied_HP_damage ≈ 5 (actual HP loss), but morale_delta uses the un-halved 9. The unit doesn't lose many bodies, but the morale hit lands as if it had — a shot landing nearby is genuinely terrifying and disruptive even when it doesn't kill many outright, matching the historical read rather than treating siege weapons as simply "high damage, full stop."
+
+Actual siege equipment stat sheets are still to be built, flagged in §11.
+
+9.5 Scouting Duel (Terrain Selection)
+
+During Approach/Scouting (§3, step 2), terrain is chosen via a duel rather than either side picking freely:
+
+6 candidate battlefield layouts are generated.
+Role assignment is randomized each battle (not fixed to attacker/defender roles, since real campaigns don't cleanly divide that way) — the winning side chooses whether to be the Narrower (picks the 3 of 6 they like best) or the Finalizer (picks the final 1 of those 3). Determinant: a plain coin flip, for now — no stat-weighting yet; easy to add later without restructuring the mechanic.
+If either side holds a Fortification relevant to the contested ground (defending home territory with an existing castle/fort), the initial pool of 6 is filtered to only layouts that include that fortification — the location is fixed by the campaign state, only the surrounding terrain and weather vary.
+10. Aftermath — Consequence Ledgers
+
+After a battle, track at least three separate ledgers, since they resolve independently:
+
+Battle outcome (won/lost/draw/pyrrhic) — driven mostly by full-command choices, base stats, and the muster.
+Your performance (glory, competence, cowardice, wounds) — driven by your rank-appropriate choices regardless of the battle's outcome. You can perform heroically in a losing battle, or survive by cowering in a winning one — NPCs should remember which.
+Political fallout — feeds into the wider game: did your lord notice you, did you lose men whose families need answers, does the Church read divine favor or judgment into the result.
+
+Casualties, loot, and prisoners are resolved here too, and feed back into governance state (unrest, disease among returning levies, available manpower for the next muster).
+
+11. Open Items / Next Steps
+11.1 Implementation Readiness (before handing this to a coding pass)
+
+Ready to build as-is — the core combat engine: §5 (stat blocks, Command/Renown), §6 (the ATK/DEF/Damage/morale formula), §7 (18 units — 10 troop sheets + 8 siege equipment sheets — plus the full tag registry), §8 (the full grid/movement/engagement/rout system), §9 (terrain/weather/fortifications, now with concrete numbers throughout). Four small ambiguities were resolved outright rather than left open, since they'd otherwise block a straightforward first implementation: gang-up counter-strike targets the first-Engaged attacker (§8.4), Scouting Duel role assignment is a coin flip (§9.5), weather modifiers are concrete numbers not TBD (§9.2), and Impassable Cliffs use a simplified per-column placement rule instead of a full validation algorithm (§9.1).
+
+Explicitly out of scope for a first combat-engine build — stub these, don't invent replacements: the economy/treasury system (blocks Ransom_constant, taxation-unrest fallout, resource-based command capacity — §5.2.1, §8.7), the muster formula (§3), the LLM-NPC tool-call schema and historical momentum scores (§1, §2 — a different subsystem entirely), the King-rank succession narrative chain (§5.2.1), the actual acquisition/invention mechanism for anachronistic tech (Counterweight Trebuchet §7.14, Cannon §7.18 — their stat sheets are complete and usable, just nothing yet gates how a player unlocks them), and the undefended-target lightweight raid resolution (§7.10 — safe to hard-code "always run the full grid battle" for now and revisit).
+
+Also worth flagging directly: Rank-and-File and Sub-Command now have designed frameworks (§4.1, §4.2) — vignette phase taxonomy and graduation trigger for the former, LLM-driven objective/grading structure for the latter — but neither has actual content behind it yet (the 40 vignette cards; the LLM objective-generation system itself). Full Command's grid system (§8) remains the only tier with content-complete, ready-to-implement moment-to-moment mechanics. A first implementation pass focused on Full Command battles is still a legitimate, coherent scope cut.
+
+11.2 Remaining Design & Playtesting Items
+ Core troop roster complete for this design pass: Peasant Levy, Pedites/Fyrd, Heavy Horse, Sagittarii, Crossbowmen, Frankish Horse Archers, Caballarii, Breton/Gascon Light Cavalry (§7.1–7.8), Elite Foot and Ship Crew (§7.9–7.10), plus siege equipment (§7.11–7.18) and the universal veteran tag (§7.19). Ghazi/Berber was superseded by the Breton/Gascon reskin; Kataphraktoi was dropped entirely (no fixed heavy-cavalry ceiling — see §7.3).
+ Decide whether mounted units need their own variant of drilled_spear (Caballarii, §7.7) rather than directly reusing the foot-infantry version, since holding a static formation is a different skill mounted vs. on foot
+ Assign loud to an actual unit sheet once built (currently defined in registry but unattached — likely stays unused for a long while given the setting, built for a future gunpowder-era unit; anti_cavalry_spears is now assigned to Elite Foot, §7.9)
+ Design the undefended-target raid resolution path referenced in Ship Crew (§7.10) — see §11.1, currently stubbed as "always full battle"
+ Playtest the veteran tag (§7.19): confirm the 0.6× morale_damage_ratio and 5%/5% HP/ATK bonuses feel meaningful without making veteran units swing battles too hard once a campaign has run long enough for most surviving units to have earned it
+ Decide whether numbers_advantage (rewarding a stack of levy for sheer numbers, mentioned early on) is still wanted as its own mechanic, separate from veteran — currently undesigned and no longer tied to a "Trained Levy" sheet, since that idea was retired in favor of the universal veteran tag
+ Tune morale_damage_ratio values per tag tier (veteran/hardened vs. fragile/undisciplined) once more unit sheets exist to compare against
+ Build the campaign/siege logistics layer referenced under Muster (§3) and the corrected limited_ammo (§7.6/§7.8/§7.19): arrow stock, food, remount horses, and other consumables tracked at the muster/campaign level rather than per-battle. This is where real ammo/supply depletion should actually bind — not in per-round combat math. Also where berserker's (§7.19) post-battle exhaustion (slower morale recovery before the next fight) should live once this system exists.
+ Formalize the acquisition-difficulty principle: rare/emerging units and tech (e.g., Frankish Horse Archers, Crossbowmen at this date) should have combat stats that are honestly powerful where earned, with scarcity enforced through how hard the LLM-NPC layer makes the unit to acquire (storyline, time investment, resource cost) — never by nerfing the unit's own numbers once fielded
+ Define momentum scores for key known events (Fontenoy 841, Verdun 843, etc.)
+ Define the LLM tool-call schema for state diffs (tech/unit proposals, policy changes)
+ Define muster formula (governance stats + season + distance → army composition)
+ Playtest a single full battle end-to-end across all three command tiers using the same underlying fight, on the actual 3×5 grid (§8)
+ Playtest the multi-day engagement rule (§8.6): confirm the 15–20% overnight morale recovery doesn't make standoffs trivially repeatable, and confirm the logistics layer (once built) actually forces resolution at a reasonable pace rather than allowing indefinite stalling
+ Source a concrete historical citation for the "ranged volleys risk hitting friendly troops already engaged in melee" claim underpinning the splash mechanic (§8.3) — currently asserted as a well-established general phenomenon, not backed by a specific reference in the doc
+ Playtest/tune the grid movement and engagement system (§8.2–8.4): verify the gang-up bonus caps feel right at 3 attackers, confirm Speed-2 units retreating-under-fire plays as intended (double-cost to leave a fighting cell leaves them exposed), validate the flanking shock formula's 3×/6× multipliers across a range of matchups (not just the Heavy-Horse-vs-Peasant-Levy extremes), and confirm movement banking across rounds behaves sensibly at grid edges/corners
+ Confirm Disordered's 25%-of-max-Morale threshold (§8.5) actually produces scrum-targeting situations at a sensible rate in practice — rare by design, but worth checking it isn't so rare it never comes up, or so common it trivializes normal targeting
+ Retune the escape_fraction ×0.1 coefficient (§8.7) once playtested — it was calibrated against single-pursuer scenarios, and multi-unit gang-ups can now push total pursuer Speed much higher than that calibration assumed
+ Playtest Command Pool sizing (§5.2.2): confirm the Rank_multiplier progression (1.0/1.5/2.0/2.75/3.5) feels right, and that the pre-battle-vs-in-battle spending tradeoff (Address the Troops now, broad and safe, vs. holding back for a same-cell Rally later, precise but positioning-gated) produces a real decision rather than an obviously-dominant strategy in one direction
+ Decide exact numbers for units-controllable-by-resources (§5.2.1 notes this is resource-driven, not rank-driven, but doesn't yet tie to a concrete stewardship/wealth formula — depends on the muster formula, also still open)
+ Design actual siege equipment unit sheets — done: Battering Ram, Battering Ram with Penthouse, Traction Trebuchet, Counterweight Trebuchet (anachronistic), Onager, Ballista, Siege Tower, Cannon (anachronistic) at §7.11–7.18
+ Build the actual acquisition/invention mechanism for Counterweight Trebuchet and Cannon (§7.14, §7.18) via the LLM-NPC layer, per the acquisition-difficulty principle (§11) — the stat sheets exist and are deliberately not nerfed, but nothing yet defines how a player actually unlocks access to genuinely anachronistic tech
+ Playtest siege equipment numbers (§7.11–7.18): confirm the Counterweight Trebuchet's power jump over Traction (ATK 40 vs. 28) and the Cannon's numbers feel like meaningful anachronistic leaps rather than just "the same weapon, bigger stats," and that inconsistent_torsion's 0.7–1.1 variance and misfire's 10–15% self-damage chance land in a fun-not-frustrating zone
+ Playtest fortification and High Ground numbers (§9.3–9.4): confirm the occupancy-based Defender rule produces sensible contested-terrain situations, that the Defender DEF Bonuses (Wooden +10/Stone +20, makeshift at ×0.6) feel proportionate against the existing unit roster, and that the hardened_structure breach-time numbers (~80 hits for infantry vs. proper Wooden, ~20 for cavalry) land in the right zone once actually playtested rather than just calculated
+ Playtest the personal wound-risk roll (§8.7): confirm the flat 5%-per-round-Engaged wound chance and the ~10–15% fatal-wound-within-that sub-roll produce a survivable-but-real threat across a full 10-round battle, not something that reliably kills or reliably never matters
+ Define Ransom_constant (§8.7) and the actual treasury/currency system it converts Renown into — depends on the economy/muster system (already flagged above) being built first
+ Define the taxation-driven unrest/loss-of-title consequence path (§8.7) for a ransom the player's treasury can't fully cover — currently flagged as depending on the economy/logistics system rather than resolved
+ Design the narrative chain of events required to actually take the throne once Renown crosses the King threshold (§5.2.1) — an LLM-NPC-layer design item (regicide/succession-type conflict), not a combat-system one
+ Rank-and-File and Sub-Command frameworks designed (§4.1, §4.2) — unit assignment, phase taxonomy, graduation trigger, and objective/grading criteria are set
+ Write 16 more Mid-Battle Crisis vignettes — done, pool now at full 24 target with 5 High-Renown entries total (Knight Falls, Routing Enemy, Captured Standard, Cut Off, Banner Wavers) in rank-and-file-vignettes.md. Opening Exchange and Turning Point remain at 8 each; Rout/Aftermath is LLM-dynamic, not a fixed pool (§4.1)
+ Define concrete Renown/HP/Morale values for Rank-and-File vignette choices — done via a Low/Medium/High Effect Tier Reference table in the companion file, replacing vague "small/large" language across all 24 written vignettes
+ Tune the actual Effect Tier Reference numbers (Low/Medium/High for Personal HP Risk, Renown, Unit Morale, Enemy Unit HP/Morale) once playtested — currently first-pass estimates, not validated against real play
+ Confirm rank-up-from-a-single-battle stays genuinely rare in practice once playtested — rarity now comes entirely from High-tier vignettes being a small minority of an expanded pool plus requiring both the risky choice and its success roll, not from a separate chance mechanic (revised design, rank-and-file-vignettes.md)
+ Audit all 40 written vignettes for meta-game language leaking into narrative prose (as opposed to the italicized mechanical effect lines, where it's expected) — found one violation ("several rounds now" in Line Buckles), now fixed. Future vignette writers should keep this distinction in mind: narration should read like being in a battle, not playing a game; only the italic effect text may reference HP/Renown/tiers/round-based mechanics directly
+ Playtest the new Dismounted status (+15 percentage points to Personal HP Risk, rank-and-file-vignettes.md) — confirm the penalty feels meaningful without making a dismounted stretch of the battle punishing to the point of unfun, and design an actual remount-offering vignette or narration trigger (currently unspecified when/how remounting becomes available)
+ Playtest Rank-and-File's personal combat-performance Renown calculation (§4.1/§8.7): confirm the accumulated personal_damage_dealt − personal_damage_taken produces sensible-magnitude numbers across a full battle (not negligible, not dominant relative to the Turning Point awards at this tier)
+ Define the exact Objective_bonus (§4.2) scaling formula/rubric the LLM uses to judge Sub-Command objective completion — currently qualitative ("LLM-judged, scaled to difficulty"), not a hard formula
+ Build the actual LLM-NPC-layer objective-generation and grading-narration system for Sub-Command (§4.2) — flagged as primarily an LLM-NPC design item, not a combat-engine one
+
+11.3 Implementation Decisions (Phase 0 — data, schemas, formula)
+
+Resolutions made when the doc was first turned into code (data/combat/*.json, src/combat/). Each is a deliberate choice, not an oversight; revisit here if playtesting disagrees.
+
+Tier progression. Everyone starts Rank-and-File riding as one Caballarii (§4.1). Sub-Command unlocks the moment the player owns at least one full trained-and-paid unit and chooses to bring it. Full Command requires Sub-Command eligibility plus winning a Command Claim against the allies present: Command_Claim_score = Renown + Σ(HP + ATK + DEF) of every unit the player contributed, compared against each ally's equivalent score. Allies come from the historical-narrative layer (still to be designed), so with no allies present no claim is offered and the player holds whatever tier they qualified for. The Renown-vs-unit-power weighting is an open tunable.
+Solo rule. Called to battle with no units of one's own and no allies present, the player cannot fight alone as a single Caballarius: the engagement is a narrated automatic loss (loot lost, Renown hit, active_threat set), not a grid battle.
+Muster stub. The player's Caballarii attachment is always fielded. Each owned professional unit carries a bring/leave choice before battle. The full muster formula (§3) remains unbuilt.
+Casualties. Only Peasant Levy dead reduce the estate's adult_men. Every unit carries an abstracted strength (headcount) on its sheet; casualties = HP lost × strength × 0.5 (tunable); the §8.7 rout split is applied to survivors. Prisoners feed ransom in denarii.
+shock. The §7.19 registry numbers are canonical: ATK ×1.4 on charge, morale −15 if stopped, requires Speed ≥ 4. The §6 illustrative block (×1.5 / −20 / Speed ≥ 3) is superseded.
+Charge. A unit is charging on the first round of a new melee engagement (it Engaged this round and is not firing). "Charge stopped" = the target has hold_formation active or anti_cavalry_spears, and is not Disordered at the end of the round.
+Ranged fire. A ranged unit chooses a target within its own Range stat (Manhattan) each round; the choice is sticky while the unit is unengaged and the target stays in range. skirmish_volley grants one extra volley per round against a fire target with Speed ≤ 2. The earlier "within 2 squares" wording in §8.3 is superseded by the unit's Range stat.
+Siege ranges lowered. Traction Trebuchet 3, Onager 3, Ballista 2, Cannon 3; Counterweight Trebuchet stays at 4; javelins stay at 1. §7.13–7.18 tables updated.
+low_armor deleted. It was defined in §6 but on no sheet and absent from the registry. Frankish Horse Archers already carry light_melee.
+cavalry = mounted. anti_cavalry_spears' vs_tag:cavalry resolves against the mounted tag (registry alias).
+hit_and_run requirement relaxed to Range ≥ 1 and Speed ≥ 3, since Breton/Gascon Light Cavalry (Range 1) carries it.
+Disengage cost. mounted and hit_and_run halve the double cost to leave a fighting cell (4 → 2), giving mounted's "can disengage" a concrete effect distinct from §8.2's universal rule.
+Armor bookkeeping. Sheet HP/ATK/DEF/Speed are final values with flat armor and load effects already priced in (Peasant Levy DEF 5 = base 2 + gambison 3; Heavy Horse Speed 5 already reflects heavy_armor). Each armor tag records how much of the sheet DEF is armor-sourced (gambison 3, shield 2, heavy_armor 5, mobile_fortification 10) purely so armor_piercing can halve that portion. Shield's extra +1 vs ranged and hold_formation's +2 are genuine conditionals on top of the sheet.
+One strike per unit per round. Each Engaged unit strikes once at its declared target (or the first enemy that Engaged it). If several enemies are Engaged on it, that one strike is split front-loaded per the §8.4 counter-damage table. The gang-up DEF penalty keys off how many enemies are Engaged on the unit.
+Command Pool and Renown. Morale absorbed by a Command Pool shield counts as morale taken in the §5.2.1 Renown delta.
+Closed hook vocabulary. Tags are data validated against a fixed list of hooks and conditions (src/combat/schema.ts). An LLM-proposed unit may reuse registry tags or propose a new tag expressed only in that vocabulary; anything outside it is rejected before it reaches the engine.
+Determinism. Every battle carries a PRNG seed so a lab replay or bug report reproduces the same rolls.
+
+Phase 1 additions (engine):
+Script commander. Both the enemy and any NPC-commanded units on the player's side are run by a deterministic script (src/combat/ai.ts), never the LLM: ranged units fire at the nearest target in range and kite with hit_and_run; melee units engage the shakiest enemy in their cell, brace spears against approaching cavalry, and retreat a row when unengaged below 30% Morale; reserves wait two rounds unless the front in their column is empty or under 50% Morale; siege pieces prefer Fortification Points. Posture (attack/defend) is a per-side option. Movement is BFS pathing around cliffs and rivers; once two units are within three cells only one side closes per round (alternating), which is what stops simultaneous movers trading places forever — 360 random-terrain simulations produced no stalemates.
+Flank shock in chains. In an engagement chain (A engages 1, 1 engages B), unit 1 has two enemies on it and takes the §8.4 flank shock even though it initiated the second link.
+Rout without pursuers. A unit that breaks with no enemy Engaged on it escapes whole (nobody is catching it); the §8.7 split applies only when pursuers exist, using the front pursuer's effective ATK/DEF.
+Wound placeholders. The engine records a wound as location "unresolved" with an awaiting_narration flag; the LLM-NPC layer fills location and effects at aftermath.
+Personal exposure at every tier. The §4.1 personal combat tally and the §8.7 5%/12% wound roll run whenever the attached unit is Engaged, regardless of tier; only Rank-and-File uses the tally for Renown.
+
+Phase 2 additions (Battle Lab):
+Battle Lab. A title-menu tool (src/session/lab.ts, src/ui/lab/) that runs the engine outside the campaign: any roster on either side (with per-line stat overrides and veteran), a painted 3×5 field with weather, cliffs and a fortification face, any command tier, Renown/rank, AI postures, strict-manual or AI-filled orders, step/auto-run/rewind, a filterable log showing every formula's effective ATK/DEF, multiplier, roll and shares, and a ledger summary. Scenarios export/import as JSON. It never touches world-state.json.
+Phase 3 additions (Rank-and-File in the campaign):
+Calls to arms. Season events raise a call: pol-muster and th-muster → a summons (the count's host stands as allies); th-bandits and th-armed → outlaws; th-spill → Northmen on the river. One call at a time; an unanswered call lapses, as refused, when the season turns. Refusing a raid or outlaws sets active_threat. The season cannot turn while the lord is in the field.
+Muster and tier. The lord's own file is one Caballarii ("The lord's file"), NPC-led at Rank-and-File. Owned units (Phase 4) are brought by choice; bringing one lifts the fight to Sub-Command (Full Command if the claim is held). Solo rule enforced: no allies and no units → narrated loss (denarii and herds thinned, active_threat, Renown −3).
+Draw schedule. Opening card before the first exchange; a Crisis card every second round from round 2 while the lord's file stands, up to 6; the Turning Point once, on the first rout from round 3 or at round 7; the Rout card only if the lord's own file breaks. Rounds between cards are fought by both script commanders; the bridge narration covers them.
+Effect Tier Reference as data. Personal HP Risk Low/Medium/High = 15%/30%/45% for 1–2/2–4/3–6; Renown 3/10/30; unit Morale 3/6/12; enemy HP-and-morale loss 3–5/5–9. Dismounted adds +15 points to every risk chance. Below 10 HP each hit rolls 33% for a permanent wound. "Success" for a risky option = the risk roll did not wound the lord.
+Positioning effects are AI nudges on the lord's file for the next round: sooner/high ground → press (ignore the closing wait); later/distance → hold.
+Rout card. The engine holds the lord's escape/kill/capture fractions instead of rolling them; the narrator renders the moment without inventing odds; the lord chooses to run (roll the fractions as computed) or stand over the banner (a High personal risk first, Renown +30 if unhurt, then the same fractions). The odds never change — only what he risks before them.
+Renown at Rank-and-File = (personal blows dealt − taken) + card awards (the unit-objective share was cut in the second review). Wounds from the engine are placeholders the aftermath narrator fills (WOUNDS: line); engine locations are used if it fails. Ransom on capture = Renown × rank multiplier in denarii from the chest. A killed lord ends the chronicle.
+Narrator fallbacks. Scene, bridge, rout, and aftermath prose each have engine-written fallbacks, so a missing key or a failed call never stalls a battle.
+
+Phase 4 additions (raising units):
+Muster stub, concretely. The estate raises units through Confirm proposals, not the still-unbuilt muster formula. Peasant levy: the villa's own adult men, at once, free, up to the men not already standing as levy (they stay on the population books; only their dead come off, §11.3 casualties). Paid men need Eberhard the captain present to drill: spearmen 4 denarii + 1 lb iron per man, 2 seasons; archers 4 denarii + ½ lb iron per man, 1 season; horsemen 12 denarii + 1 lb iron + 1 horse per man, 3 seasons. Upkeep per season: spearmen 0.4, archers 0.35, horsemen 1 denarius per man; levy none. An unpaid season sends a tenth of each paid unit home with its gear (horses back to the stables). Minimum sizes 10 men (5 riders); a unit's strength is its real headcount, far below the roster sheets' abstract 50–100.
+Who proposes. Aldric: levy and disband. Eberhard: everything — raise_unit, disband_unit, call_to_arms (ride against present outlaws or Northmen now), register_unit_sheet. Bernard may register_unit_sheet for a weapon born at the forge. All prices come from the arms tool drawer, never from the model's memory.
+Invented units in the campaign. register_unit_sheet carries { sheet, newTags, rationale } through the same validateForgeObject() as the lab forge; accepted content is stored on the save (military.customSheets / customTags) and re-registered on load, so invented soldiers survive both save/load and the lab's session clear. Acquisition difficulty for anachronistic designs remains the narrative layer's job — the sheet is honest, the gate is the story.
+Battle integration. Owned units brought to a call fight as the lord's own (owner player), which lifts the tier to Sub-Command; survivors' headcount and veteran status are written back after the battle. With units of his own the solo rule no longer applies to raids.
+
+Phase 5 additions (Sub-Command):
+Objectives are engine-measurable, marshal-phrased. Each time an order is needed the engine lists the objectives it can actually check on this field — hold_column (keep a file of yours in your column until a given exchange), break_unit (a named enemy file routs), protect_unit (a named allied file still stands), advance (a file of yours reaches their front by a given exchange), keep_whole (every file of yours comes off the field standing) — each with a difficulty 1–3 and a plain statement. The count's marshal (LLM) chooses one by index and puts it in a commander's words; he may never invent or alter terms. If the model is unavailable the engine's plain statement is the order.
+Exact Objective_bonus rubric (closes the §11.2 open item): +10 × difficulty on success, −10 × difficulty on failure, 0 while open; objectives still open when the battle ends are judged against the finished field. Renown at Sub-Command = (morale dealt − taken by files the lord owns) + Σ bonuses, per §4.2.
+Replacement orders. Objectives are checked after every exchange; when one resolves the marshal is told the result and issues the next, acknowledging the last in a clause — the "replacement orders on success or failure" the doc asks for.
+No vignette cards at command tiers: the lord gives orders each exchange for the files he owns (menu from their tags, targets from the engine); allied files and the enemy fight under the script commanders. Nightfall is announced, not chosen (Full Command gets the choice). The field view shows real numbers only for the lord's own files; everyone else reads as steady / shaken / wavering / breaking — "real numbers for your own column only" (§4).
+The same view and round handler serve Full Command: controlledUnitIds() already returns every player-side file at that tier.
+
+Phase 6 additions (Full Command):
+Gate. Full Command requires both the grant (player.fullCommandGranted — set by winning the Command Claim once the narrative layer supplies allies' scores; until then a Settings test hook) and at least one unit of the lord's own brought to the field. Grant without units is still Rank-and-File; units without the grant is Sub-Command.
+Scouting Duel in play (§9.5). Six candidate fields (four in fog) are generated from the call's seed; a coin flip names the winner. If the lord wins he chooses Narrower (keep three of six; the enemy takes the final pick) or Finalizer (the enemy keeps three; the lord takes the pick). If the enemy wins, its script commander chooses its role and the lord takes the other. The script commander's picks favour its own high ground and shun its own swamp (scouting.ts layoutScore).
+Deployment (§3 step 3). Only the enemy is placed for him; every file on his side — his own and the allies' — is set by the lord into rows 1–2, or handed to the sergeants for automatic placement. Address the Troops spends Command Pool per file at 1:1 up to the 2× base Morale cap, before the first exchange.
+Nightfall (§8.6). At Full Command nothing is decided for him: hold (overnight heart recovery, same field), seek better ground (three new fields offered; the hosts re-form at dawn with occupancy and engagements reset), or draw off (outcome "withdrawn", no rout). Lower tiers are simply told the host holds.
+Narration. Opening scene and aftermath only; no marshal and no objectives — the lord is the commander, so Renown is the plain §5.2.1 delta over the files he owns.
+Command Claim readout. The Battle Lab summary shows Command_Claim_score for the lord's files against the allied contingent using a stated ally Renown, so the comparison can be exercised before the narrative layer exists.
+
+Final review decisions (after the six phases):
+Charge belongs to the unit that made contact. Only the file that declared the Engage this round (or moved in and engaged) is charging; the file it struck strikes back normally. If both declare on each other in the same round, both charge. (Earlier code gave shock's ×1.4 to both sides of any new link — fixed.)
+Attachment. At a summons the lord rides in "the minor nobles' horse" — one Caballarii file of lesser landholders like himself, NPC-led (Rank-and-File). When he brings units of his own he rides with one of them (his mounted file if he has one, else the first) and no extra free file is spawned.
+Solo rule fate. Attacked with no units and no allies, the raid succeeds and the lord's own fate is one roll against the §8.7 odds of a lone Caballarius (Speed 5, DEF 11) pursued by the raiders — up to three pursuers' Speed for the escape fraction, the fastest pursuer's ATK (with mounted's ×1.3) for kill vs capture. A mounted man mostly outruns foot raiders; horse among the pursuers changes that. No Renown hit for failing to hold — that is narrative.
+Capture penalty. None beyond the formula's own loss and the ransom (Renown × rank multiplier, in denarii; shortfall noted).
+Spoils. Everything the host takes goes into one pool: ½ denarius per enemy dead (a held field only), 1 per common captive, plus noble captives — each captive has a 1-in-500 chance of being a noble, ranked 10/6/3/1 in 20 as minor noble / viscount / count / magnate and worth 50 / 100 / 200 / 500; kings are never kept (narrative). The pool is shared by contribution on the Command Claim score (Renown + Σ(HP+ATK+DEF) of files contributed); at Rank-and-File the lord's contribution is one horseman's cut of the nobles' file. A defeat yields nothing; a draw or withdrawal only the captives' worth. Captives themselves are the lord's only when the fight was his alone (no allies); then on the reckoning he settles them on the land as unfree or sells them at 1 denarius each.
+Mancipia (Constitution §4.3 unfree) now live in the estate engine: +20 callable men-days each every season, fed ½ modius of grain each from the lord's stores, never counted toward the levy, and −1 peopleHappiness per five held (capped at −6). They are bought and sold: a peddler's pack carries 1–3 of them one visit in five at a horse's price band (40–120 denarii, midpoint 80, in place of an ordinary line), the stall buys them back the same way, and Gerulf will seek them abroad (a dear, slow hunt of two or three seasons). Manumission is a proposal (free_mancipia, Aldric or Ermenald): the freed become adult men of the estate, every pair founds a household, and the people are lifted +2 a head to +8.
+The lord's wounds (design review, items 3–5). He is whole again each season (personal HP to full), but wounds are kept on him. In battle: at Rank-and-File a wound carries him from the line — his part is over, the hosts fight on and the ledger is read to him without a fate roll (fate carried_off); at Sub- or Full Command he may still direct but cannot Rally; twice wounded he cannot direct at all, his orders are dropped with a note; the general wounded costs every file on his side 25% of its max morale, the leader of a file wounded costs that file 15%. Between seasons each open wound heals with 30% after the first season and 15% after the second, else it is set for life. A lord with one open wound may still rule and ride; with two he can do neither until the season turns; a permanent wound keeps him out of the line (he commands unattached at Sub/Full, and cannot answer a summons with no units of his own); two permanent wounds maim him and the game ends. When he loses a battle without leading a file directly (unattached general) he takes a wound 40% of the time in the ledger.
+Sub-Command scouting ("spend resources to scout ahead of your column") is dropped — the Scouting Duel replaced it late in the doc's drafting. Address the Troops stays a general's act (Full Command deployment only). No feint / parley / quarter actions: unit orders cover the tactical space.
+Second review batch (items 6–15):
+Tags removed. `elite` and `command_capable` are gone from the registry, Heavy Horse, and Elite Foot — throwbacks to an older idea of leadership; the tier system and attachment carry the lord's command now.
+The villa's walls (item 8). A raid is fought at the villa's gate, and the lord fights behind his own walls automatically: a Wooden fortification face (3 points per cell — wall segment, tower, gatehouse) runs along his front row, and his files that stand in it take up its points. He starts with timber; a stone mason's project `stone_wall` (320 labour-days, 40 cart-loads of stone, a mason in service required) upgrades the face to Stone. At Full Command the scouting pool is filtered to layouts that carry the face (A9.5). Summons and outlaws on the road are fought on open ground. Scripted historical battles keep their own per-side fortification triggers.
+Ransom shortfall (item 9). Historically there was no loan to work off. A captured lord whose chest cannot meet Renown × rank multiplier stays in his captors' hands; nothing is taken from the chest and the chronicle ends (`player.captive`, a game-over screen alongside dead and maimed).
+Levy dead as grief (item 10). Each levy man who does not come home costs the people's heart 3, but grief alone will not push it below 20 — low enough that people begin leaving and unrest bites, not so low the village simply dissolves. No disease roll.
+Disordered scrum (item 11). Working as designed: a melee strike into a mutually Disordered pair lands on its declared target (you can tell whose side the man in front of you is on); only ranged fire splits 1/1.
+Non-contemporary units and the captain (item 12). Eberhard's hire trigger is training your own unit: he is sought once the lord has a levy called up, men in drill, or has begun gathering what a new kind of soldier wants — not once a wall stands. Sheets carry `requirements`: goods the district lacks (`resource`, `name`, `perMan`, `source` smith|hunt|merchant, optional `replacesHorses`). Crossbowmen want `crossbow_hardware` from Bernard; Frankish Horse Archers want `steppe_horses` from Gerulf (which stand in for stable horses). The Unit Forge asks the model to work out what 825 lacks for its invention and list it the same way. Such sheets appear in Eberhard's raisable table with a spec read off the sheet (mounted 12 d/man, 3 seasons; heavy 8 d; else 5 d; always his to drill), the arms drawer's `wanting` list names each good, how much per man, what is in store, and whom to ask; the raise is refused until the store holds `perMan × men` of every line and consumes them when it goes through. Bernard registers and turns out the gear (`register_resource` + `transfer_resources gain`), Gerulf hunts the exact resource id, and Aldric recommends the captain once any of it is in store.
+Rank-and-File objective share (item 7). Cut from §4.1: Renown at Rank-and-File is blows dealt − taken plus the cards' Turning Point awards, nothing from the file's orders. `RAF_OBJECTIVE_SHARE` and the third argument of `rankAndFileRenown` are gone.
+Deferred: Command Claim allies (item 13) arrive with the narrated-battle layer; balance flags (item 15) wait for beta.
+Parked for separate discussion: wound stat effects.
+
+Unit Forge. The lab's LLM seam for §1/§6: the model receives the closed hook vocabulary, the tag registry and the roster, and returns a sheet plus optional new tags. The reply is validated against the strict schemas (unknown hooks, unknown tags, roster id collisions, redefined built-in tags, unmet Speed/Range requirements, range-without-ranged all reject), retried once with the error list, then shown as an approve/reject card with envelope warnings. Approved content is registered for the session only and vanishes when the lab closes (session-only decision). The same parseForgeReply() will validate NPC-proposed units in the campaign later.

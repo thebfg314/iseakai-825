@@ -260,7 +260,7 @@ describe("per-NPC dialogue logs", () => {
     game.state.flags.merchant_present = true;
     game.state.merchant.present = true;
     game.state.merchant.name = "Gero";
-    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay", memories: [] });
+    game.state.npcs.push({ id: "merchant", name: "Gero", role: "merchant", location: "fontenay", memories: [], wantsTalk: false });
     const merchant = game.setScene("merchant");
     expect(merchant.sceneNpcId).toBe("merchant");
     expect(merchant.messages).toHaveLength(1);
@@ -282,6 +282,7 @@ describe("npc transaction memories", () => {
       role: "merchant",
       location: "fontenay",
       memories: [],
+      wantsTalk: false,
     });
     game.state.resources.denarii = 200;
 
@@ -668,7 +669,7 @@ describe("expansion hires via Aldric after unlock", () => {
         name: "Eberhard",
         order: "Hire Eberhard the captain.",
         unlock: (g) => {
-          g.state.holdings[0].features.push("watch_post");
+          g.state.military.units.push({ id: "u1", sheetId: "peasant_levy", name: "The villa's men", veteran: false, strength: 20, raisedTurn: 1 });
         },
       },
     ];
@@ -707,7 +708,7 @@ describe("expansion hires via Aldric after unlock", () => {
           type: "register_npc",
           summary: "Hire Otto",
           isNew: true,
-          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay", memories: [] },
+          npc: { id: "village_reeve", name: "Otto", role: "village_reeve", location: "fontenay", memories: [], wantsTalk: false },
         },
       ],
       [],

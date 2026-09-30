@@ -99,6 +99,7 @@ describe("merchant memories persist by visitor name", () => {
       role: "merchant",
       location: "fontenay",
       memories: [],
+      wantsTalk: false,
     });
 
     recordConfirmedTransaction(
