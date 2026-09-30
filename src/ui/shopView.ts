@@ -2,6 +2,7 @@ import type { WorldState } from "../engine/schema";
 import {
   buybackAmount,
   emptyMerchantBasket,
+  getAmount,
   stallAmount,
   stallBuyUnit,
   sellUnit,
@@ -85,7 +86,7 @@ export function stallRows(state: WorldState): { resource: string; amount: number
 export function sellRows(state: WorldState): { resource: string; amount: number; unitPrice: number }[] {
   const rows: { resource: string; amount: number; unitPrice: number }[] = [];
   for (const resource of tradeableStoreIds(state)) {
-    const amount = resource in state.resources ? state.resources[resource as keyof typeof state.resources] : (state.custom_resources.find((c) => c.id === resource)?.amount ?? 0);
+    const amount = getAmount(state, resource) ?? 0;
     if (amount <= 0) continue;
     rows.push({ resource, amount, unitPrice: sellUnit(state, resource) });
   }
@@ -95,7 +96,5 @@ export function sellRows(state: WorldState): { resource: string; amount: number;
 export function shopHave(state: WorldState, resource: string, kind: "stall" | "buyback" | "sell"): number {
   if (kind === "stall") return stallAmount(state, resource);
   if (kind === "buyback") return buybackAmount(state, resource);
-  const custom = state.custom_resources.find((c) => c.id === resource);
-  if (custom) return custom.amount;
-  return (state.resources as Record<string, number>)[resource] ?? 0;
+  return getAmount(state, resource) ?? 0;
 }

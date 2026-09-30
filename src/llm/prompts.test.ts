@@ -119,6 +119,9 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/Aldric's world/i);
     expect(gerulf).toMatch(/iron and other ordinary goods/i);
     expect(gerulf).toMatch(/already away|already on the road/i);
+    expect(gerulf).toMatch(/mancipia/);
+    expect(gerulf).toMatch(/steppe_horses/);
+    expect(gerulf).not.toMatch(/YOU quote the denarii/);
     expect(gerulf).not.toMatch(/Do NOT hunt iron/i);
     expect(npcSystemPrompt("negotiator")).toBe(gerulf);
   });

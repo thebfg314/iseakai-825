@@ -26,6 +26,12 @@ export const MOSTLY_MEN_NO_WOMEN_KEYS = new Set(["quarry", "wooden_tower", "drai
 
 const EMPTY_POOL: LabourPool = { men: 0, women: 0, youths: 0 };
 
+/**
+ * Callable labour-days a mancipium gives every season (Constitution §4.3 unfree). No fields of
+ * their own to protect, so more than a free man's 8–25 and not seasonal; fed from the lord's grain.
+ */
+export const MANCIPIA_LABOUR_DAYS = 20;
+
 function labourEfficiency(state: WorldState): number {
   return applyMultiplyAdd(1, modifiersFor(state, "labour_efficiency"), { lo: 0.4, hi: 2.5 });
 }
@@ -33,8 +39,9 @@ function labourEfficiency(state: WorldState): number {
 export function labourPool(state: WorldState): LabourPool {
   const mid = LABOUR_MIDPOINTS[state.meta.season];
   const eff = labourEfficiency(state);
+  const mancipia = state.population.mancipia ?? 0;
   return {
-    men: Math.round(state.population.adult_men * mid.men * eff),
+    men: Math.round((state.population.adult_men * mid.men + mancipia * MANCIPIA_LABOUR_DAYS) * eff),
     women: Math.round(state.population.adult_women * mid.women * eff),
     youths: Math.round(state.population.youths * mid.youths * eff),
   };

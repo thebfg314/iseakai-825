@@ -10,6 +10,7 @@ import {
 } from "./schema";
 import { resolveActiveProject } from "./labour";
 import { looksLikeHireOrder, specialistsFromHireText } from "./specialists";
+import { isMancipia, looksLikeMancipia, MANCIPIA_ID, MANCIPIA_PRICE, mancipiaCount, setMancipia } from "./mancipia";
 import { markProjectSeason, stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { newId, round1 } from "./util";
 
@@ -382,6 +383,22 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
   const riskNote =
     "No deal works if the numbers are not right — and even then a mishap on the road or a false rumour can stop it cold.";
 
+  if (isMancipia(resource)) {
+    // People are dear and slow to find: a horse's price and more, two to three seasons on the road.
+    // This purse is the mancipia formula, not quantity × band high × difficulty.
+    const per = Math.round(((MANCIPIA_PRICE.min + MANCIPIA_PRICE.max) / 2) * 1.35 + 4);
+    const quotedDenarii = per * amount;
+    return {
+      goods: "unfree (mancipia)",
+      resource: MANCIPIA_ID,
+      amount,
+      difficulty,
+      quotedDenarii,
+      durationSeasons: quotedDenarii >= 300 ? 3 : 2,
+      riskNote,
+      unit: "souls",
+    };
+  }
   if (isCanonical(resource)) {
     const range = state.market[resource];
     const custom = range ? undefined : state.custom_resources.find((c) => c.id === resource);
@@ -504,9 +521,10 @@ export function huntProposal(brief: HuntBrief): StartHuntProposal {
 }
 
 export function normalizeHuntProposal(state: WorldState, p: StartHuntProposal): StartHuntProposal {
+  const wantsPeople = looksLikeMancipia(p.goods) || looksLikeMancipia(p.resource ?? "");
   const req: HuntRequest = {
-    goods: p.goods,
-    resource: p.resource || slugGoods(p.goods),
+    goods: wantsPeople ? "unfree (mancipia)" : p.goods,
+    resource: wantsPeople ? MANCIPIA_ID : p.resource || slugGoods(p.goods),
     amount: p.amount,
     difficulty: resolveHuntDifficulty(p.resource || p.goods, p.difficulty),
   };
@@ -626,6 +644,10 @@ function creditGoods(state: WorldState, hunt: NonNullable<WorldState["projects"]
   if (add <= 0) return;
   if (isCanonical(hunt.resource)) {
     state.resources[hunt.resource] = round1(state.resources[hunt.resource] + add);
+    return;
+  }
+  if (isMancipia(hunt.resource)) {
+    setMancipia(state, mancipiaCount(state) + Math.round(add));
     return;
   }
   let custom = state.custom_resources.find((c) => c.id === hunt.resource);

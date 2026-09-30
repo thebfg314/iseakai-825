@@ -1,0 +1,440 @@
+{
+  "$comment": "Rank-and-File vignette pool (design doc §4.1). Prose is the content file verbatim. Success for a risky option = the Personal HP Risk roll does not wound the lord.",
+  "tiers": {
+    "personalRisk": {
+      "low": { "chance": 0.15, "damage": { "min": 1, "max": 2 } },
+      "medium": { "chance": 0.3, "damage": { "min": 2, "max": 4 } },
+      "high": { "chance": 0.45, "damage": { "min": 3, "max": 6 } }
+    },
+    "renown": { "low": 3, "medium": 10, "high": 30 },
+    "unitMorale": { "low": 3, "medium": 6, "high": 12 },
+    "enemy": { "low": { "min": 3, "max": 5 }, "medium": { "min": 5, "max": 9 } }
+  },
+  "vignettes": [
+    {
+      "id": "first_volley",
+      "phase": "opening",
+      "title": "First Volley",
+      "text": "The column has been advancing since first light, and now the enemy line is close enough that you can make out individual faces beneath their helms. A horn sounds somewhere across the field — thin, distant, almost polite — and a heartbeat later the sky darkens with the first volley. You hear it before you see it: a rising hiss, like wind finding a gap in a shutter. The man to your left mutters a prayer under his breath. Around you, the whole column seems to flinch as one animal.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Duck low behind your horse's neck and a comrade's shield, making yourself as small as the saddle allows.", "mechanics": "No effect." },
+        { "key": "B", "text": "Hold your head high, chin up, spine straight, because the men behind you are watching to see if you flinch.", "mechanics": "Personal HP Risk: Low. If it lands: Unit Morale +Low.", "risk": "low", "onSuccess": { "unitMorale": { "tier": "low", "sign": 1 } } }
+      ]
+    },
+    {
+      "id": "choosing_your_file",
+      "phase": "opening",
+      "title": "Choosing Your File",
+      "text": "The column halts to form up properly before the final approach, and a weathered sergeant — the kind of man who has clearly done this before, more than once, and lived — walks the line assigning places. He reaches you last, sizing you up with the flat, unbothered look of someone who has stopped being impressed by fine horses a long time ago. \"Front rank or second,\" he says. \"Makes no difference to me. Only to you.\"",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Front rank. You nudge your horse forward, into the place where the fighting starts first.", "mechanics": "Positioning: Engage one round sooner. Personal HP Risk: Low. If you take no damage this round: Renown +Low.", "risk": "low", "always": { "positioning": "sooner" }, "onSuccess": { "renown": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Second rank. You let the sergeant wave you back a step, telling yourself it's tactical patience and not caution.", "mechanics": "No effect. Positioning: Engage one round later than the front line.", "always": { "positioning": "later" } }
+      ]
+    },
+    {
+      "id": "comrade_falters",
+      "phase": "opening",
+      "title": "A Comrade Falters",
+      "text": "The enemy line resolves out of the haze all at once — more of them than the scouts reported, or so it seems from here — and the man riding at your shoulder goes rigid. His knuckles have gone white on the reins. He's young, younger than you'd guessed under the helm, and his horse has picked up on his fear and started to sidle sideways, threatening to open a gap in the formation right as it matters least to have one.",
+      "options": [
+        { "key": "A", "text": "Bark an order, steady him. A short, sharp word — his name, or just \"hold\" — enough to snap his attention back to the line.", "mechanics": "No personal risk. Prevents the Unit Morale −Low that Option B causes." },
+        { "key": "B", "text": "Ignore him, focus on your own readiness. Whatever happens to him happens; you have your own nerves to manage.", "mechanics": "No personal effect. Unit Morale −Low.", "always": { "unitMorale": { "tier": "low", "sign": -1 } } }
+      ]
+    },
+    {
+      "id": "skirmishers_probe",
+      "phase": "opening",
+      "title": "Skirmishers Probe the Flank",
+      "text": "Before the main lines ever meet, a handful of light riders peel off from the enemy host and come skimming in along your formation's flank — javelins, not swords, and no intention of staying to fight properly. They're testing you, looking for a soft edge, and they're gone again almost as soon as they've thrown.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Ride out and drive them off yourself. You break from the line before anyone can stop you, chasing down the nearest rider.", "mechanics": "Personal HP Risk: Medium. If you win the exchange: Enemy Unit HP/Morale −Low, Renown +Low.", "risk": "medium", "onSuccess": { "enemy": "low", "renown": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Hold formation, let the unit's screen handle it. You trust the men whose job this actually is, and grit your teeth through the wait.", "mechanics": "No personal risk. Unit Morale −Low (a few free, unanswered hits before the skirmishers are driven off anyway).", "always": { "unitMorale": { "tier": "low", "sign": -1 } } }
+      ]
+    },
+    {
+      "id": "banner_advances",
+      "phase": "opening",
+      "title": "The Banner Advances",
+      "text": "Somewhere behind you a horn calls the advance, and the banner-bearer kicks his horse forward — but the pace he sets is faster than the column expected, faster than feels entirely sane, and for a moment the whole formation seems to hesitate over whether to match it or hold together at the slower pace instead.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Press ahead with the vanguard, matching the banner's reckless pace and leaving the more cautious riders behind.", "mechanics": "Positioning: Engage a round early. Personal HP Risk: Medium. If you come through it: Renown +Medium.", "risk": "medium", "always": { "positioning": "sooner" }, "onSuccess": { "renown": { "tier": "medium", "sign": 1 } } },
+        { "key": "B", "text": "Keep pace with the main body, letting the vanguard outrun itself if it wants to.", "mechanics": "No effect, no positioning change." }
+      ]
+    },
+    {
+      "id": "uneven_ground",
+      "phase": "opening",
+      "title": "Uneven Ground",
+      "text": "The ground between the two hosts turns out to be worse than it looked from a distance — churned mud from some earlier rain, tufted grass hiding ruts underneath. A horse two files over stumbles badly and nearly throws its rider. Yours picks its footing carefully, but carefully costs time, and time is the one thing that feels like it's running short.",
+      "options": [
+        { "key": "A", "text": "Push your horse hard regardless, trusting the animal to sort its own feet out.", "mechanics": "Personal HP Risk: Low. Positioning: reach the line faster than the rest of your file.", "risk": "low", "always": { "positioning": "sooner" } },
+        { "key": "B", "text": "Ease off, pick your footing carefully, and accept that you'll arrive a moment later than you'd like.", "mechanics": "No personal risk. Positioning: Engage one round later than the rest of your file. Unit Morale −Low.", "always": { "positioning": "later", "unitMorale": { "tier": "low", "sign": -1 } } }
+      ]
+    },
+    {
+      "id": "rivals_taunt",
+      "phase": "opening",
+      "title": "A Rival's Taunt",
+      "text": "A noble from a neighboring file — someone whose family has needled yours for longer than either of you have been alive — leans across the gap between formations, grinning under his helm. \"Your father held this same ground once, didn't he,\" he calls, just loud enough for the men nearby to hear. \"Ran from it too, if the stories are true.\" The men nearby have gone quiet, waiting to see if you'll answer.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Answer with bravado, push forward to be seen. You give him exactly the response he was fishing for, and make sure everyone watches you do it.", "mechanics": "Personal HP Risk: Medium. If you come through unhurt: Renown +Medium. If you're wounded doing it: Renown −Low instead (the taunt lands both ways).", "risk": "medium", "onSuccess": { "renown": { "tier": "medium", "sign": 1 } }, "onFail": { "renown": { "tier": "low", "sign": -1 } } },
+        { "key": "B", "text": "Ignore him, stay disciplined. You let the words die in the noise of the column and keep your eyes on the enemy line, where they belong.", "mechanics": "No effect, no risk. Genuinely neutral — the contrast with A is the point." }
+      ]
+    },
+    {
+      "id": "first_blood",
+      "phase": "opening",
+      "title": "First Blood, Before Contact",
+      "text": "A single thrown javelin arcs out from somewhere in the enemy's front rank, and a man goes down before either side has properly closed — no charge, no clash, just one body suddenly on the ground and the line closing back over the gap like water. It's the first death either army has seen today, and it happened to someone else, close enough to watch.",
+      "options": [
+        { "key": "A", "text": "Take heart, shout encouragement. You turn the moment into fuel, calling out that their line is nervous too, that they bleed the same as anyone.", "mechanics": "No personal risk. Unit Morale +Low.", "always": { "unitMorale": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Say nothing, feel the dread settle in. You keep it to yourself — the sudden, quiet understanding that this is real, and that it could just as easily have been you.", "mechanics": "No mechanical effect at all — the player character has no personal Morale stat by design. Pure flavor." }
+      ]
+    },
+
+    {
+      "id": "line_buckles",
+      "phase": "crisis",
+      "title": "The Line Buckles",
+      "text": "The fight has worn on long enough now that what started as an even exchange has started to tilt — enemy riders are working around your file's flank, and you can feel the formation compress as men instinctively bunch away from the pressure. A gap is opening exactly where a gap shouldn't be.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Push into the gap yourself, putting your own horse and blade where the line is thinnest.", "mechanics": "Personal HP Risk: Medium. If you hold the gap: reduces the flanking morale shock the unit takes this round by half.", "risk": "medium", "onSuccess": { "flankShockHalf": true } },
+        { "key": "B", "text": "Fall back with the file to reform a few horse-lengths behind, trading ground for cohesion.", "mechanics": "No personal risk. Unit takes the full flanking morale shock. Renown −Low.", "always": { "renown": { "tier": "low", "sign": -1 } } }
+      ]
+    },
+    {
+      "id": "third_rider",
+      "phase": "crisis",
+      "title": "Third Rider Joins",
+      "text": "Two enemy riders have already been trading blows with your section of the line, and now a third peels away from their reserve and angles in — one more, and your formation crosses into genuinely surrounded territory. You can feel the men around you start to waver, that specific dread of being circled rather than simply outnumbered.",
+      "options": [
+        { "key": "A", "text": "Fight through toward the newcomer, trying to drive him off before he fully commits to the fight.", "mechanics": "Personal HP Risk: Medium. If you land a solid hit: Enemy Unit HP/Morale −Low, and the gang-up may not reach its full three-attacker penalty this round.", "risk": "medium", "onSuccess": { "enemy": "low", "flankShockHalf": true } },
+        { "key": "B", "text": "Hold defensively, keep your guard tight.", "mechanics": "Personal HP Risk: Low. Unit absorbs the full three-attacker penalty this round — worse DEF, worse odds, but you personally stay safer inside it.", "risk": "low" }
+      ]
+    },
+    {
+      "id": "bogged_in_swamp",
+      "phase": "crisis",
+      "title": "Bogged in the Swamp",
+      "text": "The fighting has drifted, step by step, off the firmer ground you started on and into a stretch of black, sucking mud that nobody chose but everyone's now standing in. Your horse's legs are in past the fetlock, and every stride is a small negotiation with the earth.",
+      "options": [
+        { "key": "A", "text": "Dismount and fight on foot, trusting your own legs over a horse fighting the mud.", "mechanics": "Personal HP Risk: Low. Gains the Dismounted status: until remounted, every Personal HP Risk chance on future choices increases by +15 percentage points.", "risk": "low", "always": { "dismount": true } },
+        { "key": "B", "text": "Stay mounted, push the horse through it.", "mechanics": "Personal HP Risk: Medium (a stumble at the wrong moment) — but keep full mobility if the ground clears.", "risk": "medium" }
+      ]
+    },
+    {
+      "id": "knight_falls",
+      "phase": "crisis",
+      "title": "The Knight Falls",
+      "text": "A cry goes up somewhere close — not the general noise of battle, but something with weight to it — and you see him go down: the man who's led your file since before you can remember not knowing him, struck from the saddle and swallowed into the churn of hooves and legs. The men around you feel it happen almost before they see it.",
+      "renownTier": "high",
+      "options": [
+        { "key": "A", "text": "Rally to his fallen banner, forcing your way through to reach him — drag him clear, make a stand over the body, anything to keep the moment from becoming a rout.", "mechanics": "Personal HP Risk: High. If you make it back: Renown +High. Reduces the Unit Morale −High that losing a commander would otherwise inflict down to −Medium.", "risk": "high", "onSuccess": { "renown": { "tier": "high", "sign": 1 }, "unitMorale": { "tier": "medium", "sign": -1 } }, "onFail": { "unitMorale": { "tier": "high", "sign": -1 } } },
+        { "key": "B", "text": "Let him fall, keep the formation moving.", "mechanics": "No personal risk. Unit Morale −High — this is one of the specific triggers Morale is built to register.", "always": { "unitMorale": { "tier": "high", "sign": -1 } } }
+      ]
+    },
+    {
+      "id": "brushland_ambush",
+      "phase": "crisis",
+      "title": "Brushland Ambush",
+      "text": "The battle has pushed into a stretch of heavy brush — the kind of tangled growth that swallows sound and sightlines both — and for a moment you genuinely can't tell how many of the enemy are actually near you versus how many you're only hearing. It's disorienting in a way open ground never was.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Use the brush for cover, fighting defensively and letting the tangled ground work for you.", "mechanics": "Personal HP Risk: Low — the cover is real. Harder for the enemy to press a flanking attempt here.", "risk": "low", "always": { "flankShockHalf": true } },
+        { "key": "B", "text": "Push out of the brush to press the attack, trading the cover for a clean line at an exposed enemy.", "mechanics": "Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Medium, chance at Renown +Low.", "risk": "medium", "onSuccess": { "enemy": "medium", "renown": { "tier": "low", "sign": 1 } } }
+      ]
+    },
+    {
+      "id": "scrum_no_names",
+      "phase": "crisis",
+      "title": "A Scrum With No Names Left",
+      "text": "Directly across from you, the fighting has collapsed into something that isn't really a formation anymore on either side — men grappling, shouting, no clean lines between friend and foe. Both sides here are past caring about anything but the next moment; you genuinely can't tell, at a glance, which of the figures ahead are still fighting for either side's actual plan.",
+      "options": [
+        { "key": "A", "text": "Press into the chaos yourself, trusting your own eyes over anyone's formation.", "mechanics": "Personal HP Risk: High — it's genuinely hard to tell who you're facing in a scrum like this. If it goes well: Enemy Unit HP/Morale −Medium.", "risk": "high", "onSuccess": { "enemy": "medium" } },
+        { "key": "B", "text": "Hold back from the scrum, letting it burn itself out without you in it.", "mechanics": "No personal risk, no Renown, no bonus — deliberately zero reward either way, so holding back is a real trade-off, not a disguised best option." }
+      ]
+    },
+    {
+      "id": "formation_holds",
+      "phase": "crisis",
+      "title": "Formation Holds or Breaks",
+      "text": "A wall of enemy horse is coming on at pace, and every instinct in the men around you is screaming to either brace or scatter — there isn't a third option once they're this close. Your file has drilled for exactly this moment more times than anyone wanted to count, but drilling and doing are never quite the same thing.",
+      "options": [
+        { "key": "A", "text": "Call for the line to hold, brace together. You put your voice and your own position into it, calling the formation firm rather than trusting it to happen on its own.", "mechanics": "Personal HP Risk: Low. If it holds: the unit's hold_formation capability applies properly — the charge is met on much better terms than it would be otherwise.", "risk": "low", "onSuccess": { "holdFormation": true } },
+        { "key": "B", "text": "Trust the file's own discipline, keeping your attention on your own guard rather than anyone else's nerve.", "mechanics": "No personal risk, no proactive effect — the outcome is left entirely to chance." }
+      ]
+    },
+    {
+      "id": "blow_unseen",
+      "phase": "crisis",
+      "title": "The Blow You Didn't See Coming",
+      "text": "It happens the way these things always seem to — not from the direction you were watching, not from the person you were fighting. Something connects, hard, and for a moment the whole fight goes strangely quiet around the edges before the pain actually arrives.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Grit through it, keep fighting. You don't give yourself the chance to think about how bad it is.", "mechanics": "This is the personal wound-risk check made concrete. If the wound is serious: Renown +Low for continuing despite it.", "risk": "medium", "onFail": { "renown": { "tier": "low", "sign": 1 } }, "always": { "extraWoundRoll": true } },
+        { "key": "B", "text": "Fall back a step, get a hand to the wound. You pull yourself briefly out of the exchange rather than push your luck.", "mechanics": "Avoids an additional wound-risk roll this round. Unit Morale −Low (visibly out of the front for a moment, though minor since you're tending a wound, not fleeing outright).", "always": { "skipWoundRoll": true, "unitMorale": { "tier": "low", "sign": -1 } } }
+      ]
+    },
+    {
+      "id": "horse_stumbles",
+      "phase": "crisis",
+      "title": "Your Horse Stumbles Under Fire",
+      "text": "An arrow — or a javelin, you don't have time to tell which — takes your horse high in the shoulder rather than you. The animal doesn't go down, but it staggers, breaks stride, throws its whole weight forward in a way that puts you dangerously off-balance right as the enemy line closes the last few strides.",
+      "options": [
+        { "key": "A", "text": "Fight the horse back under control, forcing it to answer the reins through the pain.", "mechanics": "Personal HP Risk: Medium (a bad moment to be fighting your own mount instead of the enemy). If you succeed: no positioning loss.", "risk": "medium", "onFail": { "positioning": "later" } },
+        { "key": "B", "text": "Bail off and fight on foot, trusting your legs over a wounded animal.", "mechanics": "No personal risk from the fall itself. Positioning: you lose the mounted advantage for the rest of this crisis.", "always": { "dismount": true } }
+      ]
+    },
+    {
+      "id": "weather_turns",
+      "phase": "crisis",
+      "title": "The Weather Turns",
+      "text": "Rain starts somewhere in the middle of the fight — not enough to stop anything, but enough to make bowstrings slack and grips uncertain, and the enemy archers who'd been troubling your flank suddenly seem to be missing more than they're hitting.",
+      "options": [
+        { "key": "A", "text": "Press the advantage while their aim is off, closing distance before the rain lets up.", "mechanics": "Personal HP Risk: Low. If it lands: Enemy Unit HP/Morale −Low.", "risk": "low", "onSuccess": { "enemy": "low" } },
+        { "key": "B", "text": "Hold position, let the weather do its work without you risking anything.", "mechanics": "No risk. No effect — the rain helps regardless of whether you personally act on it." }
+      ]
+    },
+    {
+      "id": "routing_enemy",
+      "phase": "crisis",
+      "title": "A Routing Enemy Before You",
+      "text": "Somewhere just ahead, part of the enemy line has broken — not your doing, just the shape battles take sometimes — and a handful of them are turning to run, backs exposed, discipline gone. A mounted man can do real damage to men like that, if he's willing to break formation to do it.",
+      "renownTier": "high",
+      "options": [
+        { "key": "A", "text": "Ride them down. You put your horse into the gap and go after the routing men, exactly the thing a mounted soldier is for in this moment.", "mechanics": "Personal HP Risk: High (a small chance the \"routing\" enemy turns out to have more fight left than expected). If it lands: Enemy Unit HP/Morale −Medium, Renown +High.", "risk": "high", "onSuccess": { "enemy": "medium", "renown": { "tier": "high", "sign": 1 } } },
+        { "key": "B", "text": "Stay with your file, let them run.", "mechanics": "No risk, no reward. Discipline over opportunity — a defensible choice, just not a memorable one." }
+      ]
+    },
+    {
+      "id": "captured_standard",
+      "phase": "crisis",
+      "title": "The Captured Standard",
+      "text": "An enemy banner-bearer goes down in the chaos ahead, and for a moment his standard is just lying there, unguarded, close enough that you could reach it before anyone reorganizes around it.",
+      "renownTier": "high",
+      "options": [
+        { "key": "A", "text": "Break for the standard yourself.", "mechanics": "Personal HP Risk: High. If you get it: Renown +High, Enemy Unit HP/Morale −Low (their side visibly loses something that matters to them). If you fail: Renown −Low.", "risk": "high", "onSuccess": { "renown": { "tier": "high", "sign": 1 }, "enemy": "low" }, "onFail": { "renown": { "tier": "low", "sign": -1 } } },
+        { "key": "B", "text": "Leave it, stay in formation.", "mechanics": "No risk, no reward. Someone else's glory, or no one's." }
+      ]
+    },
+    {
+      "id": "pulling_back",
+      "phase": "crisis",
+      "title": "Pulling Back Under Pressure",
+      "text": "You need to disengage — the exchange in front of you isn't one you should keep having — but pulling back from a fight already underway means turning away from someone with a blade still in his hand.",
+      "options": [
+        { "key": "A", "text": "Disengage cleanly, accepting the risk.", "mechanics": "Personal HP Risk: Medium — the enemy gets a free strike as you turn away. Positioning: you successfully create distance.", "risk": "medium", "always": { "positioning": "distance" } },
+        { "key": "B", "text": "Stay engaged rather than risk your back.", "mechanics": "No additional risk this round, but you remain in the exchange — whatever happens next, happens." }
+      ]
+    },
+    {
+      "id": "high_ground",
+      "phase": "crisis",
+      "title": "The High Ground",
+      "text": "The fighting has drifted toward a low rise — not much of a hill, but enough that whoever holds it fights the rest at an advantage. Your file hasn't quite claimed it yet, and neither, quite, has the enemy.",
+      "options": [
+        { "key": "A", "text": "Push for the high ground now, ahead of your own line.", "mechanics": "Personal HP Risk: Medium (briefly unsupported while you get there first). Positioning: if you hold it, you and whoever joins you fight the next exchange from advantage.", "risk": "medium", "onSuccess": { "positioning": "high_ground" } },
+        { "key": "B", "text": "Let the file advance together, slower but safer.", "mechanics": "No personal risk. Positioning: the rise is contested longer, with no guaranteed advantage to either side." }
+      ]
+    },
+    {
+      "id": "river_at_back",
+      "phase": "crisis",
+      "title": "A River at Your Back",
+      "text": "The fighting has pushed your section of the line right up against a stretch of river — not fordable, not now, not under this pressure. There's nowhere to go if this exchange goes badly.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Stand and fight it out, fully committed since retreat isn't really an option anyway.", "mechanics": "Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Low, small Renown gain for the nerve it takes.", "risk": "medium", "onSuccess": { "enemy": "low", "renown": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Edge along the bank looking for any way to open space to maneuver.", "mechanics": "No personal risk, but no gain either — you spend the exchange looking for an exit that may not exist." }
+      ]
+    },
+    {
+      "id": "taking_the_brunt",
+      "phase": "crisis",
+      "title": "Taking the Brunt",
+      "text": "Your section is fighting two enemy riders at once now, and you can feel — physically feel, through the press of bodies — that whoever's actually at the front of this exchange is taking far more of it than the men working the flanks. Right now, that's you.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Hold the front of the exchange, absorbing the worst of it so the men flanking can work.", "mechanics": "Personal HP Risk: High (the counter-damage split weights heavily toward whoever's in front — that's you). If you hold: the flanking riders land real damage more safely. Renown +Medium for carrying the weight of it.", "risk": "high", "onSuccess": { "renown": { "tier": "medium", "sign": 1 }, "enemy": "low" } },
+        { "key": "B", "text": "Ease back, let someone else take the front position.", "mechanics": "No personal risk. Whoever takes your place absorbs what you would have — no Renown either way; this is judged on nerve, not outcome." }
+      ]
+    },
+    {
+      "id": "word_from_commander",
+      "phase": "crisis",
+      "title": "Word From the Commander",
+      "text": "A rider comes down the line from your commander — not to you specifically, just to the file as a whole — carrying whatever Address the Troops or mid-battle Rally has been ordered. You feel the effect before you fully register the words.",
+      "options": [
+        { "key": "A", "text": "Let it steady you, take it as it's meant.", "mechanics": "No risk. Unit Morale +Low on top of whatever the Rally itself grants — a small personal receptiveness bonus.", "always": { "unitMorale": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Stay skeptical, keep your guard up regardless of what you're told.", "mechanics": "No risk, no effect. Neither better nor worse — just a different way of processing the same moment." }
+      ]
+    },
+    {
+      "id": "strangers_crisis",
+      "phase": "crisis",
+      "title": "A Stranger's Crisis",
+      "text": "Not your own file — a different rider entirely, someone you don't know, being worked over by two enemy soldiers close enough that you could reach him if you moved now.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Break away and help him.", "mechanics": "Personal HP Risk: Medium. If you reach him in time: a stranger owes you his life, small Renown gain, no unit-wide effect (he's not your unit).", "risk": "medium", "onSuccess": { "renown": { "tier": "low", "sign": 1 }, "flag": "saved_a_stranger" } },
+        { "key": "B", "text": "Stay with your own section — he's not your responsibility.", "mechanics": "No risk, no effect. A colder, safer choice." }
+      ]
+    },
+    {
+      "id": "the_lull",
+      "phase": "crisis",
+      "title": "The Lull",
+      "text": "For a moment — just a moment — the fighting nearest you eases. Not over, just a breath, the kind that happens sometimes in the middle of a battle for reasons nobody controls.",
+      "options": [
+        { "key": "A", "text": "Use it to check your own wounds and gear.", "mechanics": "No risk. If you're currently below 10 HP: a small chance (roll separately) to stabilize slightly before the fighting resumes — flavor-forward, mechanically minor.", "always": { "stabilize": true } },
+        { "key": "B", "text": "Use it to re-form with your file, ready for what's next.", "mechanics": "No risk. Small unit Morale +Low — the file steadies together rather than individually.", "always": { "unitMorale": { "tier": "low", "sign": 1 } } }
+      ]
+    },
+    {
+      "id": "cut_off",
+      "phase": "crisis",
+      "title": "Cut Off",
+      "text": "The tide of the fight has shifted without your noticing exactly when, and now there's real space between you and the rest of your file — not a rout, not yet, just you and a few enemy riders in ground that used to be safely behind your own line.",
+      "renownTier": "high",
+      "options": [
+        { "key": "A", "text": "Fight your way back toward the file.", "mechanics": "Personal HP Risk: High. If you make it: Renown +High for the nerve it took. If you're wounded doing it: no Renown, just the wound.", "risk": "high", "onSuccess": { "renown": { "tier": "high", "sign": 1 } } },
+        { "key": "B", "text": "Hold your ground and wait for the line to come back to you.", "mechanics": "Personal HP Risk: Medium (you're still exposed, just not moving through it). No Renown either way — a defensible, less dramatic choice.", "risk": "medium" }
+      ]
+    },
+    {
+      "id": "their_line_wavers",
+      "phase": "crisis",
+      "title": "Their Line Wavers",
+      "text": "Something's gone wrong for the enemy formation across from you — you can't tell exactly what, but the shape of their line has changed, gotten looser, less certain.",
+      "options": [
+        { "key": "A", "text": "Press now, before they recover.", "mechanics": "Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Medium.", "risk": "medium", "onSuccess": { "enemy": "medium" } },
+        { "key": "B", "text": "Hold your own line's shape instead, let the moment pass.", "mechanics": "No risk, no reward — discipline over opportunism, a genuinely fine choice, just not a memorable one." }
+      ]
+    },
+    {
+      "id": "shield_holds",
+      "phase": "crisis",
+      "title": "The Shield Holds",
+      "text": "A blow lands that should have hurt — you feel the shock of it all the way up your arm — but your shield takes the worst of it, wood and iron doing exactly what they're built for.",
+      "options": [
+        { "key": "A", "text": "Push back immediately while the enemy's follow-through leaves them briefly open.", "mechanics": "Personal HP Risk: Low (already spent your defense on the block). If it lands: Enemy Unit HP/Morale −Low.", "risk": "low", "onSuccess": { "enemy": "low" } },
+        { "key": "B", "text": "Reset your guard properly before doing anything else.", "mechanics": "No risk. No reward — pure recovery, entirely sound tactically." }
+      ]
+    },
+    {
+      "id": "only_way_through",
+      "phase": "crisis",
+      "title": "The Only Way Through",
+      "text": "The ground here funnels hard — rock or fence-line or simply the press of bodies — into one narrow gap that both sides are trying to use, and whoever controls the choke point controls a lot more of this exchange than their numbers alone would suggest.",
+      "options": [
+        { "key": "A", "text": "Force your way into the gap and hold it.", "mechanics": "Personal HP Risk: Medium. If you hold it: Unit Morale +Low (the file fights with a controlled chokepoint instead of an open, dangerous line).", "risk": "medium", "onSuccess": { "unitMorale": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Let the enemy have the gap, fight on the open ground instead.", "mechanics": "No personal risk. No effect — a genuinely even trade, not a worse choice, just a different one." }
+      ]
+    },
+    {
+      "id": "banner_wavers",
+      "phase": "crisis",
+      "title": "The Banner Wavers",
+      "text": "Your own file's banner — not the great host's, just your section's marker, the thing men glance at without thinking to know where they are — dips hard as its bearer takes a wound. It hasn't fallen. Not yet.",
+      "renownTier": "high",
+      "options": [
+        { "key": "A", "text": "Get to the banner, keep it up yourself if you have to.", "mechanics": "Personal HP Risk: High. If you reach it in time: Renown +High, prevents a Unit Morale −Medium the dipping banner would otherwise cause.", "risk": "high", "onSuccess": { "renown": { "tier": "high", "sign": 1 } }, "onFail": { "unitMorale": { "tier": "medium", "sign": -1 } } },
+        { "key": "B", "text": "Trust the bearer to manage it himself.", "mechanics": "No personal risk. If he can't hold it: Unit Morale −Medium, same as losing a lesser commander — a real, if smaller, version of the Knight Falls trigger.", "always": { "unitMorale": { "tier": "medium", "sign": -1 } } }
+      ]
+    },
+
+    {
+      "id": "over_the_fallen_body",
+      "phase": "turning",
+      "title": "Over the Fallen Body",
+      "text": "An enemy rider goes down just ahead of you — not dead, not yet, pinned under his own horse and struggling to free a blade arm. Nobody else has noticed him yet. For one clean moment, he's yours alone to deal with.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Press forward and finish it, seizing the opening while it's still open.", "mechanics": "Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Low, Renown +Medium.", "risk": "medium", "onSuccess": { "enemy": "low", "renown": { "tier": "medium", "sign": 1 } } },
+        { "key": "B", "text": "Hold your position, let the line catch up to you.", "mechanics": "No risk, no reward. The moment passes to someone else, or to no one." }
+      ]
+    },
+    {
+      "id": "named_rider",
+      "phase": "turning",
+      "title": "The Named Rider",
+      "text": "Across the press of bodies, you catch sight of a banner you recognize — someone worth ransoming, or worth being seen to have challenged, riding closer than his own guard seems to realize. It won't stay this way for long.",
+      "renownTier": "high",
+      "options": [
+        { "key": "A", "text": "Break toward him, chasing the chance at a name worth having.", "mechanics": "Personal HP Risk: High. If you reach him and win the exchange: Renown +High, Enemy Unit HP/Morale −Low. If you're wounded failing: Renown −Low.", "risk": "high", "onSuccess": { "renown": { "tier": "high", "sign": 1 }, "enemy": "low" }, "onFail": { "renown": { "tier": "low", "sign": -1 } } },
+        { "key": "B", "text": "Let him pass, stay with your file.", "mechanics": "No risk, no reward. Someone else's story, not yours today." }
+      ]
+    },
+    {
+      "id": "dragging_comrade",
+      "phase": "turning",
+      "title": "Dragging a Comrade Back",
+      "text": "A man you've ridden beside all season — not your commander, just someone you know, someone with a name you'd have to explain to his family — goes down within reach, wounded but not dead. The fighting hasn't moved past him yet, but it will.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Go back for him.", "mechanics": "Personal HP Risk: Medium. If you make it: Renown +Medium, no unit-wide effect either way — this one is entirely personal.", "risk": "medium", "onSuccess": { "renown": { "tier": "medium", "sign": 1 }, "flag": "carried_a_comrade" } },
+        { "key": "B", "text": "Leave him, keep moving with the line.", "mechanics": "No risk. No Renown change — this isn't judged the way losing a commander is; it's a personal weight to carry, not a mechanical one.", "always": { "flag": "left_a_comrade" } }
+      ]
+    },
+    {
+      "id": "order_to_fall_back",
+      "phase": "turning",
+      "title": "The Order to Fall Back",
+      "text": "A horn sounds the general withdrawal — not a rout, just a controlled pull-back — and the men around you start to peel away in good order. You've got one more clean strike available if you take it right now, before the line actually moves.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Take the strike, delay your own withdrawal by a beat.", "mechanics": "Personal HP Risk: Medium (fighting alone for a moment as your file starts to move). If it lands: Enemy Unit HP/Morale −Low, Renown +Low. Positioning risk: briefly exposed if the withdrawal outpaces you.", "risk": "medium", "onSuccess": { "enemy": "low", "renown": { "tier": "low", "sign": 1 } }, "always": { "positioning": "exposed" } },
+        { "key": "B", "text": "Obey immediately, withdraw with the line.", "mechanics": "No risk, no reward, no positioning risk — safest possible resolution." }
+      ]
+    },
+    {
+      "id": "man_surrenders",
+      "phase": "turning",
+      "title": "A Man Surrenders",
+      "text": "An enemy soldier in front of you drops his weapon, hands raised, shouting something in a dialect you don't fully catch but understand well enough. He's yours to decide about, and no one nearby seems to be watching closely.",
+      "options": [
+        { "key": "A", "text": "Take him prisoner.", "mechanics": "Personal HP Risk: Low (guarding a captive while still technically in a fight). Potential future ransom value — no immediate mechanical Renown either way; this is a character-defining choice more than a stat one.", "risk": "low", "always": { "flag": "took_prisoner" } },
+        { "key": "B", "text": "Finish it and move on.", "mechanics": "No risk. No mechanical Renown change — purely a character/reputation flag for how the LLM-NPC layer frames the player going forward.", "always": { "flag": "killed_a_surrendering_man" } }
+      ]
+    },
+    {
+      "id": "your_own_colors",
+      "phase": "turning",
+      "title": "Your Own Colors",
+      "text": "If you carry any personal heraldry — a small banner, a marked shield, something that says whose son you are — it's caught someone's eye today, friend and foe both. Keeping it visible means being seen; being seen cuts both ways.",
+      "renownTier": "low",
+      "options": [
+        { "key": "A", "text": "Hold it high, make sure it's seen.", "mechanics": "Personal HP Risk: Low (you're a marked target now). Renown +Low regardless of outcome — being seen to stand under your own colors matters on its own.", "risk": "low", "always": { "renown": { "tier": "low", "sign": 1 } } },
+        { "key": "B", "text": "Let it drop out of sight for now.", "mechanics": "No risk. No Renown change — sensible, forgettable, exactly as intended." }
+      ]
+    },
+    {
+      "id": "moment_to_flee",
+      "phase": "turning",
+      "title": "The Moment to Flee",
+      "text": "Your file isn't broken yet, but you can feel it getting close — that specific quality the noise takes on right before men actually start running. Nobody's bolted yet. You could be first, or you could be part of whatever happens if the line holds instead.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Start pulling back now, ahead of the crowd.", "mechanics": "No personal HP risk. Renown −Low (visibly initiating a withdrawal before it's clearly justified) — regardless of what the line does after.", "always": { "renown": { "tier": "low", "sign": -1 }, "positioning": "distance" } },
+        { "key": "B", "text": "Hold a moment longer, see if the line steadies.", "mechanics": "Personal HP Risk: Medium (staying exposed while it's still genuinely uncertain). If the line holds: Renown +Medium. If it doesn't: no additional penalty beyond whatever the rout itself resolves to — the choice is judged on nerve, not on the battle's outcome.", "risk": "medium", "onSuccess": { "renown": { "tier": "medium", "sign": 1 } } }
+      ]
+    },
+    {
+      "id": "old_score",
+      "phase": "turning",
+      "title": "An Old Score",
+      "text": "The rival from before the lines even met — the one who mocked your father's name — is down, unhorsed, and struggling in the open ground between the lines, in real danger from more than just you.",
+      "renownTier": "medium",
+      "options": [
+        { "key": "A", "text": "Go to him, pull him clear.", "mechanics": "Personal HP Risk: Medium. Renown +Medium regardless of anything said between you before — mercy under fire reads as real character, not weakness.", "risk": "medium", "always": { "renown": { "tier": "medium", "sign": 1 }, "flag": "spared_rival" } },
+        { "key": "B", "text": "Let the old score stand.", "mechanics": "No risk. No mechanical penalty — but no Renown gain either. A quiet, ungraded choice, exactly the kind the character has to live with rather than be scored on.", "always": { "flag": "left_rival_to_fate" } }
+      ]
+    }
+  ]
+}

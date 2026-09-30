@@ -5,6 +5,7 @@ import type { GameView } from "../shared/types";
 import {
   BOOKS_TAB_LABELS,
   BOOKS_TABS,
+  armsBook,
   customsBookEntries,
   customsEmptyLines,
   estatePagerView,
@@ -90,6 +91,7 @@ export function BooksPanel({
           />
         )}
         {tab === "labours" && <LaboursTab entries={labours} />}
+        {tab === "arms" && <ArmsTab book={armsBook(view.state)} />}
         {tab === "customs" && (
           <CustomsTab
             forthcoming={customs.forthcoming}
@@ -465,6 +467,75 @@ function CustomsTab({
           <p className="ledger-note">
             <GlossaryText text={law.body} />
           </p>
+        </article>
+      ))}
+    </>
+  );
+}
+
+function ArmsTab({ book }: { book: ReturnType<typeof armsBook> }) {
+  return (
+    <>
+      <h3>The lord</h3>
+      <Row k="Renown" v={String(book.lord.renown)} />
+      <Row k="Rank" v={`${book.lord.rankTitle} (${book.lord.rankLevel})`} />
+      <Row k="Strength" v={book.lord.strength} />
+      {book.lord.dead && <p className="flag warn">Dead.</p>}
+      {book.lord.wounds.length > 0 && (
+        <>
+          <h3>Wounds</h3>
+          <ul className="tiny">
+            {book.lord.wounds.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      <h3>Men under arms</h3>
+      {book.emptyLine && <p className="muted">{book.emptyLine}</p>}
+      {book.units.map((u) => (
+        <article key={u.id} className="labour-entry">
+          <div className="row">
+            <span>
+              {u.name}
+              {u.veteran ? " ★" : ""}
+            </span>
+            <span>{u.men} men</span>
+          </div>
+          <p className="order">
+            {u.kind}
+            {u.upkeep ? ` · ${u.upkeep} denarii a season` : " · no upkeep"}
+          </p>
+        </article>
+      ))}
+      {book.drilling.map((t) => (
+        <article key={t.id} className="labour-entry">
+          <div className="row">
+            <span>{t.name}</span>
+            <span>{t.men} men</span>
+          </div>
+          <p className="order">
+            {t.kind} under drill · {t.seasonsLeft === 0 ? "ready next season" : `${t.seasonsLeft} season${t.seasonsLeft === 1 ? "" : "s"} to go`}
+          </p>
+        </article>
+      ))}
+      {(book.units.length > 0 || book.drilling.length > 0) && <Row k="Upkeep each season" v={`${book.upkeepPerSeason} denarii`} />}
+      <Row k="Villa men free for levy" v={String(book.levyFree)} />
+      {book.invented.length > 0 && <Row k="Invented soldiers" v={book.invented.join(", ")} />}
+      <h3>Battles</h3>
+      {book.history.length === 0 && <p className="muted">No battles yet.</p>}
+      {book.history.map((b) => (
+        <article key={b.id} className="custom-entry">
+          <div className="row">
+            <span>
+              {b.when} · {b.kind}
+            </span>
+            <span>
+              {b.outcome} · {b.renownDelta >= 0 ? "+" : ""}
+              {b.renownDelta}
+            </span>
+          </div>
+          <p className="order">{b.summary}</p>
         </article>
       ))}
     </>

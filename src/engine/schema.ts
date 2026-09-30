@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { BattlefieldSchema, BattleStateSchema, COMMAND_TIERS } from "../combat/battleTypes";
+import { TagDefSchema, UnitSheetSchema, WoundSchema } from "../combat/schema";
+import { PLAYER_PERSONAL_BASELINE } from "../combat/constants";
 
 export const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 export type Season = (typeof SEASONS)[number];
@@ -357,6 +360,168 @@ export const ForthcomingOrderSchema = z.object({
 });
 export type ForthcomingOrder = z.infer<typeof ForthcomingOrderSchema>;
 
+/** A unit the estate owns between battles (raised/trained in Phase 4; empty until then). */
+export const OwnedUnitSchema = z.object({
+  id: z.string(),
+  sheetId: z.string(),
+  name: z.string(),
+  veteran: z.boolean().default(false),
+  strength: z.number().int().nonnegative(),
+  raisedTurn: z.number().int().optional(),
+});
+export type OwnedUnit = z.infer<typeof OwnedUnitSchema>;
+
+/** Men hired and under drill; becomes an OwnedUnit when the seasons are served (Phase 4). */
+export const TrainingSchema = z.object({
+  id: z.string(),
+  sheetId: z.string(),
+  name: z.string(),
+  men: z.number().int().positive(),
+  seasonsRequired: z.number().int().nonnegative(),
+  seasonsElapsed: z.number().int().nonnegative().default(0),
+  startedTurn: z.number().int(),
+});
+export type Training = z.infer<typeof TrainingSchema>;
+
+export const BATTLE_CALL_KINDS = ["summons", "raid", "bandits"] as const;
+export type BattleCallKind = (typeof BATTLE_CALL_KINDS)[number];
+
+/** An open call to arms raised by a season event; answered or refused from the hall. */
+export const BattleCallSchema = z.object({
+  kind: z.enum(BATTLE_CALL_KINDS),
+  eventId: z.string(),
+  text: z.string(),
+  seed: z.number().int(),
+  createdTurn: z.number().int(),
+});
+export type BattleCall = z.infer<typeof BattleCallSchema>;
+
+export const BATTLE_NARRATION_KINDS = ["scene", "bridge", "card", "choice", "result", "engine", "aftermath", "orders"] as const;
+
+export const BattleNarrationSchema = z.object({
+  id: z.string(),
+  kind: z.enum(BATTLE_NARRATION_KINDS),
+  round: z.number().int(),
+  text: z.string(),
+  /** For "card": the vignette id; for "choice": the option key. */
+  ref: z.string().optional(),
+});
+export type BattleNarration = z.infer<typeof BattleNarrationSchema>;
+
+export const OBJECTIVE_KINDS = ["hold_column", "break_unit", "protect_unit", "advance", "keep_whole"] as const;
+export type ObjectiveKind = (typeof OBJECTIVE_KINDS)[number];
+
+/** A Sub-Command objective (design doc §4.2): engine-checkable facts, commander's words from the narrator. */
+export const ObjectiveSchema = z.object({
+  id: z.string(),
+  kind: z.enum(OBJECTIVE_KINDS),
+  /** Column index for hold_column / advance; unit id for break_unit / protect_unit. */
+  target: z.string().optional(),
+  /** Round by which advance must be achieved; hold_column must last until this round. */
+  byRound: z.number().int().optional(),
+  difficulty: z.number().int().min(1).max(3),
+  /** The commander's order, as spoken. */
+  text: z.string(),
+  status: z.enum(["active", "success", "failed"]).default("active"),
+  issuedRound: z.number().int(),
+  resolvedRound: z.number().int().optional(),
+  bonus: z.number().optional(),
+});
+export type Objective = z.infer<typeof ObjectiveSchema>;
+
+/** Rank-and-File vignette progress and the narrated transcript, saved with the battle. */
+export const BattleSessionSchema = z.object({
+  tier: z.enum(COMMAND_TIERS),
+  callKind: z.enum(BATTLE_CALL_KINDS),
+  phase: z.enum(["muster", "scouting", "deployment", "fighting", "aftermath", "closed"]).default("muster"),
+  broughtUnitIds: z.array(z.string()).default([]),
+  /** Full Command §9.5 Scouting Duel in progress. */
+  scouting: z
+    .object({
+      pool: z.array(BattlefieldSchema),
+      /** Who won the coin flip. */
+      winner: z.enum(["player", "enemy"]),
+      /** The lord's role once assigned; null while the winner (the lord) is still choosing. */
+      role: z.enum(["narrower", "finalizer"]).nullable(),
+      shortlist: z.array(BattlefieldSchema).default([]),
+      stage: z.enum(["choose_role", "narrow", "finalize", "done"]),
+    })
+    .nullable()
+    .default(null),
+  /** Full Command §8.6: nightfall, the lord must choose; a reposition offers new ground to pick. */
+  dayEndPending: z.boolean().default(false),
+  repositionPool: z.array(BattlefieldSchema).default([]),
+  /** Encounter rosters kept until deployment builds the battle. */
+  pendingEncounter: z
+    .object({
+      allies: z.array(z.unknown()),
+      enemy: z.array(z.unknown()),
+      premise: z.string(),
+    })
+    .nullable()
+    .default(null),
+  drawn: z.array(z.string()).default([]),
+  openingDone: z.boolean().default(false),
+  crisisDraws: z.number().int().default(0),
+  turningDone: z.boolean().default(false),
+  routCardDone: z.boolean().default(false),
+  /** Card currently shown, awaiting the lord's choice. */
+  pendingCard: z
+    .object({
+      vignetteId: z.string(),
+      bridge: z.string(),
+    })
+    .nullable()
+    .default(null),
+  /** Attached unit broke: its escape/kill/capture split is held until the lord chooses how to meet it. */
+  pendingRout: z
+    .object({
+      escaped: z.number(),
+      killed: z.number(),
+      captured: z.number(),
+      narration: z.string(),
+    })
+    .nullable()
+    .default(null),
+  /** Positioning bias for the lord's unit next round: −1 hold back, +1 press ahead. */
+  engageBias: z.number().int().default(0),
+  /** Flags set by vignette choices for the narrative layer (took_prisoner, spared_rival, …). */
+  characterFlags: z.array(z.string()).default([]),
+  /** §4.1 discrete card awards (Low 3 / Medium 10 / High 30), summed across the battle. */
+  cardRenown: z.number().default(0),
+  /** Encounter premise handed to the narrator. */
+  premise: z.string().default(""),
+  encounterSeed: z.number().int().default(0),
+  lastDrawRound: z.number().int().default(0),
+  /** Battle log seq already covered by narration, so a bridge only tells what is new. */
+  lastNarratedSeq: z.number().int().default(0),
+  narration: z.array(BattleNarrationSchema).default([]),
+  /** Sub-/Full Command: objectives issued by the commander, in order. */
+  objectives: z.array(ObjectiveSchema).default([]),
+  /** Sum of objective bonuses at aftermath (§4.2 Objective_bonus). */
+  objectiveBonus: z.number().default(0),
+  /** Common captives that are the lord's own to settle as unfree or sell (only when the fight was his alone). */
+  prisonersHeld: z.number().int().nonnegative().default(0),
+  /** Set once aftermath has been narrated and the ledger written. */
+  aftermathText: z.string().optional(),
+  renownDelta: z.number().optional(),
+});
+export type BattleSession = z.infer<typeof BattleSessionSchema>;
+
+export const BattleRecordSchema = z.object({
+  id: z.string(),
+  turn: z.number().int(),
+  year: z.number().int(),
+  season: z.enum(SEASONS),
+  kind: z.enum(BATTLE_CALL_KINDS),
+  tier: z.enum(COMMAND_TIERS),
+  outcome: z.string(),
+  rounds: z.number().int(),
+  renownDelta: z.number(),
+  summary: z.string(),
+});
+export type BattleRecord = z.infer<typeof BattleRecordSchema>;
+
 export const ChurchNeglectKindSchema = z.enum(["tithe", "wool", "sheep", "sunday", "feast_day", "took_from_cell"]);
 
 export const ChurchNeglectSlipSchema = z.object({
@@ -413,8 +578,53 @@ export const WorldStateSchema = z.object({
   }),
   player: z.object({
     name: z.string(),
-    rank: z.literal("minor_noble"),
+    /** Legacy label kept for prompts and old saves; the combat rank is rankLevel. */
+    rank: z.string().default("minor_noble"),
+    /** §5.2.1 rank 1–5 (Minor Noble … King). Titles are sticky. Old saves default to 1. */
+    rankLevel: z.number().int().min(1).max(5).default(1),
+    /** §5.2.1 accumulating Renown, floor 1. */
+    renown: z.number().min(1).default(1),
+    /** §5.2 persistent wounds. */
+    wounds: z.array(WoundSchema).default([]),
+    /** Personal combat baseline (vignette file). */
+    personal: z
+      .object({
+        hp: z.number(),
+        maxHp: z.number(),
+        atk: z.number(),
+        def: z.number(),
+        damage: z.object({ min: z.number(), max: z.number() }),
+      })
+      .default({
+        hp: PLAYER_PERSONAL_BASELINE.hp,
+        maxHp: PLAYER_PERSONAL_BASELINE.hp,
+        atk: PLAYER_PERSONAL_BASELINE.atk,
+        def: PLAYER_PERSONAL_BASELINE.def,
+        damage: { ...PLAYER_PERSONAL_BASELINE.damage },
+      }),
+    /** Won a Command Claim; may hold Full Command when eligible for Sub-Command. */
+    fullCommandGranted: z.boolean().default(false),
+    /** Killed in battle: the game is over. */
+    dead: z.boolean().default(false),
+    /** Two wounds that never healed: too maimed to fight or rule. The game is over. */
+    maimed: z.boolean().default(false),
+    /** Taken in battle and the ransom could not be met: he stays in his captors' hands. The game is over. */
+    captive: z.boolean().default(false),
   }),
+  /** Units the estate owns between battles, men under drill, and campaign-invented sheets (Phase 4). */
+  military: z
+    .object({
+      units: z.array(OwnedUnitSchema).default([]),
+      training: z.array(TrainingSchema).default([]),
+      customSheets: z.array(UnitSheetSchema).default([]),
+      customTags: z.array(TagDefSchema).default([]),
+    })
+    .default({ units: [], training: [], customSheets: [], customTags: [] }),
+  /** Live battle, persisted so a save mid-fight resumes. */
+  battle: BattleStateSchema.nullable().default(null),
+  battle_session: BattleSessionSchema.nullable().default(null),
+  battle_call: BattleCallSchema.nullable().default(null),
+  battle_history: z.array(BattleRecordSchema).default([]),
   holdings: z.array(HoldingSchema),
   resources: ResourceMapSchema,
   custom_resources: z.array(CustomResourceSchema),
@@ -544,6 +754,11 @@ export const PROPOSAL_TYPES = [
   "start_hunt",
   "settle_households",
   "defer_proposal",
+  "raise_unit",
+  "disband_unit",
+  "call_to_arms",
+  "register_unit_sheet",
+  "free_mancipia",
   "sponsor_feast",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
@@ -714,7 +929,46 @@ export const StartHuntProposalSchema = ProposalBase.extend({
   customNotes: z.string().optional(),
 });
 
+/** Raise a unit from the villa's men (levy) or hire and drill professionals (Phase 4). */
+export const RaiseUnitProposalSchema = ProposalBase.extend({
+  type: z.literal("raise_unit"),
+  sheetId: z.string(),
+  men: z.coerce.number().int().positive(),
+  name: z.string().optional(),
+});
+
+export const DisbandUnitProposalSchema = ProposalBase.extend({
+  type: z.literal("disband_unit"),
+  unitId: z.string(),
+});
+
+/** Eberhard's door: ride out against a threat now rather than wait for the season. */
+export const CallToArmsProposalSchema = ProposalBase.extend({
+  type: z.literal("call_to_arms"),
+  kind: z.enum(BATTLE_CALL_KINDS),
+});
+
+/** An invented unit (design doc §1/§6): data only, validated against the closed hook vocabulary on apply. */
+export const RegisterUnitSheetProposalSchema = ProposalBase.extend({
+  type: z.literal("register_unit_sheet"),
+  sheet: z.unknown(),
+  newTags: z.array(z.unknown()).default([]),
+  rationale: z.string().optional(),
+  isNew: z.literal(true).default(true),
+});
+
+/** Manumission (Constitution §4.3): N of the unfree become free tenants of the villa. */
+export const FreeMancipiaProposalSchema = ProposalBase.extend({
+  type: z.literal("free_mancipia"),
+  count: z.coerce.number().int().positive(),
+});
+
 export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
+  FreeMancipiaProposalSchema,
+  RaiseUnitProposalSchema,
+  DisbandUnitProposalSchema,
+  CallToArmsProposalSchema,
+  RegisterUnitSheetProposalSchema,
   AssignLabourProposalSchema,
   SetStandingOrderProposalSchema,
   StartProjectProposalSchema,
@@ -752,6 +1006,11 @@ export const DeferProposalSchema = ProposalBase.extend({
 });
 
 export const MechanicalProposalSchema = z.discriminatedUnion("type", [
+  FreeMancipiaProposalSchema,
+  RaiseUnitProposalSchema,
+  DisbandUnitProposalSchema,
+  CallToArmsProposalSchema,
+  RegisterUnitSheetProposalSchema,
   AssignLabourProposalSchema,
   SetStandingOrderProposalSchema,
   StartProjectProposalSchema,
@@ -787,8 +1046,18 @@ export type SettleHouseholdsProposal = z.infer<typeof SettleHouseholdsProposalSc
 export type SponsorFeastProposal = z.infer<typeof SponsorFeastProposalSchema>;
 export type InnerMechanicalProposal = z.infer<typeof InnerMechanicalProposalSchema>;
 export type DeferProposal = z.infer<typeof DeferProposalSchema>;
+export type RaiseUnitProposal = z.infer<typeof RaiseUnitProposalSchema>;
+export type DisbandUnitProposal = z.infer<typeof DisbandUnitProposalSchema>;
+export type CallToArmsProposal = z.infer<typeof CallToArmsProposalSchema>;
+export type RegisterUnitSheetProposal = z.infer<typeof RegisterUnitSheetProposalSchema>;
+export type FreeMancipiaProposal = z.infer<typeof FreeMancipiaProposalSchema>;
 
 export type MechanicalProposal =
+  | FreeMancipiaProposal
+  | RaiseUnitProposal
+  | DisbandUnitProposal
+  | CallToArmsProposal
+  | RegisterUnitSheetProposal
   | AssignLabourProposal
   | SetStandingOrderProposal
   | StartProjectProposal

@@ -48,8 +48,8 @@ export function seasonFanfareOnAdvancePress(): boolean {
   return true;
 }
 
-export function musicBedFor(screen: "title" | "game", estateAbandoned: boolean): MusicBed {
-  if (screen === "title") return "title";
+export function musicBedFor(screen: "title" | "game" | "lab", estateAbandoned: boolean): MusicBed {
+  if (screen === "title" || screen === "lab") return "title";
   return estateAbandoned ? "gameOver" : "game";
 }
 

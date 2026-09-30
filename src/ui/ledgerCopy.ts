@@ -5,6 +5,7 @@ import { lookupProject } from "../engine/projectCatalog";
 import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
 import { matchHireableSpecialist } from "../engine/specialists";
+import { quoteRaise } from "../engine/military";
 
 export const BOOKS_TITLE = "The books";
 
@@ -73,6 +74,7 @@ const FEATURE_NAMES: Record<string, string> = {
   landing_stage: "landing stage",
   improved_road: "improved pack-paths",
   palisade: "palisade",
+  stone_wall: "stone wall",
   tower: "wooden tower",
   wooden_tower: "wooden tower",
   gatehouse: "gatehouse",
@@ -84,6 +86,7 @@ const FEATURE_NAMES: Record<string, string> = {
 };
 
 const RESOURCE_NAMES: Record<string, string> = {
+  mancipia: "unfree (mancipia)",
   denarii: "denarii",
   wheat: "wheat",
   rye: "rye",
@@ -150,10 +153,16 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   start_hunt: "A hunt",
   settle_households: "People at the gate",
   defer_proposal: "A forthcoming order",
+  raise_unit: "Men under arms",
+  disband_unit: "Men sent home",
+  call_to_arms: "A call to arms",
+  register_unit_sheet: "A new kind of soldier",
+  free_mancipia: "Manumission",
   sponsor_feast: "A feast at the cell",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
+  souls: "soul",
   denarii: "denarius",
   modii: "modius",
   pounds: "pound",
@@ -214,6 +223,7 @@ export function modifierSourceName(source: string): string {
 
 export function resourceUnit(id: string): string {
   if (id === "trade_goods") return "lots";
+  if (id === "mancipia") return "souls";
   if ((CANONICAL_RESOURCES as readonly string[]).includes(id)) {
     return RESOURCE_UNITS[id as CanonicalResource];
   }
@@ -496,6 +506,30 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const hh = p.households === 1 ? "one household" : `${p.households} households`;
       return `Take in ${hh} — a man, a woman, and a youth of working age.`;
     }
+    case "raise_unit": {
+      const quote = quoteRaise(p.sheetId, p.men);
+      if (!quote) return `Raise ${p.men} men as ${humanizeKey(p.sheetId)}.`;
+      const cost = [quote.denarii ? `${quote.denarii} denarii` : "", quote.iron ? `${quote.iron} lb iron` : "", quote.horses ? `${quote.horses} horses` : ""].filter(Boolean).join(", ");
+      const when = quote.seasons === 0 ? "They stand at once." : `${quote.seasons} season${quote.seasons === 1 ? "" : "s"} of drill before they march.`;
+      const keep = quote.upkeepPerSeason ? ` Upkeep ${quote.upkeepPerSeason} denarii a season.` : "";
+      return `${quote.men} men as ${quote.spec.label.toLowerCase()}${p.name ? ` — ${p.name}` : ""}${cost ? ` for ${cost}` : ", from the villa's own"}. ${when}${keep}`;
+    }
+    case "disband_unit": {
+      const unit = state?.military.units.find((u) => u.id === p.unitId || u.name.toLowerCase() === p.unitId.toLowerCase());
+      return unit ? `Send ${unit.name} (${unit.strength} men) home.` : "Send a unit home.";
+    }
+    case "call_to_arms":
+      return p.kind === "raid" ? "Ride down to the river against the Northmen now." : p.kind === "bandits" ? "Ride against the outlaws on the road now." : "Answer the count's muster.";
+    case "register_unit_sheet": {
+      const sheet = p.sheet as { name?: string; tags?: string[] } | undefined;
+      const tags = Array.isArray(sheet?.tags) ? sheet!.tags!.join(", ") : "";
+      return `Write ${sheet?.name ?? "a new kind of soldier"} into the muster rolls${tags ? ` (${tags})` : ""}. Stats and tags only; the engine judges what they do.`;
+    }
+    case "free_mancipia": {
+      const have = state?.population.mancipia ?? 0;
+      const n = Math.min(p.count, have || p.count);
+      return `Free ${n} of the unfree before witnesses. They become free men of the villa; every two take a manse as tenants. The people take heart from it.`;
+    }
     case "sponsor_feast": {
       const name =
         p.feastName && !looksLikeEngineKey(p.feastName) ? p.feastName : state ? suggestedFeastName(state.meta.season) : "the coming holy day";
@@ -523,7 +557,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\bsponsor_feast\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {

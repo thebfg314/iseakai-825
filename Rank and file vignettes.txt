@@ -1,0 +1,274 @@
+Rank-and-File Vignette Pool
+Content file — companion to the main Isekai 825 design doc (§4.1)
+Player Baseline (Caballarii attachment)
+HP: 20 (personal — distinct from any unit's HP pool)
+ATK / DEF / Damage: matches Caballarii (§7.7) — ATK 15, DEF 11, Damage 6–11
+Morale: none — the player character does not have a personal Morale stat, on principle (§5.1). Fleeing when the unit around them breaks, or standing when it doesn't, is always a choice presented directly to the player, never an automatic outcome of a stat crossing a threshold.
+Renown: tracked per §4.1's three-part formula
+
+Passive protection: normal participation does not expose the player's personal HP to the unit's own combat losses — there are plenty of bodies around them to absorb it. The flat 5%-per-round wound check (§8.7) represents this ambient risk. Choosing an aggressive or foolhardy option in a vignette is what creates direct personal HP exposure beyond that passive baseline — this is the mechanical throughline of the choices below.
+
+Permanent injury: any single damage instance that leaves the player below 10 HP triggers an independent 33% roll for a permanent Wound (§5.2). Rolled fresh per qualifying instance — being hit twice while already under 10 HP is two separate rolls, not one.
+
+Presentation pipeline (§4.1): a vignette is never shown raw the instant it's drawn. The LLM-NPC layer generates a short bridging narration connecting wherever the battle currently stands to that vignette's opening beat first — the text below is each vignette's own fixed content, presented only after that bridge.
+
+Effect Tier Reference
+
+Every choice below is tagged with one of these tiers instead of vague language, so the numbers are actually usable rather than left to interpretation.
+
+Tier	Personal HP Risk	Renown	Unit Morale	Enemy Unit HP / Morale
+Low	15% chance, 1–2 dmg	±3	±3	3–5
+Medium	30% chance, 2–4 dmg	±10	±6	5–9
+High	45% chance, 3–6 dmg	±30	±12	—
+
+Enemy Unit HP/Morale damage only has Low/Medium tiers — a single Rank-and-File choice isn't meant to solo an entire enemy unit, so no High tier exists there. Any hit landing under the Personal HP Risk column is still run through the permanent-injury check (§5.2) if it drops the player below 10 HP, same as always.
+
+Pacing check for Medium's value: 10 successful Medium-or-better draws × 10 Renown = 100, exactly the Viscount threshold (§5.2.1). Against battles offering roughly 4–8 draws each (Mid-Battle Crisis draws up to 6, scaling with battle length — raised from an initial 1–3 cap after direct playtesting showed that too sparse), a consistently reliable soldier — steadying a comrade, holding a gap, fighting through a probe, none of it spectacular — reaches that first promotion in roughly 2–4 battles. This is quiet, competent service getting noticed slowly, not heroics. The next rank (Count, 500) is a much steeper climb at the same pace — falls out automatically from the existing threshold curve (100→500→1000→2000) without needing any separate pacing mechanism.
+
+Why High-tier Renown is 30, not 10 (revised from an earlier chance-based design): the original design gated a rare ×3 outcome behind an additional 8% roll on top of every award. That's an unnecessary second layer of randomness — High-tier vignettes are already rare on their own (a small minority of the pool), and require the player to choose the riskier option, and require that choice to succeed. Three filters already stack before Renown is even awarded; a fourth independent coin-flip wasn't adding meaningful rarity, just extra noise. High tier's Renown value is now 30, unconditionally, whenever its risky choice is taken and succeeds — rarity comes entirely from the pool structure (few High-tier cards, real risk, real chance of failure), not from a bolted-on chance mechanic. This is what makes rank-up-from-a-single-battle a real, mechanical possibility while keeping it genuinely rare — historically grounded, since full elevation to real noble rank from one battle was rare enough that period writers reached for King David (shepherd to king) as their justifying example rather than treating it as ordinary. Ties to §5.2.1's "no per-battle cap, legends are made this way" principle, of which this is the Rank-and-File-scale expression.
+
+Dismounted status: triggered by specific vignettes (e.g., Bogged in the Swamp, Phase 3 #3). While active, every Personal HP Risk chance on subsequent choices increases by +15 percentage points, reflecting the loss of a horse's footing, reach, and quick repositioning. Persists until the narration specifically offers a chance to remount — not automatic, and not guaranteed every battle. Flagged for the LLM-NPC layer (§11) to track as ongoing battle state alongside HP and Renown.
+
+Phase 2: Opening Exchange / Deployment (8 vignettes)
+1. First Volley
+
+The column has been advancing since first light, and now the enemy line is close enough that you can make out individual faces beneath their helms. A horn sounds somewhere across the field — thin, distant, almost polite — and a heartbeat later the sky darkens with the first volley. You hear it before you see it: a rising hiss, like wind finding a gap in a shutter. The man to your left mutters a prayer under his breath. Around you, the whole column seems to flinch as one animal.
+
+A) Duck low behind your horse's neck and a comrade's shield, making yourself as small as the saddle allows. No effect.
+B) Hold your head high, chin up, spine straight, because the men behind you are watching to see if you flinch. Personal HP Risk: Low. If it lands: Unit Morale +Low.
+2. Choosing Your File
+
+The column halts to form up properly before the final approach, and a weathered sergeant — the kind of man who has clearly done this before, more than once, and lived — walks the line assigning places. He reaches you last, sizing you up with the flat, unbothered look of someone who has stopped being impressed by fine horses a long time ago. "Front rank or second," he says. "Makes no difference to me. Only to you."
+
+A) Front rank. You nudge your horse forward, into the place where the fighting starts first. Positioning: Engage one round sooner. Personal HP Risk: Low. If you take no damage this round: Renown +Low.
+B) Second rank. You let the sergeant wave you back a step, telling yourself it's tactical patience and not caution. No effect. Positioning: Engage one round later than the front line.
+3. A Comrade Falters
+
+The enemy line resolves out of the haze all at once — more of them than the scouts reported, or so it seems from here — and the man riding at your shoulder goes rigid. His knuckles have gone white on the reins. He's young, younger than you'd guessed under the helm, and his horse has picked up on his fear and started to sidle sideways, threatening to open a gap in the formation right as it matters least to have one.
+
+A) Bark an order, steady him. A short, sharp word — his name, or just "hold" — enough to snap his attention back to the line. No personal risk. Prevents the Unit Morale −Low that Option B causes.
+B) Ignore him, focus on your own readiness. Whatever happens to him happens; you have your own nerves to manage. No personal effect. Unit Morale −Low.
+4. Skirmishers Probe the Flank
+
+Before the main lines ever meet, a handful of light riders peel off from the enemy host and come skimming in along your formation's flank — javelins, not swords, and no intention of staying to fight properly. They're testing you, looking for a soft edge, and they're gone again almost as soon as they've thrown.
+
+A) Ride out and drive them off yourself. You break from the line before anyone can stop you, chasing down the nearest rider. Personal HP Risk: Medium. If you win the exchange: Enemy Unit HP/Morale −Low, Renown +Low.
+B) Hold formation, let the unit's screen handle it. You trust the men whose job this actually is, and grit your teeth through the wait. No personal risk. Unit Morale −Low (a few free, unanswered hits before the skirmishers are driven off anyway).
+5. The Banner Advances
+
+Somewhere behind you a horn calls the advance, and the banner-bearer kicks his horse forward — but the pace he sets is faster than the column expected, faster than feels entirely sane, and for a moment the whole formation seems to hesitate over whether to match it or hold together at the slower pace instead.
+
+A) Press ahead with the vanguard, matching the banner's reckless pace and leaving the more cautious riders behind. Positioning: Engage a round early. Personal HP Risk: Medium. If you come through it: Renown +Medium.
+B) Keep pace with the main body, letting the vanguard outrun itself if it wants to. No effect, no positioning change.
+6. Uneven Ground
+
+The ground between the two hosts turns out to be worse than it looked from a distance — churned mud from some earlier rain, tufted grass hiding ruts underneath. A horse two files over stumbles badly and nearly throws its rider. Yours picks its footing carefully, but carefully costs time, and time is the one thing that feels like it's running short.
+
+A) Push your horse hard regardless, trusting the animal to sort its own feet out. Personal HP Risk: Low. Positioning: reach the line faster than the rest of your file.
+B) Ease off, pick your footing carefully, and accept that you'll arrive a moment later than you'd like. No personal risk. Positioning: Engage one round later than the rest of your file. Unit Morale −Low.
+7. A Rival's Taunt
+
+A noble from a neighboring file — someone whose family has needled yours for longer than either of you have been alive — leans across the gap between formations, grinning under his helm. "Your father held this same ground once, didn't he," he calls, just loud enough for the men nearby to hear. "Ran from it too, if the stories are true." The men nearby have gone quiet, waiting to see if you'll answer.
+
+A) Answer with bravado, push forward to be seen. You give him exactly the response he was fishing for, and make sure everyone watches you do it. Personal HP Risk: Medium. If you come through unhurt: Renown +Medium. If you're wounded doing it: Renown −Low instead (the taunt lands both ways).
+B) Ignore him, stay disciplined. You let the words die in the noise of the column and keep your eyes on the enemy line, where they belong. No effect, no risk. Genuinely neutral — the contrast with A is the point.
+8. First Blood, Before Contact
+
+A single thrown javelin arcs out from somewhere in the enemy's front rank, and a man goes down before either side has properly closed — no charge, no clash, just one body suddenly on the ground and the line closing back over the gap like water. It's the first death either army has seen today, and it happened to someone else, close enough to watch.
+
+A) Take heart, shout encouragement. You turn the moment into fuel, calling out that their line is nervous too, that they bleed the same as anyone. No personal risk. Unit Morale +Low.
+B) Say nothing, feel the dread settle in. You keep it to yourself — the sudden, quiet understanding that this is real, and that it could just as easily have been you. No mechanical effect at all — the player character has no personal Morale stat by design (§5.1). Pure flavor, setting up later narration rather than tracking anything.
+Phase 3: Mid-Battle Crisis (24 vignettes — 1–3 drawn per battle)
+1. The Line Buckles
+
+The fight has worn on long enough now that what started as an even exchange has started to tilt — enemy riders are working around your file's flank, and you can feel the formation compress as men instinctively bunch away from the pressure. A gap is opening exactly where a gap shouldn't be.
+
+A) Push into the gap yourself, putting your own horse and blade where the line is thinnest. Personal HP Risk: Medium. If you hold the gap: reduces the flanking morale shock (§8.4–8.5) the unit takes this round by half.
+B) Fall back with the file to reform a few horse-lengths behind, trading ground for cohesion. No personal risk. Unit takes the full flanking morale shock. Renown −Low.
+2. Third Rider Joins
+
+Two enemy riders have already been trading blows with your section of the line, and now a third peels away from their reserve and angles in — one more, and your formation crosses into genuinely surrounded territory. You can feel the men around you start to waver, that specific dread of being circled rather than simply outnumbered.
+
+A) Fight through toward the newcomer, trying to drive him off before he fully commits to the fight. Personal HP Risk: Medium. If you land a solid hit: Enemy Unit HP/Morale −Low, and the gang-up may not reach its full three-attacker penalty (§8.4) this round.
+B) Hold defensively, keep your guard tight. Personal HP Risk: Low. Unit absorbs the full three-attacker penalty (§8.4) this round — worse DEF, worse odds, but you personally stay safer inside it.
+3. Bogged in the Swamp
+
+The fighting has drifted, step by step, off the firmer ground you started on and into a stretch of black, sucking mud that nobody chose but everyone's now standing in. Your horse's legs are in past the fetlock, and every stride is a small negotiation with the earth.
+
+A) Dismount and fight on foot, trusting your own legs over a horse fighting the mud. Personal HP Risk: Low. Gains the Dismounted status: for the rest of this fight (until remounted, whenever the narration offers it), every Personal HP Risk chance on future choices increases by +15 percentage points — no horse under you means no mounted footing or reach to fall back on.
+B) Stay mounted, push the horse through it. Personal HP Risk: Medium (a stumble at the wrong moment) — but keep full mobility if the ground clears.
+4. The Knight Falls
+
+A cry goes up somewhere close — not the general noise of battle, but something with weight to it — and you see him go down: the man who's led your file since before you can remember not knowing him, struck from the saddle and swallowed into the churn of hooves and legs. The men around you feel it happen almost before they see it.
+
+A) Rally to his fallen banner, forcing your way through to reach him — drag him clear, make a stand over the body, anything to keep the moment from becoming a rout. Personal HP Risk: High. If you make it back: Renown +High. Reduces the Unit Morale −High that losing a commander (§5.1) would otherwise inflict down to −Medium.
+B) Let him fall, keep the formation moving. No personal risk. Unit Morale −High — this is one of the specific triggers Morale is built to register.
+5. Brushland Ambush
+
+The battle has pushed into a stretch of heavy brush — the kind of tangled growth that swallows sound and sightlines both — and for a moment you genuinely can't tell how many of the enemy are actually near you versus how many you're only hearing. It's disorienting in a way open ground never was.
+
+A) Use the brush for cover, fighting defensively and letting the tangled ground work for you. Personal HP Risk: Low — the cover is real (§9.1). Harder for the enemy to press a flanking attempt here.
+B) Push out of the brush to press the attack, trading the cover for a clean line at an exposed enemy. Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Medium, chance at Renown +Low.
+6. A Scrum With No Names Left
+
+Directly across from you, the fighting has collapsed into something that isn't really a formation anymore on either side — men grappling, shouting, no clean lines between friend and foe. Both sides here are past caring about anything but the next moment; you genuinely can't tell, at a glance, which of the figures ahead are still fighting for either side's actual plan.
+
+A) Press into the chaos yourself, trusting your own eyes over anyone's formation. Personal HP Risk: High — it's genuinely hard to tell who you're facing in a scrum like this (§8.5). If it goes well: Enemy Unit HP/Morale −Medium.
+B) Hold back from the scrum, letting it burn itself out without you in it. No personal risk, no Renown, no bonus — deliberately zero reward either way, so holding back is a real trade-off, not a disguised best option.
+7. Formation Holds or Breaks
+
+A wall of enemy horse is coming on at pace, and every instinct in the men around you is screaming to either brace or scatter — there isn't a third option once they're this close. Your file has drilled for exactly this moment more times than anyone wanted to count, but drilling and doing are never quite the same thing.
+
+A) Call for the line to hold, brace together. You put your voice and your own position into it, calling the formation firm rather than trusting it to happen on its own. Personal HP Risk: Low. If it holds: the unit's hold_formation capability (§7.7) applies properly — the charge is met on much better terms than it would be otherwise.
+B) Trust the file's own discipline, keeping your attention on your own guard rather than anyone else's nerve. No personal risk, no proactive effect — the outcome is left entirely to chance.
+8. The Blow You Didn't See Coming
+
+It happens the way these things always seem to — not from the direction you were watching, not from the person you were fighting. Something connects, hard, and for a moment the whole fight goes strangely quiet around the edges before the pain actually arrives.
+
+A) Grit through it, keep fighting. You don't give yourself the chance to think about how bad it is. This is the personal wound-risk check (§8.7) made concrete. If the wound is serious: Renown +Low for continuing despite it.
+B) Fall back a step, get a hand to the wound. You pull yourself briefly out of the exchange rather than push your luck. Avoids an additional wound-risk roll this round. Unit Morale −Low (visibly out of the front for a moment, though minor since you're tending a wound, not fleeing outright).
+Phase 4: Turning Point (8 vignettes — only 1 drawn per battle)
+1. Over the Fallen Body
+
+An enemy rider goes down just ahead of you — not dead, not yet, pinned under his own horse and struggling to free a blade arm. Nobody else has noticed him yet. For one clean moment, he's yours alone to deal with.
+
+A) Press forward and finish it, seizing the opening while it's still open. Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Low, Renown +Medium.
+B) Hold your position, let the line catch up to you. No risk, no reward. The moment passes to someone else, or to no one.
+2. The Named Rider
+
+Across the press of bodies, you catch sight of a banner you recognize — someone worth ransoming, or worth being seen to have challenged, riding closer than his own guard seems to realize. It won't stay this way for long.
+
+A) Break toward him, chasing the chance at a name worth having. Personal HP Risk: High. If you reach him and win the exchange: Renown +High, Enemy Unit HP/Morale −Low. If you're wounded failing: Renown −Low.
+B) Let him pass, stay with your file. No risk, no reward. Someone else's story, not yours today.
+3. Dragging a Comrade Back
+
+A man you've ridden beside all season — not your commander, just someone you know, someone with a name you'd have to explain to his family — goes down within reach, wounded but not dead. The fighting hasn't moved past him yet, but it will.
+
+A) Go back for him. Personal HP Risk: Medium. If you make it: Renown +Medium, no unit-wide effect either way — this one is entirely personal.
+B) Leave him, keep moving with the line. No risk. No Renown change — this isn't judged the way losing a commander is (§5.1); it's a personal weight to carry, not a mechanical one.
+4. The Order to Fall Back
+
+A horn sounds the general withdrawal — not a rout, just a controlled pull-back — and the men around you start to peel away in good order. You've got one more clean strike available if you take it right now, before the line actually moves.
+
+A) Take the strike, delay your own withdrawal by a beat. Personal HP Risk: Medium (fighting alone for a moment as your file starts to move). If it lands: Enemy Unit HP/Morale −Low, Renown +Low. Positioning risk: briefly exposed if the withdrawal outpaces you.
+B) Obey immediately, withdraw with the line. No risk, no reward, no positioning risk — safest possible resolution.
+5. A Man Surrenders
+
+An enemy soldier in front of you drops his weapon, hands raised, shouting something in a dialect you don't fully catch but understand well enough. He's yours to decide about, and no one nearby seems to be watching closely.
+
+A) Take him prisoner. Personal HP Risk: Low (guarding a captive while still technically in a fight). Potential future ransom value (flagged for the not-yet-built economy system, §11) — no immediate mechanical Renown either way; this is a character-defining choice more than a stat one.
+B) Finish it and move on. No risk. No mechanical Renown change — purely a character/reputation flag for how the LLM-NPC layer frames the player going forward, not a combat-stat outcome.
+6. Your Own Colors
+
+If you carry any personal heraldry — a small banner, a marked shield, something that says whose son you are — it's caught someone's eye today, friend and foe both. Keeping it visible means being seen; being seen cuts both ways.
+
+A) Hold it high, make sure it's seen. Personal HP Risk: Low (you're a marked target now). Renown +Low regardless of outcome — being seen to stand under your own colors matters on its own.
+B) Let it drop out of sight for now. No risk. No Renown change — sensible, forgettable, exactly as intended.
+7. The Moment to Flee
+
+Your file isn't broken yet, but you can feel it getting close — that specific quality the noise takes on right before men actually start running. Nobody's bolted yet. You could be first, or you could be part of whatever happens if the line holds instead.
+
+A) Start pulling back now, ahead of the crowd. No personal HP risk. Renown −Low (visibly initiating a withdrawal before it's clearly justified) — regardless of what the line does after.
+B) Hold a moment longer, see if the line steadies. Personal HP Risk: Medium (staying exposed while it's still genuinely uncertain). If the line holds: Renown +Medium. If it doesn't: no additional penalty beyond whatever the rout itself resolves to (§8.7) — the choice is judged on nerve, not on the battle's outcome.
+8. An Old Score
+
+The rival from before the lines even met — the one who mocked your father's name — is down, unhorsed, and struggling in the open ground between the lines, in real danger from more than just you.
+
+A) Go to him, pull him clear. Personal HP Risk: Medium. Renown +Medium regardless of anything said between you before — mercy under fire reads as real character, not weakness.
+B) Let the old score stand. No risk. No mechanical penalty — but no Renown gain either. A quiet, ungraded choice, exactly the kind the character has to live with rather than be scored on.
+9. Your Horse Stumbles Under Fire
+
+An arrow — or a javelin, you don't have time to tell which — takes your horse high in the shoulder rather than you. The animal doesn't go down, but it staggers, breaks stride, throws its whole weight forward in a way that puts you dangerously off-balance right as the enemy line closes the last few strides.
+
+A) Fight the horse back under control, forcing it to answer the reins through the pain. Personal HP Risk: Medium (a bad moment to be fighting your own mount instead of the enemy). If you succeed: no positioning loss.
+B) Bail off and fight on foot, trusting your legs over a wounded animal. No personal risk from the fall itself. Positioning: you lose the mounted advantage for the rest of this crisis.
+10. The Weather Turns
+
+Rain starts somewhere in the middle of the fight — not enough to stop anything, but enough to make bowstrings slack and grips uncertain, and the enemy archers who'd been troubling your flank suddenly seem to be missing more than they're hitting.
+
+A) Press the advantage while their aim is off, closing distance before the rain lets up. Personal HP Risk: Low. If it lands: Enemy Unit HP/Morale −Low.
+B) Hold position, let the weather do its work without you risking anything. No risk. No effect — the rain helps regardless of whether you personally act on it.
+11. A Routing Enemy Before You
+
+Somewhere just ahead, part of the enemy line has broken — not your doing, just the shape battles take sometimes — and a handful of them are turning to run, backs exposed, discipline gone. A mounted man can do real damage to men like that, if he's willing to break formation to do it.
+
+A) Ride them down. You put your horse into the gap and go after the routing men, exactly the thing a mounted soldier is for in this moment. Personal HP Risk: High (a small chance the "routing" enemy turns out to have more fight left than expected). If it lands: Enemy Unit HP/Morale −Medium, Renown +High.
+B) Stay with your file, let them run. No risk, no reward. Discipline over opportunity — a defensible choice, just not a memorable one.
+12. The Captured Standard
+
+An enemy banner-bearer goes down in the chaos ahead, and for a moment his standard is just lying there, unguarded, close enough that you could reach it before anyone reorganizes around it.
+
+A) Break for the standard yourself. Personal HP Risk: High. If you get it: Renown +High, Enemy Unit HP/Morale −Low (their side visibly loses something that matters to them). If you fail: Renown −Low.
+B) Leave it, stay in formation. No risk, no reward. Someone else's glory, or no one's.
+13. Pulling Back Under Pressure
+
+You need to disengage — the exchange in front of you isn't one you should keep having — but pulling back from a fight already underway means turning away from someone with a blade still in his hand.
+
+A) Disengage cleanly, accepting the risk. Personal HP Risk: Medium — the enemy gets a free strike as you turn away (§8.2's disengagement cost, made personal). Positioning: you successfully create distance.
+B) Stay engaged rather than risk your back. No additional risk this round, but you remain in the exchange — whatever happens next, happens.
+14. The High Ground
+
+The fighting has drifted toward a low rise — not much of a hill, but enough that whoever holds it fights the rest at an advantage. Your file hasn't quite claimed it yet, and neither, quite, has the enemy.
+
+A) Push for the high ground now, ahead of your own line. Personal HP Risk: Medium (briefly unsupported while you get there first). Positioning: if you hold it, you and whoever joins you fight the next exchange from advantage (§9.3's Defender designation, once occupied long enough).
+B) Let the file advance together, slower but safer. No personal risk. Positioning: the rise is contested longer, with no guaranteed advantage to either side.
+15. A River at Your Back
+
+The fighting has pushed your section of the line right up against a stretch of river — not fordable, not now, not under this pressure. There's nowhere to go if this exchange goes badly.
+
+A) Stand and fight it out, fully committed since retreat isn't really an option anyway. Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Low, small Renown gain for the nerve it takes.
+B) Edge along the bank looking for any way to open space to maneuver. No personal risk, but no gain either — you spend the exchange looking for an exit that may not exist.
+16. Taking the Brunt
+
+Your section is fighting two enemy riders at once now, and you can feel — physically feel, through the press of bodies — that whoever's actually at the front of this exchange is taking far more of it than the men working the flanks. Right now, that's you.
+
+A) Hold the front of the exchange, absorbing the worst of it so the men flanking can work. Personal HP Risk: High (the counter-damage split, §8.4, weights heavily toward whoever's in front — that's you). If you hold: the flanking riders land real damage more safely. Renown +Medium for carrying the weight of it.
+B) Ease back, let someone else take the front position. No personal risk. Whoever takes your place absorbs what you would have — no Renown either way; this is judged on nerve, not outcome.
+17. Word From the Commander
+
+A rider comes down the line from your commander — not to you specifically, just to the file as a whole — carrying whatever Address the Troops or mid-battle Rally (§5.2.2) has been ordered. You feel the effect before you fully register the words.
+
+A) Let it steady you, take it as it's meant. No risk. Unit Morale +Low on top of whatever the Rally itself grants — a small personal receptiveness bonus.
+B) Stay skeptical, keep your guard up regardless of what you're told. No risk, no effect. Neither better nor worse — just a different way of processing the same moment.
+18. A Stranger's Crisis
+
+Not your own file — a different rider entirely, someone you don't know, being worked over by two enemy soldiers close enough that you could reach him if you moved now.
+
+A) Break away and help him. Personal HP Risk: Medium. If you reach him in time: a stranger owes you his life, small Renown gain, no unit-wide effect (he's not your unit).
+B) Stay with your own section — he's not your responsibility. No risk, no effect. A colder, safer choice.
+19. The Lull
+
+For a moment — just a moment — the fighting nearest you eases. Not over, just a breath, the kind that happens sometimes in the middle of a battle for reasons nobody controls.
+
+A) Use it to check your own wounds and gear. No risk. If you're currently below 10 HP: a small chance (roll separately) to stabilize slightly before the fighting resumes — flavor-forward, mechanically minor.
+B) Use it to re-form with your file, ready for what's next. No risk. Small unit Morale +Low — the file steadies together rather than individually.
+20. Cut Off
+
+The tide of the fight has shifted without your noticing exactly when, and now there's real space between you and the rest of your file — not a rout, not yet, just you and a few enemy riders in ground that used to be safely behind your own line.
+
+A) Fight your way back toward the file. Personal HP Risk: High. If you make it: Renown +High for the nerve it took. If you're wounded doing it: no Renown, just the wound.
+B) Hold your ground and wait for the line to come back to you. Personal HP Risk: Medium (you're still exposed, just not moving through it). No Renown either way — a defensible, less dramatic choice.
+21. Their Line Wavers
+
+Something's gone wrong for the enemy formation across from you — you can't tell exactly what, but the shape of their line has changed, gotten looser, less certain.
+
+A) Press now, before they recover. Personal HP Risk: Medium. If it lands: Enemy Unit HP/Morale −Medium.
+B) Hold your own line's shape instead, let the moment pass. No risk, no reward — discipline over opportunism, a genuinely fine choice, just not a memorable one.
+22. The Shield Holds
+
+A blow lands that should have hurt — you feel the shock of it all the way up your arm — but your shield takes the worst of it, wood and iron doing exactly what they're built for.
+
+A) Push back immediately while the enemy's follow-through leaves them briefly open. Personal HP Risk: Low (already spent your defense on the block). If it lands: Enemy Unit HP/Morale −Low.
+B) Reset your guard properly before doing anything else. No risk. No reward — pure recovery, entirely sound tactically.
+23. The Only Way Through
+
+The ground here funnels hard — rock or fence-line or simply the press of bodies — into one narrow gap that both sides are trying to use, and whoever controls the choke point controls a lot more of this exchange than their numbers alone would suggest.
+
+A) Force your way into the gap and hold it. Personal HP Risk: Medium. If you hold it: Unit Morale +Low (the file fights with a controlled chokepoint instead of an open, dangerous line).
+B) Let the enemy have the gap, fight on the open ground instead. No personal risk. No effect — a genuinely even trade, not a worse choice, just a different one.
+24. The Banner Wavers
+
+Your own file's banner — not the great host's, just your section's marker, the thing men glance at without thinking to know where they are — dips hard as its bearer takes a wound. It hasn't fallen. Not yet.
+
+A) Get to the banner, keep it up yourself if you have to. Personal HP Risk: High. If you reach it in time: Renown +High, prevents a Unit Morale −Medium the dipping banner would otherwise cause.
+B) Trust the bearer to manage it himself. No personal risk. If he can't hold it: Unit Morale −Medium, same as losing a lesser commander (§5.1) — a real, if smaller, version of the Knight Falls trigger.
