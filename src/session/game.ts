@@ -62,10 +62,16 @@ import { cancelForthcomingOrder as cancelStoredForthcoming } from "../engine/for
 import { fieldRotation, sownCapacity } from "../engine/agriculture";
 import {
   ensureGerulfInHousehold,
+  extractHuntRequest,
+  huntFulfillReason,
+  huntProposalForAsk,
   isNegotiatorId,
+  looksLikeHuntOrder,
   NEGOTIATOR_ID,
   normalizeHuntProposal,
   pendingHuntReports,
+  quoteHunt,
+  withComputedHuntPrice,
 } from "../engine/hunts";
 import {
   hireSummary,
@@ -333,6 +339,15 @@ export class GameController {
     });
     this.log("player", "CHAT", `${npcId}: ${playerText.slice(0, 120)}`);
 
+    const huntAsk = isNegotiatorId(npcId) && looksLikeHuntOrder(playerText);
+    if (huntAsk) {
+      const refusal = huntFulfillReason(this.state, playerText);
+      if (refusal) {
+        this.pushNpcSpeech(npcId, { speech: refusal, emotion: "concerned" });
+        return this.finishTalk();
+      }
+    }
+
     const speechSystem = npcSystemPrompt(npcId, this.state, { speechOnly: true });
     const system = npcSystemPrompt(npcId, this.state);
     const discussed = this.discussedPending(npcId);
@@ -344,7 +359,7 @@ export class GameController {
     ].filter(Boolean);
     const extra = extraBits.length ? extraBits.join("\n\n") : undefined;
     const scrapUser = npcUserPrompt(this.state, npcId, playerText, extra);
-    const order = looksLikeMechanicalOrder(playerText, npcId) || Boolean(discussed);
+    const order = looksLikeMechanicalOrder(playerText, npcId) || Boolean(discussed) || huntAsk;
     try {
       const spoken = await this.callLlm(
         [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
@@ -380,9 +395,15 @@ export class GameController {
             throw new Error(INCOMPLETE_MODEL_JSON);
           }
         } catch (err) {
+          if (this.recoverHuntOffer(npcId, playerText)) return this.finishTalk();
           this.noteTalkFailure(err, npcId);
           return this.finishTalk();
         }
+      }
+
+      if (huntAsk) {
+        const req = extractHuntRequest(playerText);
+        if (req) answer = { ...answer, speech: withComputedHuntPrice(answer.speech, quoteHunt(this.state, req)) };
       }
 
       if (!order) {
@@ -427,13 +448,44 @@ export class GameController {
         this.ingestParsedDialogue(npcId, books, playerText);
         return this.finishTalk();
       } catch (err) {
+        if (this.recoverHuntOffer(npcId, playerText, answer)) return this.finishTalk();
         this.noteTalkFailure(err, npcId);
         return this.finishTalk();
       }
     } catch (err) {
+      if (this.recoverHuntOffer(npcId, playerText)) return this.finishTalk();
       this.noteTalkFailure(err, npcId);
       return this.finishTalk();
     }
+  }
+
+  /**
+   * Books pass failed, or never ran. The purse is still the engine's figure.
+   * Queue Confirm if this ask can be paid; do not invent a second card.
+   */
+  private recoverHuntOffer(
+    npcId: string,
+    playerText: string,
+    spoken?: { speech: string; emotion?: AldricEmotion },
+  ): boolean {
+    if (!isNegotiatorId(npcId)) return false;
+    const forced = huntProposalForAsk(this.state, playerText);
+    if (!forced?.length) return false;
+    const playerAt = this.messages.map((m) => m.role).lastIndexOf("player");
+    const req = extractHuntRequest(playerText);
+    const brief = req ? quoteHunt(this.state, req) : null;
+    const speech = brief ? withComputedHuntPrice(spoken?.speech ?? "", brief) : (spoken?.speech ?? "");
+    const priced =
+      brief != null &&
+      this.messages.slice(playerAt + 1).some((m) => m.role === "npc" && m.text.includes(`${brief.quotedDenarii} denarii`));
+    if (!priced && speech) {
+      this.pushNpcSpeech(npcId, { speech, emotion: spoken?.emotion ?? "pleased" });
+    }
+    if (!this.pending.some((p) => p.status === "pending" && p.proposal.type === "start_hunt")) {
+      for (const proposal of forced) this.queueProposal(npcId, proposal);
+      this.ledgerNote("1 proposed change awaits Confirm. Nothing is written to the books until then.", npcId);
+    }
+    return true;
   }
 
   private pushNpcSpeech(
@@ -524,7 +576,13 @@ export class GameController {
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
     if (npcId === "smith") proposals = this.dropPrematureBloomery(proposals);
     if (isNegotiatorId(npcId)) {
-      proposals = proposals.filter((p) => p.type === "start_hunt").map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
+      const forced = huntProposalForAsk(this.state, playerText);
+      proposals =
+        forced !== null
+          ? forced
+          : proposals
+              .filter((p) => p.type === "start_hunt")
+              .map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
     }
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
     proposals = augmentOrderProposals(this.state, npcId, playerText, proposals);

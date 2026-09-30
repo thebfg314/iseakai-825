@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
-import { GERULF_NOTES, GERULF_ROAD_LOCATION, NEGOTIATOR_ID, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, inferHuntProposals, looksLikeHuntOrder, quoteHunt, resolveHunts, startHunt } from "./hunts";
+import { GERULF_NOTES, GERULF_ROAD_LOCATION, NEGOTIATOR_ID, ROAD_PREMIUM_DENARII, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, inferHuntProposals, looksLikeHuntOrder, ordinaryHuntPurse, quoteHunt, resolveHunts, startHunt, withComputedHuntPrice } from "./hunts";
 import { WorldStateSchema, type WorldState } from "./schema";
 import { resolveAgricultureAndProjects } from "./season";
 
@@ -39,6 +39,7 @@ describe("Gerulf the negotiator", () => {
     expect(iron[0]).toMatchObject({ type: "start_hunt", resource: "iron", amount: 4 });
     if (iron[0].type !== "start_hunt") throw new Error("expected start_hunt");
     const mid = (state.market.iron.min + state.market.iron.max) / 2;
+    expect(iron[0].quotedDenarii).toBe(ordinaryHuntPurse(state.market.iron.min, state.market.iron.max, 4));
     expect(iron[0].quotedDenarii).toBeGreaterThan(mid * 4);
     expect(iron[0].quotedDenarii).toBeLessThan(mid * 4 * 1.5);
     expect(iron[0].durationSeasons).toBe(1);
@@ -145,5 +146,47 @@ describe("Gerulf the negotiator", () => {
     vi.restoreAllMocks();
     expect(state.projects.find((p) => p.hunt)?.status).toBe("completed");
     expect(state.custom_resources.some((c) => c.id === "pepper" && c.amount > 0)).toBe(true);
+  });
+
+  it("prices identical asks from the market band plus a fixed road premium", () => {
+    const state = boot();
+    const ask = "Buy 35 lb of iron. I cannot wait for a merchant.";
+    const again = "Buy thirty-five pounds of iron because I cannot wait for a merchant.";
+    expect(looksLikeHuntOrder(ask)).toBe(true);
+    expect(extractHuntRequest(ask)).toMatchObject({ resource: "iron", amount: 35 });
+    expect(extractHuntRequest(again)).toMatchObject({ resource: "iron", amount: 35 });
+
+    const first = quoteHunt(state, extractHuntRequest(ask)!);
+    const second = quoteHunt(state, extractHuntRequest(again)!);
+    const expected = Math.round(((state.market.iron.min + state.market.iron.max) / 2) * 35 + ROAD_PREMIUM_DENARII);
+    expect(state.market.iron).toEqual({ min: 3, max: 8 });
+    expect(expected).toBe(ordinaryHuntPurse(3, 8, 35));
+    expect(first.quotedDenarii).toBe(expected);
+    expect(second.quotedDenarii).toBe(first.quotedDenarii);
+    expect(first.amount).toBe(35);
+
+    const salt = quoteHunt(state, { goods: "salt", resource: "salt", amount: 4 });
+    expect(salt.quotedDenarii).toBe(ordinaryHuntPurse(state.market.salt.min, state.market.salt.max, 4));
+    const charcoal = quoteHunt(state, { goods: "charcoal", resource: "charcoal", amount: 2 });
+    expect(charcoal.quotedDenarii).toBe(ordinaryHuntPurse(state.market.charcoal.min, state.market.charcoal.max, 2));
+
+    expect(huntFulfillReason(state, ask)).toMatch(/cannot spare/);
+    expect(huntFulfillReason(state, ask)).toContain(`${expected} denarii`);
+    expect(huntFulfillReason(state, ask)).toMatch(/take nothing/i);
+    expect(inferHuntProposals(state, ask)).toEqual([]);
+
+    const invented = withComputedHuntPrice(
+      "Aye. I'll fetch 35 pounds of iron for 42 denarii, road costs included, and have it back within one season. Better my boots wear than your forge stand idle.",
+      first,
+    );
+    const inventedAgain = withComputedHuntPrice(
+      "Aye. Thirty-five pounds of iron, fetched inland rather than prayed for at the gate. Give me 28 denarii and one season; that covers fair market price, tolls, and enough road-money to keep the iron from becoming someone else's iron.",
+      second,
+    );
+    expect(invented).toContain(`${expected} denarii`);
+    expect(inventedAgain).toContain(`${expected} denarii`);
+    expect(invented).not.toMatch(/\b42\b/);
+    expect(inventedAgain).not.toMatch(/\b28\b/);
+    expect(invented).toMatch(/forge stand idle/);
   });
 });

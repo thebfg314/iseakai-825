@@ -105,7 +105,9 @@ describe("signed-off NPC personalities", () => {
     const gerulf = negotiatorSystemPrompt();
     expect(gerulf).toContain("You are Gerulf");
     expect(gerulf).toMatch(/highly charismatic/i);
-    expect(gerulf).toMatch(/does not name a budget|YOU quote the denarii/i);
+    expect(gerulf).toMatch(/does not name a budget/i);
+    expect(gerulf).toMatch(/do not name the price/i);
+    expect(gerulf).toMatch(/market band/i);
     expect(gerulf).toMatch(/start_hunt/);
     expect(gerulf).toMatch(/Aldric's world/i);
     expect(gerulf).toMatch(/iron and other ordinary goods/i);

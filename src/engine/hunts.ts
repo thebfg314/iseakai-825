@@ -1,6 +1,7 @@
 import type { AldricEmotion } from "./emotion";
 import {
   CANONICAL_RESOURCES,
+  RESOURCE_UNITS,
   type CanonicalResource,
   type MechanicalProposal,
   type Npc,
@@ -25,15 +26,23 @@ const GRAIN_RESOURCES = new Set(["wheat", "rye", "barley", "oats"]);
 const GRAIN_WORDS = /\b(barley|wheat|rye|oats|grain|granary|modii|modius|seed[- ]?corn)\b/i;
 const IRON_WORDS = /\b(iron|charcoal|bloom(?:\s*iron)?)\b/i;
 
-/** Ordinary market goods: midpoint, plus about a fifth for the road, and at least one denarius over. */
-export function marketPlusRoad(mid: number): number {
-  const bumped = Math.round(mid * 1.2);
-  const atLeast = Math.ceil(mid + 1);
-  return Math.max(1, bumped, atLeast);
+/**
+ * Tolls and boot-leather, added once to the market price of the whole brief.
+ * Fixed: the same quantity of the same good costs the same while the band is unchanged.
+ */
+export const ROAD_PREMIUM_DENARII = 2;
+
+/** Market midpoint times the quantity, plus {@link ROAD_PREMIUM_DENARII}. The model does not name this. */
+export function ordinaryHuntPurse(bandMin: number, bandMax: number, amount: number): number {
+  const qty = Math.max(1, Math.round(amount));
+  const mid = (bandMin + bandMax) / 2;
+  return Math.max(1, Math.round(mid * qty + ROAD_PREMIUM_DENARII));
 }
 
 const HUNT_VERB =
-  /\b(find|fetch|seek|procure|source|hunt|track\s+down|look\s+for|bring(?:\s+me)?|get\s+me|send\s+(?:out\s+)?for)\b/i;
+  /\b(find|fetch|seek|procure|source|hunt|buy|purchase|track\s+down|look\s+for|bring(?:\s+me)?|get\s+me|send\s+(?:out\s+)?for)\b/i;
+
+const QUESTION_START = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
 
 const SCARCE_HINT =
   /\b(pepper|peppers|spice|spices|silk|silks|millstone|millstones|glass|incense|alum|saffron|ivory|dye|dyes|cinnamon|cloves|purple|papyrus|myrrh|frankincense|tin|copper|salt|wine|linen|beeswax|horses?|trade[- ]?goods?|wares?|stone|hides?|honey|wool|cattle|sheep|pigs?|tinware|brass|lead|quicksilver|vermilion|madder|woad)\b/i;
@@ -75,17 +84,74 @@ function slugGoods(name: string): string {
   return slug || "scarce_goods";
 }
 
-function midpointPrice(state: WorldState, resource: string): number {
-  const range = state.market[resource];
-  if (range) return (range.min + range.max) / 2;
-  const custom = state.custom_resources.find((c) => c.id === resource);
-  if (custom) return (custom.priceMin + custom.priceMax) / 2;
-  return 0;
-}
+const MAX_HUNT_AMOUNT = 500;
 
 function clampAmount(n: number): number {
   const v = Number.isFinite(n) ? Math.round(n) : 1;
-  return Math.min(12, Math.max(1, v || 1));
+  return Math.min(MAX_HUNT_AMOUNT, Math.max(1, v || 1));
+}
+
+const ONES: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+};
+
+const TENS: Record<string, number> = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+};
+
+function parseWordAmount(text: string): number | undefined {
+  const compound = text.match(
+    /\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[-\s](one|two|three|four|five|six|seven|eight|nine)\b/i,
+  );
+  if (compound) return (TENS[compound[1].toLowerCase()] ?? 0) + (ONES[compound[2].toLowerCase()] ?? 0);
+  const single = text.match(
+    /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/i,
+  );
+  if (!single) return undefined;
+  const word = single[1].toLowerCase();
+  return ONES[word] ?? TENS[word];
+}
+
+function canonicalUnit(resource: CanonicalResource): string {
+  const plural = RESOURCE_UNITS[resource];
+  if (!plural || plural === "denarii") return "";
+  if (plural === "modii") return "modius";
+  if (plural.endsWith("s")) return plural.slice(0, -1);
+  return plural;
+}
+
+/** "35 pounds of iron", or "1 pepper" when no unit is known. */
+export function huntQuantityPhrase(amount: number, goods: string, unit?: string): string {
+  const name = goods.trim() || "goods";
+  if (!unit) return `${amount} ${name}`;
+  const singular = unit.endsWith("s") ? unit.slice(0, -1) : unit;
+  const shown = amount === 1 ? singular : `${singular}s`;
+  return `${amount} ${shown} of ${name}`;
 }
 
 export function gerulfNpc(location = GERULF_HOME_LOCATION): Npc {
@@ -164,10 +230,12 @@ function canonicalFromText(text: string): CanonicalResource | undefined {
 }
 
 function parseAmount(text: string): number | undefined {
-  const m = text.match(/\b(\d+(?:\.\d+)?)\b/);
-  if (!m) return undefined;
-  const n = Number(m[1]);
-  return Number.isFinite(n) ? n : undefined;
+  const m = text.match(/\b(\d+(?:\.\d+)?)(?:\s*(?:lb|lbs|pounds?|pound))?\b/i);
+  if (m) {
+    const n = Number(m[1]);
+    if (Number.isFinite(n)) return n;
+  }
+  return parseWordAmount(text);
 }
 
 function customHintFromText(text: string): string | undefined {
@@ -210,9 +278,11 @@ export function extractHuntRequest(text: string): HuntRequest | null {
 export function looksLikeHuntOrder(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
+  if (QUESTION_START.test(t) && !HUNT_VERB.test(t)) return false;
   if (GRAIN_WORDS.test(t) && HUNT_VERB.test(t)) return true;
-  if (IRON_WORDS.test(t) && HUNT_VERB.test(t)) return true;
-  if (extractHuntRequest(t) && (HUNT_VERB.test(t) || SCARCE_HINT.test(t))) return true;
+  const namedAmount = /\b\d+\b/.test(t) || parseWordAmount(t) != null;
+  if (IRON_WORDS.test(t) && (HUNT_VERB.test(t) || namedAmount)) return true;
+  if (extractHuntRequest(t) && (HUNT_VERB.test(t) || SCARCE_HINT.test(t) || namedAmount)) return true;
   return false;
 }
 
@@ -240,16 +310,12 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
     "No deal works if the numbers are not right — and even then a mishap on the road or a false rumour can stop it cold.";
 
   if (isCanonical(resource)) {
-    const mid = midpointPrice(state, resource) || 8;
-    const per = marketPlusRoad(mid);
-    const quotedDenarii = Math.max(per, per * amount);
+    const range = state.market[resource];
+    const custom = range ? undefined : state.custom_resources.find((c) => c.id === resource);
+    const bandMin = range?.min ?? custom?.priceMin ?? 8;
+    const bandMax = range?.max ?? custom?.priceMax ?? bandMin;
+    const quotedDenarii = ordinaryHuntPurse(bandMin, bandMax, amount);
     const durationSeasons = quotedDenarii >= 120 ? 3 : quotedDenarii >= 60 ? 2 : 1;
-    const unit =
-      resource === "iron"
-        ? "pound"
-        : resource === "charcoal" || resource === "stone" || resource === "softwood" || resource === "hardwood"
-          ? "cart-load"
-          : "";
     return {
       goods,
       resource,
@@ -257,7 +323,7 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
       quotedDenarii,
       durationSeasons,
       riskNote,
-      unit,
+      unit: canonicalUnit(resource),
     };
   }
 
@@ -287,7 +353,54 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
 
 export function huntSummary(brief: HuntBrief): string {
   const seasons = brief.durationSeasons === 1 ? "1 season" : `${brief.durationSeasons} seasons`;
-  return `Gerulf seeks ${brief.amount} ${brief.goods} — ${brief.quotedDenarii} denarii from the chest, ${seasons} on the road.`;
+  const qty = huntQuantityPhrase(brief.amount, brief.goods, brief.unit);
+  return `Gerulf seeks ${qty} — ${brief.quotedDenarii} denarii from the chest, ${seasons} on the road.`;
+}
+
+const PRICE_WORDS =
+  "(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\\s](?:one|two|three|four|five|six|seven|eight|nine))?|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|hundred)|a|an";
+
+const PRICE_PHRASE = new RegExp(`\\b(?:\\d+(?:\\.\\d+)?|${PRICE_WORDS})\\s+denari(?:i|us)\\b`, "gi");
+
+/**
+ * Keep Gerulf's flavor. Any denarii figure he (or the model) names is replaced
+ * with the purse computed from the market band. If he named none, the figure is added.
+ */
+export function withComputedHuntPrice(speech: string, brief: HuntBrief): string {
+  const figure = `${brief.quotedDenarii} denarii`;
+  let hit = false;
+  PRICE_PHRASE.lastIndex = 0;
+  const stamped = speech.replace(PRICE_PHRASE, () => {
+    hit = true;
+    return figure;
+  });
+  if (hit) return stamped;
+  const line = speech.trim();
+  if (!line) {
+    const seasons = brief.durationSeasons === 1 ? "one season" : `${brief.durationSeasons} seasons`;
+    const qty = huntQuantityPhrase(brief.amount, brief.goods, brief.unit);
+    return `Aye. ${qty} — ${figure} from the chest, and I am back within ${seasons}.`;
+  }
+  if (new RegExp(`\\b${brief.quotedDenarii}\\s+denarii\\b`).test(line)) return line;
+  return `${line} ${figure} from the chest.`;
+}
+
+export function unaffordableHuntSpeech(brief: HuntBrief): string {
+  const qty = huntQuantityPhrase(brief.amount, brief.goods, brief.unit);
+  return `The chest cannot spare ${brief.quotedDenarii} denarii for ${qty}. I take nothing, and I do not go.`;
+}
+
+/**
+ * Engine-owned hunt for a player ask. Null when this is not a hunt order
+ * (a revision may still carry the model's start_hunt, with the price rewritten).
+ * Empty when he must refuse — nothing is queued, and nothing is taken.
+ */
+export function huntProposalForAsk(state: WorldState, playerText: string): MechanicalProposal[] | null {
+  if (!looksLikeHuntOrder(playerText)) return null;
+  if (huntFulfillReason(state, playerText)) return [];
+  const req = extractHuntRequest(playerText);
+  if (!req || GRAIN_RESOURCES.has(req.resource)) return [];
+  return [huntProposal(quoteHunt(state, req))];
 }
 
 export function huntProposal(brief: HuntBrief): StartHuntProposal {
@@ -346,9 +459,7 @@ export function huntFulfillReason(state: WorldState, playerText: string): string
     }
   }
   const brief = quoteHunt(state, req);
-  if (state.resources.denarii < brief.quotedDenarii) {
-    return `The chest cannot spare ${brief.quotedDenarii} denarii for that hunt. Fontenay is thin.`;
-  }
+  if (state.resources.denarii < brief.quotedDenarii) return unaffordableHuntSpeech(brief);
   return null;
 }
 
@@ -375,11 +486,8 @@ export function startHunt(state: WorldState, p: StartHuntProposal): { ok: true; 
     return { ok: false, reason: "Do not send Gerulf for grain; that is Aldric's world.", logLine: p.summary };
   }
   if (state.resources.denarii < brief.quotedDenarii) {
-    return {
-      ok: false,
-      reason: `Need ${brief.quotedDenarii} denarii for the purse; have ${state.resources.denarii}.`,
-      logLine: p.summary,
-    };
+    const speech = unaffordableHuntSpeech(brief);
+    return { ok: false, reason: speech, logLine: p.summary };
   }
 
   state.resources.denarii = round1(state.resources.denarii - brief.quotedDenarii);

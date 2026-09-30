@@ -12,6 +12,7 @@ import { HAPPINESS_MOOD_PER_ADD, peopleEffortFactor } from "../engine/peopleHapp
 import type { RolledEvent } from "../engine/events";
 import type { SeasonEffectLine } from "../engine/schema";
 import { MERCHANT_INTROS } from "../engine/intros";
+import { ordinaryHuntPurse } from "../engine/hunts";
 import { parseLlmResponse } from "../llm/parse";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
@@ -833,6 +834,89 @@ describe("Gerulf hunt via Confirm", () => {
     vi.restoreAllMocks();
     expect(game.state.resources.iron).toBe(iron + amount);
     expect(game.state.resources.denarii).toBe(chest - quote);
+  });
+
+  it("ignores an invented purse: identical buys share one price, Confirm spends it, Deny spends nothing", () => {
+    const ask = "Buy 4 pounds of iron. I cannot wait for a merchant.";
+    const invented = (denarii: number) =>
+      parseLlmResponse(
+        JSON.stringify({
+          speech: `Aye. Give me ${denarii} denarii.`,
+          proposals: [
+            {
+              type: "start_hunt",
+              summary: "Fetch iron",
+              goods: "iron",
+              resource: "iron",
+              amount: 4,
+              quotedDenarii: denarii,
+              durationSeasons: 1,
+            },
+          ],
+        }),
+      );
+
+    const confirmGame = tempGame();
+    const chest = confirmGame.state.resources.denarii;
+    const iron = confirmGame.state.resources.iron;
+    confirmGame.ingestParsedDialogue("negotiator", invented(42), ask);
+    const denyGame = tempGame();
+    denyGame.ingestParsedDialogue("negotiator", invented(28), ask);
+
+    const confirmed = confirmGame.pending.filter((p) => p.status === "pending");
+    const denied = denyGame.pending.filter((p) => p.status === "pending");
+    expect(confirmed).toHaveLength(1);
+    expect(denied).toHaveLength(1);
+    expect(confirmed[0].proposal.type).toBe("start_hunt");
+    expect(denied[0].proposal.type).toBe("start_hunt");
+    if (confirmed[0].proposal.type !== "start_hunt" || denied[0].proposal.type !== "start_hunt") {
+      throw new Error("expected start_hunt");
+    }
+    const price = ordinaryHuntPurse(confirmGame.state.market.iron.min, confirmGame.state.market.iron.max, 4);
+    expect(confirmed[0].proposal.quotedDenarii).toBe(price);
+    expect(denied[0].proposal.quotedDenarii).toBe(price);
+    expect(confirmed[0].proposal.quotedDenarii).not.toBe(42);
+    expect(denied[0].proposal.quotedDenarii).not.toBe(28);
+    expect(confirmGame.state.resources.denarii).toBe(chest);
+    expect(denyGame.state.resources.denarii).toBe(chest);
+
+    denyGame.rejectProposal(denied[0].id);
+    expect(denyGame.state.resources.denarii).toBe(chest);
+    expect(denyGame.state.resources.iron).toBe(iron);
+    expect(denyGame.state.projects).toHaveLength(0);
+
+    const result = confirmGame.confirmProposal(confirmed[0].id);
+    expect(result.error).toBeUndefined();
+    expect(confirmGame.state.resources.denarii).toBe(chest - price);
+    expect(confirmGame.state.resources.iron).toBe(iron);
+    expect(confirmGame.state.npcs.find((n) => n.id === "negotiator")?.location).toBe("road");
+  });
+
+  it("refuses 35 lb of iron in hall language when the chest cannot pay, and takes nothing", () => {
+    const game = tempGame();
+    const chest = game.state.resources.denarii;
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Aye. I'll fetch 35 pounds of iron for 42 denarii.",
+        proposals: [
+          {
+            type: "start_hunt",
+            summary: "Fetch iron",
+            goods: "iron",
+            resource: "iron",
+            amount: 35,
+            quotedDenarii: 28,
+            durationSeasons: 1,
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("negotiator", parsed, "Buy 35 lb of iron. I cannot wait for a merchant.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.resources.denarii).toBe(chest);
+    expect(game.state.projects).toHaveLength(0);
+    expect(game.messages.some((m) => /cannot spare/i.test(m.text) && /take nothing/i.test(m.text))).toBe(true);
+    expect(game.messages.some((m) => /\b42\b/.test(m.text) || /\b28\b/.test(m.text))).toBe(false);
   });
 });
 
