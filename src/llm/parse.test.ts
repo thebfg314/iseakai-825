@@ -219,4 +219,43 @@ describe("parseLlmResponse never shows JSON to the player", () => {
       durationSeasons: 2,
     });
   });
+
+  it("keeps a hunt when the model omits the purse, and drops a numeric difficulty", () => {
+    const omitted = parseProposal({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      resource: "iron",
+      amount: 4,
+      durationSeasons: 1,
+    });
+    expect(omitted.proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: 1,
+      amount: 4,
+    });
+    expect(omitted.proposal && omitted.proposal.type === "start_hunt" ? omitted.proposal.difficulty : "set").toBeUndefined();
+
+    const bogus = parseProposal({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      difficulty: "14x",
+      amount: 4,
+      durationSeasons: 1,
+    });
+    expect(bogus.error).toBeUndefined();
+    expect(bogus.proposal && bogus.proposal.type === "start_hunt" ? bogus.proposal.difficulty : "set").toBeUndefined();
+
+    const hard = parseProposal({
+      type: "start_hunt",
+      summary: "Fetch iron",
+      goods: "iron",
+      difficulty: "Hard",
+      amount: 4,
+      quotedDenarii: 28,
+      durationSeasons: 1,
+    });
+    expect(hard.proposal).toMatchObject({ difficulty: "difficult", quotedDenarii: 28 });
+  });
 });

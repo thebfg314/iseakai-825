@@ -117,4 +117,100 @@ describe("Gerulf's spoken purse", () => {
     expect(spoken).not.toMatch(/\b42\b/);
     expect(spoken).not.toMatch(/\b28\b/);
   });
+
+  it("stamps the purse for the difficulty he chose, and refuses a road the chest cannot pay", async () => {
+    const ask = "Buy 4 pounds of iron. I cannot wait for a merchant.";
+    const price = ordinaryHuntPurse(8, 4, "difficult");
+    const game = tempGame();
+    const chest = game.state.resources.denarii;
+    llmChatMock.mockResolvedValueOnce(speechJson("Aye. A hard road. Give me 42 denarii."));
+    llmChatMock.mockResolvedValueOnce(
+      JSON.stringify({
+        speech: "Set down.",
+        proposals: [
+          {
+            type: "start_hunt",
+            summary: "Fetch iron",
+            goods: "iron",
+            resource: "iron",
+            amount: 4,
+            quotedDenarii: 42,
+            difficulty: "difficult",
+            durationSeasons: 1,
+          },
+        ],
+      }),
+    );
+    await game.sendDialogue("negotiator", ask);
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: price,
+      difficulty: "difficult",
+    });
+    const spoken = game.messages.filter((m) => m.role === "npc").map((m) => m.text).join("\n");
+    expect(spoken).toContain(`${price} denarii`);
+    expect(spoken).not.toMatch(/\b42 denarii\b/);
+    expect(game.confirmProposal(pending[0].id).error).toBeUndefined();
+    expect(game.state.resources.denarii).toBe(chest - price);
+
+    const fromSpeech = tempGame();
+    llmChatMock.mockResolvedValueOnce(speechJson("This errand is hard. I want 12 denarii."));
+    llmChatMock.mockResolvedValueOnce(
+      JSON.stringify({
+        speech: "Set down.",
+        proposals: [
+          {
+            type: "start_hunt",
+            summary: "Fetch iron",
+            goods: "iron",
+            resource: "iron",
+            amount: 4,
+            durationSeasons: 1,
+          },
+        ],
+      }),
+    );
+    await fromSpeech.sendDialogue("negotiator", ask);
+    expect(fromSpeech.pending[0].proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: price,
+      difficulty: "difficult",
+    });
+
+    const salt = tempGame();
+    const saltChest = salt.state.resources.denarii;
+    const saltPrice = ordinaryHuntPurse(salt.state.market.salt.max, 19, "difficult");
+    expect(saltPrice).toBeGreaterThan(saltChest);
+    expect(ordinaryHuntPurse(salt.state.market.salt.max, 19, "easy")).toBeLessThanOrEqual(saltChest);
+    llmChatMock.mockResolvedValueOnce(speechJson("A hard road for that much salt. Ten denarii."));
+    llmChatMock.mockResolvedValueOnce(
+      JSON.stringify({
+        speech: "Set down.",
+        proposals: [
+          {
+            type: "start_hunt",
+            summary: "Fetch salt",
+            goods: "salt",
+            resource: "salt",
+            amount: 19,
+            quotedDenarii: 10,
+            difficulty: "difficult",
+            durationSeasons: 1,
+          },
+        ],
+      }),
+    );
+    await salt.sendDialogue("negotiator", "Buy 19 lb of salt.");
+    expect(llmChatMock).toHaveBeenCalled();
+    expect(salt.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(salt.state.resources.denarii).toBe(saltChest);
+    expect(salt.state.projects).toHaveLength(0);
+    const saltSpoken = salt.messages.filter((m) => m.role === "npc").map((m) => m.text).join("\n");
+    expect(saltSpoken).toContain(`${saltPrice} denarii`);
+    expect(saltSpoken).toMatch(/cannot spare/i);
+    expect(saltSpoken).toMatch(/take nothing/i);
+    expect(saltSpoken).not.toMatch(/\b10 denarii\b/);
+  });
 });

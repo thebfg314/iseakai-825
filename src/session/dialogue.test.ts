@@ -916,6 +916,137 @@ describe("Gerulf hunt via Confirm", () => {
     expect(game.state.projects).toHaveLength(0);
     expect(game.messages.some((m) => /cannot spare/i.test(m.text) && /take nothing/i.test(m.text))).toBe(true);
     expect(game.messages.some((m) => /\b42\b/.test(m.text) || /\b28\b/.test(m.text))).toBe(false);
+    expect(game.messages.some((m) => /308 denarii/.test(m.text))).toBe(true);
+  });
+
+  it("honors a named difficulty and treats 14x as no difficulty", () => {
+    const ask = "Buy 4 pounds of iron. I cannot wait for a merchant.";
+    const difficult = Math.round(4 * 8 * 1.7);
+    const easy = Math.round(4 * 8 * 1.1);
+    const game = tempGame();
+    game.ingestParsedDialogue(
+      "negotiator",
+      parseLlmResponse(
+        JSON.stringify({
+          speech: "A hard road.",
+          proposals: [
+            {
+              type: "start_hunt",
+              summary: "Fetch iron",
+              goods: "iron",
+              resource: "iron",
+              amount: 4,
+              quotedDenarii: 28,
+              difficulty: "difficult",
+              durationSeasons: 1,
+            },
+          ],
+        }),
+      ),
+      ask,
+    );
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: difficult,
+      difficulty: "difficult",
+    });
+    if (pending[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(pending[0].proposal.quotedDenarii).not.toBe(28);
+
+    const bogus = tempGame();
+    bogus.ingestParsedDialogue(
+      "negotiator",
+      parseLlmResponse(
+        JSON.stringify({
+          speech: "Aye.",
+          proposals: [
+            {
+              type: "start_hunt",
+              summary: "Fetch iron",
+              goods: "iron",
+              resource: "iron",
+              amount: 4,
+              quotedDenarii: 28,
+              difficulty: "14x",
+              durationSeasons: 1,
+            },
+          ],
+        }),
+      ),
+      ask,
+    );
+    const dropped = bogus.pending.filter((p) => p.status === "pending");
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0].proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: easy,
+      difficulty: "easy",
+    });
+    expect(easy).toBe(ordinaryHuntPurse(8, 4, "easy"));
+
+    const saltGame = tempGame();
+    saltGame.state.resources.denarii = 200;
+    saltGame.ingestParsedDialogue(
+      "negotiator",
+      parseLlmResponse(
+        JSON.stringify({
+          speech: "Salt.",
+          proposals: [
+            {
+              type: "start_hunt",
+              summary: "Fetch salt",
+              goods: "salt",
+              resource: "salt",
+              amount: 19,
+              quotedDenarii: 10,
+              difficulty: "difficult",
+              durationSeasons: 1,
+            },
+          ],
+        }),
+      ),
+      "Buy 19 lb of salt.",
+    );
+    const saltCard = saltGame.pending.filter((p) => p.status === "pending");
+    expect(saltCard).toHaveLength(1);
+    if (saltCard[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    const saltPrice = ordinaryHuntPurse(saltGame.state.market.salt.max, 19, "difficult");
+    expect(saltCard[0].proposal.quotedDenarii).toBe(saltPrice);
+    expect(saltCard[0].proposal.difficulty).toBe("difficult");
+    const chest = saltGame.state.resources.denarii;
+    expect(saltGame.confirmProposal(saltCard[0].id).error).toBeUndefined();
+    expect(saltGame.state.resources.denarii).toBe(chest - saltPrice);
+
+    const poor = tempGame();
+    const poorChest = poor.state.resources.denarii;
+    poor.ingestParsedDialogue(
+      "negotiator",
+      parseLlmResponse(
+        JSON.stringify({
+          speech: "A hard road.",
+          proposals: [
+            {
+              type: "start_hunt",
+              summary: "Fetch salt",
+              goods: "salt",
+              resource: "salt",
+              amount: 19,
+              quotedDenarii: 10,
+              difficulty: "difficult",
+              durationSeasons: 1,
+            },
+          ],
+        }),
+      ),
+      "Buy 19 lb of salt.",
+    );
+    expect(poor.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(poor.state.resources.denarii).toBe(poorChest);
+    expect(poor.state.projects).toHaveLength(0);
+    expect(poor.messages.some((m) => m.text.includes(`${saltPrice} denarii`) && /take nothing/i.test(m.text))).toBe(true);
+    expect(ordinaryHuntPurse(poor.state.market.salt.max, 19, "easy")).toBeLessThanOrEqual(poorChest);
   });
 });
 

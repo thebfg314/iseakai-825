@@ -114,6 +114,29 @@ describe("steward ledger voice", () => {
     ).toMatch(/42 denarii over 2 seasons/);
     expect(
       proposalBlurb({
+        type: "start_hunt",
+        summary: "Gerulf seeks pepper",
+        goods: "pepper",
+        resource: "pepper",
+        amount: 1,
+        quotedDenarii: 42,
+        durationSeasons: 2,
+      }),
+    ).not.toMatch(/road/);
+    expect(
+      proposalBlurb({
+        type: "start_hunt",
+        summary: "Gerulf seeks iron",
+        goods: "iron",
+        resource: "iron",
+        amount: 35,
+        difficulty: "easy",
+        quotedDenarii: 308,
+        durationSeasons: 3,
+      }),
+    ).toMatch(/308 denarii over 3 seasons on an easy road/);
+    expect(
+      proposalBlurb({
         type: "assign_labour",
         summary: "assign_labour",
         projectId: "proj-xyz",

@@ -5,6 +5,7 @@ import { stripEmotionCommands, normalizeEmotion, type AldricEmotion } from "../e
 import { HOLD_AT_ONCE_APOLOGY } from "./providerErrors";
 import { hasMalformedToolMarker, stripToolMarkers } from "./toolProtocol";
 import { flattenDeferInner } from "../engine/forthcoming";
+import { parseHuntDifficulty } from "../engine/hunts";
 
 export type ParseLlmResult = {
   response: LlmResponse;
@@ -357,6 +358,10 @@ export function coerceProposalInput(raw: unknown): unknown {
       next.resource = next.goods.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "scarce_goods";
     }
     if (next.amount == null) next.amount = 1;
+    if (next.quotedDenarii == null) next.quotedDenarii = 1;
+    const difficulty = parseHuntDifficulty(next.difficulty);
+    if (difficulty) next.difficulty = difficulty;
+    else delete next.difficulty;
   }
   if (next.type === "sponsor_feast") {
     const tier = typeof next.tier === "string" ? next.tier.toLowerCase() : "";

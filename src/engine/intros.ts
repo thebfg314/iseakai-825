@@ -27,7 +27,7 @@ export const HOUSEHOLD_INTROS: Record<string, string> = {
   captain:
     "Eberhard. I've seen enough of war to prefer a quiet watch — and enough to keep my edge if trouble comes. Point me at the gate. Parade dress can wait.",
   negotiator:
-    "My name Gerulf, my lord. Give me a brief and a purse and I will walk the roads — iron and ordinary goods at a fair price plus a little for the road, and the hard finds the carts will not carry. I am not a stall in the yard. Name the thing, and I will say what it costs and how long I need. Do not send me for barley; that is Aldric's world. If I am already away, leave the brief as it stands.",
+    "My name Gerulf, my lord. Give me a brief and a purse and I will walk the roads — iron and ordinary goods at the dear end of the market, a little more on an easy road and more when the road is hard, and the scarce finds the carts will not carry. I am not a stall in the yard. Name the thing, and I will say what it costs and how long I need. Do not send me for barley; that is Aldric's world. If I am already away, leave the brief as it stands.",
 };
 
 export const MERCHANT_INTROS: Record<string, string> = {

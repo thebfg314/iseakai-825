@@ -19,7 +19,7 @@ export const GERULF_ROAD_LOCATION = "road";
 export const GERULF_HOME_LOCATION = "fontenay";
 
 export const GERULF_NOTES =
-  "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain stays with Aldric. Given a brief and a purse, he will walk the roads and buy iron and other ordinary goods at a market price plus a little for the road. He is not the merchant's stall — he goes out to fetch a quantity. Odd, scarce, and far-off goods remain his pride.";
+  "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain stays with Aldric. Given a brief and a purse, he will walk the roads and buy iron and other ordinary goods at the dear end of the market, a little more on an easy road and more when the road is hard. He is not the merchant's stall — he goes out to fetch a quantity. Odd, scarce, and far-off goods remain his pride.";
 
 const GRAIN_RESOURCES = new Set(["wheat", "rye", "barley", "oats"]);
 
@@ -27,20 +27,86 @@ const GRAIN_WORDS = /\b(barley|wheat|rye|oats|grain|granary|modii|modius|seed[- 
 const IRON_WORDS = /\b(iron|charcoal|bloom(?:\s*iron)?)\b/i;
 
 /**
- * Flat road share on top of what a buyer pays when they need the good now.
- * Ten percent of (quantity × the high end of the band). The low end is not used.
+ * Road difficulty on top of what a buyer pays when they need the good now.
+ * Easy 1.1, medium 1.4, difficult 1.7. Medium is 1.4 (a mistyped "14x" is not a multiplier).
  */
-export const ROAD_PREMIUM_RATE = 0.1;
+export const HUNT_DIFFICULTY_MULTIPLIER = {
+  easy: 1.1,
+  medium: 1.4,
+  difficult: 1.7,
+} as const;
+
+export type HuntDifficulty = keyof typeof HUNT_DIFFICULTY_MULTIPLIER;
+
+/** Ordinary staples. When the model omits a difficulty, these are an easy road. */
+const EASY_STAPLES = new Set([
+  "iron",
+  "wheat",
+  "rye",
+  "barley",
+  "oats",
+  "grain",
+  "salt",
+  "softwood",
+  "hardwood",
+  "timber",
+  "lumber",
+]);
+
+function stapleKey(resource: string): string {
+  return resource.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+export function defaultHuntDifficulty(resource: string): HuntDifficulty {
+  const key = stapleKey(resource);
+  if (EASY_STAPLES.has(key)) return "easy";
+  return "medium";
+}
+
+/** Words only. "hard" is difficult. Digits, "14", and "14x" are not a difficulty. */
+export function parseHuntDifficulty(raw: unknown): HuntDifficulty | undefined {
+  if (typeof raw !== "string") return undefined;
+  const text = raw.trim().toLowerCase();
+  if (!text || /\d/.test(text)) return undefined;
+  if (text === "easy") return "easy";
+  if (text === "medium" || text === "moderate") return "medium";
+  if (text === "difficult" || text === "hard") return "difficult";
+  const words = text.match(/\b(easy|medium|moderate|difficult|hard)\b/g);
+  if (!words || words.length !== 1) return undefined;
+  return parseHuntDifficulty(words[0]);
+}
+
+export function resolveHuntDifficulty(resource: string, chosen?: unknown): HuntDifficulty {
+  return parseHuntDifficulty(chosen) ?? defaultHuntDifficulty(resource);
+}
+
+const DIFFICULTY_WORD = /\b(easy|medium|moderate|difficult|hard)\b/gi;
+
+/** Last difficulty word in his speech, if he named one and the books did not. */
+export function difficultyFromSpeech(speech: string): HuntDifficulty | undefined {
+  let last: HuntDifficulty | undefined;
+  for (const match of speech.matchAll(DIFFICULTY_WORD)) {
+    const parsed = parseHuntDifficulty(match[1]);
+    if (parsed) last = parsed;
+  }
+  return last;
+}
 
 /**
- * quantity × the high end of the market band, plus {@link ROAD_PREMIUM_RATE}, rounded to a whole denarius.
- * Iron 3–8, 35 lb: 35 × 8 = 280, plus 10% = 308. Same inputs always give the same number.
+ * quantity × the high end of the market band, times the difficulty, rounded to a whole denarius.
+ * Iron high 8, 35 lb, easy: 35 × 8 × 1.1 = 308. Same good, quantity, and difficulty always match.
  */
-export function ordinaryHuntPurse(bandMax: number, amount: number): number {
+export function ordinaryHuntPurse(bandMax: number, amount: number, difficulty: HuntDifficulty = "easy"): number {
   const qty = Math.max(1, Math.round(amount));
-  const atTheHighEnd = qty * bandMax;
-  const withRoad = atTheHighEnd + atTheHighEnd * ROAD_PREMIUM_RATE;
-  return Math.max(1, Math.round(withRoad));
+  const base = qty * bandMax;
+  const mult = HUNT_DIFFICULTY_MULTIPLIER[difficulty] ?? HUNT_DIFFICULTY_MULTIPLIER.easy;
+  return Math.max(1, Math.round(base * mult));
+}
+
+export function huntRoadPhrase(difficulty: HuntDifficulty): string {
+  if (difficulty === "easy") return "an easy road";
+  if (difficulty === "difficult") return "a hard road";
+  return "a fair road";
 }
 
 const HUNT_VERB =
@@ -204,6 +270,7 @@ export type HuntBrief = {
   goods: string;
   resource: string;
   amount: number;
+  difficulty: HuntDifficulty;
   quotedDenarii: number;
   durationSeasons: number;
   riskNote: string;
@@ -220,6 +287,7 @@ export type HuntRequest = {
   goods: string;
   resource: string;
   amount: number;
+  difficulty?: HuntDifficulty;
 };
 
 function canonicalFromText(text: string): CanonicalResource | undefined {
@@ -310,6 +378,7 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
   const amount = clampAmount(req.amount);
   const resource = req.resource;
   const goods = req.goods.trim() || resource.replaceAll("_", " ");
+  const difficulty = resolveHuntDifficulty(resource || goods, req.difficulty);
   const riskNote =
     "No deal works if the numbers are not right — and even then a mishap on the road or a false rumour can stop it cold.";
 
@@ -317,12 +386,13 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
     const range = state.market[resource];
     const custom = range ? undefined : state.custom_resources.find((c) => c.id === resource);
     const bandMax = range?.max ?? custom?.priceMax ?? 8;
-    const quotedDenarii = ordinaryHuntPurse(bandMax, amount);
+    const quotedDenarii = ordinaryHuntPurse(bandMax, amount, difficulty);
     const durationSeasons = quotedDenarii >= 120 ? 3 : quotedDenarii >= 60 ? 2 : 1;
     return {
       goods,
       resource,
       amount,
+      difficulty,
       quotedDenarii,
       durationSeasons,
       riskNote,
@@ -334,13 +404,14 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
   const per = hint?.denarii ?? 36;
   const seasons = hint?.seasons ?? 2;
   const unit = hint?.unit ?? "lot";
-  const quotedDenarii = Math.max(12, per * amount);
+  const quotedDenarii = Math.max(1, Math.round(per * amount * HUNT_DIFFICULTY_MULTIPLIER[difficulty]));
   const priceMin = Math.max(4, Math.round(per * 0.7));
   const priceMax = Math.round(per * 1.3);
   return {
     goods,
     resource,
     amount,
+    difficulty,
     quotedDenarii,
     durationSeasons: Math.min(8, seasons),
     riskNote,
@@ -357,7 +428,7 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
 export function huntSummary(brief: HuntBrief): string {
   const seasons = brief.durationSeasons === 1 ? "1 season" : `${brief.durationSeasons} seasons`;
   const qty = huntQuantityPhrase(brief.amount, brief.goods, brief.unit);
-  return `Gerulf seeks ${qty} — ${brief.quotedDenarii} denarii from the chest, ${seasons} on the road.`;
+  return `Gerulf seeks ${qty} — ${brief.quotedDenarii} denarii from the chest, ${seasons} on ${huntRoadPhrase(brief.difficulty)}.`;
 }
 
 const PRICE_WORDS =
@@ -398,12 +469,17 @@ export function unaffordableHuntSpeech(brief: HuntBrief): string {
  * (a revision may still carry the model's start_hunt, with the price rewritten).
  * Empty when he must refuse — nothing is queued, and nothing is taken.
  */
-export function huntProposalForAsk(state: WorldState, playerText: string): MechanicalProposal[] | null {
+export function huntProposalForAsk(
+  state: WorldState,
+  playerText: string,
+  chosen?: unknown,
+): MechanicalProposal[] | null {
   if (!looksLikeHuntOrder(playerText)) return null;
-  if (huntFulfillReason(state, playerText)) return [];
   const req = extractHuntRequest(playerText);
   if (!req || GRAIN_RESOURCES.has(req.resource)) return [];
-  return [huntProposal(quoteHunt(state, req))];
+  const difficulty = resolveHuntDifficulty(req.resource, chosen);
+  if (huntFulfillReason(state, playerText, difficulty)) return [];
+  return [huntProposal(quoteHunt(state, { ...req, difficulty }))];
 }
 
 export function huntProposal(brief: HuntBrief): StartHuntProposal {
@@ -413,6 +489,7 @@ export function huntProposal(brief: HuntBrief): StartHuntProposal {
     goods: brief.goods,
     resource: brief.resource,
     amount: brief.amount,
+    difficulty: brief.difficulty,
     quotedDenarii: brief.quotedDenarii,
     durationSeasons: brief.durationSeasons,
     riskNote: brief.riskNote,
@@ -431,6 +508,7 @@ export function normalizeHuntProposal(state: WorldState, p: StartHuntProposal): 
     goods: p.goods,
     resource: p.resource || slugGoods(p.goods),
     amount: p.amount,
+    difficulty: resolveHuntDifficulty(p.resource || p.goods, p.difficulty),
   };
   const brief = quoteHunt(state, req);
   return huntProposal(brief);
@@ -444,7 +522,7 @@ export function inferHuntProposals(state: WorldState, playerText: string): Mecha
   return [huntProposal(quoteHunt(state, req))];
 }
 
-export function huntFulfillReason(state: WorldState, playerText: string): string | null {
+export function huntFulfillReason(state: WorldState, playerText: string, chosen?: unknown): string | null {
   if (!looksLikeHuntOrder(playerText) && !extractHuntRequest(playerText)) return null;
   const redirect = huntRedirectReason(playerText);
   if (redirect) return redirect;
@@ -461,7 +539,8 @@ export function huntFulfillReason(state: WorldState, playerText: string): string
       return "The carts already carry that. Speak to the merchant while he is here; I walk for what they will not bring.";
     }
   }
-  const brief = quoteHunt(state, req);
+  const difficulty = resolveHuntDifficulty(req.resource, chosen);
+  const brief = quoteHunt(state, { ...req, difficulty });
   if (state.resources.denarii < brief.quotedDenarii) return unaffordableHuntSpeech(brief);
   return null;
 }
@@ -477,7 +556,12 @@ export function negotiatorAllowed(state: WorldState, p: MechanicalProposal): str
 }
 
 export function startHunt(state: WorldState, p: StartHuntProposal): { ok: true; logLine: string } | { ok: false; reason: string; logLine: string } {
-  const brief = quoteHunt(state, { goods: p.goods, resource: p.resource, amount: p.amount });
+  const brief = quoteHunt(state, {
+    goods: p.goods,
+    resource: p.resource,
+    amount: p.amount,
+    difficulty: p.difficulty,
+  });
   if (activeHunt(state)) {
     return {
       ok: false,
@@ -512,6 +596,7 @@ export function startHunt(state: WorldState, p: StartHuntProposal): { ok: true; 
       goods: brief.goods,
       resource: brief.resource,
       amount: brief.amount,
+      difficulty: brief.difficulty,
       quotedDenarii: brief.quotedDenarii,
       escrowedDenarii: brief.quotedDenarii,
       durationSeasons: brief.durationSeasons,

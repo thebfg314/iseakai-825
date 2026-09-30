@@ -108,7 +108,12 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/does not name a budget/i);
     expect(gerulf).toMatch(/do not name the price/i);
     expect(gerulf).toMatch(/high end/i);
-    expect(gerulf).toMatch(/10%/);
+    expect(gerulf).toMatch(/1\.1/);
+    expect(gerulf).toMatch(/1\.4/);
+    expect(gerulf).toMatch(/1\.7/);
+    expect(gerulf).not.toMatch(/\b14x\b/);
+    expect(gerulf).not.toMatch(/flat 10%/);
+    expect(gerulf).toMatch(/difficulty/i);
     expect(gerulf).toMatch(/market band/i);
     expect(gerulf).toMatch(/start_hunt/);
     expect(gerulf).toMatch(/Aldric's world/i);

@@ -61,6 +61,7 @@ import { augmentOrderProposals, cannotFulfillReason, inferOrderProposals, looksL
 import { cancelForthcomingOrder as cancelStoredForthcoming } from "../engine/forthcoming";
 import { fieldRotation, sownCapacity } from "../engine/agriculture";
 import {
+  difficultyFromSpeech,
   ensureGerulfInHousehold,
   extractHuntRequest,
   huntFulfillReason,
@@ -71,7 +72,10 @@ import {
   normalizeHuntProposal,
   pendingHuntReports,
   quoteHunt,
+  resolveHuntDifficulty,
+  unaffordableHuntSpeech,
   withComputedHuntPrice,
+  type HuntDifficulty,
 } from "../engine/hunts";
 import {
   hireSummary,
@@ -341,9 +345,10 @@ export class GameController {
 
     const huntAsk = isNegotiatorId(npcId) && looksLikeHuntOrder(playerText);
     if (huntAsk) {
-      const refusal = huntFulfillReason(this.state, playerText);
-      if (refusal) {
-        this.pushNpcSpeech(npcId, { speech: refusal, emotion: "concerned" });
+      const blockedAtEasy = huntFulfillReason(this.state, playerText, "easy");
+      if (blockedAtEasy) {
+        const spoken = huntFulfillReason(this.state, playerText) ?? blockedAtEasy;
+        this.pushNpcSpeech(npcId, { speech: spoken, emotion: "concerned" });
         return this.finishTalk();
       }
     }
@@ -401,11 +406,6 @@ export class GameController {
         }
       }
 
-      if (huntAsk) {
-        const req = extractHuntRequest(playerText);
-        if (req) answer = { ...answer, speech: withComputedHuntPrice(answer.speech, quoteHunt(this.state, req)) };
-      }
-
       if (!order) {
         this.pushNpcSpeech(npcId, answer);
         return this.finishTalk();
@@ -444,6 +444,25 @@ export class GameController {
           );
         }
 
+        if (huntAsk) {
+          const difficulty = this.resolvedHuntDifficulty(playerText, answer.speech, books.proposals);
+          const req = extractHuntRequest(playerText);
+          if (req && difficulty) {
+            const brief = quoteHunt(this.state, { ...req, difficulty });
+            if (this.state.resources.denarii < brief.quotedDenarii) {
+              this.pushNpcSpeech(npcId, { speech: unaffordableHuntSpeech(brief), emotion: "concerned" });
+              return this.finishTalk();
+            }
+            answer = { ...answer, speech: withComputedHuntPrice(answer.speech, brief) };
+            for (const proposal of books.proposals) {
+              if (proposal.type === "start_hunt") proposal.difficulty = difficulty;
+            }
+          }
+          this.pushNpcSpeech(npcId, answer);
+          this.ingestParsedDialogue(npcId, books, playerText, difficulty);
+          return this.finishTalk();
+        }
+
         this.pushNpcSpeech(npcId, answer);
         this.ingestParsedDialogue(npcId, books, playerText);
         return this.finishTalk();
@@ -459,6 +478,22 @@ export class GameController {
     }
   }
 
+  /** Books difficulty wins. Otherwise the last difficulty word in his speech. Staples default easy. */
+  private resolvedHuntDifficulty(
+    playerText: string,
+    speech: string,
+    proposals: MechanicalProposal[],
+  ): HuntDifficulty | undefined {
+    const req = extractHuntRequest(playerText);
+    if (!req) return undefined;
+    const fromBooks = proposals.find((p) => p.type === "start_hunt");
+    const chosen =
+      fromBooks?.type === "start_hunt" && fromBooks.difficulty
+        ? fromBooks.difficulty
+        : difficultyFromSpeech(speech);
+    return resolveHuntDifficulty(req.resource, chosen);
+  }
+
   /**
    * Books pass failed, or never ran. The purse is still the engine's figure.
    * Queue Confirm if this ask can be paid; do not invent a second card.
@@ -469,11 +504,19 @@ export class GameController {
     spoken?: { speech: string; emotion?: AldricEmotion },
   ): boolean {
     if (!isNegotiatorId(npcId)) return false;
-    const forced = huntProposalForAsk(this.state, playerText);
-    if (!forced?.length) return false;
+    const spokenDifficulty = difficultyFromSpeech(spoken?.speech ?? "");
+    const forced = huntProposalForAsk(this.state, playerText, spokenDifficulty);
+    if (!forced?.length) {
+      const why = huntFulfillReason(this.state, playerText, spokenDifficulty);
+      if (!why) return false;
+      this.pushNpcSpeech(npcId, { speech: why, emotion: "concerned" });
+      return true;
+    }
     const playerAt = this.messages.map((m) => m.role).lastIndexOf("player");
     const req = extractHuntRequest(playerText);
-    const brief = req ? quoteHunt(this.state, req) : null;
+    const brief = req
+      ? quoteHunt(this.state, { ...req, difficulty: resolveHuntDifficulty(req.resource, spokenDifficulty) })
+      : null;
     const speech = brief ? withComputedHuntPrice(spoken?.speech ?? "", brief) : (spoken?.speech ?? "");
     const priced =
       brief != null &&
@@ -569,25 +612,33 @@ export class GameController {
     npcId: string,
     parsed: { proposals: MechanicalProposal[]; parseErrors: string[]; incomplete?: boolean },
     playerText: string,
+    huntDifficulty?: HuntDifficulty,
   ) {
     if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
     if (npcId === "smith") this.ensureBogOreSpeech(playerText);
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
     if (npcId === "smith") proposals = this.dropPrematureBloomery(proposals);
+    let huntChoice: unknown;
+    let huntSettled = false;
     if (isNegotiatorId(npcId)) {
-      const forced = huntProposalForAsk(this.state, playerText);
-      proposals =
-        forced !== null
-          ? forced
-          : proposals
-              .filter((p) => p.type === "start_hunt")
-              .map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
+      const modelHunt = proposals.find((p) => p.type === "start_hunt");
+      huntChoice =
+        huntDifficulty ?? (modelHunt?.type === "start_hunt" ? modelHunt.difficulty : undefined);
+      const forced = huntProposalForAsk(this.state, playerText, huntChoice);
+      if (forced !== null) {
+        proposals = forced;
+        huntSettled = true;
+      } else {
+        proposals = proposals
+          .filter((p) => p.type === "start_hunt")
+          .map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
+      }
     }
     proposals = this.dropLockedOrUnauthorizedHires(npcId, proposals);
     proposals = augmentOrderProposals(this.state, npcId, playerText, proposals);
     let fromEngine = false;
-    if (!proposals.length) {
+    if (!proposals.length && !huntSettled) {
       const inferred = inferOrderProposals(this.state, npcId, playerText);
       if (inferred.length) {
         proposals = inferred;
@@ -616,6 +667,16 @@ export class GameController {
         fromEngine
           ? `The chronicler could not set the figures. ${n} change${n === 1 ? " was" : "s were"} drafted from your order — Confirm writes ${n === 1 ? "it" : "them"} in the books.`
           : `${n} proposed change${n === 1 ? "" : "s"} await Confirm. Nothing is written to the books until then.`,
+        npcId,
+      );
+      return;
+    }
+    if (huntSettled) {
+      const why = huntFulfillReason(this.state, playerText, huntChoice);
+      this.ledgerNote(
+        why
+          ? `No change was set down. ${why}`
+          : "They answered in speech only. The books are unchanged. Give a clear order — sow, begin a work, give stores, call hands, a blessing, hire a craftsman, or a forthcoming change after harvest — or advance the season.",
         npcId,
       );
       return;
