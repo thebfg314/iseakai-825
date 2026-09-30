@@ -921,10 +921,11 @@ describe("Gerulf hunt via Confirm", () => {
     expect(game.messages.some((m) => /308 denarii/.test(m.text))).toBe(true);
   });
 
-  it("honors a named difficulty, and 14x is the medium road", () => {
+  it("honors a named difficulty, and a numeric 14x is not a multiplier", () => {
     const ask = "Buy 4 pounds of iron. I cannot wait for a merchant.";
     const difficult = Math.round(4 * 8 * 1.7);
-    const medium = Math.round(4 * 8 * 14);
+    const medium = Math.round(4 * 8 * 1.4);
+    const easy = Math.round(4 * 8 * 1.1);
     const game = tempGame();
     game.ingestParsedDialogue(
       "negotiator",
@@ -957,9 +958,8 @@ describe("Gerulf hunt via Confirm", () => {
     if (pending[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
     expect(pending[0].proposal.quotedDenarii).not.toBe(28);
 
-    const funded = tempGame();
-    funded.state.resources.denarii = 2000;
-    funded.ingestParsedDialogue(
+    const fair = tempGame();
+    fair.ingestParsedDialogue(
       "negotiator",
       parseLlmResponse(
         JSON.stringify({
@@ -972,7 +972,7 @@ describe("Gerulf hunt via Confirm", () => {
               resource: "iron",
               amount: 4,
               quotedDenarii: 28,
-              difficulty: "14x",
+              difficulty: "medium",
               durationSeasons: 1,
             },
           ],
@@ -980,7 +980,7 @@ describe("Gerulf hunt via Confirm", () => {
       ),
       ask,
     );
-    const mediumCard = funded.pending.filter((p) => p.status === "pending");
+    const mediumCard = fair.pending.filter((p) => p.status === "pending");
     expect(mediumCard).toHaveLength(1);
     expect(mediumCard[0].proposal).toMatchObject({
       type: "start_hunt",
@@ -988,13 +988,12 @@ describe("Gerulf hunt via Confirm", () => {
       difficulty: "medium",
     });
     expect(medium).toBe(ordinaryHuntPurse(8, 4, "medium"));
-    const fundedChest = funded.state.resources.denarii;
-    expect(funded.confirmProposal(mediumCard[0].id).error).toBeUndefined();
-    expect(funded.state.resources.denarii).toBe(fundedChest - medium);
+    const fairChest = fair.state.resources.denarii;
+    expect(fair.confirmProposal(mediumCard[0].id).error).toBeUndefined();
+    expect(fair.state.resources.denarii).toBe(fairChest - medium);
 
-    const thin = tempGame();
-    const thinChest = thin.state.resources.denarii;
-    thin.ingestParsedDialogue(
+    const numeric = tempGame();
+    numeric.ingestParsedDialogue(
       "negotiator",
       parseLlmResponse(
         JSON.stringify({
@@ -1015,9 +1014,16 @@ describe("Gerulf hunt via Confirm", () => {
       ),
       ask,
     );
-    expect(thin.pending.filter((p) => p.status === "pending")).toHaveLength(0);
-    expect(thin.state.resources.denarii).toBe(thinChest);
-    expect(thin.messages.some((m) => m.text.includes(`${medium} denarii`) && /take nothing/i.test(m.text))).toBe(true);
+    const dropped = numeric.pending.filter((p) => p.status === "pending");
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0].proposal).toMatchObject({
+      type: "start_hunt",
+      quotedDenarii: easy,
+      difficulty: "easy",
+    });
+    if (dropped[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(easy).toBe(ordinaryHuntPurse(8, 4, "easy"));
+    expect(dropped[0].proposal.quotedDenarii).not.toBe(4 * 8 * 14);
 
     const saltGame = tempGame();
     saltGame.state.resources.denarii = 200;

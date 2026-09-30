@@ -700,7 +700,7 @@ export const StartHuntProposalSchema = ProposalBase.extend({
   goods: z.string(),
   resource: z.string(),
   amount: z.coerce.number().positive(),
-  /** easy 1.1, medium 14, difficult 1.7. The engine prices the purse; this is the only cost choice. */
+  /** easy 1.1, medium 1.4, difficult 1.7. The engine prices the purse; this is the only cost choice. */
   difficulty: z.enum(["easy", "medium", "difficult"]).optional(),
   quotedDenarii: z.coerce.number().positive(),
   durationSeasons: z.coerce.number().int().min(1).max(8),
