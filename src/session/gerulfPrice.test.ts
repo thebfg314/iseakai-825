@@ -49,7 +49,7 @@ describe("Gerulf's spoken purse", () => {
 
   it("stamps the computed price into his speech and the Confirm card, whatever figure he invented", async () => {
     const ask = "Buy 4 pounds of iron. I cannot wait for a merchant.";
-    const price = ordinaryHuntPurse(3, 8, 4);
+    const price = ordinaryHuntPurse(8, 4);
 
     const first = tempGame();
     const chest = first.state.resources.denarii;
@@ -103,7 +103,7 @@ describe("Gerulf's spoken purse", () => {
   it("refuses 35 lb in his own mouth when the chest cannot pay, with no Confirm and no coin taken", async () => {
     const game = tempGame();
     const chest = game.state.resources.denarii;
-    const price = ordinaryHuntPurse(game.state.market.iron.min, game.state.market.iron.max, 35);
+    const price = ordinaryHuntPurse(game.state.market.iron.max, 35);
     await game.sendDialogue("negotiator", "Buy 35 lb of iron. I cannot wait for a merchant.");
     expect(llmChatMock).not.toHaveBeenCalled();
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);

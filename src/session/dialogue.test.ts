@@ -804,7 +804,6 @@ describe("Gerulf hunt via Confirm", () => {
     const game = tempGame();
     const chest = game.state.resources.denarii;
     const iron = game.state.resources.iron;
-    const mid = (game.state.market.iron.min + game.state.market.iron.max) / 2;
     const parsed = parseLlmResponse(JSON.stringify({ speech: "Iron. I will name the purse.", proposals: [] }));
     game.ingestParsedDialogue("negotiator", parsed, "Find me 4 pounds of iron for the work.");
     const pending = game.pending.filter((p) => p.status === "pending");
@@ -814,8 +813,8 @@ describe("Gerulf hunt via Confirm", () => {
     if (pending[0].proposal.type !== "start_hunt") throw new Error("expected start_hunt");
     const quote = pending[0].proposal.quotedDenarii;
     const amount = pending[0].proposal.amount;
-    expect(quote).toBeGreaterThan(mid * amount);
-    expect(quote).toBeLessThan(mid * amount * 1.5);
+    expect(quote).toBe(ordinaryHuntPurse(game.state.market.iron.max, amount));
+    expect(quote).toBe(Math.round(amount * game.state.market.iron.max * 1.1));
     expect(game.state.resources.denarii).toBe(chest);
     expect(game.state.resources.iron).toBe(iron);
 
@@ -872,7 +871,7 @@ describe("Gerulf hunt via Confirm", () => {
     if (confirmed[0].proposal.type !== "start_hunt" || denied[0].proposal.type !== "start_hunt") {
       throw new Error("expected start_hunt");
     }
-    const price = ordinaryHuntPurse(confirmGame.state.market.iron.min, confirmGame.state.market.iron.max, 4);
+    const price = ordinaryHuntPurse(confirmGame.state.market.iron.max, 4);
     expect(confirmed[0].proposal.quotedDenarii).toBe(price);
     expect(denied[0].proposal.quotedDenarii).toBe(price);
     expect(confirmed[0].proposal.quotedDenarii).not.toBe(42);

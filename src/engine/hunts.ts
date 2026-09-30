@@ -27,16 +27,20 @@ const GRAIN_WORDS = /\b(barley|wheat|rye|oats|grain|granary|modii|modius|seed[- 
 const IRON_WORDS = /\b(iron|charcoal|bloom(?:\s*iron)?)\b/i;
 
 /**
- * Tolls and boot-leather, added once to the market price of the whole brief.
- * Fixed: the same quantity of the same good costs the same while the band is unchanged.
+ * Flat road share on top of what a buyer pays when they need the good now.
+ * Ten percent of (quantity × the high end of the band). The low end is not used.
  */
-export const ROAD_PREMIUM_DENARII = 2;
+export const ROAD_PREMIUM_RATE = 0.1;
 
-/** Market midpoint times the quantity, plus {@link ROAD_PREMIUM_DENARII}. The model does not name this. */
-export function ordinaryHuntPurse(bandMin: number, bandMax: number, amount: number): number {
+/**
+ * quantity × the high end of the market band, plus {@link ROAD_PREMIUM_RATE}, rounded to a whole denarius.
+ * Iron 3–8, 35 lb: 35 × 8 = 280, plus 10% = 308. Same inputs always give the same number.
+ */
+export function ordinaryHuntPurse(bandMax: number, amount: number): number {
   const qty = Math.max(1, Math.round(amount));
-  const mid = (bandMin + bandMax) / 2;
-  return Math.max(1, Math.round(mid * qty + ROAD_PREMIUM_DENARII));
+  const atTheHighEnd = qty * bandMax;
+  const withRoad = atTheHighEnd + atTheHighEnd * ROAD_PREMIUM_RATE;
+  return Math.max(1, Math.round(withRoad));
 }
 
 const HUNT_VERB =
@@ -312,9 +316,8 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
   if (isCanonical(resource)) {
     const range = state.market[resource];
     const custom = range ? undefined : state.custom_resources.find((c) => c.id === resource);
-    const bandMin = range?.min ?? custom?.priceMin ?? 8;
-    const bandMax = range?.max ?? custom?.priceMax ?? bandMin;
-    const quotedDenarii = ordinaryHuntPurse(bandMin, bandMax, amount);
+    const bandMax = range?.max ?? custom?.priceMax ?? 8;
+    const quotedDenarii = ordinaryHuntPurse(bandMax, amount);
     const durationSeasons = quotedDenarii >= 120 ? 3 : quotedDenarii >= 60 ? 2 : 1;
     return {
       goods,
