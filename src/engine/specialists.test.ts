@@ -187,7 +187,7 @@ describe("specialist hire cost ladder", () => {
 
   it("blocks a thin chest, lets Hugo through on the start chest, and refuses Gerold at boot", () => {
     const state = boot();
-    expect(state.resources.denarii).toBe(96);
+    expect(state.resources.denarii).toBe(138);
     expect(specialistHireBlocked(state, specialistById("potter")!)).toBeNull();
     expect(inferHireProposals(state, "Hire Hugo the potter.")).toHaveLength(1);
 

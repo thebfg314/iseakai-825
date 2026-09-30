@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
-import { GERULF_NOTES, GERULF_ROAD_LOCATION, NEGOTIATOR_ID, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, inferHuntProposals, looksLikeHuntOrder, quoteHunt, resolveHunts, startHunt } from "./hunts";
+import { GERULF_NOTES, GERULF_ROAD_LOCATION, HUNT_DIFFICULTY_MULTIPLIER, NEGOTIATOR_ID, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, inferHuntProposals, looksLikeHuntOrder, ordinaryHuntPurse, parseHuntDifficulty, quoteHunt, resolveHuntDifficulty, resolveHunts, startHunt, withComputedHuntPrice } from "./hunts";
 import { WorldStateSchema, type WorldState } from "./schema";
 import { resolveAgricultureAndProjects } from "./season";
 
@@ -38,15 +38,16 @@ describe("Gerulf the negotiator", () => {
     expect(iron).toHaveLength(1);
     expect(iron[0]).toMatchObject({ type: "start_hunt", resource: "iron", amount: 4 });
     if (iron[0].type !== "start_hunt") throw new Error("expected start_hunt");
-    const mid = (state.market.iron.min + state.market.iron.max) / 2;
-    expect(iron[0].quotedDenarii).toBeGreaterThan(mid * 4);
-    expect(iron[0].quotedDenarii).toBeLessThan(mid * 4 * 1.5);
+    expect(iron[0].quotedDenarii).toBe(ordinaryHuntPurse(state.market.iron.max, 4, "easy"));
+    expect(iron[0].quotedDenarii).toBe(Math.round(4 * state.market.iron.max * HUNT_DIFFICULTY_MULTIPLIER.easy));
+    expect(iron[0].difficulty).toBe("easy");
     expect(iron[0].durationSeasons).toBe(1);
 
     const proposals = inferHuntProposals(state, "Find me pepper.");
     expect(proposals).toHaveLength(1);
-    expect(proposals[0]).toMatchObject({ type: "start_hunt", goods: "pepper" });
+    expect(proposals[0]).toMatchObject({ type: "start_hunt", goods: "pepper", difficulty: "medium" });
     if (proposals[0].type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(proposals[0].quotedDenarii).toBe(Math.round(42 * 1.4));
     expect(proposals[0].quotedDenarii).toBeGreaterThan(iron[0].quotedDenarii);
     expect(proposals[0].durationSeasons).toBeGreaterThanOrEqual(1);
     expect(proposals[0].summary).toMatch(/denarii/i);
@@ -78,8 +79,9 @@ describe("Gerulf the negotiator", () => {
 
   it("escrows the quoted purse on Confirm and creates a hunt project", () => {
     const state = boot();
-    const chest = state.resources.denarii;
     const brief = quoteHunt(state, { goods: "pepper", resource: "pepper", amount: 1 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
+    const chest = state.resources.denarii;
     const result = applyProposal(state, huntProposal(brief), NEGOTIATOR_ID);
     expect(result.ok).toBe(true);
     expect(state.resources.denarii).toBe(chest - brief.quotedDenarii);
@@ -100,6 +102,7 @@ describe("Gerulf the negotiator", () => {
   it("resolves a successful hunt into stores after the quoted seasons", () => {
     const state = boot();
     const brief = quoteHunt(state, { goods: "pepper", resource: "pepper", amount: 1 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
     expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
     vi.spyOn(Math, "random").mockReturnValue(0.1);
     for (let i = 0; i < brief.durationSeasons - 1; i++) {
@@ -119,8 +122,9 @@ describe("Gerulf the negotiator", () => {
 
   it("returns coin and no goods on a false rumour", () => {
     const state = boot();
-    const chestBefore = state.resources.denarii;
     const brief = quoteHunt(state, { goods: "silk", resource: "silk", amount: 1 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
+    const chestBefore = state.resources.denarii;
     expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
     expect(state.resources.denarii).toBe(chestBefore - brief.quotedDenarii);
     vi.spyOn(Math, "random").mockReturnValue(0.9);
@@ -135,6 +139,7 @@ describe("Gerulf the negotiator", () => {
   it("advances hunts on season tick without labour", () => {
     const state = boot();
     const brief = quoteHunt(state, { goods: "pepper", resource: "pepper", amount: 1 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
     expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
     vi.spyOn(Math, "random").mockReturnValue(0.1);
     for (let i = 0; i < brief.durationSeasons - 1; i++) {
@@ -145,5 +150,82 @@ describe("Gerulf the negotiator", () => {
     vi.restoreAllMocks();
     expect(state.projects.find((p) => p.hunt)?.status).toBe("completed");
     expect(state.custom_resources.some((c) => c.id === "pepper" && c.amount > 0)).toBe(true);
+  });
+
+  it("prices identical asks at the high end of the band times the road's difficulty", () => {
+    const state = boot();
+    const ask = "Buy 35 lb of iron. I cannot wait for a merchant.";
+    const again = "Buy thirty-five pounds of iron because I cannot wait for a merchant.";
+    expect(looksLikeHuntOrder(ask)).toBe(true);
+    expect(extractHuntRequest(ask)).toMatchObject({ resource: "iron", amount: 35 });
+    expect(extractHuntRequest(again)).toMatchObject({ resource: "iron", amount: 35 });
+
+    const first = quoteHunt(state, extractHuntRequest(ask)!);
+    const second = quoteHunt(state, extractHuntRequest(again)!);
+    expect(state.market.iron).toEqual({ min: 3, max: 8 });
+    const atTheHighEnd = 35 * state.market.iron.max;
+    expect(atTheHighEnd).toBe(280);
+    expect(HUNT_DIFFICULTY_MULTIPLIER).toEqual({ easy: 1.1, medium: 1.4, difficult: 1.7 });
+    expect(ordinaryHuntPurse(state.market.iron.max, 35, "easy")).toBe(308);
+    expect(ordinaryHuntPurse(state.market.iron.max, 35, "medium")).toBe(392);
+    expect(ordinaryHuntPurse(state.market.iron.max, 35, "medium")).not.toBe(35 * 8 * 14);
+    expect(ordinaryHuntPurse(state.market.iron.max, 35, "difficult")).toBe(476);
+    expect(ordinaryHuntPurse(state.market.iron.min, 35)).not.toBe(308);
+    expect(first.difficulty).toBe("easy");
+    expect(first.quotedDenarii).toBe(308);
+    expect(second.quotedDenarii).toBe(first.quotedDenarii);
+    expect(first.amount).toBe(35);
+    expect(quoteHunt(state, { ...extractHuntRequest(ask)!, difficulty: "difficult" }).quotedDenarii).toBe(476);
+    expect(quoteHunt(state, { ...extractHuntRequest(again)!, difficulty: "difficult" }).quotedDenarii).toBe(476);
+
+    expect(parseHuntDifficulty("14")).toBeUndefined();
+    expect(parseHuntDifficulty("14x")).toBeUndefined();
+    expect(parseHuntDifficulty(14)).toBeUndefined();
+    expect(parseHuntDifficulty("1.4")).toBeUndefined();
+    expect(parseHuntDifficulty("medium")).toBe("medium");
+    expect(parseHuntDifficulty("hard")).toBe("difficult");
+    expect(resolveHuntDifficulty("iron", "14x")).toBe("easy");
+    expect(resolveHuntDifficulty("charcoal", "medium")).toBe("medium");
+    expect(resolveHuntDifficulty("iron")).toBe("easy");
+    expect(resolveHuntDifficulty("iron", "difficult")).toBe("difficult");
+    expect(resolveHuntDifficulty("salt")).toBe("easy");
+    expect(resolveHuntDifficulty("softwood")).toBe("easy");
+    expect(resolveHuntDifficulty("hardwood")).toBe("easy");
+    expect(resolveHuntDifficulty("timber")).toBe("easy");
+    expect(resolveHuntDifficulty("wheat")).toBe("easy");
+    expect(resolveHuntDifficulty("charcoal")).toBe("medium");
+    expect(resolveHuntDifficulty("pepper")).toBe("medium");
+    expect(resolveHuntDifficulty("stone")).toBe("medium");
+
+    const salt = quoteHunt(state, { goods: "salt", resource: "salt", amount: 4 });
+    expect(salt.difficulty).toBe("easy");
+    expect(salt.quotedDenarii).toBe(ordinaryHuntPurse(state.market.salt.max, 4, "easy"));
+    expect(salt.quotedDenarii).toBe(Math.round(4 * state.market.salt.max * 1.1));
+    const charcoal = quoteHunt(state, { goods: "charcoal", resource: "charcoal", amount: 2 });
+    expect(charcoal.difficulty).toBe("medium");
+    expect(charcoal.quotedDenarii).toBe(ordinaryHuntPurse(state.market.charcoal.max, 2, "medium"));
+    expect(charcoal.quotedDenarii).toBe(Math.round(2 * state.market.charcoal.max * 1.4));
+    const timber = quoteHunt(state, { goods: "softwood", resource: "softwood", amount: 1 });
+    expect(timber.difficulty).toBe("easy");
+    expect(timber.quotedDenarii).toBe(Math.round(state.market.softwood.max * 1.1));
+
+    expect(huntFulfillReason(state, ask)).toMatch(/cannot spare/);
+    expect(huntFulfillReason(state, ask)).toContain("308 denarii");
+    expect(huntFulfillReason(state, ask)).toMatch(/take nothing/i);
+    expect(inferHuntProposals(state, ask)).toEqual([]);
+
+    const invented = withComputedHuntPrice(
+      "Aye. I'll fetch 35 pounds of iron for 42 denarii, road costs included, and have it back within one season. Better my boots wear than your forge stand idle.",
+      first,
+    );
+    const inventedAgain = withComputedHuntPrice(
+      "Aye. Thirty-five pounds of iron, fetched inland rather than prayed for at the gate. Give me 28 denarii and one season; that covers fair market price, tolls, and enough road-money to keep the iron from becoming someone else's iron.",
+      second,
+    );
+    expect(invented).toContain("308 denarii");
+    expect(inventedAgain).toContain("308 denarii");
+    expect(invented).not.toMatch(/\b42\b/);
+    expect(inventedAgain).not.toMatch(/\b28\b/);
+    expect(invented).toMatch(/forge stand idle/);
   });
 });

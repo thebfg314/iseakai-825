@@ -33,6 +33,6 @@ describe("Fontenay season sowing defaults", () => {
     const a = WorldStateSchema.parse(structuredClone(startingEstate));
     const b = cloneState(a);
     b.resources.denarii = 0;
-    expect(WorldStateSchema.parse(structuredClone(startingEstate)).resources.denarii).toBe(96);
+    expect(WorldStateSchema.parse(structuredClone(startingEstate)).resources.denarii).toBe(138);
   });
 });

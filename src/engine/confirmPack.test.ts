@@ -33,7 +33,7 @@ describe("clearing and charcoal store costs", () => {
     const iron = state.resources.iron;
     const stone = state.resources.stone;
     const wood = state.resources.softwood + state.resources.hardwood;
-    expect(iron).toBe(8);
+    expect(iron).toBe(25);
 
     const clearing = applyProposal(
       state,

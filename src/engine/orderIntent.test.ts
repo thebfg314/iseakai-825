@@ -38,5 +38,7 @@ describe("looksLikeMechanicalOrder", () => {
   it("treats a Gerulf find request as an order", () => {
     expect(looksLikeMechanicalOrder("Find me pepper.", "negotiator")).toBe(true);
     expect(looksLikeMechanicalOrder("How are the roads?", "negotiator")).toBe(false);
+    expect(looksLikeMechanicalOrder("Buy 35 lb of iron. I cannot wait for a merchant.", "negotiator")).toBe(true);
+    expect(looksLikeMechanicalOrder("How much is iron?", "negotiator")).toBe(false);
   });
 });

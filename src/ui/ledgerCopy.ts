@@ -3,6 +3,7 @@ import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../
 import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
 import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
+import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
 import { matchHireableSpecialist } from "../engine/specialists";
 import { quoteRaise } from "../engine/military";
 
@@ -497,7 +498,9 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return p.summary && p.summary !== p.type && p.summary !== "event_effect" ? p.summary : "A season's change.";
     case "start_hunt": {
       const seasons = p.durationSeasons === 1 ? "1 season" : `${p.durationSeasons} seasons`;
-      return `Gerulf will seek ${p.amount} ${p.goods} for ${formatLedgerNumber(p.quotedDenarii)} denarii over ${seasons}. The purse leaves the chest on Confirm.`;
+      const qty = huntQuantityPhrase(p.amount, p.goods, p.unit);
+      const road = p.difficulty ? ` on ${huntRoadPhrase(p.difficulty)}` : "";
+      return `Gerulf will seek ${qty} for ${formatLedgerNumber(p.quotedDenarii)} denarii over ${seasons}${road}. The purse leaves the chest on Confirm.`;
     }
     case "settle_households": {
       const hh = p.households === 1 ? "one household" : `${p.households} households`;

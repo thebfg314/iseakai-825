@@ -45,7 +45,7 @@ describe("fresh boot UI", () => {
     expect(view.state.estate_history).toEqual([]);
     const pager = estatePagerView(view, 0);
     expect(pager.viewingCurrent).toBe(true);
-    expect(pager.source?.resources.denarii).toBe(96);
+    expect(pager.source?.resources.denarii).toBe(138);
 
     const html = renderToStaticMarkup(createElement(BooksPanel, { view }));
     expect(html).toContain("The books");

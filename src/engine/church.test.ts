@@ -79,7 +79,7 @@ describe("sponsored feast", () => {
     const id = game.pending.find((p) => p.status === "pending")!.id;
     const view = game.confirmProposal(id);
     expect(view.error).toBeUndefined();
-    expect(game.state.resources.denarii).toBe(96 - FEAST_PLAIN_DENARII);
+    expect(game.state.resources.denarii).toBe(138 - FEAST_PLAIN_DENARII);
     expect(game.state.resources.beeswax).toBe(0);
     expect(game.state.peopleHappiness).toBe(50 + FEAST_PLAIN_BONUS);
     expect(game.state.church.feastFade).toBe(FEAST_PLAIN_BONUS / 2);
@@ -132,7 +132,7 @@ describe("sponsored feast", () => {
     });
     expect(feast(grand, "grand", "Martinmas").ok).toBe(true);
     expect(grand.peopleHappiness).toBe(50 + FEAST_GRAND_BONUS);
-    expect(grand.resources.denarii).toBe(96 - 30);
+    expect(grand.resources.denarii).toBe(138 - 30);
     expect(grand.resources.beeswax).toBe(1);
     expect(grand.resources.wine).toBe(0);
     expect(grand.resources.rye).toBe(8 - 2);
@@ -163,7 +163,7 @@ describe("sponsored feast", () => {
     expect(feast(full, "plain").ok).toBe(true);
     expect(full.peopleHappiness).toBe(80);
     expect(full.church.feastFade).toBe(0);
-    expect(full.resources.denarii).toBe(96 - 12);
+    expect(full.resources.denarii).toBe(138 - 12);
 
     const above = boot((s) => {
       s.peopleHappiness = 90;
@@ -198,7 +198,7 @@ describe("sponsored feast", () => {
     const state = boot();
     const r = applyProposal(state, { type: "sponsor_feast", tier: "plain", summary: "A feast" }, "steward");
     expect(r.ok).toBe(false);
-    expect(state.resources.denarii).toBe(96);
+    expect(state.resources.denarii).toBe(138);
   });
 });
 
@@ -438,7 +438,7 @@ describe("cell surplus", () => {
     );
     expect(sale.ok).toBe(true);
     expect(sale.logLine).toMatch(/1 modius of beans for 3 denarii/);
-    expect(state.resources.denarii).toBe(93);
+    expect(state.resources.denarii).toBe(135);
     expect(state.custom_resources.find((c) => c.id === "beans")?.amount).toBe(1);
     expect(state.church.neglect).toEqual([]);
 
@@ -456,6 +456,6 @@ describe("cell surplus", () => {
     );
     expect(bulk.ok).toBe(false);
     expect(bulk.reason).toMatch(/little/i);
-    expect(state.resources.denarii).toBe(93);
+    expect(state.resources.denarii).toBe(135);
   });
 });

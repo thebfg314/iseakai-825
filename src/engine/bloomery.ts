@@ -4,7 +4,7 @@ import { lookupProject } from "./projectCatalog";
 import { resourceOutputBonus } from "./applyDelta";
 import { round1 } from "./util";
 
-/** Above the opening chest (96). A little trade clears it; a hoard is not required. */
+/** A purse that can bear the work. Not a hoard. */
 export const BLOOMERY_DECENT_PURSE = 120;
 
 /** Opening store is 1 cart-load. Four is a real pile, not a hoard. */

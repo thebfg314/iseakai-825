@@ -234,7 +234,7 @@
       "title": "hunt",
       "aliases": ["mid-hunt", "mid hunt", "a hunt", "the hunt", "that hunt", "hunt for", "hunt"],
       "rule": "hunt_gerulf",
-      "definition": "Here a hunt is Gerulf taking a purse and walking the roads to find scarce goods — not a deer drive. He quotes a price and a span of seasons; the coin leaves the chest when you Confirm."
+      "definition": "Here a hunt is Gerulf taking a purse and walking the roads for goods the carts will not bring — not a deer drive. The purse is the dear end of the market price. An easy road costs a little more, a fair road more than that, and a hard road most of all. Iron is an easy road unless he names a harder one. The coin leaves the chest when you Confirm."
     },
     {
       "id": "hides",
