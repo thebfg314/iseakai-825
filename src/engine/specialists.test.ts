@@ -43,7 +43,7 @@ describe("expansion hire unlocks", () => {
     for (const id of EXPANSION_IDS) {
       const spec = specialistById(id)!;
       expect(specialistUnlocked(state, spec)).toBe(false);
-      expect(specialistHireBlocked(state, spec)).toMatch(/not yet|still small|old acre|workshop|timber forge|no one for a captain/i);
+      expect(specialistHireBlocked(state, spec)).toMatch(/not yet|still small|old acre|workshop|timber forge|no one for a captain to drill/i);
     }
     expect(recommendableHires(state)).toEqual([]);
     expect(inferHireProposals(state, "Hire Otto the reeve.")).toEqual([]);
@@ -164,6 +164,25 @@ describe("specialist hire cost ladder", () => {
     expect(hireSummary(specialistById("potter")!)).toMatch(/80 denarii/);
     expect(hireSummary(specialistById("village_reeve")!)).toMatch(/20 denarii.*0\.5 modii/);
     expect(stewardHirePrompt(boot())).not.toMatch(/12 denarii|one solidus/i);
+  });
+
+  it("does not name expansion hires until their post is open", () => {
+    const prompt = stewardHirePrompt(boot());
+    expect(prompt).not.toMatch(/\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/);
+    expect(prompt).toMatch(/combat specialist/);
+    expect(prompt).toMatch(/captain of the guard/);
+    const blocked = specialistHireBlocked(boot(), specialistById("captain")!);
+    expect(blocked).toMatch(/No captain of the guard yet/);
+    expect(blocked).not.toMatch(/Eberhard/);
+    for (const id of EXPANSION_IDS) {
+      expect(specialistHireBlocked(boot(), specialistById(id)!)).not.toMatch(
+        /\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/,
+      );
+    }
+
+    const levy = boot();
+    levy.military.units.push({ id: "u1", sheetId: "peasant_levy", name: "The villa's men", veteran: false, strength: 20, raisedTurn: 1 });
+    expect(stewardHirePrompt(levy)).toMatch(/name Eberhard/);
   });
 
   it("blocks a thin chest, lets Hugo through on the start chest, and refuses Gerold at boot", () => {

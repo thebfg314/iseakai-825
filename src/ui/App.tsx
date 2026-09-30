@@ -58,15 +58,8 @@ import { defaultAppSettings } from "../llm/settings";
 import { emptyMeter, type LlmMeter } from "../llm/usage";
 import { applyServerDialogueView, viewWithOptimisticPlayer } from "./chatSend";
 import { hudInkLine, hudInkTitle, settingsInkLines } from "./scribeInk";
-import {
-  CONFIRM_HELP,
-  confirmBanner,
-  playerFacingReason,
-  playerFacingSummary,
-  proposalBlurb,
-  proposalTypeName,
-  roleName,
-} from "./ledgerCopy";
+import { confirmBanner, playerFacingReason, roleName } from "./ledgerCopy";
+import { ProposalsPanel } from "./ProposalsPanel";
 import { GlossaryProvider, GlossaryText } from "./GlossaryText";
 import { EmptyVillaScreen } from "./emptyVilla";
 import { ShopPanel } from "./ShopPanel";
@@ -327,6 +320,11 @@ export function App() {
     const cues = confirmSfx(p.proposal, result && "state" in result ? result : null);
     if (cues.pen) playSfx(PEN_CONFIRM);
     if (cues.coins) playSfx(COINS);
+  }
+
+  async function confirmAllPending() {
+    const result = await withBusy(() => window.api.confirmAllProposals());
+    if (result && "state" in result) playSfx(PEN_CONFIRM);
   }
 
   async function confirmShop(basket: {
@@ -690,28 +688,18 @@ export function App() {
             </div>
           </div>
 
-          {view.pending.length > 0 && (
-            <div className="proposals" id="pending-proposals">
-              <h3>Proposed changes — Confirm writes the books</h3>
-              <p className="proposal-help">
-                <GlossaryText text={CONFIRM_HELP} />
-              </p>
-              {view.pending.map((p) => (
-                <ProposalCard
-                  key={p.id}
-                  p={p}
-                  state={view.state}
-                  busy={busy}
-                  onConfirm={() => void confirmPending(p)}
-                  onReject={() => withBusy(() => window.api.rejectProposal(p.id))}
-                  onAskAbout={() => {
-                    focusComposer.current = true;
-                    return withBusy(() => window.api.askAboutProposal(p.id));
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <ProposalsPanel
+            pending={view.pending}
+            state={view.state}
+            busy={busy}
+            onConfirm={(p) => void confirmPending(p)}
+            onConfirmAll={() => void confirmAllPending()}
+            onDeny={(p) => withBusy(() => window.api.rejectProposal(p.id))}
+            onAskAbout={(p) => {
+              focusComposer.current = true;
+              return withBusy(() => window.api.askAboutProposal(p.id));
+            }}
+          />
 
           <form
             id="talk-composer"
@@ -958,50 +946,6 @@ function MessageBubble({ m }: { m: ChatMessage }) {
         </div>
       )}
     </article>
-  );
-}
-
-function ProposalCard({
-  p,
-  state,
-  busy,
-  onConfirm,
-  onReject,
-  onAskAbout,
-}: {
-  p: PendingProposal;
-  state: GameView["state"];
-  busy: boolean;
-  onConfirm: () => void;
-  onReject: () => void;
-  onAskAbout: () => void;
-}) {
-  const hunt = p.proposal.type === "start_hunt" ? { hunt: true as const } : undefined;
-  return (
-    <div className="proposal">
-      <div className="p-type">
-        <GlossaryText text={proposalTypeName(p.proposal.type)} context={hunt} />
-      </div>
-      {playerFacingSummary(p.proposal) && (
-        <div className="p-sum">
-          <GlossaryText text={playerFacingSummary(p.proposal)} context={hunt} />
-        </div>
-      )}
-      <div className="p-blurb">
-        <GlossaryText text={proposalBlurb(p.proposal, state)} context={hunt} />
-      </div>
-      <div className="p-actions">
-        <button className="primary" disabled={busy} onClick={onConfirm}>
-          Confirm
-        </button>
-        <button disabled={busy} onClick={onReject}>
-          Reject
-        </button>
-        <button disabled={busy} onClick={onAskAbout}>
-          Ask about
-        </button>
-      </div>
-    </div>
   );
 }
 

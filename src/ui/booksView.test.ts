@@ -68,6 +68,38 @@ function mill(partial: Partial<Project> = {}): Project {
   };
 }
 
+const UNHIRED_NAMES = /\b(Eberhard|Otto|Ambrosius|Hildegard|Lorenzo|Colman|Haimo|Gerold|Hugo)\b/;
+
+describe("arms at a new game", () => {
+  it("does not name Eberhard or the other unhired posts in the books", () => {
+    const view = viewOf(estate());
+    for (const tab of BOOKS_TABS) {
+      const html = renderToStaticMarkup(createElement(BooksPanel, { view, initialTab: tab }));
+      expect(html).not.toMatch(UNHIRED_NAMES);
+    }
+    const estateHtml = renderToStaticMarkup(createElement(BooksPanel, { view, initialTab: "estate" }));
+    expect(estateHtml).toContain("Arms");
+    expect(estateHtml).toContain("No captain of the guard yet.");
+    expect(estateHtml).not.toMatch(JARGON);
+  });
+
+  it("names the captain in Arms once he has been hired", () => {
+    const state = estate();
+    state.npcs.push({
+      id: "captain",
+      name: "Eberhard",
+      role: "captain",
+      location: "fontenay",
+      notes: "",
+      memories: [],
+      wantsTalk: false,
+    });
+    const html = renderToStaticMarkup(createElement(BooksPanel, { view: viewOf(state), initialTab: "estate" }));
+    expect(html).toContain("Eberhard is captain of the guard.");
+    expect(html).not.toContain("No captain of the guard yet.");
+  });
+});
+
 describe("books tabs", () => {
   it("names the three tabs in hall language", () => {
     expect([...BOOKS_TABS]).toEqual(["estate", "labours", "customs", "arms"]);

@@ -11,7 +11,7 @@ import {
   quoteMerchantBasket,
 } from "../engine/merchantShop";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
-import { tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
+import { fadeSponsoredFeastJoy, tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
 import { ARRIVAL_REFUSE_LINE, ABANDONED_GAME_OVER, estateIsAbandoned, markEstateAbandoned, resolvePeopleMovement } from "../engine/peopleMovement";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
@@ -80,7 +80,24 @@ import {
   specialistNpc,
 } from "../engine/specialists";
 import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
+import {
+  BERNARD_BLOOMERY_SUGGESTION,
+  BERNARD_BOG_ORE_SPEECH,
+  asksAboutBogOre,
+  bloomeryNotReadyReason,
+  bloomeryStartProposal,
+  bloomerySuggestReady,
+  isBloomeryStart,
+} from "../engine/bloomery";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
+import {
+  confirmGate,
+  dependentDeclineLine,
+  dependentSkipLine,
+  dependentStart,
+  matchingStarts,
+  workLabelOf,
+} from "../engine/proposalPack";
 import {
   completedProjectBeats,
   dismissNewsWantsTalk,
@@ -124,6 +141,8 @@ export class GameController {
   historyTail: string[] = [];
   /** In-memory: expansion hires already recommended this session. Does not write world-state. */
   recommendedHireIds = new Set<string>();
+  /** In-memory: Bernard has already put a bloomery on the table this session. */
+  bloomerySuggested = false;
   /** Pending card the lord asked about; next talk with that NPC can revise it. */
   askedAboutId: string | null = null;
   npcEmotions: Record<string, AldricEmotion> = {
@@ -172,7 +191,7 @@ export class GameController {
     this.persist();
     return {
       state: this.state,
-      pending: this.pending.filter((p) => p.status === "pending"),
+      pending: this.pending.filter((p) => p.status === "pending" || p.status === "withheld"),
       messages: messagesForScene(this.messages, this.sceneNpcId),
       sceneNpcId: this.sceneNpcId,
       labour: { pool: labourPool(this.state), remaining: labourRemaining(this.state) },
@@ -409,7 +428,7 @@ export class GameController {
           requireProposals: true,
           allowRepair: true,
           repairHint:
-            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, or start_hunt) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
+            "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, start_hunt, or sponsor_feast) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
         });
 
         const missing = missingCitedDrawers(books.proposals, fetched);
@@ -527,7 +546,9 @@ export class GameController {
   ) {
     if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
+    if (npcId === "smith") this.ensureBogOreSpeech(playerText);
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
+    if (npcId === "smith") proposals = this.dropPrematureBloomery(proposals);
     if (isNegotiatorId(npcId)) {
       proposals = proposals.filter((p) => p.type === "start_hunt").map((p) => (p.type === "start_hunt" ? normalizeHuntProposal(this.state, p) : p));
     }
@@ -540,6 +561,10 @@ export class GameController {
         proposals = inferred;
         fromEngine = true;
       }
+    }
+    if (npcId === "smith") {
+      const suggested = this.bloomerySuggestionProposal(proposals);
+      if (suggested) proposals = [...proposals, suggested];
     }
     const asked = this.discussedPending(npcId);
     let replaceId = asked?.id;
@@ -576,6 +601,70 @@ export class GameController {
         npcId,
       );
     }
+  }
+
+  /** Bernard names bog ore in plain words when the lord asks. Skips if he just said it. */
+  private ensureBogOreSpeech(playerText: string) {
+    if (!asksAboutBogOre(playerText)) return;
+    const recent = [...this.messages].reverse().find((m) => m.role === "npc" && m.npcId === "smith");
+    if (recent && /bog ore|rusty mud|wet ground/i.test(recent.text)) return;
+    this.npcEmotions.smith = "thoughtful";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "smith",
+      npcName: this.npcName("smith"),
+      text: BERNARD_BOG_ORE_SPEECH,
+      emotion: "thoughtful",
+      at: new Date().toISOString(),
+    });
+  }
+
+  /** Drop a bloomery the smith offered before charcoal and the chest allow it. */
+  private dropPrematureBloomery(proposals: MechanicalProposal[]): MechanicalProposal[] {
+    if (bloomerySuggestReady(this.state)) return proposals;
+    let dropped = false;
+    const kept = proposals.filter((p) => {
+      if (!isBloomeryStart(p)) return true;
+      dropped = true;
+      return false;
+    });
+    if (dropped && kept.length) this.ledgerNote(bloomeryNotReadyReason(this.state) ?? "Not yet.", "smith");
+    return kept;
+  }
+
+  /**
+   * Once a session, when charcoal and the chest allow, Bernard puts the bloomery forward.
+   * Returns the proposal for the caller to queue; does not write the books.
+   */
+  private bloomerySuggestionProposal(already: MechanicalProposal[]): MechanicalProposal | null {
+    if (this.bloomerySuggested || !bloomerySuggestReady(this.state)) return null;
+    if (already.some((p) => isBloomeryStart(p))) {
+      this.bloomerySuggested = true;
+      return null;
+    }
+    if (this.pending.some((p) => p.status === "pending" && isBloomeryStart(p.proposal))) {
+      this.bloomerySuggested = true;
+      return null;
+    }
+    this.bloomerySuggested = true;
+    this.npcEmotions.smith = "pleased";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "smith",
+      npcName: this.npcName("smith"),
+      text: BERNARD_BLOOMERY_SUGGESTION,
+      emotion: "pleased",
+      at: new Date().toISOString(),
+    });
+    return bloomeryStartProposal(this.state);
+  }
+
+  /** Season's end: the same offer, queued here because no talk is in flight. */
+  private flushBloomerySuggestion() {
+    const proposal = this.bloomerySuggestionProposal([]);
+    if (proposal) this.queueProposal("smith", proposal);
   }
 
   /** Engine-authored Aldric lines when an expansion hire first unlocks. Chat only; does not write the ledger. */
@@ -644,16 +733,46 @@ export class GameController {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
-    const item = this.pending.find((p) => p.id === id && p.status === "pending");
-    if (!item) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
+    const item = this.pending.find((p) => p.id === id && (p.status === "pending" || p.status === "withheld"));
+    if (!item || item.status !== "pending") {
+      if (item?.status === "withheld") {
+        return { ...this.view(), error: item.rejectReason || "That change is set aside." };
+      }
+      return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
+    }
+    const gate = confirmGate(item, this.pending);
+    if (gate.blocked) return { ...this.view(), error: gate.note ?? "That change is set aside." };
+    return this.finishConfirm([item], item.id);
+  }
+
+  confirmAllProposals(): GameView & { error?: string } {
+    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+      markEstateAbandoned(this.state);
+      return { ...this.view(), error: ABANDONED_GAME_OVER };
+    }
     const batch = sortPendingForApply(this.pending.filter((p) => p.status === "pending"));
+    if (!batch.length) return { ...this.view(), error: playerFacingReason("No such pending proposal.") };
+    return this.finishConfirm(batch);
+  }
+
+  private finishConfirm(batch: PendingProposal[], errorOnId?: string): GameView & { error?: string } {
     const before = cloneState(this.state);
+    const noted = new Set<string>();
     let error: string | undefined;
     for (const next of batch) {
+      if (next.status !== "pending") continue;
+      const dep = dependentStart(next, this.pending);
+      if (dep && dep.status !== "pending" && dep.status !== "applied") {
+        this.withholdFollowOns(dep, noted);
+        if (errorOnId && next.id === errorOnId) error = next.rejectReason || dependentSkipLine(workLabelOf(dep));
+        continue;
+      }
       const result = this.applyOnePending(next);
-      if (next.id === id && result.error) error = result.error;
+      if (errorOnId && next.id === errorOnId && result.error) error = result.error;
+      if (!result.ok && next.proposal.type === "start_project") this.withholdFollowOns(next, noted);
     }
     this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
+    this.flushBloomerySuggestion();
     for (const npcId of new Set(batch.map((p) => p.npcId))) {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);
     }
@@ -695,8 +814,9 @@ export class GameController {
     return result.ok ? this.view() : { ...this.view(), error: playerFacingReason(result.reason ?? logLine) };
   }
 
-  private applyOnePending(item: PendingProposal): { error?: string } {
-    if (item.status !== "pending") return {};
+  private applyOnePending(item: PendingProposal): { ok: boolean; error?: string } {
+    if (item.status !== "pending") return { ok: false };
+    const beforeIds = new Set(this.state.projects.map((p) => p.id));
     const beforeNpc = cloneState(this.state);
     const result = applyProposal(this.state, item.proposal, item.npcId);
     this.state = result.state;
@@ -704,7 +824,8 @@ export class GameController {
     item.rejectReason = result.reason;
     const logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
     if (result.ok && item.proposal.type === "start_project") {
-      this.rewritePendingLabourProjectIds();
+      const created = this.state.projects.find((p) => !beforeIds.has(p.id));
+      if (created) this.retargetFollowOns(item, created.id);
     }
     if (result.ok && item.proposal.type === "register_npc") {
       const spec = matchHireableSpecialist(item.proposal.npc);
@@ -721,18 +842,34 @@ export class GameController {
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
       this.flushHireRecommendations(newlyUnlockedHires(beforeNpc, this.state));
+      this.flushBloomerySuggestion();
     }
-    return result.ok ? {} : { error: playerFacingReason(result.reason ?? logLine) };
+    return result.ok ? { ok: true } : { ok: false, error: playerFacingReason(result.reason ?? logLine) };
   }
 
-  private rewritePendingLabourProjectIds() {
+  /** Point hands at the work just begun, and only when they named that work. */
+  private retargetFollowOns(start: PendingProposal, projectId: string) {
     for (const item of this.pending) {
       if (item.status !== "pending") continue;
-      const p = item.proposal;
-      if (p.type !== "assign_labour" && p.type !== "adjust_project") continue;
-      if (p.projectId === "unassigned") continue;
-      const resolved = resolveActiveProject(this.state, p.projectId, p.summary);
-      if (resolved) p.projectId = resolved.id;
+      if (item.proposal.type !== "assign_labour" && item.proposal.type !== "adjust_project") continue;
+      if (item.proposal.projectId === "unassigned") continue;
+      const matches = matchingStarts(item.proposal.projectId, this.pending);
+      if (matches.length === 1 && matches[0].id === start.id) item.proposal.projectId = projectId;
+    }
+  }
+
+  private withholdFollowOns(start: PendingProposal, noted: Set<string>) {
+    if (start.proposal.type !== "start_project") return;
+    const deps = this.pending.filter((p) => p.status === "pending" && dependentStart(p, this.pending)?.id === start.id);
+    if (!deps.length) return;
+    const line = dependentSkipLine(workLabelOf(start));
+    for (const dep of deps) {
+      dep.status = "withheld";
+      dep.rejectReason = line;
+    }
+    if (!noted.has(start.id)) {
+      noted.add(start.id);
+      this.ledgerNote(line, start.npcId);
     }
   }
 
@@ -746,12 +883,25 @@ export class GameController {
       item.status = "rejected";
       item.rejectReason = "Player rejected";
       this.log(item.npcId, "REJECT", item.proposal.summary);
-      this.ledgerNote(
-        item.proposal.type === "settle_households"
-          ? ARRIVAL_REFUSE_LINE
-          : `You declined: ${playerFacingSummary(item.proposal) || "that change"}.`,
-        item.npcId,
-      );
+      const followOns =
+        item.proposal.type === "start_project"
+          ? this.pending.filter((p) => p.status === "pending" && dependentStart(p, this.pending)?.id === item.id)
+          : [];
+      if (item.proposal.type === "start_project" && followOns.length) {
+        const line = dependentDeclineLine(workLabelOf(item));
+        for (const dep of followOns) {
+          dep.status = "withheld";
+          dep.rejectReason = line;
+        }
+        this.ledgerNote(line, item.npcId);
+      } else {
+        this.ledgerNote(
+          item.proposal.type === "settle_households"
+            ? ARRIVAL_REFUSE_LINE
+            : `You declined: ${playerFacingSummary(item.proposal) || "that change"}.`,
+          item.npcId,
+        );
+      }
       if (this.askedAboutId === id) this.askedAboutId = null;
       releaseConfirmWantsTalk(this.state, item.npcId, this.pending);
     }
@@ -896,8 +1046,12 @@ export class GameController {
     healPersonalFully(this.state);
     const effects: SeasonEffectLine[] = [];
     effects.push(...tickWounds(this.state, createRng(seedFromString(`wounds:${this.state.meta.year}:${this.state.meta.season}:${this.state.meta.turn}`))));
-    const lapsing = this.pending.filter((p) => p.status === "pending");
-    this.pending = this.pending.map((p) => (p.status === "pending" ? { ...p, status: "rejected" as const, rejectReason: "Season advanced" } : p));
+    const lapsing = this.pending.filter((p) => p.status === "pending" || p.status === "withheld");
+    this.pending = this.pending.map((p) =>
+      p.status === "pending" || p.status === "withheld"
+        ? { ...p, status: "rejected" as const, rejectReason: p.status === "withheld" ? p.rejectReason ?? "Season advanced" : "Season advanced" }
+        : p,
+    );
     this.askedAboutId = null;
     for (const npcId of new Set(lapsing.map((p) => p.npcId))) {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);
@@ -954,6 +1108,7 @@ export class GameController {
         },
       );
       this.applySeasonProposals(parsed.proposals, rolled, effects);
+      this.noteFeastCooling(effects);
       tickPeopleHappinessFromSeason(
         this.state,
         effects.map((e) => e.text),
@@ -977,6 +1132,7 @@ export class GameController {
         at: new Date().toISOString(),
       });
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
+      this.flushBloomerySuggestion();
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
@@ -984,6 +1140,7 @@ export class GameController {
       return { ...this.view(), effects };
     } catch (err) {
       for (const ev of rolled) this.applyEventStub(ev, effects, "The usual change");
+      this.noteFeastCooling(effects);
       tickPeopleHappinessFromSeason(
         this.state,
         effects.map((e) => e.text),
@@ -1005,11 +1162,22 @@ export class GameController {
         });
       }
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
+      this.flushBloomerySuggestion();
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       await this.refreshCredits();
       return { ...this.view(), effects };
+    }
+  }
+
+  private noteFeastCooling(effects: SeasonEffectLine[]) {
+    const faded = fadeSponsoredFeastJoy(this.state);
+    if (faded > 0) {
+      effects.push({
+        kind: "info",
+        text: "The feast's first gladness cools; half of it remains with the people.",
+      });
     }
   }
 

@@ -311,6 +311,10 @@ export function drawersCitedByProposal(p: MechanicalProposal): ToolDrawer[] {
       add("chest");
       add("projects");
       break;
+    case "sponsor_feast":
+      add("chest");
+      add("stores");
+      break;
     case "register_feature":
       add("land");
       break;

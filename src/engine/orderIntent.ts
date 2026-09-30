@@ -1,8 +1,10 @@
 import type { DeferProposal, InnerMechanicalProposal, MechanicalProposal, WorldState } from "./schema";
 import { lookupProject } from "./projectCatalog";
 import { huntFulfillReason, inferHuntProposals, isNegotiatorId, looksLikeHuntOrder } from "./hunts";
+import { bloomeryNotReadyReason, inferSmithProposals, looksLikeBloomeryOrder } from "./bloomery";
 import { hireFulfillReason, inferHireProposals, looksLikeHireOrder, specialistById } from "./specialists";
 import { isDeferProposal } from "./forthcoming";
+import { inferSponsoredFeast, looksLikeSponsoredFeastOrder } from "./church";
 import { forthcomingOrderText } from "../ui/ledgerCopy";
 
 const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
@@ -23,6 +25,9 @@ export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean 
   const t = text.trim();
   if (!t) return false;
   if (npcId && isNegotiatorId(npcId) && looksLikeHuntOrder(t)) return true;
+  if (npcId === "smith" && looksLikeBloomeryOrder(t)) return true;
+  if (npcId === "chaplain" && looksLikeSponsoredFeastOrder(t)) return true;
+  if (npcId === "chaplain" && /\b(alms|open the barn|feed the hungry)\b/i.test(t)) return true;
   if (looksLikeHireOrder(t)) return true;
   // Pure questions stay reports — even if they mention manure or peas.
   if (QUESTION_PREFIX.test(t) && !ORDER_OVERRIDE.test(t)) return false;
@@ -133,7 +138,11 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
     return inferHuntProposals(state, playerText);
   }
 
-  if (npcId === "smith" || specialistById(npcId)) {
+  if (npcId === "smith") {
+    return inferSmithProposals(state, playerText);
+  }
+
+  if (specialistById(npcId)) {
     return [];
   }
 
@@ -143,6 +152,21 @@ export function inferOrderProposals(state: WorldState, npcId: string, playerText
   }
 
   if (npcId === "chaplain") {
+    if (looksLikeSponsoredFeastOrder(playerText)) {
+      return [inferSponsoredFeast(playerText)];
+    }
+    if (/\b(alms|open the barn|feed the hungry)\b/.test(t)) {
+      return [
+        {
+          type: "transfer_resources",
+          summary: "Alms from the cell for the hungry households.",
+          resource: "rye",
+          amount: 3,
+          direction: "gain",
+          reason: "alms from the cell",
+        },
+      ];
+    }
     if (/\b(bless|blessing|morale|mood|encourage)\b/.test(t)) {
       return [
         {
@@ -269,6 +293,10 @@ export function cannotFulfillReason(state: WorldState, npcId: string, playerText
   }
   const hireWhy = hireFulfillReason(state, npcId, playerText);
   if (hireWhy) return hireWhy;
+  if (npcId === "smith" && looksLikeBloomeryOrder(playerText)) {
+    const why = bloomeryNotReadyReason(state);
+    if (why) return why;
+  }
   if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor)\b/.test(t)) {
     return "Bernard does not keep the fields. Speak to Aldric the steward.";
   }

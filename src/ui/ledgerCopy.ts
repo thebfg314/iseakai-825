@@ -1,13 +1,15 @@
 import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } from "../engine/schema";
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
+import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
-import { labourCalledPhrase, resolveActiveProject } from "../engine/labour";
+import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { matchHireableSpecialist } from "../engine/specialists";
 import { quoteRaise } from "../engine/military";
 
 export const BOOKS_TITLE = "The books";
 
-export const CONFIRM_HELP = "Speech does not change the chest. Confirm is Aldric writing it in the books.";
+export const CONFIRM_HELP =
+  "Speech does not change the chest. Confirm writes one change. Confirm all writes every change still before you. Denying a work sets aside the hands proposed for it.";
 
 export const HUNGER_LINE = "The households are hungry — grain will not last.";
 
@@ -155,6 +157,7 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   call_to_arms: "A call to arms",
   register_unit_sheet: "A new kind of soldier",
   free_mancipia: "Manumission",
+  sponsor_feast: "A feast at the cell",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -324,6 +327,13 @@ export function peopleSentence(pop: WorldState["population"]): string {
   return `${pop.adult_men} men, ${pop.adult_women} women, and ${pop.youths} youths of working age.`;
 }
 
+/** Arms in the books. The captain is named only after he has been taken into the household. */
+export function armsBookLine(npcs: { name: string; role: string }[]): string {
+  const captain = npcs.find((n) => n.role === "captain" && n.name.trim());
+  if (!captain) return "No captain of the guard yet.";
+  return `${captain.name} is captain of the guard.`;
+}
+
 export function labourSentence(
   pool: { men: number; women: number; youths: number },
   remaining: { men: number; women: number; youths: number },
@@ -352,7 +362,7 @@ export function marketLine(resource: string, min: number, max: number): string {
 }
 
 export function labourOnWorkLine(assign?: { men: number; women: number; youths: number } | null): string {
-  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra hands called this season";
+  if (!assign || (!assign.men && !assign.women && !assign.youths)) return "no extra days of work set this season";
   return labourCalledPhrase(assign.men, assign.women, assign.youths);
 }
 
@@ -461,8 +471,8 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
     case "assign_labour": {
       const proj = state ? resolveActiveProject(state, p.projectId, p.summary)?.name ?? "the work" : "the work";
       const dest = proj.replace(/^(the|a|an)\s+/i, "");
-      const who = labourCalledPhrase(p.men, p.women, p.youths).replace(" called this season", "") || "no extra hands";
-      return `${who} to the ${dest}.`;
+      const who = labourDaysPhrase(p.men, p.women, p.youths) || "no extra days";
+      return `Set ${who} this season to the ${dest}.`;
     }
     case "set_standing_order":
       return p.text;
@@ -517,6 +527,14 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const n = Math.min(p.count, have || p.count);
       return `Free ${n} of the unfree before witnesses. They become free men of the villa; every two take a manse as tenants. The people take heart from it.`;
     }
+    case "sponsor_feast": {
+      const name =
+        p.feastName && !looksLikeEngineKey(p.feastName) ? p.feastName : state ? suggestedFeastName(state.meta.season) : "the coming holy day";
+      if (p.tier === "grand") {
+        return `A grand feast for ${name}: 30 denarii, a pound of beeswax, a barrel of wine, and a meal for the households from grain or cheese.`;
+      }
+      return `A plain feast for ${name}: 12 denarii and a pound of beeswax.`;
+    }
     case "defer_proposal": {
       if (p.text && p.text.trim() && !looksLikeEngineKey(p.text)) return p.text.trim();
       const inner = p.proposal;
@@ -536,7 +554,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {
@@ -600,9 +618,9 @@ export function playerFacingReason(reason: string): string {
 
   const labour = trimmed.match(/Not enough callable labour \(pool men ([\d.]+), women ([\d.]+), youths ([\d.]+)\)/i);
   if (labour) {
-    return `There are not enough extra hands. I can still call ${labour[1]} men, ${labour[2]} women, and ${labour[3]} youths.`;
+    return `There are not enough days of work this season. The men's work comes to ${labour[1]} days, the women's to ${labour[2]}, and the youths' to ${labour[3]}.`;
   }
-  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough extra hands left to call.";
+  if (/Not enough callable labour/i.test(trimmed)) return "There are not enough days of work left this season.";
 
   if (/The merchant has no /i.test(trimmed)) return rewriteSnakeKeys(trimmed);
   if (/^Cannot (sell|consume) /i.test(trimmed)) {
@@ -614,7 +632,7 @@ export function playerFacingReason(reason: string): string {
   if (/Need .+ denarii; have /i.test(trimmed) || /Need .+ hiring gift/i.test(trimmed)) {
     return rewriteSnakeKeys(trimmed);
   }
-  if (/Need .+ (timber|iron|stone)/i.test(trimmed)) return rewriteSnakeKeys(trimmed);
+  if (/Need .+ (timber|iron|stone|charcoal)/i.test(trimmed)) return rewriteSnakeKeys(trimmed);
 
   let out = rewriteSnakeKeys(
     trimmed

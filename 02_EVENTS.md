@@ -160,6 +160,8 @@ Modifiers (piety reputation, recent donations, etc.) will be handled by the late
 
 Military summons should be limited and mostly local or small-scale. Major multi-year campaigns are rare in this period for a minor noble.
 
+TODO: requiem or funeral masses, to soften the people's grief when levies die after a muster or war. Not built; the war hit stands until battles are in the game.
+
 ### Negative / Demanding
 - Summons to limited military service or to join a local/regional muster.
 - Demand for hospitality, supplies, or labour from the count or a missus.

@@ -135,7 +135,7 @@
       "role": "chaplain",
       "location": "fontenay",
       "wantsTalk": true,
-      "notes": "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands."
+      "notes": "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands. The cell grows beans and peas and will sell a modest surplus of those, of candles or beeswax, or of herbs — never in bulk. A brother may nurse the sick or teach a youth his letters."
     },
     {
       "id": "negotiator",
@@ -143,7 +143,7 @@
       "role": "negotiator",
       "location": "fontenay",
       "wantsTalk": true,
-      "notes": "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain/iron → Aldric/Bernard; odd/scarce/far-off → him."
+      "notes": "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain stays with Aldric. Given a brief and a purse, he will walk the roads and buy iron and other ordinary goods at a market price plus a little for the road. He is not the merchant's stall — he goes out to fetch a quantity. Odd, scarce, and far-off goods remain his pride."
     }
   ],
   "known_techniques": [],
@@ -151,7 +151,8 @@
     "merchant_present": false,
     "active_threat": false,
     "monastery_nearby": true,
-    "hunger": false
+    "hunger": false,
+    "regional_famine": false
   },
   "trade": {
     "major_river": false,

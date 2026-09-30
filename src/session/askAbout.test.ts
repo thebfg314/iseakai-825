@@ -274,6 +274,6 @@ describe("Ask about a pending card", () => {
     expect(result.error).toBeUndefined();
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.state.projects.some((p) => p.key === "clear_scrub" && p.status === "active")).toBe(true);
-    expect(game.state.resources.iron).toBeLessThan(ironBefore);
+    expect(game.state.resources.iron).toBe(ironBefore);
   });
 });

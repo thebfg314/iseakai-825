@@ -50,7 +50,7 @@ const HOUSEHOLD_NOTES = {
   smith:
     "Proud of what the forge can do, honest about what it cannot but also enjoys technical challenges that stretch his skills. Iron and charcoal are usually short, so he hoards both. Speaks in short sentences but gets excited about new projects that he thinks will work.",
   chaplain:
-    "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands.",
+    "Prior of the four monks at Saint-Martin. Says mass, writes letters, watches Sundays. Loyal to you, but the bishop of Autun is also in the room. Wary of strange arts and of work on feast days. Will bless a hire and still ask where the man's soul stands. The cell grows beans and peas and will sell a modest surplus of those, of candles or beeswax, or of herbs — never in bulk. A brother may nurse the sick or teach a youth his letters.",
   negotiator: GERULF_NOTES,
 } as const;
 
@@ -78,6 +78,10 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).not.toMatch(/80% of the male|harvest is at risk/i);
     expect(aldric).not.toMatch(/~3% yield and callable labour/i);
     expect(aldric).toMatch(/nudges the people's heart/i);
+    expect(aldric).toMatch(/captain of the guard/);
+    expect(aldric).toMatch(/combat specialist/);
+    expect(aldric).not.toMatch(/\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/);
+    expect(refereeSystemPrompt()).not.toMatch(/\b(Otto|Ambrosius|Hildegard|Lorenzo|Eberhard)\b/);
 
     const bernard = smithSystemPrompt();
     expect(bernard).toContain("You are Bernard");
@@ -86,6 +90,9 @@ describe("signed-off NPC personalities", () => {
     expect(bernard).toMatch(/short sentences/i);
     expect(bernard).toMatch(/do not hire craftsmen/i);
     expect(bernard).toMatch(/speak to Aldric/i);
+    expect(bernard).toMatch(/bloomery/i);
+    expect(bernard).toMatch(/bog ore/i);
+    expect(bernard).toMatch(/rusty mud/i);
 
     const ermenald = chaplainSystemPrompt();
     expect(ermenald).toContain("You are Ermenald");
@@ -101,6 +108,9 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/does not name a budget|YOU quote the denarii/i);
     expect(gerulf).toMatch(/start_hunt/);
     expect(gerulf).toMatch(/Aldric's world/i);
+    expect(gerulf).toMatch(/iron and other ordinary goods/i);
+    expect(gerulf).toMatch(/already away|already on the road/i);
+    expect(gerulf).not.toMatch(/Do NOT hunt iron/i);
     expect(npcSystemPrompt("negotiator")).toBe(gerulf);
   });
 

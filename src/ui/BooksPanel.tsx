@@ -30,6 +30,7 @@ import {
   peopleSentence,
   resourceName,
   resourceUnit,
+  armsBookLine,
   roleName,
   sowingShareLine,
   sowingRotationLine,
@@ -96,6 +97,7 @@ export function BooksPanel({
             forthcoming={customs.forthcoming}
             orders={customs.orders}
             laws={customs.laws}
+            letters={customs.letters}
             empty={customsEmpty}
             onCancelForthcoming={onCancelForthcoming}
           />
@@ -192,6 +194,11 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
       {s.npcs.map((n) => (
         <Row key={`${n.name}:${n.role}`} k={n.name} v={roleName(n.role)} />
       ))}
+
+      <h3>Arms</h3>
+      <p className="ledger-note">
+        <GlossaryText text={armsBookLine(s.npcs)} />
+      </p>
 
       <h3>Land — {holding?.name}</h3>
       {holding &&
@@ -360,17 +367,39 @@ function CustomsTab({
   forthcoming,
   orders,
   laws,
+  letters,
   empty,
   onCancelForthcoming,
 }: {
   forthcoming: ReturnType<typeof customsBookEntries>["forthcoming"];
   orders: ReturnType<typeof customsBookEntries>["orders"];
   laws: ReturnType<typeof customsBookEntries>["laws"];
+  letters: ReturnType<typeof customsBookEntries>["letters"];
   empty: ReturnType<typeof customsEmptyLines>;
   onCancelForthcoming?: (id: string) => void;
 }) {
   return (
     <>
+      {letters.length > 0 && (
+        <>
+          <h3>
+            <GlossaryText text="Letters" />
+          </h3>
+          {letters.map((letter) => (
+            <article key={letter.id} className="custom-entry">
+              <div className="row">
+                <span>
+                  <GlossaryText text={letter.title} />
+                </span>
+                <span>From the bishop</span>
+              </div>
+              <p className="order">
+                <GlossaryText text={letter.body} />
+              </p>
+            </article>
+          ))}
+        </>
+      )}
       {forthcoming.length > 0 && (
         <>
           <h3>

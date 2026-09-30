@@ -33,6 +33,15 @@ import { applyDisbandUnit, applyRaiseUnit, applyRegisterUnitSheet, CALL_TEXT, ra
 import { applyFreeMancipia, isMancipia, MANUMISSION_HAPPINESS_CAP, MANUMISSION_HAPPINESS_PER_HEAD, mancipiaCount, setMancipia } from "./mancipia";
 import { ensureAgriculture, fieldRotation, sownCapacity, springFieldAcres } from "./agriculture";
 import {
+  applyCellAlms,
+  applyCellSurplusSale,
+  applySponsoredFeast,
+  isCellAlmsProposal,
+  isCellSurplusId,
+  noteSundayOrFeastWork,
+  noteTakingFromCell,
+} from "./church";
+import {
   amountPhrase,
   featureName,
   looksLikeEngineKey,
@@ -150,9 +159,9 @@ function chaplainAllowed(state: WorldState, p: MechanicalProposal): string | nul
     case "free_mancipia":
       return null; // manumission is a pious act the Church blesses
     case "transfer_resources": {
-      if (CHAPLAIN_TRANSFER.has(p.resource)) return null;
+      if (CHAPLAIN_TRANSFER.has(p.resource) || isCellSurplusId(p.resource)) return null;
       const custom = state.custom_resources.find((c) => c.id === p.resource);
-      if (custom?.tags?.some((t) => t === "church" || t === "liturgy" || t === "alms")) return null;
+      if (custom?.tags?.some((t) => t === "church" || t === "liturgy" || t === "alms" || t === "cell")) return null;
       return "npc_not_authorized";
     }
     case "start_project": {
@@ -186,6 +195,8 @@ function chaplainAllowed(state: WorldState, p: MechanicalProposal): string | nul
       if (CHAPLAIN_NPC_ROLES.has(p.npc.role)) return null;
       return "npc_not_authorized";
     }
+    case "sponsor_feast":
+      return null;
     default:
       return "npc_not_authorized";
   }
@@ -256,6 +267,13 @@ export function applyProposal(
   } else if (authProposal.type === "start_hunt") {
     return fail(state, "Only Gerulf walks the roads for scarce goods.", "Only Gerulf walks the roads for scarce goods.");
   }
+  if (authProposal.type === "sponsor_feast" && actor !== "chaplain") {
+    return fail(
+      state,
+      "Only Father Ermenald may order a feast at the cell.",
+      "Only Father Ermenald may order a feast at the cell.",
+    );
+  }
   const specialistActor = specialistById(actor);
   if (specialistActor) {
     const blocked = specialistAllowed(state, authProposal, specialistActor);
@@ -302,7 +320,7 @@ export function applyProposal(
     case "adjust_sowing":
       return adjustSowing(state, proposal);
     case "transfer_resources":
-      return transferResources(state, proposal);
+      return transferResources(state, proposal, actor);
     case "add_modifier":
       return addModifier(state, proposal);
     case "remove_modifier":
@@ -325,6 +343,8 @@ export function applyProposal(
     }
     case "settle_households":
       return ok(state, applySettleHouseholds(state, proposal));
+    case "sponsor_feast":
+      return applySponsoredFeast(state, proposal);
     case "defer_proposal":
       return parkForthcomingOrder(state, proposal, actor);
     default:
@@ -385,7 +405,10 @@ function setStandingOrder(
   } else {
     state.standing_orders.push({ id, text: p.text, active: p.active });
   }
-  return ok(state, `Standing order ${p.active ? "set" : "paused"}: ${p.text.slice(0, 80)}.`);
+  const base = `Standing order ${p.active ? "set" : "paused"}: ${p.text.slice(0, 80)}.`;
+  if (!p.active) return ok(state, base);
+  const displeasure = noteSundayOrFeastWork(state, p.text);
+  return ok(state, displeasure.length ? `${base} ${displeasure.join(" ")}` : base);
 }
 
 function startProject(
@@ -401,14 +424,20 @@ function startProject(
   if (catalog?.requiresSpecialist && !state.npcs.some((n) => n.id === catalog.requiresSpecialist || n.role === catalog.requiresSpecialist)) {
     return fail(state, `${catalog.name} needs a ${catalog.requiresSpecialist.replaceAll("_", " ")} in the lord's service before the work can begin.`, p.summary);
   }
-  const labourDays = p.customCosts?.labourDays ?? catalog!.labourDays;
-  const lumber = p.customCosts?.lumber ?? catalog!.lumber;
-  const iron = p.customCosts?.iron ?? catalog!.iron;
-  const stone = p.customCosts?.stone ?? catalog!.stone;
+  const costs = storeCostsFor(p, catalog);
+  const labourDays = costs.labourDays;
+  const lumber = costs.lumber;
+  const iron = costs.iron;
+  const stone = costs.stone;
+  const charcoal = catalog?.charcoal ?? 0;
+  const clay = catalog?.clay ?? 0;
   const wood = state.resources.softwood + state.resources.hardwood;
   if (wood < lumber) return fail(state, `Need ${lumber} cart-loads of timber; have ${round1(wood)}.`, p.summary);
   if (state.resources.iron < iron) return fail(state, `Need ${iron} lb iron; have ${state.resources.iron}.`, p.summary);
   if (state.resources.stone < stone) return fail(state, `Need ${stone} cart-loads of stone; have ${state.resources.stone}.`, p.summary);
+  if (state.resources.charcoal < charcoal) {
+    return fail(state, `Need ${charcoal} cart-loads of charcoal; have ${state.resources.charcoal}.`, p.summary);
+  }
 
   let remainingLumber = lumber;
   const fromSoft = Math.min(state.resources.softwood, remainingLumber);
@@ -417,6 +446,7 @@ function startProject(
   state.resources.hardwood -= remainingLumber;
   state.resources.iron -= iron;
   state.resources.stone -= stone;
+  if (charcoal > 0) state.resources.charcoal = round1(state.resources.charcoal - charcoal);
 
   const id = newId("proj");
   state.projects.push({
@@ -426,7 +456,13 @@ function startProject(
     holdingId: holding.id,
     labourDaysRequired: labourDays,
     labourDaysDone: 0,
-    materials: { lumber, iron, stone },
+    materials: {
+      lumber,
+      iron,
+      stone,
+      ...(charcoal > 0 ? { charcoal } : {}),
+      ...(clay > 0 ? { clay } : {}),
+    },
     materialsReserved: true,
     status: "active",
     tag: p.tag ?? catalog?.tag,
@@ -435,8 +471,58 @@ function startProject(
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
-  const started = `${name} is begun. The timber, iron, and stone are set aside.`;
+  const clayNote = clay > 0 ? " The clay for the shaft will be dug with the work." : "";
+  const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${clayNote}`;
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
+}
+
+function storeCostsFor(
+  p: Extract<MechanicalProposal, { type: "start_project" }>,
+  catalog: ReturnType<typeof lookupProject>,
+): { labourDays: number; lumber: number; iron: number; stone: number } {
+  const custom = p.customCosts;
+  if (!catalog) return custom!;
+  const costs = {
+    labourDays: custom?.labourDays ?? catalog.labourDays,
+    lumber: custom?.lumber ?? catalog.lumber,
+    iron: custom?.iron ?? catalog.iron,
+    stone: custom?.stone ?? catalog.stone,
+  };
+  // Clearing yields brush; it does not spend the stores. Charcoal piles timber and does not spend iron or stone.
+  if (catalog.key === "clear_scrub") return { ...costs, lumber: 0, iron: 0, stone: 0 };
+  if (catalog.key === "charcoal_burning") return { ...costs, iron: 0, stone: 0 };
+  return costs;
+}
+
+function amountWord(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function storeParts(lumber: number, iron: number, stone: number, charcoal = 0): string[] {
+  const parts: string[] = [];
+  if (lumber > 0) parts.push(`${amountWord(lumber)} cart-load${lumber === 1 ? "" : "s"} of timber`);
+  if (iron > 0) parts.push(`${amountWord(iron)} lb of iron`);
+  if (stone > 0) parts.push(`${amountWord(stone)} cart-load${stone === 1 ? "" : "s"} of stone`);
+  if (charcoal > 0) parts.push(`${amountWord(charcoal)} cart-load${charcoal === 1 ? "" : "s"} of charcoal`);
+  return parts;
+}
+
+function joinStores(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function storesSetAside(lumber: number, iron: number, stone: number, charcoal = 0): string {
+  const parts = storeParts(lumber, iron, stone, charcoal);
+  if (!parts.length) return "";
+  return ` The ${joinStores(parts)} ${parts.length === 1 ? "is" : "are"} set aside.`;
+}
+
+function storesReturned(lumber: number, iron: number, stone: number, charcoal = 0): string {
+  const parts = storeParts(lumber, iron, stone, charcoal);
+  if (!parts.length) return "";
+  return ` Half the unused ${joinStores(parts)} comes back to the stores.`;
 }
 
 function adjustProject(
@@ -446,15 +532,20 @@ function adjustProject(
   const proj = resolveActiveProject(state, p.projectId, p.summary);
   if (!proj) return fail(state, "Unknown project.", p.summary);
   if (p.cancel) {
+    const hadCharcoal = (proj.materials.charcoal ?? 0) > 0;
     if (proj.materialsReserved && proj.status === "active") {
       state.resources.softwood += proj.materials.lumber * 0.5;
       state.resources.iron += proj.materials.iron * 0.5;
       state.resources.stone += proj.materials.stone * 0.5;
+      if (hadCharcoal) state.resources.charcoal = round1(state.resources.charcoal + (proj.materials.charcoal ?? 0) * 0.5);
     }
     proj.status = "cancelled";
     stampProjectEnded(state, proj);
     state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== proj.id);
-    return ok(state, `${proj.name} is stopped; half the unused timber, iron, and stone come back to the stores.`);
+    return ok(
+      state,
+      `${proj.name} is stopped.${storesReturned(proj.materials.lumber, proj.materials.iron, proj.materials.stone, proj.materials.charcoal ?? 0)}`,
+    );
   }
   if (p.rush !== undefined) proj.rush = p.rush;
   if (p.labourThisSeason) {
@@ -562,7 +653,14 @@ function adjustSowing(
 function transferResources(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "transfer_resources" }>,
+  actor: string,
 ): ApplyResult {
+  if (actor === "chaplain" && p.direction === "gain" && isCellSurplusId(p.resource)) {
+    return applyCellSurplusSale(state, p);
+  }
+  if (actor === "chaplain" && isCellAlmsProposal(p)) {
+    return applyCellAlms(state, p);
+  }
   const current = getAmount(state, p.resource);
   if (current === null) return fail(state, `Unknown resource '${p.resource}'. Register it first.`, p.summary);
   const amount = Math.abs(p.amount);
@@ -590,7 +688,9 @@ function transferResources(
   }
   setAmount(state, p.resource, current + amount);
   const why = p.reason && !looksLikeEngineKey(p.reason) ? ` (${p.reason})` : "";
-  return ok(state, `Added ${amountPhrase(p.resource, amount)} to the stores${why}.`);
+  const taken = noteTakingFromCell(state, `${p.summary ?? ""} ${p.reason ?? ""}`);
+  const added = `Added ${amountPhrase(p.resource, amount)} to the stores${why}.`;
+  return ok(state, taken.length ? `${added} ${taken.join(" ")}` : added);
 }
 
 function addModifier(
@@ -728,13 +828,17 @@ function eventEffect(
     lines.push(p.summary.replace(/\.$/, ""));
   }
   if (p.resource && p.amount && p.direction) {
-    const inner = transferResources(state, {
-      type: "transfer_resources",
-      summary: p.summary,
-      resource: p.resource,
-      amount: p.amount,
-      direction: p.direction,
-    });
+    const inner = transferResources(
+      state,
+      {
+        type: "transfer_resources",
+        summary: p.summary,
+        resource: p.resource,
+        amount: p.amount,
+        direction: p.direction,
+      },
+      actor,
+    );
     if (inner.ok) lines.push(inner.logLine.replace(/\.$/, ""));
   }
   if (p.moodDelta) {

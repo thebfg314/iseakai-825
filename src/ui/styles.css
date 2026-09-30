@@ -303,7 +303,10 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 .proposals { border-top: 2px solid var(--accent); padding: 0.75rem 1rem; max-height: 36vh; overflow: auto; background: #2a2214; }
 .proposals h3 { margin: 0 0 0.35rem; font-size: 0.95rem; color: var(--parchment); }
 .proposal-help { margin: 0 0 0.6rem; font-size: 0.82rem; color: var(--muted); }
+.proposal-toolbar { display: flex; gap: 0.4rem; margin: 0 0 0.6rem; }
 .proposal { border: 1px solid var(--accent); padding: 0.6rem; margin-bottom: 0.5rem; background: #1c1812; }
+.proposal.blocked { opacity: 0.62; }
+.p-note { font-size: 0.82rem; color: var(--muted); margin: 0.15rem 0 0.25rem; }
 .p-type { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); }
 .p-sum { font-weight: 600; margin: 0.15rem 0; }
 .p-blurb { font-size: 0.88rem; color: var(--parchment); margin-bottom: 0.35rem; }

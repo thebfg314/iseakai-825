@@ -19,13 +19,19 @@ export const GERULF_ROAD_LOCATION = "road";
 export const GERULF_HOME_LOCATION = "fontenay";
 
 export const GERULF_NOTES =
-  "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain/iron → Aldric/Bernard; odd/scarce/far-off → him.";
+  "Highly charismatic; incredibly confident; wry sense of humor. About the work: no deal works if the numbers aren't right, and even then mishaps on the road and false rumours can stop a deal cold. Does not wait for the right cart — takes a purse and a brief and walks the roads. Talks contacts, tolls, rumor, true worth inland. Proud when he brings something hard back; sour if you change the brief mid-hunt. Grain stays with Aldric. Given a brief and a purse, he will walk the roads and buy iron and other ordinary goods at a market price plus a little for the road. He is not the merchant's stall — he goes out to fetch a quantity. Odd, scarce, and far-off goods remain his pride.";
 
 const GRAIN_RESOURCES = new Set(["wheat", "rye", "barley", "oats"]);
-const BERNARD_RESOURCES = new Set(["iron", "charcoal"]);
 
 const GRAIN_WORDS = /\b(barley|wheat|rye|oats|grain|granary|modii|modius|seed[- ]?corn)\b/i;
 const IRON_WORDS = /\b(iron|charcoal|bloom(?:\s*iron)?)\b/i;
+
+/** Ordinary market goods: midpoint, plus about a fifth for the road, and at least one denarius over. */
+export function marketPlusRoad(mid: number): number {
+  const bumped = Math.round(mid * 1.2);
+  const atLeast = Math.ceil(mid + 1);
+  return Math.max(1, bumped, atLeast);
+}
 
 const HUNT_VERB =
   /\b(find|fetch|seek|procure|source|hunt|track\s+down|look\s+for|bring(?:\s+me)?|get\s+me|send\s+(?:out\s+)?for)\b/i;
@@ -224,12 +230,6 @@ export function huntRedirectReason(text: string): string | null {
       return "Do not send me for barley; that is Aldric's world. Grain and the granary are his.";
     }
   }
-  if (req && BERNARD_RESOURCES.has(req.resource)) {
-    return "Iron and charcoal belong to Bernard's hearth. Send me for what the carts will not carry.";
-  }
-  if (IRON_WORDS.test(text) && HUNT_VERB.test(text) && (!req || BERNARD_RESOURCES.has(req.resource))) {
-    return "Iron and charcoal belong to Bernard's hearth. Send me for what the carts will not carry.";
-  }
   return null;
 }
 
@@ -248,10 +248,15 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
   }
   if (isCanonical(resource)) {
     const mid = midpointPrice(state, resource) || 8;
-    const inland = resource === "horses" ? 1.35 : resource === "salt" || resource === "wine" ? 2.2 : 2.0;
-    const per = Math.max(6, Math.round(mid * inland + 4));
-    const quotedDenarii = Math.max(8, per * amount);
-    const durationSeasons = quotedDenarii >= 80 ? 3 : quotedDenarii >= 36 ? 2 : 1;
+    const per = marketPlusRoad(mid);
+    const quotedDenarii = Math.max(per, per * amount);
+    const durationSeasons = quotedDenarii >= 120 ? 3 : quotedDenarii >= 60 ? 2 : 1;
+    const unit =
+      resource === "iron"
+        ? "pound"
+        : resource === "charcoal" || resource === "stone" || resource === "softwood" || resource === "hardwood"
+          ? "cart-load"
+          : "";
     return {
       goods,
       resource,
@@ -259,7 +264,7 @@ export function quoteHunt(state: WorldState, req: HuntRequest): HuntBrief {
       quotedDenarii,
       durationSeasons,
       riskNote,
-      unit: resource === "denarii" ? "denarii" : "",
+      unit,
     };
   }
 
@@ -327,7 +332,7 @@ export function inferHuntProposals(state: WorldState, playerText: string): Mecha
   if (huntFulfillReason(state, playerText)) return [];
   const req = extractHuntRequest(playerText);
   if (!req) return [];
-  if (GRAIN_RESOURCES.has(req.resource) || BERNARD_RESOURCES.has(req.resource)) return [];
+  if (GRAIN_RESOURCES.has(req.resource)) return [];
   return [huntProposal(quoteHunt(state, req))];
 }
 
@@ -336,7 +341,7 @@ export function huntFulfillReason(state: WorldState, playerText: string): string
   const redirect = huntRedirectReason(playerText);
   if (redirect) return redirect;
   if (activeHunt(state)) {
-    return "I am already on the road with a brief. Do not change it mid-hunt — the numbers will not hold.";
+    return "I am already on the road with your brief. I will not turn back for a new one.";
   }
   const req = extractHuntRequest(playerText);
   if (!req) {
@@ -370,15 +375,12 @@ export function startHunt(state: WorldState, p: StartHuntProposal): { ok: true; 
   if (activeHunt(state)) {
     return {
       ok: false,
-      reason: "Gerulf is already on the road with a brief.",
+      reason: "Gerulf is already on the road. He will not take a new brief until he is home.",
       logLine: p.summary,
     };
   }
   if (GRAIN_RESOURCES.has(brief.resource)) {
     return { ok: false, reason: "Do not send Gerulf for grain; that is Aldric's world.", logLine: p.summary };
-  }
-  if (BERNARD_RESOURCES.has(brief.resource)) {
-    return { ok: false, reason: "Iron and charcoal belong to Bernard's hearth.", logLine: p.summary };
   }
   if (state.resources.denarii < brief.quotedDenarii) {
     return {

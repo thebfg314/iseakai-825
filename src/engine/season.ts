@@ -7,12 +7,14 @@ import { applyProposal, projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
+import { smeltBloomeries } from "./bloomery";
 import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
 import { featureName, landName, resourceName } from "../ui/ledgerCopy";
 import { markProjectSeason, stampProjectEnded } from "./projectProgress";
 import { autumnFieldAcres, fieldRotation, springFieldAcres } from "./agriculture";
 import { fireForthcomingBeat } from "./forthcoming";
+import { auditChurchLabourOrders, closeChurchSeason, resolveChurchGrainAndWool, resolveChurchSheep } from "./church";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -99,10 +101,7 @@ function livestockSeason(state: WorldState): string[] {
       state.resources.sheep += breed;
       notes.push(`Herd increase: +${breed} sheep (young stock).`);
     }
-    if (state.holdings.some((h) => h.features.includes("monastery")) && state.resources.sheep >= 1) {
-      state.resources.sheep -= 1;
-      notes.push("Tithe: 1 sheep to the cell (the year's increase).");
-    }
+    notes.push(...resolveChurchSheep(state));
     const wineAcres = state.holdings.reduce((s, h) => s + h.land.vineyard, 0);
     if (wineAcres > 0) {
       const wine = round1(resourceOutputBonus(state, "wine", wineAcres * 0.6 * livestockYield));
@@ -155,7 +154,7 @@ function advanceProjects(state: WorldState): string[] {
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
       markProjectSeason(state, proj);
-      notes.push(`${proj.name}: no extra hands called this season.`);
+      notes.push(`${proj.name}: no extra days of work set this season.`);
       continue;
     }
     const kind = labourKindFor(proj);
@@ -210,16 +209,7 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   add(consumeGrain(state, round1(households * HOUSEHOLD_SEASON_GRAIN), "Households"));
   const mancipia = state.population.mancipia ?? 0;
   if (mancipia > 0) add(consumeGrain(state, round1(mancipia * HOUSEHOLD_SEASON_GRAIN), "The unfree at the lord's board"));
-  if (state.holdings.some((h) => h.features.includes("monastery") || h.features.includes("chapel"))) {
-    const hasMonastery = state.holdings.some((h) => h.features.includes("monastery"));
-    const house = hasMonastery ? "cell" : "oratory";
-    add(consumeGrain(state, round1(households * 0.15), `Tithe to the ${house}`));
-    const woolRender = 1;
-    if (state.resources.wool >= woolRender) {
-      state.resources.wool = round1(state.resources.wool - woolRender);
-      add(`Tithe: ${woolRender} lb wool to the ${house}.`);
-    }
-  }
+  for (const line of resolveChurchGrainAndWool(state)) add(line);
 
   const season = state.meta.season;
   if (season === "spring") {
@@ -243,6 +233,9 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
     sowAutumn(state).forEach(add);
   }
   livestockSeason(state).forEach(add);
+  smeltBloomeries(state).forEach(add);
+  auditChurchLabourOrders(state).forEach(add);
+  closeChurchSeason(state);
   advanceProjects(state).forEach(add);
   resolveHunts(state).forEach(add);
   return lines;
