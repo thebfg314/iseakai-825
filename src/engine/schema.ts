@@ -796,6 +796,10 @@ export const StartProjectProposalSchema = ProposalBase.extend({
       lumber: z.coerce.number(),
       iron: z.coerce.number(),
       stone: z.coerce.number(),
+      /** Cart-loads. A new design only; a catalogue key keeps its own charcoal charge. */
+      charcoal: z.coerce.number().optional(),
+      /** Coin taken from the chest when a new design begins. */
+      denarii: z.coerce.number().optional(),
     })
     .optional(),
   tag: z.string().optional(),

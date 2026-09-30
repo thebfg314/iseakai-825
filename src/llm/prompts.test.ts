@@ -19,6 +19,7 @@ import {
   sliceStateForSeason,
   smithSystemPrompt,
   stewardSystemPrompt,
+  BEGIN_SHORTFALL_RULE,
   SPEECH_ONLY_CONTRACT,
   TOOL_PROTOCOL,
 } from "./prompts";
@@ -353,6 +354,23 @@ describe("signed-off NPC personalities", () => {
     expect(kept).toMatch(/not a new change for the books/i);
     expect(kept).not.toMatch(/OLD_FORGE_NOTE_SHOULD_DROP/);
     expect(kept).not.toMatch(/JSON|proposal|duration|NPC/i);
+  });
+
+  it("tells every speaker to name what a short work still needs, in hall units", () => {
+    const books = npcSystemPrompt("smith");
+    const speech = npcSystemPrompt("smith", undefined, { speechOnly: true });
+    expect(books).toContain(BEGIN_SHORTFALL_RULE);
+    expect(speech).toContain(BEGIN_SHORTFALL_RULE);
+    expect(speech).toMatch(/still needed before the work can begin/i);
+    expect(speech).toMatch(/more charcoal/i);
+    expect(speech).toMatch(/already has enough/i);
+    expect(speech).toMatch(/cart-loads/i);
+    expect(speech).toMatch(/do not say customCosts/i);
+    const gerulf = npcSystemPrompt("negotiator");
+    expect(gerulf).toMatch(/1\.1/);
+    expect(gerulf).toMatch(/1\.4/);
+    expect(gerulf).toMatch(/1\.7/);
+    expect(gerulf).toContain(BEGIN_SHORTFALL_RULE);
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {

@@ -269,7 +269,9 @@ describe("per-NPC dialogue logs", () => {
     spy
       .mockResolvedValueOnce(reply("The north furlong is thin, my lord."))
       .mockResolvedValueOnce(reply("A good idea, but it needs more charcoal and more iron."))
-      .mockResolvedValueOnce(reply("More charcoal than we have stacked, my lord."));
+      .mockResolvedValueOnce(reply("Set down."))
+      .mockResolvedValueOnce(reply("More charcoal than we have stacked, my lord."))
+      .mockResolvedValueOnce(reply("Set down."));
 
     await game.sendDialogue("steward", "The north furlong of rye is thin this spring.");
     const plough =

@@ -1,5 +1,6 @@
 import type { MechanicalProposal, StartHuntProposal } from "./schema";
 import { lookupProject } from "./projectCatalog";
+import { projectStoreBill } from "./projectBegin";
 
 function compact(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -114,10 +115,11 @@ export function compactOfferLine(proposal: MechanicalProposal): string {
   switch (proposal.type) {
     case "start_project": {
       const name = projectLabel(proposal);
-      const costs = proposal.customCosts ?? lookupProject(proposal.projectKey);
-      const costBit = costs
-        ? `${costs.labourDays} days, ${costs.lumber} timber, ${costs.iron} iron, ${costs.stone} stone`
-        : "";
+      const bill = projectStoreBill(proposal);
+      const bits = [`${bill.labourDays} days`, `${bill.lumber} timber`, `${bill.iron} iron`, `${bill.stone} stone`];
+      if (bill.charcoal > 0) bits.push(`${bill.charcoal} charcoal`);
+      if (bill.denarii > 0) bits.push(`${bill.denarii} denarii`);
+      const costBit = bits.join(", ");
       return `start_project ${name} (${proposal.projectKey}): ${proposal.summary}${costBit ? ` — ${costBit}` : ""}`;
     }
     case "start_hunt": {

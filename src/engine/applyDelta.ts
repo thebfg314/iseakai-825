@@ -26,6 +26,7 @@ import {
   specialistNpc,
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
+import { projectStoreBill } from "./projectBegin";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
@@ -424,19 +425,23 @@ function startProject(
   if (catalog?.requiresSpecialist && !state.npcs.some((n) => n.id === catalog.requiresSpecialist || n.role === catalog.requiresSpecialist)) {
     return fail(state, `${catalog.name} needs a ${catalog.requiresSpecialist.replaceAll("_", " ")} in the lord's service before the work can begin.`, p.summary);
   }
-  const costs = storeCostsFor(p, catalog);
-  const labourDays = costs.labourDays;
-  const lumber = costs.lumber;
-  const iron = costs.iron;
-  const stone = costs.stone;
-  const charcoal = catalog?.charcoal ?? 0;
-  const clay = catalog?.clay ?? 0;
+  const bill = projectStoreBill(p);
+  const labourDays = bill.labourDays;
+  const lumber = bill.lumber;
+  const iron = bill.iron;
+  const stone = bill.stone;
+  const charcoal = bill.charcoal;
+  const clay = bill.clay;
+  const denarii = bill.denarii;
   const wood = state.resources.softwood + state.resources.hardwood;
   if (wood < lumber) return fail(state, `Need ${lumber} cart-loads of timber; have ${round1(wood)}.`, p.summary);
   if (state.resources.iron < iron) return fail(state, `Need ${iron} lb iron; have ${state.resources.iron}.`, p.summary);
   if (state.resources.stone < stone) return fail(state, `Need ${stone} cart-loads of stone; have ${state.resources.stone}.`, p.summary);
   if (state.resources.charcoal < charcoal) {
     return fail(state, `Need ${charcoal} cart-loads of charcoal; have ${state.resources.charcoal}.`, p.summary);
+  }
+  if (state.resources.denarii < denarii) {
+    return fail(state, `Need ${denarii} denarii; have ${state.resources.denarii}.`, p.summary);
   }
 
   let remainingLumber = lumber;
@@ -447,6 +452,7 @@ function startProject(
   state.resources.iron -= iron;
   state.resources.stone -= stone;
   if (charcoal > 0) state.resources.charcoal = round1(state.resources.charcoal - charcoal);
+  if (denarii > 0) state.resources.denarii = round1(state.resources.denarii - denarii);
 
   const id = newId("proj");
   state.projects.push({
@@ -472,26 +478,9 @@ function startProject(
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
   const fill = autoAssignLeftoverToProject(state, id);
   const clayNote = clay > 0 ? " The clay for the shaft will be dug with the work." : "";
-  const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${clayNote}`;
+  const coinNote = denarii > 0 ? ` ${amountWord(denarii)} denarii leave the chest.` : "";
+  const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${coinNote}${clayNote}`;
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
-}
-
-function storeCostsFor(
-  p: Extract<MechanicalProposal, { type: "start_project" }>,
-  catalog: ReturnType<typeof lookupProject>,
-): { labourDays: number; lumber: number; iron: number; stone: number } {
-  const custom = p.customCosts;
-  if (!catalog) return custom!;
-  const costs = {
-    labourDays: custom?.labourDays ?? catalog.labourDays,
-    lumber: custom?.lumber ?? catalog.lumber,
-    iron: custom?.iron ?? catalog.iron,
-    stone: custom?.stone ?? catalog.stone,
-  };
-  // Clearing yields brush; it does not spend the stores. Charcoal piles timber and does not spend iron or stone.
-  if (catalog.key === "clear_scrub") return { ...costs, lumber: 0, iron: 0, stone: 0 };
-  if (catalog.key === "charcoal_burning") return { ...costs, iron: 0, stone: 0 };
-  return costs;
 }
 
 function amountWord(n: number): string {

@@ -33,6 +33,7 @@ import { fetchProviderBalance } from "../llm/credits";
 import { consumeLastLlmCall, LlmMeterStore } from "../llm/usage";
 import {
   earlierTalkBlock,
+  beginFiguresFollowUp,
   npcBooksFollowUp,
   npcFactsFollowUp,
   npcUserPrompt,
@@ -102,6 +103,7 @@ import {
   bloomerySuggestReady,
   isBloomeryStart,
 } from "../engine/bloomery";
+import { asksBeginAmount, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
 import {
   confirmGate,
@@ -437,7 +439,23 @@ export class GameController {
       }
 
       if (!order) {
-        this.pushNpcSpeech(npcId, answer);
+        if (!speechDelaysWorkForShortage(answer.speech) && !asksBeginAmount(playerText)) {
+          this.pushNpcSpeech(npcId, answer);
+          return this.finishTalk();
+        }
+        const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, drawers);
+        const books = await this.callLlm(
+          [
+            { role: "system", content: system },
+            { role: "user", content: booksUser },
+            { role: "assistant", content: answer.raw },
+            { role: "user", content: beginFiguresFollowUp(playerText) },
+          ],
+          900,
+          { requireProposals: false, allowRepair: false },
+        );
+        this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
+        this.ingestParsedDialogue(npcId, books, playerText);
         return this.finishTalk();
       }
 
@@ -496,7 +514,7 @@ export class GameController {
                 if (proposal.type === "start_hunt") proposal.difficulty = difficulty;
               }
             }
-            this.pushNpcSpeech(npcId, answer);
+            this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
             this.ingestParsedDialogue(npcId, books, playerText, difficulty, judged);
             return this.finishTalk();
           }
@@ -515,7 +533,7 @@ export class GameController {
           }
         }
 
-        this.pushNpcSpeech(npcId, answer);
+        this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
         this.ingestParsedDialogue(npcId, books, playerText);
         return this.finishTalk();
       } catch (err) {
@@ -662,6 +680,18 @@ export class GameController {
     this.pending.push(item);
     setNpcWantsTalk(this.state, npcId, true);
     return item;
+  }
+
+  /** Speech the lord hears uses the begin-cost the card will take. */
+  private speakWithBeginFigures(
+    npcId: string,
+    spoken: { speech: string; chronicle?: string; emotion?: AldricEmotion },
+    proposals: MechanicalProposal[],
+    playerText: string,
+  ) {
+    const pending = this.pending.filter((p) => p.status === "pending" && p.npcId === npcId).map((p) => p.proposal);
+    const speech = withBeginShortfalls(spoken.speech, this.state, proposals, { pending, playerText });
+    this.pushNpcSpeech(npcId, { ...spoken, speech });
   }
 
   /** Testable: parse result → pending queue and ledger notes. Does not call the model. */

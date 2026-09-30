@@ -170,7 +170,9 @@ Callable labour assigned to a project this season is days of that kind of work, 
 
 Completion applies the feature to the holding (mill, forge, chapel, converted acres, etc.).
 
-Custom projects are allowed if the proposal includes labour and material costs. The engine does not invent those costs.
+Custom projects are allowed if the proposal includes labour and material costs. The engine does not invent those costs. A new design may also name charcoal (cart-loads) and denarii; Confirm takes those figures and no others. A catalogue key keeps the charcoal the books already charge.
+
+When someone refuses or delays a work because stores, labour, coin, or some other thing on the estate is short, the reply the lord hears names each short thing and the amount still needed before the work can begin. The units are the ones the books already use: lb of iron, cart-loads of charcoal, timber, or stone, denarii, days of work. A thing the estate already holds is not called short. If some is already on hand, the reply says the amount still wanted, not only the full cost of the finished work. Those figures are the begin-cost Confirm will take, minus what is already in store. Speech does not name one sum while the card takes another.
 
 ---
 
