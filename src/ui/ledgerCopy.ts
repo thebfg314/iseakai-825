@@ -2,6 +2,7 @@ import type { GameModifier, MechanicalProposal, PendingProposal, WorldState } fr
 import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../engine/schema";
 import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
+import { beginCostLine, projectStoreBill } from "../engine/projectBegin";
 import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
 import { matchHireableSpecialist } from "../engine/specialists";
@@ -438,7 +439,8 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
     case "start_project": {
       const name = p.name ?? workDisplayName(p.projectKey);
       const holding = state?.holdings.find((h) => h.id === p.holdingId)?.name ?? "the holding";
-      return `Begin ${name} on ${holding}.`;
+      const cost = beginCostLine(projectStoreBill(p));
+      return cost ? `Begin ${name} on ${holding}. ${cost}` : `Begin ${name} on ${holding}.`;
     }
     case "adjust_project": {
       const proj = state ? resolveActiveProject(state, p.projectId, p.summary) : undefined;
