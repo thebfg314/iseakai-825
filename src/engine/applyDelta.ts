@@ -27,7 +27,7 @@ import {
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
-import { IMPROVEMENT_ALREADY, IMPROVEMENT_TARGETS, improvementKind, sameImprovementAlready } from "./toolImprovement";
+import { IMPROVEMENT_ALREADY, IMPROVEMENT_TARGETS, improvementKind, markTurningPloughNotes, sameImprovementAlready } from "./toolImprovement";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
@@ -481,7 +481,7 @@ function startProject(
     materialsReserved: true,
     status: "active",
     tag: p.tag ?? catalog?.tag,
-    notes: p.notes,
+    notes: markTurningPloughNotes(p.name ?? catalog?.name ?? p.projectKey, p.summary, p.projectKey, p.notes),
   });
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);

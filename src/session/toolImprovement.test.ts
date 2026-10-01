@@ -3,9 +3,17 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
+import { applyProposal } from "../engine/applyDelta";
 import { yieldMultiplier } from "../engine/modifiers";
 import { WorldStateSchema, type MechanicalProposal } from "../engine/schema";
-import { BERNARD_HARVEST_REDIRECT, IMPROVEMENT_ALREADY } from "../engine/toolImprovement";
+import {
+  ALDRIC_PLOUGH_ALREADY,
+  ALDRIC_PLOUGH_UNFINISHED,
+  ALDRIC_TURNING_PLOUGH,
+  BERNARD_HARVEST_REDIRECT,
+  IMPROVEMENT_ALREADY,
+  TURNING_PLOUGH_YIELD,
+} from "../engine/toolImprovement";
 import { parseLlmResponse } from "../llm/parse";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
@@ -126,6 +134,73 @@ describe("tool improvements wait on Aldric", () => {
     );
     game.ingestParsedDialogue("steward", blessing, "Give the household a blessing.");
     expect(game.pending.filter((p) => p.status === "pending").some((p) => p.proposal.type === "add_modifier")).toBe(true);
+  });
+
+  it("gives one fifth more grain only after a finished turning plough is put to use", () => {
+    const game = tempGame();
+    expect(yieldMultiplier(game.state)).toBe(1);
+    expect(game.state.modifiers).toEqual([]);
+
+    const order = "Put the people onto the new plough.";
+    const ask = () =>
+      parseLlmResponse(
+        JSON.stringify({
+          speech: "The fields will give a quarter more.",
+          proposals: [modifier("grain_yield", 2)],
+        }),
+      );
+
+    game.ingestParsedDialogue("steward", ask(), order);
+    expect(game.state.modifiers).toEqual([]);
+    expect(yieldMultiplier(game.state)).toBe(1);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.messages.some((m) => m.text === ALDRIC_PLOUGH_UNFINISHED)).toBe(true);
+
+    const started = applyProposal(
+      game.state,
+      {
+        type: "start_project",
+        summary:
+          "One plough of a new design: a long heavy coulter, a wider one-sided share, an iron-shod wooden board, and a socketed replaceable share.",
+        projectKey: "heavy_coulter_plough",
+        name: "Heavy coulter plough",
+        holdingId: "fontenay",
+        customCosts: { labourDays: 12, lumber: 2, iron: 8, stone: 0, charcoal: 1 },
+      },
+      "smith",
+    );
+    expect(started.ok).toBe(true);
+    expect(yieldMultiplier(game.state)).toBe(1);
+
+    game.ingestParsedDialogue("steward", ask(), order);
+    expect(game.state.modifiers).toEqual([]);
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
+
+    const made = game.state.projects.find((p) => p.key === "heavy_coulter_plough");
+    if (!made) throw new Error("expected the plough");
+    expect(made.notes).toMatch(/turns the earth/i);
+    made.status = "completed";
+    expect(yieldMultiplier(game.state)).toBe(1);
+
+    game.ingestParsedDialogue("steward", ask(), order);
+    const card = game.pending.find((p) => p.status === "pending" && p.proposal.type === "add_modifier");
+    expect(card?.proposal.type).toBe("add_modifier");
+    if (card?.proposal.type !== "add_modifier") throw new Error("expected the grain card");
+    expect(card.proposal.target).toBe("grain_yield");
+    expect(card.proposal.effect).toEqual({ op: "multiply", value: TURNING_PLOUGH_YIELD });
+    expect(game.messages.some((m) => m.text === ALDRIC_TURNING_PLOUGH)).toBe(true);
+    expect(yieldMultiplier(game.state)).toBe(1);
+
+    const written = game.confirmProposal(card.id);
+    expect(written.error).toBeUndefined();
+    expect(game.state.modifiers.filter((m) => m.target === "grain_yield")).toHaveLength(1);
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.2);
+
+    game.ingestParsedDialogue("steward", ask(), order);
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
+    expect(game.messages.some((m) => m.text === ALDRIC_PLOUGH_ALREADY)).toBe(true);
+    expect(game.state.modifiers.filter((m) => m.target === "grain_yield")).toHaveLength(1);
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.2);
   });
 
   it("sends a harvest question to Aldric and writes no yield", async () => {

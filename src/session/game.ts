@@ -114,6 +114,7 @@ import {
   parseSpokenImprovement,
   prepareStewardToolProposals,
   proposalWritesTheFields,
+  settleTurningPloughOrder,
 } from "../engine/toolImprovement";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
 import {
@@ -799,6 +800,10 @@ export class GameController {
       const prepared = prepareStewardToolProposals(this.state, playerText, proposals, speech, pendingMods);
       proposals = prepared.proposals;
       if (prepared.note) this.ledgerNote(prepared.note, npcId);
+      const plough = settleTurningPloughOrder(this.state, playerText, proposals, pendingMods);
+      proposals = plough.proposals;
+      if (plough.speech) this.explainTurningPlough(plough.speech);
+      if (plough.granted) fromEngine = false;
     }
     if (npcId === "smith") {
       proposals = proposals.filter((p) => !proposalWritesTheFields(p));
@@ -926,6 +931,23 @@ export class GameController {
     if (this.pending.some((p) => p.status === "pending" && isBloomeryStart(p.proposal))) return;
     this.bloomeryMentioned = true;
     this.pushSmithLine(BERNARD_BLOOMERY_MENTION);
+  }
+
+  /** Aldric names the plough and the fifth, or why the fields stay as they are. */
+  private explainTurningPlough(text: string) {
+    const lastPlayer = this.messages.map((m) => m.role).lastIndexOf("player");
+    const since = lastPlayer >= 0 ? this.messages.slice(lastPlayer + 1) : this.messages;
+    if (since.some((m) => m.npcId === "steward" && m.role === "npc" && m.text === text)) return;
+    this.npcEmotions.steward = "thoughtful";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "steward",
+      npcName: this.npcName("steward"),
+      text,
+      emotion: "thoughtful",
+      at: new Date().toISOString(),
+    });
   }
 
   /** Bernard forges. The harvest is Aldric's to write. */

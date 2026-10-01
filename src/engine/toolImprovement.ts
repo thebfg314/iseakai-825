@@ -18,6 +18,24 @@ export const BERNARD_HARVEST_REDIRECT = "I do not write the harvest. Speak to Al
 export const IMPROVEMENT_ALREADY =
   "That improvement is already written. The same kind does not come a second time.";
 
+/** One estate-wide fifth, for a plough that turns the earth, once the people use it. */
+export const TURNING_PLOUGH_YIELD = 1.2;
+
+export const TURNING_PLOUGH_NOTE = "A plough that turns the earth.";
+
+export const TURNING_PLOUGH_SOURCE = "The people use the plough that turns the earth.";
+
+export const ALDRIC_TURNING_PLOUGH =
+  "The new plough turns the earth instead of scratching a rut. Once the people use it, the fields yield a fifth more.";
+
+export const ALDRIC_PLOUGH_UNFINISHED =
+  "The new plough is not finished. The people still use the old scratch-plough, and the fields yield no more.";
+
+export const ALDRIC_PLOUGH_ALREADY =
+  "The people already use a plough that turns the earth. The fields yield a fifth more for that. A second plough of the same kind does not add another fifth.";
+
+export const TURNING_PLOUGH_INSTRUCTION = `The villa starts on the old scratch-plough, which only cuts a rut. A plough that turns the earth — a mouldboard, which folds the slice over — does not raise the harvest when Bernard forges it, nor when the work is merely finished. When the lord tells you to put the people onto that plough, and only if such a plough is already finished, propose one add_modifier on grain_yield, kind permanent, effect multiply 1.2. That is a fifth more grain, once for the whole estate, not per plough, per acre, or per season. Say in hall speech that the new plough turns the earth instead of scratching a rut, and that the fields yield a fifth more once the people use it. If none is finished, propose nothing and say the people still use the old scratch-plough. A second plough of that kind does not add another fifth.`;
+
 /** Targets a tool can change. The steward picks one from what the tool does. */
 export const IMPROVEMENT_TARGETS = new Set<ModifierTarget>([
   "grain_yield",
@@ -75,6 +93,71 @@ function roundFigure(n: number): number {
 
 function usableFigure(n: number): boolean {
   return Number.isFinite(n) && n > 0.25 && n <= 2.5;
+}
+
+const TURNING_MARK = /\bmouldboards?\b|\bmoldboards?\b|\bturns the earth\b|\bturning plough\b|\bone-sided share\b|\bfolds the (?:earth|soil|slice)\b|\bplough that turns\b/i;
+
+/** A plough that folds the earth, as against the old scratch-plough. */
+export function isTurningPloughText(text: string): boolean {
+  if (!text.trim()) return false;
+  if (/\bscratch[- ]plou?ghs?\b/i.test(text) && !TURNING_MARK.test(text)) return false;
+  if (TURNING_MARK.test(text)) return true;
+  return /\b(?:ploughs?|plows?)\b/i.test(text) && /\bwooden board\b/i.test(text);
+}
+
+/** Keep the design on the project so a finished plough can still be recognised. */
+export function markTurningPloughNotes(name: string, summary: string, key: string, notes?: string): string | undefined {
+  const blob = `${name} ${summary} ${key} ${notes ?? ""}`;
+  if (!isTurningPloughText(blob)) return notes;
+  if (notes?.includes(TURNING_PLOUGH_NOTE)) return notes;
+  return notes ? `${notes} ${TURNING_PLOUGH_NOTE}` : TURNING_PLOUGH_NOTE;
+}
+
+export function finishedTurningPlough(state: WorldState): boolean {
+  return state.projects.some(
+    (p) => p.status === "completed" && isTurningPloughText(`${p.key} ${p.name} ${p.notes ?? ""}`),
+  );
+}
+
+/** The lord told Aldric to put the people onto the new plough. */
+export function lordOrdersTurningPlough(playerText: string): boolean {
+  if (/\bscratch[- ]plou?ghs?\b/i.test(playerText) && !/\b(new|mouldboard|moldboard|turns the earth)\b/i.test(playerText)) {
+    return false;
+  }
+  if (!/\b(ploughs?|plows?|mouldboards?|moldboards?)\b/i.test(playerText)) return false;
+  return lordToldStewardToUseTool(playerText);
+}
+
+export function turningPloughYieldProposal(): Extract<MechanicalProposal, { type: "add_modifier" }> {
+  return {
+    type: "add_modifier",
+    summary: "The fields yield a fifth more once the people use the plough that turns the earth.",
+    target: "grain_yield",
+    kind: "permanent",
+    effect: { op: "multiply", value: TURNING_PLOUGH_YIELD },
+    source: TURNING_PLOUGH_SOURCE,
+  };
+}
+
+/**
+ * The order grants one estate-wide fifth, and only for a finished plough of that kind.
+ * Forging it, or leaving it unfinished, grants nothing.
+ */
+export function settleTurningPloughOrder(
+  state: WorldState,
+  playerText: string,
+  proposals: MechanicalProposal[],
+  already: MechanicalProposal[] = [],
+): { proposals: MechanicalProposal[]; speech?: string; granted?: boolean } {
+  if (!lordOrdersTurningPlough(playerText)) return { proposals };
+  const kept = proposals.filter((p) => asModifier(p)?.target !== "grain_yield");
+  if (!finishedTurningPlough(state)) {
+    return { proposals: kept, speech: ALDRIC_PLOUGH_UNFINISHED };
+  }
+  if (sameImprovementAlready(state, "grain_yield", { op: "multiply", value: TURNING_PLOUGH_YIELD }, [...already, ...kept])) {
+    return { proposals: kept, speech: ALDRIC_PLOUGH_ALREADY };
+  }
+  return { proposals: [...kept, turningPloughYieldProposal()], speech: ALDRIC_TURNING_PLOUGH, granted: true };
 }
 
 /** The figure named in speech, as a multiplier. A quarter more is 1.25. No figure returns null. */
@@ -214,7 +297,9 @@ export function prepareStewardToolProposals(
       kept.push(proposal);
       continue;
     }
-    if (factor != null) {
+    if (mod.source === TURNING_PLOUGH_SOURCE) {
+      mod.effect = { op: "multiply", value: TURNING_PLOUGH_YIELD };
+    } else if (factor != null) {
       const aligned: Effect = { op: "multiply", value: factor };
       mod.effect = aligned;
     }
