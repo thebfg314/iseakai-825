@@ -6,6 +6,8 @@ import { WorldStateSchema, type MechanicalProposal, type ModifierTarget, type Wo
 import {
   IMPROVEMENT_ALREADY,
   STEWARD_TOOL_IMPROVEMENT,
+  WORK_NOT_FINISHED,
+  finishedToolReady,
   improvementKind,
   lordToldStewardToUseTool,
   parseSpokenImprovement,
@@ -121,6 +123,33 @@ describe("a new tool is an ordinary modifier", () => {
     );
     expect(early.proposals).toEqual([]);
     expect(early.note).toBeUndefined();
+
+    const begun = applyProposal(
+      state,
+      {
+        type: "start_project",
+        summary: "A tool for the fields",
+        projectKey: "field_tool",
+        name: "Field tool",
+        holdingId: "fontenay",
+        customCosts: { labourDays: 1, lumber: 0, iron: 0, stone: 0 },
+      },
+      "steward",
+    );
+    expect(begun.ok).toBe(true);
+    const unfinished = prepareStewardToolProposals(
+      state,
+      "Put the people onto the new tool.",
+      [gain("grain_yield", 2)],
+      "The fields will give a quarter more.",
+    );
+    expect(unfinished.proposals).toEqual([]);
+    expect(unfinished.note).toBe(WORK_NOT_FINISHED);
+    expect(finishedToolReady(state, "Put the people onto the new tool.")).toBe(false);
+
+    const made = state.projects.find((p) => p.key === "field_tool");
+    if (!made) throw new Error("missing work");
+    made.status = "completed";
 
     const asked = prepareStewardToolProposals(
       state,

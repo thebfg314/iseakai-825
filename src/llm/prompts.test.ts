@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { GERULF_NOTES } from "../engine/hunts";
-import { STEWARD_TOOL_IMPROVEMENT, TURNING_PLOUGH_INSTRUCTION } from "../engine/toolImprovement";
+import { STEWARD_TOOL_IMPROVEMENT } from "../engine/toolImprovement";
 import { MERCHANT_VISITORS } from "../engine/merchant";
 import { HIREABLE_SPECIALISTS } from "../engine/specialists";
 import { WorldStateSchema, type WorldState } from "../engine/schema";
@@ -85,12 +85,13 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/new clay land/);
     expect(aldric).toMatch(/cross-ploughing/);
     expect(aldric).toMatch(/not getting from one new plough/);
-    expect(aldric).toMatch(/put the people onto that tool/i);
-    expect(aldric).toContain(TURNING_PLOUGH_INSTRUCTION);
-    expect(aldric).toMatch(/mouldboard/i);
-    expect(aldric).toMatch(/a fifth more grain/i);
-    expect(aldric).toMatch(/\b1\.2\b/);
-    expect(aldric).toMatch(/old scratch-plough/i);
+    expect(aldric).toMatch(/that work is finished/i);
+    expect(aldric).toMatch(/put the people onto it/i);
+    expect(aldric).toMatch(/A plough that turns the earth/i);
+    expect(aldric).toMatch(/is grain yield/i);
+    expect(aldric).not.toMatch(/mouldboard|moldboard/i);
+    expect(aldric).not.toMatch(/\b1\.2\b/);
+    expect(aldric).not.toMatch(/grants a fifth/i);
     expect(aldric).toMatch(/Hiring a full-time specialist is YOUR work/i);
     expect(aldric).toMatch(/defer_proposal/);
     expect(aldric).toMatch(/after harvest/i);

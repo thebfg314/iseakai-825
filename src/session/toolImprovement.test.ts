@@ -6,14 +6,7 @@ import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "../engine/applyDelta";
 import { yieldMultiplier } from "../engine/modifiers";
 import { WorldStateSchema, type MechanicalProposal } from "../engine/schema";
-import {
-  ALDRIC_PLOUGH_ALREADY,
-  ALDRIC_PLOUGH_UNFINISHED,
-  ALDRIC_TURNING_PLOUGH,
-  BERNARD_HARVEST_REDIRECT,
-  IMPROVEMENT_ALREADY,
-  TURNING_PLOUGH_YIELD,
-} from "../engine/toolImprovement";
+import { BERNARD_HARVEST_REDIRECT, IMPROVEMENT_ALREADY, WORK_NOT_FINISHED } from "../engine/toolImprovement";
 import { parseLlmResponse } from "../llm/parse";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
@@ -22,6 +15,25 @@ function tempGame() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "isekai-"));
   const state = WorldStateSchema.parse(structuredClone(startingEstate));
   return new GameController(state, dir, defaultAppSettings());
+}
+
+function finishWork(game: GameController, key = "field_tool", name = "Field tool") {
+  const started = applyProposal(
+    game.state,
+    {
+      type: "start_project",
+      summary: name,
+      projectKey: key,
+      name,
+      holdingId: "fontenay",
+      customCosts: { labourDays: 1, lumber: 0, iron: 0, stone: 0 },
+    },
+    "steward",
+  );
+  if (!started.ok) throw new Error(started.reason ?? "the work did not start");
+  const project = game.state.projects.find((p) => p.key === key);
+  if (!project) throw new Error("missing work");
+  project.status = "completed";
 }
 
 function modifier(target: "grain_yield" | "labour_efficiency" | "mood", value: number, op: "multiply" | "add" = "multiply"): MechanicalProposal {
@@ -53,6 +65,7 @@ describe("tool improvements wait on Aldric", () => {
 
   it("uses the figure Aldric names, and does not stack that kind again", () => {
     const game = tempGame();
+    finishWork(game);
     const parsed = parseLlmResponse(
       JSON.stringify({
         speech: "Put them to it, and the fields will give a quarter more.",
@@ -97,6 +110,7 @@ describe("tool improvements wait on Aldric", () => {
 
   it("leaves the book's figure alone when speech names none", () => {
     const game = tempGame();
+    finishWork(game);
     const parsed = parseLlmResponse(
       JSON.stringify({
         speech: "The hands will get through more of the work.",
@@ -136,12 +150,11 @@ describe("tool improvements wait on Aldric", () => {
     expect(game.pending.filter((p) => p.status === "pending").some((p) => p.proposal.type === "add_modifier")).toBe(true);
   });
 
-  it("gives one fifth more grain only after a finished turning plough is put to use", () => {
+  it("writes a yield only after the lord puts the people on a finished tool, using the figure Aldric names", () => {
     const game = tempGame();
     expect(yieldMultiplier(game.state)).toBe(1);
-    expect(game.state.modifiers).toEqual([]);
 
-    const order = "Put the people onto the new plough.";
+    const order = "Put the people onto the heavy coulter plough.";
     const ask = () =>
       parseLlmResponse(
         JSON.stringify({
@@ -151,17 +164,15 @@ describe("tool improvements wait on Aldric", () => {
       );
 
     game.ingestParsedDialogue("steward", ask(), order);
-    expect(game.state.modifiers).toEqual([]);
-    expect(yieldMultiplier(game.state)).toBe(1);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
-    expect(game.messages.some((m) => m.text === ALDRIC_PLOUGH_UNFINISHED)).toBe(true);
+    expect(yieldMultiplier(game.state)).toBe(1);
+    expect(game.messages.some((m) => m.text === WORK_NOT_FINISHED)).toBe(true);
 
     const started = applyProposal(
       game.state,
       {
         type: "start_project",
-        summary:
-          "One plough of a new design: a long heavy coulter, a wider one-sided share, an iron-shod wooden board, and a socketed replaceable share.",
+        summary: "A tool that turns the earth instead of scratching a rut.",
         projectKey: "heavy_coulter_plough",
         name: "Heavy coulter plough",
         holdingId: "fontenay",
@@ -173,34 +184,29 @@ describe("tool improvements wait on Aldric", () => {
     expect(yieldMultiplier(game.state)).toBe(1);
 
     game.ingestParsedDialogue("steward", ask(), order);
-    expect(game.state.modifiers).toEqual([]);
     expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
+    expect(yieldMultiplier(game.state)).toBe(1);
 
     const made = game.state.projects.find((p) => p.key === "heavy_coulter_plough");
-    if (!made) throw new Error("expected the plough");
-    expect(made.notes).toMatch(/turns the earth/i);
+    if (!made) throw new Error("expected the work");
     made.status = "completed";
     expect(yieldMultiplier(game.state)).toBe(1);
 
     game.ingestParsedDialogue("steward", ask(), order);
     const card = game.pending.find((p) => p.status === "pending" && p.proposal.type === "add_modifier");
-    expect(card?.proposal.type).toBe("add_modifier");
-    if (card?.proposal.type !== "add_modifier") throw new Error("expected the grain card");
+    if (card?.proposal.type !== "add_modifier") throw new Error("expected a modifier card");
     expect(card.proposal.target).toBe("grain_yield");
-    expect(card.proposal.effect).toEqual({ op: "multiply", value: TURNING_PLOUGH_YIELD });
-    expect(game.messages.some((m) => m.text === ALDRIC_TURNING_PLOUGH)).toBe(true);
+    expect(card.proposal.effect).toEqual({ op: "multiply", value: 1.25 });
     expect(yieldMultiplier(game.state)).toBe(1);
 
     const written = game.confirmProposal(card.id);
     expect(written.error).toBeUndefined();
-    expect(game.state.modifiers.filter((m) => m.target === "grain_yield")).toHaveLength(1);
-    expect(yieldMultiplier(game.state)).toBeCloseTo(1.2);
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25);
 
     game.ingestParsedDialogue("steward", ask(), order);
     expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
-    expect(game.messages.some((m) => m.text === ALDRIC_PLOUGH_ALREADY)).toBe(true);
-    expect(game.state.modifiers.filter((m) => m.target === "grain_yield")).toHaveLength(1);
-    expect(yieldMultiplier(game.state)).toBeCloseTo(1.2);
+    expect(game.messages.some((m) => m.text === IMPROVEMENT_ALREADY)).toBe(true);
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25);
   });
 
   it("sends a harvest question to Aldric and writes no yield", async () => {
@@ -209,7 +215,7 @@ describe("tool improvements wait on Aldric", () => {
     spy.mockResolvedValue({
       speech: "The wheat will stand thicker, my lord.",
       emotion: "thoughtful",
-      proposals: [modifier("grain_yield", 1.2)],
+      proposals: [modifier("grain_yield", 2)],
       raw: "{}",
       parseErrors: [],
     });

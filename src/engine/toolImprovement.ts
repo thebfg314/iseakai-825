@@ -9,7 +9,7 @@ import { innerProposalOfDefer } from "./forthcoming";
  * and less cross-ploughing, which this villa is not getting from one new plough.
  * That is why any such improvement is modest — not a rule for one invention.
  */
-export const STEWARD_TOOL_IMPROVEMENT = `A tool Bernard forges does not change the books by itself. You do not propose a yield or output change until the lord tells you to put the people onto that tool. Forging it is his work, and it is not enough. When the lord does tell you, propose one add_modifier the books already understand, with the reason in the speech of the hall. Choose the target from what the tool actually does: grain_yield if the fields yield more grain, labour_efficiency if the same work takes fewer days, spoilage if less is lost in store, livestock_yield if the herds give more, project_speed if a work finishes sooner, specific_resource_output if one named store comes out better. Do not keep a list of inventions, and do not invent a special rule for one tool.
+export const STEWARD_TOOL_IMPROVEMENT = `A tool Bernard forges does not change the books by itself. You do not propose a yield or output change until that work is finished and the lord tells you to put the people onto it. Forging it is his work, and finishing it is not enough. When the lord does tell you, propose one add_modifier the books already understand, with the reason in the speech of the hall. Choose the target from what the tool actually does: grain_yield if the fields yield more grain, labour_efficiency if the same work takes fewer days, spoilage if less is lost in store, livestock_yield if the herds give more, project_speed if a work finishes sooner, specific_resource_output if one named store comes out better. A plough that turns the earth, instead of scratching a rut, is grain yield. You choose that target. Do not keep a list of inventions, and do not invent a special rule for one tool.
 
 On land the estate already farms, a real improvement is modest: around a quarter more, and not a doubling. The same kind of improvement does not stack a second time. Historians do not have a clean medieval percent. Side-by-side trials of a turning plough against a scratch-plough are about a quarter more wheat when there is a difference at all. The larger historical gain was new clay land and less cross-ploughing, which this villa is not getting from one new plough. That is why the scale is a quarter, for whatever the tool actually changes. If you name a figure in speech, the add_modifier must use that same figure. A quarter more is effect op multiply and value 1.25, not 0.25 and not 2.`;
 
@@ -18,23 +18,8 @@ export const BERNARD_HARVEST_REDIRECT = "I do not write the harvest. Speak to Al
 export const IMPROVEMENT_ALREADY =
   "That improvement is already written. The same kind does not come a second time.";
 
-/** One estate-wide fifth, for a plough that turns the earth, once the people use it. */
-export const TURNING_PLOUGH_YIELD = 1.2;
-
-export const TURNING_PLOUGH_NOTE = "A plough that turns the earth.";
-
-export const TURNING_PLOUGH_SOURCE = "The people use the plough that turns the earth.";
-
-export const ALDRIC_TURNING_PLOUGH =
-  "The new plough turns the earth instead of scratching a rut. Once the people use it, the fields yield a fifth more.";
-
-export const ALDRIC_PLOUGH_UNFINISHED =
-  "The new plough is not finished. The people still use the old scratch-plough, and the fields yield no more.";
-
-export const ALDRIC_PLOUGH_ALREADY =
-  "The people already use a plough that turns the earth. The fields yield a fifth more for that. A second plough of the same kind does not add another fifth.";
-
-export const TURNING_PLOUGH_INSTRUCTION = `The villa starts on the old scratch-plough, which only cuts a rut. A plough that turns the earth — a mouldboard, which folds the slice over — does not raise the harvest when Bernard forges it, nor when the work is merely finished. When the lord tells you to put the people onto that plough, and only if such a plough is already finished, propose one add_modifier on grain_yield, kind permanent, effect multiply 1.2. That is a fifth more grain, once for the whole estate, not per plough, per acre, or per season. Say in hall speech that the new plough turns the earth instead of scratching a rut, and that the fields yield a fifth more once the people use it. If none is finished, propose nothing and say the people still use the old scratch-plough. A second plough of that kind does not add another fifth.`;
+export const WORK_NOT_FINISHED =
+  "That work is not finished. The people cannot take it up yet, and the books stay as they are.";
 
 /** Targets a tool can change. The steward picks one from what the tool does. */
 export const IMPROVEMENT_TARGETS = new Set<ModifierTarget>([
@@ -95,71 +80,6 @@ function usableFigure(n: number): boolean {
   return Number.isFinite(n) && n > 0.25 && n <= 2.5;
 }
 
-const TURNING_MARK = /\bmouldboards?\b|\bmoldboards?\b|\bturns the earth\b|\bturning plough\b|\bone-sided share\b|\bfolds the (?:earth|soil|slice)\b|\bplough that turns\b/i;
-
-/** A plough that folds the earth, as against the old scratch-plough. */
-export function isTurningPloughText(text: string): boolean {
-  if (!text.trim()) return false;
-  if (/\bscratch[- ]plou?ghs?\b/i.test(text) && !TURNING_MARK.test(text)) return false;
-  if (TURNING_MARK.test(text)) return true;
-  return /\b(?:ploughs?|plows?)\b/i.test(text) && /\bwooden board\b/i.test(text);
-}
-
-/** Keep the design on the project so a finished plough can still be recognised. */
-export function markTurningPloughNotes(name: string, summary: string, key: string, notes?: string): string | undefined {
-  const blob = `${name} ${summary} ${key} ${notes ?? ""}`;
-  if (!isTurningPloughText(blob)) return notes;
-  if (notes?.includes(TURNING_PLOUGH_NOTE)) return notes;
-  return notes ? `${notes} ${TURNING_PLOUGH_NOTE}` : TURNING_PLOUGH_NOTE;
-}
-
-export function finishedTurningPlough(state: WorldState): boolean {
-  return state.projects.some(
-    (p) => p.status === "completed" && isTurningPloughText(`${p.key} ${p.name} ${p.notes ?? ""}`),
-  );
-}
-
-/** The lord told Aldric to put the people onto the new plough. */
-export function lordOrdersTurningPlough(playerText: string): boolean {
-  if (/\bscratch[- ]plou?ghs?\b/i.test(playerText) && !/\b(new|mouldboard|moldboard|turns the earth)\b/i.test(playerText)) {
-    return false;
-  }
-  if (!/\b(ploughs?|plows?|mouldboards?|moldboards?)\b/i.test(playerText)) return false;
-  return lordToldStewardToUseTool(playerText);
-}
-
-export function turningPloughYieldProposal(): Extract<MechanicalProposal, { type: "add_modifier" }> {
-  return {
-    type: "add_modifier",
-    summary: "The fields yield a fifth more once the people use the plough that turns the earth.",
-    target: "grain_yield",
-    kind: "permanent",
-    effect: { op: "multiply", value: TURNING_PLOUGH_YIELD },
-    source: TURNING_PLOUGH_SOURCE,
-  };
-}
-
-/**
- * The order grants one estate-wide fifth, and only for a finished plough of that kind.
- * Forging it, or leaving it unfinished, grants nothing.
- */
-export function settleTurningPloughOrder(
-  state: WorldState,
-  playerText: string,
-  proposals: MechanicalProposal[],
-  already: MechanicalProposal[] = [],
-): { proposals: MechanicalProposal[]; speech?: string; granted?: boolean } {
-  if (!lordOrdersTurningPlough(playerText)) return { proposals };
-  const kept = proposals.filter((p) => asModifier(p)?.target !== "grain_yield");
-  if (!finishedTurningPlough(state)) {
-    return { proposals: kept, speech: ALDRIC_PLOUGH_UNFINISHED };
-  }
-  if (sameImprovementAlready(state, "grain_yield", { op: "multiply", value: TURNING_PLOUGH_YIELD }, [...already, ...kept])) {
-    return { proposals: kept, speech: ALDRIC_PLOUGH_ALREADY };
-  }
-  return { proposals: [...kept, turningPloughYieldProposal()], speech: ALDRIC_TURNING_PLOUGH, granted: true };
-}
-
 /** The figure named in speech, as a multiplier. A quarter more is 1.25. No figure returns null. */
 export function parseSpokenImprovement(speech: string): number | null {
   if (!speech.trim()) return null;
@@ -211,6 +131,35 @@ export function lordToldStewardToUseTool(playerText: string): boolean {
     return true;
   }
   return false;
+}
+
+const ORDER_NOISE = new Set([
+  "put", "set", "turn", "send", "have", "tell", "the", "and", "for", "onto", "into", "with", "from",
+  "people", "folk", "hands", "them", "men", "women", "household", "households", "villeins", "tenants",
+  "use", "using", "used", "new", "tool", "work", "this", "that", "once", "finished", "finish",
+  "lord", "please", "aldric", "bernard", "fields", "field", "yield", "more", "your", "our",
+]);
+
+function projectText(project: { name: string; key: string; notes?: string | null }): string {
+  return `${project.name} ${project.key.replaceAll("_", " ")} ${project.notes ?? ""}`.toLowerCase();
+}
+
+/**
+ * The lord can put the people onto a tool only once that work is finished.
+ * Named words must hit a finished project. An unnamed "new tool" needs some finished work.
+ */
+export function finishedToolReady(state: WorldState, playerText: string): boolean {
+  const open = state.projects.filter((p) => p.status === "active" || p.status === "completed");
+  const words = playerText
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((word) => word.length > 3 && !ORDER_NOISE.has(word));
+  if (words.length) {
+    const hits = open.filter((project) => words.some((word) => projectText(project).includes(word)));
+    if (!hits.length) return false;
+    return hits.some((project) => project.status === "completed");
+  }
+  return open.some((project) => project.status === "completed");
 }
 
 export function asksAboutTheHarvest(text: string): boolean {
@@ -297,13 +246,15 @@ export function prepareStewardToolProposals(
       kept.push(proposal);
       continue;
     }
-    if (mod.source === TURNING_PLOUGH_SOURCE) {
-      mod.effect = { op: "multiply", value: TURNING_PLOUGH_YIELD };
-    } else if (factor != null) {
+    if (factor != null) {
       const aligned: Effect = { op: "multiply", value: factor };
       mod.effect = aligned;
     }
     if (!asked) continue;
+    if (!finishedToolReady(state, playerText)) {
+      note = WORK_NOT_FINISHED;
+      continue;
+    }
     if (improvementKind(mod.target, mod.effect) && sameImprovementAlready(state, mod.target, mod.effect, [...already, ...kept])) {
       note = IMPROVEMENT_ALREADY;
       continue;
