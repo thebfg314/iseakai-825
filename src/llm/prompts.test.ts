@@ -78,7 +78,13 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toContain(STEWARD_TOOL_IMPROVEMENT);
     expect(aldric).toMatch(/around a quarter more/i);
     expect(aldric).toMatch(/not a doubling/i);
-    expect(aldric).toMatch(/does not stack a second time/i);
+    expect(aldric).toMatch(/for each change/i);
+    expect(aldric).toMatch(/not a ceiling on all of them together/i);
+    expect(aldric).toMatch(/do not grant the same improvement twice/i);
+    expect(aldric).toMatch(/same manuring custom/i);
+    expect(aldric).toMatch(/different improvement that also raises grain/i);
+    expect(aldric).toMatch(/three-field rotation is adjust_sowing/i);
+    expect(aldric).not.toMatch(/does not stack a second time/i);
     expect(aldric).toMatch(/Historians do not have a clean medieval percent/);
     expect(aldric).toMatch(/scratch-plough/);
     expect(aldric).toMatch(/about a quarter more wheat/);

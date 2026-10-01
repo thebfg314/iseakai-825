@@ -27,7 +27,7 @@ import {
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
-import { IMPROVEMENT_ALREADY, IMPROVEMENT_TARGETS, improvementKind, sameImprovementAlready } from "./toolImprovement";
+import { IMPROVEMENT_ALREADY, identicalModifierAlready } from "./toolImprovement";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
@@ -695,11 +695,7 @@ function addModifier(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "add_modifier" }>,
 ): ApplyResult {
-  if (
-    IMPROVEMENT_TARGETS.has(p.target) &&
-    improvementKind(p.target, p.effect) &&
-    sameImprovementAlready(state, p.target, p.effect)
-  ) {
+  if (identicalModifierAlready(state, p)) {
     return fail(state, IMPROVEMENT_ALREADY, p.summary);
   }
   const id = newId("mod");

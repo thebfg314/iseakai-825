@@ -247,7 +247,7 @@ When the player introduces knowledge that did not exist in 825:
 2. Typical success: a `start_project` and/or a **temporary** `add_modifier`. Permanent status requires `seasons_remaining` to run out with `promote_on_expire: true`, or an explicit later proposal after practice.
 3. New goods: `register_resource` with unit and price range, then `transfer_resources` / production modifiers.
 4. The engine stores modifiers. Later seasons apply them as numbers so the model cannot forget an ongoing trial.
-5. A new tool is forged as a project. Forging it does not change yield, and finishing it does not either. The steward proposes one ordinary `add_modifier` only after the work is finished and the lord tells him to put the people onto it. He chooses the target from what the tool does (`grain_yield`, `labour_efficiency`, `spoilage`, `livestock_yield`, `project_speed`, or `specific_resource_output`). On land the estate already farms, the gain is modest — around a quarter more, not a doubling. The same kind of improvement on the same target does not stack a second time. If his speech names the figure, the modifier uses that figure. There is no per-invention yield constant.
+5. A new tool is forged as a project. Forging it does not change yield, and finishing it does not either. The steward proposes one ordinary `add_modifier` only after the work is finished and the lord tells him to put the people onto it. He chooses the target from what the tool does (`grain_yield`, `labour_efficiency`, `spoilage`, `livestock_yield`, `project_speed`, or `specific_resource_output`). Other husbandry is whatever book change already fits: three-field rotation stays `adjust_sowing` (`rotation: three_field`), and legumes or spring manuring are the proposal he chooses. On land the estate already farms, each real improvement is modest — around a quarter more, not a doubling. That figure is judgment for each change. Several different improvements each keep their own figure. He does not grant the same improvement twice (the same source, or the same spoken reason). A different reason on `grain_yield` is a separate custom. If his speech names the figure, the modifier uses that figure. There is no per-invention yield constant.
 
 ### 8.1 Modifier targets (closed list)
 
@@ -258,7 +258,7 @@ Escape hatch: `custom` — stored and shown in the ledger and injected into prom
 ### 8.2 Stacking
 
 - `multiply` effects on the same target: multiply together (cap 0.4–2.5).
-- A tool improvement the steward writes (a gain, or a saving, on the same target) does not stack a second time. A loss on that target still combines with the rule above.
+- Different improvements on the same target multiply together. An identical modifier (the same source, or the same spoken reason) is not written twice. A new reason on `grain_yield` is a separate custom.
 - `add` effects: add (labour_efficiency add is extra fraction of pool).
 - `set`: last applied wins (avoid except for market_price).
 - `accident_risk` and `harvest_risk`: use the maximum of competing values.

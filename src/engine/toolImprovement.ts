@@ -9,14 +9,15 @@ import { innerProposalOfDefer } from "./forthcoming";
  * and less cross-ploughing, which this villa is not getting from one new plough.
  * That is why any such improvement is modest — not a rule for one invention.
  */
-export const STEWARD_TOOL_IMPROVEMENT = `A tool Bernard forges does not change the books by itself. You do not propose a yield or output change until that work is finished and the lord tells you to put the people onto it. Forging it is his work, and finishing it is not enough. When the lord does tell you, propose one add_modifier the books already understand, with the reason in the speech of the hall. Choose the target from what the tool actually does: grain_yield if the fields yield more grain, labour_efficiency if the same work takes fewer days, spoilage if less is lost in store, livestock_yield if the herds give more, project_speed if a work finishes sooner, specific_resource_output if one named store comes out better. A plough that turns the earth, instead of scratching a rut, is grain yield. You choose that target. Do not keep a list of inventions, and do not invent a special rule for one tool.
+export const STEWARD_TOOL_IMPROVEMENT = `A tool Bernard forges does not change the books by itself. You do not propose a yield or output change for that tool until that work is finished and the lord tells you to put the people onto it. Forging it is his work, and finishing it is not enough. When the lord does tell you, propose one add_modifier the books already understand, with the reason in the speech of the hall. Choose the target from what the tool actually does: grain_yield if the fields yield more grain, labour_efficiency if the same work takes fewer days, spoilage if less is lost in store, livestock_yield if the herds give more, project_speed if a work finishes sooner, specific_resource_output if one named store comes out better. A plough that turns the earth, instead of scratching a rut, is grain yield. You choose that target. Do not keep a list of inventions, and do not invent a special rule for one tool.
 
-On land the estate already farms, a real improvement is modest: around a quarter more, and not a doubling. The same kind of improvement does not stack a second time. Historians do not have a clean medieval percent. Side-by-side trials of a turning plough against a scratch-plough are about a quarter more wheat when there is a difference at all. The larger historical gain was new clay land and less cross-ploughing, which this villa is not getting from one new plough. That is why the scale is a quarter, for whatever the tool actually changes. If you name a figure in speech, the add_modifier must use that same figure. A quarter more is effect op multiply and value 1.25, not 0.25 and not 2.`;
+Other husbandry is the same kind of judgment. When the lord asks you to put a practice into the work, propose the ordinary book change that already fits. Moving to three-field rotation is adjust_sowing with rotation three_field (defer_proposal with beat after_harvest while crops stand). It is not a yield modifier. Adding legumes to the spring planting, and manuring the fields in spring, are whatever change already fits — you choose the proposal and the target. There is no table of inventions.
+
+On land the estate already farms, one real improvement is modest: around a quarter more, and not a doubling. That figure is your judgment for each change. Several different improvements each keep their own figure; the quarter is not a ceiling on all of them together. Do not grant the same improvement twice: the same plough, the same manuring custom, the same legume change. A different improvement that also raises grain is not a duplicate. Write it as its own add_modifier, with its own reason in source. Historians do not have a clean medieval percent. Side-by-side trials of a turning plough against a scratch-plough are about a quarter more wheat when there is a difference at all. The larger historical gain was new clay land and less cross-ploughing, which this villa is not getting from one new plough. That is why the scale is a quarter, for each change, for whatever that change actually does. If you name a figure in speech, the add_modifier must use that same figure. A quarter more is effect op multiply and value 1.25, not 0.25 and not 2.`;
 
 export const BERNARD_HARVEST_REDIRECT = "I do not write the harvest. Speak to Aldric the steward.";
 
-export const IMPROVEMENT_ALREADY =
-  "That improvement is already written. The same kind does not come a second time.";
+export const IMPROVEMENT_ALREADY = "That improvement is already written.";
 
 export const WORK_NOT_FINISHED =
   "That work is not finished. The people cannot take it up yet, and the books stay as they are.";
@@ -43,8 +44,6 @@ const GRAIN_RESOURCES = new Set(["wheat", "rye", "barley", "oats", "grain"]);
 
 type Effect = { op: "multiply" | "add" | "set"; value: number };
 type ModifierProposal = Extract<MechanicalProposal, { type: "add_modifier" }>;
-
-export type ImprovementKind = "gain" | "saving";
 
 const SPOKEN_PHRASES: { re: RegExp; factor: number }[] = [
   { re: /\bone and a quarter\b/i, factor: 1.25 },
@@ -133,6 +132,11 @@ export function lordToldStewardToUseTool(playerText: string): boolean {
   return false;
 }
 
+/** Manure, legumes, and the like — a practice the lord asked to put in, not a forged tool. */
+export function lordOrderedHusbandry(playerText: string): boolean {
+  return /\b(legumes?|peas?\b|manure|muck|seed[- ]?(?:keep|keeping|selection|saving|kept)|fallow)\b/i.test(playerText);
+}
+
 const ORDER_NOISE = new Set([
   "put", "set", "turn", "send", "have", "tell", "the", "and", "for", "onto", "into", "with", "from",
   "people", "folk", "hands", "them", "men", "women", "household", "households", "villeins", "tenants",
@@ -166,26 +170,6 @@ export function asksAboutTheHarvest(text: string): boolean {
   return /\bharvest\b|\bthe fields\b|\bthe field\b|\bcrops?\b/i.test(text);
 }
 
-/** Spoilage improves when less is lost. Every other tool target improves when output rises. */
-const SAVING_TARGETS = new Set<ModifierTarget>(["spoilage"]);
-
-export function improvementKind(target: ModifierTarget, effect: { op: string; value: number }): ImprovementKind | null {
-  if (!IMPROVEMENT_TARGETS.has(target)) return null;
-  const saving = SAVING_TARGETS.has(target);
-  if (effect.op === "multiply") {
-    if (effect.value > 1) return saving ? null : "gain";
-    if (effect.value > 0 && effect.value < 1) return saving ? "saving" : null;
-    return null;
-  }
-  if (effect.op === "add") {
-    if (effect.value > 0) return saving ? null : "gain";
-    if (effect.value < 0) return saving ? "saving" : null;
-    return null;
-  }
-  if (effect.op === "set" && !saving) return "gain";
-  return null;
-}
-
 function asModifier(p: MechanicalProposal | { type?: string }): ModifierProposal | null {
   if (p.type === "add_modifier") return p as ModifierProposal;
   if (p.type === "defer_proposal") {
@@ -210,24 +194,68 @@ export function proposalWritesTheFields(p: MechanicalProposal): boolean {
   return false;
 }
 
-export function sameImprovementAlready(
-  state: WorldState,
-  target: ModifierTarget,
-  effect: { op: string; value: number },
-  also: MechanicalProposal[] = [],
-): boolean {
-  const kind = improvementKind(target, effect);
-  if (!kind) return false;
-  if (state.modifiers.some((m) => m.target === target && improvementKind(m.target, m.effect) === kind)) return true;
-  return also.some((p) => {
-    const mod = improvementProposal(p);
-    return mod != null && mod.target === target && improvementKind(mod.target, mod.effect) === kind;
-  });
+function reasonKey(text: string | undefined | null): string {
+  return (text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function sameReason(a: string, b: string): boolean {
+  const left = reasonKey(a);
+  const right = reasonKey(b);
+  return left.length > 0 && left === right;
 }
 
 /**
- * Align a named figure onto the book change, drop a yield until the lord has
- * told Aldric to put the people on the tool, and refuse a second stack.
+ * The same custom already written: same source, or the same spoken reason.
+ * A new reason on the same target is not this. A shared card summary is not a reason.
+ */
+export function identicalModifierAlready(
+  state: WorldState,
+  proposal: { source?: string; summary?: string; customNote?: string | null },
+  also: MechanicalProposal[] = [],
+): boolean {
+  const names: string[] = [];
+  const push = (text?: string | null) => {
+    const key = reasonKey(text);
+    if (key) names.push(key);
+  };
+  for (const modifier of state.modifiers) {
+    push(modifier.source);
+    push(modifier.customNote);
+  }
+  for (const pending of also) {
+    const mod = asModifier(pending);
+    if (!mod) continue;
+    push(mod.source);
+    push(mod.customNote);
+    push(mod.summary);
+  }
+  const source = reasonKey(proposal.source);
+  const note = reasonKey(proposal.customNote);
+  if ([source, note].some((text) => text.length > 0 && names.some((have) => sameReason(text, have)))) return true;
+  const summary = reasonKey(proposal.summary);
+  if (!summary) return false;
+  const written: string[] = [];
+  for (const modifier of state.modifiers) {
+    const have = reasonKey(modifier.source);
+    const custom = reasonKey(modifier.customNote);
+    if (have) written.push(have);
+    if (custom) written.push(custom);
+  }
+  for (const pending of also) {
+    const mod = asModifier(pending);
+    if (!mod) continue;
+    const have = reasonKey(mod.source);
+    const custom = reasonKey(mod.customNote);
+    if (have) written.push(have);
+    if (custom) written.push(custom);
+  }
+  return written.some((have) => sameReason(summary, have));
+}
+
+/**
+ * Align a named figure onto the book change. A tool's yield waits until the
+ * lord has put the people onto finished work. Husbandry the lord ordered
+ * keeps the proposal the model chose. The same reason is not written twice.
  */
 export function prepareStewardToolProposals(
   state: WorldState,
@@ -236,7 +264,8 @@ export function prepareStewardToolProposals(
   speech: string,
   already: MechanicalProposal[] = [],
 ): { proposals: MechanicalProposal[]; note?: string } {
-  const asked = lordToldStewardToUseTool(playerText);
+  const toolAsk = lordToldStewardToUseTool(playerText);
+  const husbandry = lordOrderedHusbandry(playerText);
   const factor = parseSpokenImprovement(speech);
   const kept: MechanicalProposal[] = [];
   let note: string | undefined;
@@ -250,12 +279,15 @@ export function prepareStewardToolProposals(
       const aligned: Effect = { op: "multiply", value: factor };
       mod.effect = aligned;
     }
-    if (!asked) continue;
-    if (!finishedToolReady(state, playerText)) {
-      note = WORK_NOT_FINISHED;
+    if (toolAsk) {
+      if (!finishedToolReady(state, playerText)) {
+        note = WORK_NOT_FINISHED;
+        continue;
+      }
+    } else if (!husbandry) {
       continue;
     }
-    if (improvementKind(mod.target, mod.effect) && sameImprovementAlready(state, mod.target, mod.effect, [...already, ...kept])) {
+    if (identicalModifierAlready(state, mod, [...already, ...kept])) {
       note = IMPROVEMENT_ALREADY;
       continue;
     }

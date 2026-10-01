@@ -36,14 +36,19 @@ function finishWork(game: GameController, key = "field_tool", name = "Field tool
   project.status = "completed";
 }
 
-function modifier(target: "grain_yield" | "labour_efficiency" | "mood", value: number, op: "multiply" | "add" = "multiply"): MechanicalProposal {
+function modifier(
+  target: "grain_yield" | "labour_efficiency" | "mood",
+  value: number,
+  op: "multiply" | "add" = "multiply",
+  source = "The people use the new tool",
+): MechanicalProposal {
   return {
     type: "add_modifier",
     summary: "A change in the work",
     target,
     kind: "permanent",
     effect: { op, value },
-    source: "The people use the new tool",
+    source,
   };
 }
 
@@ -63,13 +68,13 @@ describe("tool improvements wait on Aldric", () => {
     expect(yieldMultiplier(game.state)).toBe(before);
   });
 
-  it("uses the figure Aldric names, and does not stack that kind again", () => {
+  it("uses the figure Aldric names, and a different grain custom stacks beside it", () => {
     const game = tempGame();
     finishWork(game);
     const parsed = parseLlmResponse(
       JSON.stringify({
         speech: "Put them to it, and the fields will give a quarter more.",
-        proposals: [modifier("grain_yield", 2)],
+        proposals: [modifier("grain_yield", 2, "multiply", "The plough that turns the earth")],
       }),
     );
     game.ingestParsedDialogue("steward", parsed, "Put the people onto the new tool.");
@@ -83,21 +88,36 @@ describe("tool improvements wait on Aldric", () => {
     expect(game.state.modifiers[0]?.effect.value).toBe(1.25);
     expect(yieldMultiplier(game.state)).toBeCloseTo(1.25);
 
-    const again = parseLlmResponse(
+    const manure = parseLlmResponse(
       JSON.stringify({
-        speech: "Another quarter more on the fields.",
-        proposals: [modifier("grain_yield", 1.25)],
+        speech: "Spring manuring will give a quarter more.",
+        proposals: [modifier("grain_yield", 2, "multiply", "Spring manuring")],
       }),
     );
-    game.ingestParsedDialogue("steward", again, "Put the people onto the new tool.");
+    game.ingestParsedDialogue("steward", manure, "Manure the fields in spring.");
+    const manureCard = game.pending.find((p) => p.status === "pending");
+    expect(manureCard?.proposal.type).toBe("add_modifier");
+    if (manureCard?.proposal.type !== "add_modifier") throw new Error("expected a manuring card");
+    expect(manureCard.proposal.effect).toEqual({ op: "multiply", value: 1.25 });
+    expect(manureCard.proposal.source).toBe("Spring manuring");
+    expect(game.confirmProposal(manureCard.id).error).toBeUndefined();
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25 * 1.25);
+
+    const again = parseLlmResponse(
+      JSON.stringify({
+        speech: "Spring manuring will give a quarter more.",
+        proposals: [modifier("grain_yield", 1.25, "multiply", "Spring manuring")],
+      }),
+    );
+    game.ingestParsedDialogue("steward", again, "Manure the fields in spring.");
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.messages.some((m) => m.text === IMPROVEMENT_ALREADY)).toBe(true);
-    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25);
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25 * 1.25);
 
     const hands = parseLlmResponse(
       JSON.stringify({
         speech: "The same hands will finish a fifth more of the work.",
-        proposals: [modifier("labour_efficiency", 2)],
+        proposals: [modifier("labour_efficiency", 2, "multiply", "The hands finish more of the work")],
       }),
     );
     game.ingestParsedDialogue("steward", hands, "Put the people onto the new tool.");
@@ -159,7 +179,7 @@ describe("tool improvements wait on Aldric", () => {
       parseLlmResponse(
         JSON.stringify({
           speech: "The fields will give a quarter more.",
-          proposals: [modifier("grain_yield", 2)],
+          proposals: [modifier("grain_yield", 2, "multiply", "The plough that turns the earth")],
         }),
       );
 
@@ -197,6 +217,7 @@ describe("tool improvements wait on Aldric", () => {
     if (card?.proposal.type !== "add_modifier") throw new Error("expected a modifier card");
     expect(card.proposal.target).toBe("grain_yield");
     expect(card.proposal.effect).toEqual({ op: "multiply", value: 1.25 });
+    expect(card.proposal.source).toBe("The plough that turns the earth");
     expect(yieldMultiplier(game.state)).toBe(1);
 
     const written = game.confirmProposal(card.id);
@@ -207,6 +228,74 @@ describe("tool improvements wait on Aldric", () => {
     expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
     expect(game.messages.some((m) => m.text === IMPROVEMENT_ALREADY)).toBe(true);
     expect(yieldMultiplier(game.state)).toBeCloseTo(1.25);
+  });
+
+  it("lets three-field, legumes, manuring, and a finished plough stand together", () => {
+    const game = tempGame();
+    const rotation = parseLlmResponse(
+      JSON.stringify({
+        speech: "After harvest the third field will rest.",
+        proposals: [modifier("grain_yield", 1.25, "multiply", "A third field")],
+      }),
+    );
+    game.ingestParsedDialogue("steward", rotation, "After harvest, move to a three-field rotation.");
+    const rotationCard = game.pending.find((p) => p.status === "pending");
+    expect(rotationCard?.proposal.type).toBe("defer_proposal");
+    if (rotationCard?.proposal.type !== "defer_proposal") throw new Error("expected a deferred sowing");
+    expect(rotationCard.proposal.proposal).toMatchObject({ type: "adjust_sowing", rotation: "three_field" });
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
+    expect(yieldMultiplier(game.state)).toBe(1);
+
+    const legumes = parseLlmResponse(
+      JSON.stringify({
+        speech: "The spring planting will give a quarter more.",
+        proposals: [modifier("grain_yield", 2, "multiply", "Legumes in the spring planting")],
+      }),
+    );
+    game.ingestParsedDialogue("steward", legumes, "Add legumes to the spring planting.");
+    const legumeCard = game.pending.find((p) => p.status === "pending" && p.proposal.type === "add_modifier");
+    if (legumeCard?.proposal.type !== "add_modifier") throw new Error("expected a legume card");
+    expect(legumeCard.proposal.effect).toEqual({ op: "multiply", value: 1.25 });
+    expect(game.confirmProposal(legumeCard.id).error).toBeUndefined();
+
+    const manure = parseLlmResponse(
+      JSON.stringify({
+        speech: "Spring manuring will give a quarter more.",
+        proposals: [modifier("grain_yield", 2, "multiply", "Spring manuring")],
+      }),
+    );
+    game.ingestParsedDialogue("steward", manure, "Manure the fields in spring.");
+    const manureCard = game.pending.find((p) => p.status === "pending" && p.proposal.type === "add_modifier");
+    if (manureCard?.proposal.type !== "add_modifier") throw new Error("expected a manuring card");
+    expect(game.confirmProposal(manureCard.id).error).toBeUndefined();
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25 * 1.25);
+
+    const order = "Put the people onto the heavy coulter plough.";
+    const ploughAsk = () =>
+      parseLlmResponse(
+        JSON.stringify({
+          speech: "The fields will give a quarter more.",
+          proposals: [modifier("grain_yield", 2, "multiply", "The plough that turns the earth")],
+        }),
+      );
+    game.ingestParsedDialogue("steward", ploughAsk(), order);
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "add_modifier")).toHaveLength(0);
+    expect(game.messages.some((m) => m.text === WORK_NOT_FINISHED)).toBe(true);
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25 * 1.25);
+
+    finishWork(game, "heavy_coulter_plough", "Heavy coulter plough");
+    game.ingestParsedDialogue("steward", ploughAsk(), order);
+    const ploughCard = game.pending.find((p) => p.status === "pending" && p.proposal.type === "add_modifier");
+    if (ploughCard?.proposal.type !== "add_modifier") throw new Error("expected a plough card");
+    expect(ploughCard.proposal.source).toBe("The plough that turns the earth");
+    expect(ploughCard.proposal.effect).toEqual({ op: "multiply", value: 1.25 });
+    expect(game.confirmProposal(ploughCard.id).error).toBeUndefined();
+    expect(yieldMultiplier(game.state)).toBeCloseTo(1.25 * 1.25 * 1.25);
+    expect(game.state.modifiers.map((m) => m.source).sort()).toEqual([
+      "Legumes in the spring planting",
+      "Spring manuring",
+      "The plough that turns the earth",
+    ]);
   });
 
   it("sends a harvest question to Aldric and writes no yield", async () => {
