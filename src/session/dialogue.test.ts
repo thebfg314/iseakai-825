@@ -1145,19 +1145,33 @@ describe("Bernard's bloomery", () => {
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
-  it("puts a bloomery on the table once charcoal and the chest allow, and Confirm only sets the stores aside", () => {
+  it("mentions a steady iron supply when the stores can bear a bloomery, and writes a card only after the lord asks", () => {
     const game = tempGame();
-    game.state.resources.charcoal = 6;
-    game.state.resources.denarii = 180;
     game.state.resources.softwood = 8;
     game.state.resources.stone = 4;
+    game.state.resources.charcoal = 6;
+    game.state.resources.denarii = 40;
     const parsed = parseLlmResponse(JSON.stringify({ speech: "The hearth is ready for a word.", proposals: [] }));
     game.ingestParsedDialogue("smith", parsed, "Good day, Bernard.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    const mention = game.messages.filter((m) => m.npcId === "smith" && m.role === "npc").map((m) => m.text).join(" ");
+    expect(mention).toMatch(/steady supply of iron/i);
+    expect(mention).toMatch(/ask me/i);
+    expect(mention).not.toMatch(/clay shaft/i);
+    expect(game.state.holdings[0].features).not.toContain("bloomery");
+
+    game.ingestParsedDialogue("smith", parsed, "Tell me about the bloomery.");
     const pending = game.pending.filter((p) => p.status === "pending");
     expect(pending).toHaveLength(1);
     expect(pending[0].proposal).toMatchObject({ type: "start_project", projectKey: "bloomery" });
-    expect(game.messages.some((m) => /bloomery/i.test(m.text) && /clay/i.test(m.text))).toBe(true);
-    expect(game.state.holdings[0].features).not.toContain("bloomery");
+    const pitch = game.messages.filter((m) => m.npcId === "smith" && m.role === "npc").map((m) => m.text).join(" ");
+    expect(pitch).toMatch(/clay shaft/i);
+    expect(pitch).toMatch(/bellows/i);
+    expect(pitch).toMatch(/bog ore/i);
+    expect(pitch).toMatch(/4 cart-loads of timber/);
+    expect(pitch).toMatch(/2 cart-loads of stone/);
+    expect(pitch).toMatch(/2 cart-loads of charcoal/);
+    expect(pitch).toMatch(/bought iron still goes further/i);
 
     const charcoal = game.state.resources.charcoal;
     const result = game.confirmProposal(pending[0].id);
@@ -1165,6 +1179,167 @@ describe("Bernard's bloomery", () => {
     expect(game.state.projects.some((p) => p.key === "bloomery" && p.status === "active")).toBe(true);
     expect(game.state.resources.charcoal).toBeLessThan(charcoal);
     expect(game.state.holdings[0].features).not.toContain("bloomery");
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "start_project" && p.proposal.projectKey === "bloomery")).toHaveLength(0);
+  });
+
+  it("mentions the bloomery in Bernard's own talk, and stays silent while the lord speaks with Aldric", async () => {
+    const game = tempGame();
+    game.state.resources.softwood = 8;
+    game.state.resources.stone = 4;
+    game.state.resources.charcoal = 6;
+    const spy = vi.spyOn(game as unknown as { callLlm: (...args: unknown[]) => Promise<unknown> }, "callLlm");
+    spy.mockResolvedValue({
+      speech: "The hearth is hot enough, my lord.",
+      emotion: "neutral",
+      proposals: [],
+      raw: "{}",
+      parseErrors: [],
+    });
+    await game.sendDialogue("steward", "How fares the north furlong?");
+    expect(game.messages.some((m) => m.npcId === "smith")).toBe(false);
+    expect(game.pending.some((p) => p.status === "pending" && p.proposal.type === "start_project" && p.proposal.projectKey === "bloomery")).toBe(false);
+
+    await game.sendDialogue("smith", "How fares the forge?");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    const bernard = game.messages.filter((m) => m.npcId === "smith" && m.role === "npc").map((m) => m.text).join(" ");
+    expect(bernard).toMatch(/steady supply of iron/i);
+    expect(bernard).toMatch(/ask me/i);
+    expect(bernard).not.toMatch(/clay shaft/i);
+
+    await game.sendDialogue("smith", "Tell me more.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].npcId).toBe("smith");
+    expect(pending[0].proposal).toMatchObject({ type: "start_project", projectKey: "bloomery" });
+    const pitch = game.messages.filter((m) => m.npcId === "smith" && m.role === "npc").map((m) => m.text).join(" ");
+    expect(pitch).toMatch(/clay shaft/i);
+    expect(pitch).toMatch(/4 cart-loads of timber/);
+    expect(pitch).toMatch(/bought iron still goes further/i);
+    expect(game.setScene("steward").messages.some((m) => /steady supply of iron|clay shaft/i.test(m.text))).toBe(false);
+  });
+
+  it("does not offer a bloomery, or leave a card that must fail, when timber is short of the book charge", () => {
+    const game = tempGame();
+    game.state.resources.softwood = 1;
+    game.state.resources.hardwood = 0;
+    game.state.resources.stone = 4;
+    game.state.resources.charcoal = 6;
+    game.state.resources.denarii = 180;
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "Charcoal enough, and the chest can bear it. I would raise a bloomery — a clay shaft and bellows.",
+        proposals: [
+          {
+            type: "start_project",
+            summary: "Raise a bloomery",
+            projectKey: "bloomery",
+            holdingId: "fontenay",
+            name: "Bloomery",
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("smith", parsed, "Good day, Bernard.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    const said = game.messages.filter((m) => m.role === "npc" && m.npcId === "smith").map((m) => m.text).join(" ");
+    expect(said).not.toMatch(/steady supply of iron/i);
+    expect(said).not.toMatch(/ask me, if you would hear more/i);
+
+    game.ingestParsedDialogue("smith", parsed, "Build a bloomery.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    const why = game.messages.filter((m) => m.role === "system").map((m) => m.text).join(" ");
+    expect(why).toMatch(/not yet/i);
+    expect(why).toMatch(/3 cart-loads of timber/);
+    expect(why).not.toMatch(/not theirs to order/i);
+    expect(game.state.projects.some((p) => p.key === "bloomery")).toBe(false);
+  });
+});
+
+describe("a bloomery does not ride along with Aldric", () => {
+  it("clearing land with Aldric never speaks Bernard's bloomery or queues the work", async () => {
+    const game = tempGame();
+    game.state.resources.softwood = 8;
+    game.state.resources.stone = 4;
+    game.state.resources.charcoal = 6;
+    game.state.resources.denarii = 180;
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "I would raise a bloomery — a clay shaft and bellows — and burn bog ore. Confirm, and I will set the stores aside.",
+        proposals: [
+          {
+            type: "start_project",
+            summary: "Begin clearing one acre of scrub to arable.",
+            projectKey: "clear_scrub",
+            holdingId: "fontenay",
+            name: "Clear scrub to arable (1 acre)",
+          },
+          {
+            type: "start_project",
+            summary: "Raise a bloomery",
+            projectKey: "bloomery",
+            holdingId: "fontenay",
+            name: "Bloomery",
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Clear an acre of scrub on the north furlong.");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal).toMatchObject({ type: "start_project", projectKey: "clear_scrub" });
+    expect(pending[0].npcId).toBe("steward");
+    const spoken = game.messages.filter((m) => m.role === "npc").map((m) => m.text).join(" ");
+    expect(spoken).not.toMatch(/clay shaft/i);
+    expect(spoken).not.toMatch(/steady supply of iron/i);
+    expect(spoken).not.toMatch(/bog ore/i);
+    expect(game.messages.some((m) => m.npcId === "smith")).toBe(false);
+
+    const confirmed = game.confirmProposal(pending[0].id);
+    expect(confirmed.error).toBeUndefined();
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.projects.some((p) => p.key === "bloomery")).toBe(false);
+    expect(game.messages.filter((m) => m.npcId === "smith")).toHaveLength(0);
+
+    vi.spyOn(game as unknown as { callLlm: (...args: unknown[]) => Promise<unknown> }, "callLlm").mockResolvedValue({
+      speech: "The season is written, my lord.",
+      emotion: "respectful",
+      proposals: [],
+      raw: "{}",
+      parseErrors: [],
+    });
+    await game.advanceSeason();
+    expect(game.pending.filter((p) => p.status === "pending" && p.proposal.type === "start_project")).toHaveLength(0);
+    expect(game.state.projects.some((p) => p.key === "bloomery")).toBe(false);
+    expect(game.messages.some((m) => m.npcId === "smith" && /bloomery/i.test(m.text))).toBe(false);
+  });
+
+  it("sends the lord to Bernard when Aldric is asked about a bloomery, and does not queue it", () => {
+    const game = tempGame();
+    game.state.resources.softwood = 8;
+    game.state.resources.stone = 4;
+    game.state.resources.charcoal = 6;
+    const parsed = parseLlmResponse(
+      JSON.stringify({
+        speech: "I would raise a bloomery — a clay shaft and bellows — and burn bog ore from the wet ground.",
+        proposals: [
+          {
+            type: "start_project",
+            summary: "Raise a bloomery",
+            projectKey: "bloomery",
+            holdingId: "fontenay",
+            name: "Bloomery",
+          },
+        ],
+      }),
+    );
+    game.ingestParsedDialogue("steward", parsed, "Build a bloomery.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    const aldric = game.messages.filter((m) => m.npcId === "steward" && m.role === "npc").map((m) => m.text).join(" ");
+    expect(aldric).toMatch(/bernard/i);
+    expect(aldric).toMatch(/speak to him/i);
+    expect(aldric).not.toMatch(/clay shaft/i);
+    expect(aldric).not.toMatch(/bellows/i);
+    expect(game.messages.some((m) => m.npcId === "smith")).toBe(false);
   });
 });
 

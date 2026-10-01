@@ -5,7 +5,7 @@ export const HOUSEHOLD_INTROS: Record<string, string> = {
   steward:
     "My lord. I am Aldric, steward of Fontenay. I have kept these books while the hall waited on a master; grain, labour, and the chest are my care. When you want a craftsman found, ask me — not the forge, and not the cell.",
   smith:
-    "Bernard. I keep the forge. Iron's short. Charcoal too. Bought iron is what this hearth knows. When charcoal and the chest allow, I may speak of a bloomery. Tell me what you need made, and I'll say if the hearth can do it.",
+    "Bernard. I keep the forge. Iron's short. Charcoal too. Bought iron is what this hearth knows. If the stores can bear a bloomery, I will say so. Ask me, if you would hear more. Tell me what you need made, and I'll say if the hearth can do it.",
   chaplain:
     "I am Ermenald, prior of Saint-Martin's cell and your chaplain. Four brothers and a timber oratory. The bishop of Autun hears what is done on Sundays. For grain, see Aldric; for iron, Bernard. For the soul of a matter, I am here.",
   quarry_master:

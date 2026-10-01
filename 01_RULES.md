@@ -223,7 +223,11 @@ Flavour-only `event_effect` (id and summary, no resource/mood/nested) does **not
 
 ### 7.1 Smith allow-list
 
-The smith scene may only emit: `transfer_resources` (iron, charcoal, copper, tin, hardwood, hides, trade_goods, custom metal/craft goods), `start_project` / `adjust_project` for forge, bloomery, trip-hammer, or custom `tag: forge`, `add_modifier` targeting `specific_resource_output` or `project_speed` or `accident_risk` on forge work, `register_resource` (craft/metal), `register_feature` (`forge`, `mill_forge`, `bloomery`). Anything else is rejected with reason `npc_not_authorized`.
+The smith scene may only emit: `transfer_resources` (iron, charcoal, copper, tin, hardwood, hides, trade_goods, custom metal/craft goods), `start_project` / `adjust_project` for the catalogue forge works (forge, bloomery, trip-hammer), a custom `tag: forge`, or a new design that names its own costs under a project key that is not already a catalogue work, `add_modifier` targeting `specific_resource_output` or `project_speed` or `accident_risk` on forge work, `register_resource` (craft/metal), `register_feature` (`forge`, `mill_forge`, `bloomery`). A free key with its own costs is his forge work. It is not rejected merely because the key is not forge, bloomery, or the trip-hammer. A catalogue work that is not forge work (clearing scrub, a carpenter's shop, and the like) is rejected with reason `npc_not_authorized`. An iron plough is not the carpenter's to begin. Anything else is rejected with reason `npc_not_authorized`.
+
+Bernard forges. He does not write the fields or the harvest. If the lord asks about the harvest, he sends the lord to Aldric and does not propose a yield. Forging a tool does not itself change what the fields yield.
+
+Bernard does not put a bloomery on the table because charcoal and the chest look ready. He mentions it only while the lord is speaking with him, and only when the estate already holds every store the books will set aside to begin that work (timber, stone, and charcoal; clay is dug with the work and is not a store; the catalogue bloomery takes no coin). The mention says a bloomery could keep a steady supply of iron, and that the lord should ask if he would hear more. No card is written until the lord asks. Then Bernard explains the clay shaft, the bellows, bog ore, how slow the iron comes, and that bought iron still goes further, and a card may be proposed at those same costs. If the stores are short, he does not offer it. Aldric, if the lord asks him, sends the lord to Bernard and does not queue the work or speak Bernard's lines. Confirm and the turning of the season do not queue it.
 
 ### 7.2 Chaplain allow-list
 
@@ -243,6 +247,7 @@ When the player introduces knowledge that did not exist in 825:
 2. Typical success: a `start_project` and/or a **temporary** `add_modifier`. Permanent status requires `seasons_remaining` to run out with `promote_on_expire: true`, or an explicit later proposal after practice.
 3. New goods: `register_resource` with unit and price range, then `transfer_resources` / production modifiers.
 4. The engine stores modifiers. Later seasons apply them as numbers so the model cannot forget an ongoing trial.
+5. A new tool is forged as a project. Forging it does not change yield, and finishing it does not either. The steward proposes one ordinary `add_modifier` only after the work is finished and the lord tells him to put the people onto it. He chooses the target from what the tool does (`grain_yield`, `labour_efficiency`, `spoilage`, `livestock_yield`, `project_speed`, or `specific_resource_output`). Other husbandry is whatever book change already fits: three-field rotation stays `adjust_sowing` (`rotation: three_field`), and legumes or spring manuring are the proposal he chooses. On land the estate already farms, each real improvement is modest — around a quarter more, not a doubling. That figure is judgment for each change. Several different improvements each keep their own figure. He does not grant the same improvement twice (the same source, or the same spoken reason). A different reason on `grain_yield` is a separate custom. If his speech names the figure, the modifier uses that figure. There is no per-invention yield constant.
 
 ### 8.1 Modifier targets (closed list)
 
@@ -253,6 +258,7 @@ Escape hatch: `custom` — stored and shown in the ledger and injected into prom
 ### 8.2 Stacking
 
 - `multiply` effects on the same target: multiply together (cap 0.4–2.5).
+- Different improvements on the same target multiply together. An identical modifier (the same source, or the same spoken reason) is not written twice. A new reason on `grain_yield` is a separate custom.
 - `add` effects: add (labour_efficiency add is extra fraction of pool).
 - `set`: last applied wins (avoid except for market_price).
 - `accident_risk` and `harvest_risk`: use the maximum of competing values.
