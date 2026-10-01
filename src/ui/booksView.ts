@@ -1,4 +1,5 @@
 import { huntProgressLine } from "../engine/hunts";
+import { smithProgressLine } from "../engine/smithing";
 import { levyMenUnderArms, raiseSpecFor, upkeepDue } from "../engine/military";
 import { unitSheet } from "../combat/registry";
 import { rankTitle } from "../combat/renown";
@@ -249,9 +250,15 @@ function labourBookEntry(proj: Project, nowSeason: Season, nowYear: number, stat
   const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
   const progressLine = proj.hunt
     ? huntProgressLine(proj.hunt.seasonsElapsed, proj.hunt.durationSeasons)
-    : projectProgressLine(proj.labourDaysDone, proj.labourDaysRequired);
+    : proj.smithing
+      ? smithProgressLine(proj.smithing.seasonsElapsed, proj.smithing.durationSeasons)
+      : projectProgressLine(proj.labourDaysDone, proj.labourDaysRequired);
   const handsLine =
-    proj.status === "active" && !proj.hunt ? labourOnWorkLine(assign) : undefined;
+    proj.status === "active" && proj.smithing
+      ? "his own hands"
+      : proj.status === "active" && !proj.hunt
+        ? labourOnWorkLine(assign)
+        : undefined;
   return {
     id: proj.id,
     name: proj.name,
@@ -298,7 +305,9 @@ function labourMarkViews(proj: Project): LabourMarkView[] {
     label: seasonBooksLabel(mark.season, mark.year),
     progress: proj.hunt
       ? huntProgressLine(mark.huntSeasonsElapsed ?? proj.hunt.seasonsElapsed, proj.hunt.durationSeasons)
-      : projectProgressLine(mark.labourDaysDone, proj.labourDaysRequired),
+      : proj.smithing
+        ? smithProgressLine(mark.smithingSeasonsElapsed ?? proj.smithing.seasonsElapsed, proj.smithing.durationSeasons)
+        : projectProgressLine(mark.labourDaysDone, proj.labourDaysRequired),
   }));
 }
 

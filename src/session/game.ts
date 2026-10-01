@@ -108,6 +108,7 @@ import {
   playerAskedBloomery,
 } from "../engine/bloomery";
 import { asksBeginAmount, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
+import { guardSmithProposals, smithSpeechForOrder } from "../engine/smithing";
 import {
   asksAboutTheHarvest,
   BERNARD_HARVEST_REDIRECT,
@@ -725,8 +726,15 @@ export class GameController {
     proposals: MechanicalProposal[],
     playerText: string,
   ) {
+    let next = proposals;
+    let speechIn = spoken.speech;
+    if (npcId === "smith") {
+      const guarded = guardSmithProposals(this.state, proposals);
+      next = guarded.proposals;
+      speechIn = guarded.speech ?? smithSpeechForOrder(this.state, playerText) ?? speechIn;
+    }
     const pending = this.pending.filter((p) => p.status === "pending" && p.npcId === npcId).map((p) => p.proposal);
-    const speech = withBeginShortfalls(spoken.speech, this.state, proposals, { pending, playerText });
+    const speech = withBeginShortfalls(speechIn, this.state, next, { pending, playerText });
     this.pushNpcSpeech(npcId, { ...spoken, speech });
   }
 
@@ -802,6 +810,7 @@ export class GameController {
     }
     if (npcId === "smith") {
       proposals = proposals.filter((p) => !proposalWritesTheFields(p));
+      proposals = guardSmithProposals(this.state, proposals).proposals;
       if (asksAboutTheHarvest(playerText)) this.referHarvestToAldric();
     }
     const asked = this.discussedPending(npcId);

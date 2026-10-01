@@ -1,6 +1,7 @@
 import type { LabourAssignment, Project, WorldState } from "./schema";
 import { LABOUR_MIDPOINTS, labourKindFor } from "./projectCatalog";
 import { modifiersFor, applyMultiplyAdd } from "./modifiers";
+import { isPersonalSmithProject, releaseVillageFromPersonalSmithing } from "./smithing";
 
 export type LabourPool = {
   men: number;
@@ -81,6 +82,7 @@ export function labourDaysFromAssignment(kind: LabourKind, men: number, women: n
 export function isLabourDayProject(project: Project): boolean {
   if (project.status !== "active") return false;
   if (project.tag === "hunt" || project.hunt) return false;
+  if (isPersonalSmithProject(project)) return false;
   return true;
 }
 
@@ -247,6 +249,7 @@ export function autoAssignLeftoverToProject(state: WorldState, projectId: string
  * Oldest / first active labour-day work first. Skips hunts. Only tops up free remainder.
  */
 export function autoFillLeftoverLabour(state: WorldState): string[] {
+  releaseVillageFromPersonalSmithing(state);
   const notes: string[] = [];
   for (const project of state.projects) {
     if (!isLabourDayProject(project)) continue;

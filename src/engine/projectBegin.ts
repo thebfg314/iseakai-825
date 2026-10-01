@@ -1,6 +1,7 @@
 import type { MechanicalProposal, WorldState } from "./schema";
 import { lookupProject } from "./projectCatalog";
 import { labourDaysPhrase, labourRemaining } from "./labour";
+import { hiredSmithName, ownWorkCostPhrase, personalSeasonsForStart, startIsPersonalSmithing } from "./smithing";
 import { theWork } from "./proposalPack";
 import { round1 } from "./util";
 
@@ -157,7 +158,7 @@ function materialGaps(state: WorldState, bill: ProjectStoreBill): BeginGap[] {
 }
 
 /** Hall line for the card: the full charge Confirm will take, not the gap. */
-export function beginCostLine(bill: ProjectStoreBill): string {
+export function beginCostLine(bill: ProjectStoreBill, ownWork?: string): string {
   const stores: string[] = [];
   if (bill.lumber > 0) stores.push(loads(bill.lumber, "timber"));
   if (bill.iron > 0) stores.push(ironPhrase(bill.iron));
@@ -166,7 +167,8 @@ export function beginCostLine(bill: ProjectStoreBill): string {
   const bits: string[] = [];
   if (stores.length) bits.push(`The books set aside ${joinPhrases(stores)}.`);
   if (bill.denarii > 0) bits.push(`${coinPhrase(bill.denarii)} leave the chest.`);
-  if (bill.labourDays > 0) bits.push(`The work asks ${amountWord(bill.labourDays)} days of work.`);
+  if (ownWork) bits.push(ownWork);
+  else if (bill.labourDays > 0) bits.push(`The work asks ${amountWord(bill.labourDays)} days of work.`);
   if (bill.clay > 0) bits.push("The clay is dug with the work.");
   return bits.join(" ");
 }
@@ -483,7 +485,11 @@ export function withBeginShortfalls(
   } else if (asking && offers.length) {
     const costs = offers
       .map((offer) => {
-        const line = beginCostLine(projectStoreBill(offer));
+        const bill = projectStoreBill(offer);
+        const own = startIsPersonalSmithing(offer)
+          ? ownWorkCostPhrase(personalSeasonsForStart(offer), hiredSmithName(state))
+          : undefined;
+        const line = beginCostLine(bill, own);
         return line ? `${theWork(workNameOf(offer))} can begin. ${line}` : "";
       })
       .filter(Boolean);

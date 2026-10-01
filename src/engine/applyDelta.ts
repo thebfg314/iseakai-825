@@ -27,6 +27,14 @@ import {
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
+import {
+  isPersonalSmithProject,
+  ownWorkBegunPhrase,
+  personalSeasonsForStart,
+  smithStartRefusal,
+  startIsPersonalSmithing,
+  villageNotCalledReason,
+} from "./smithing";
 import { IMPROVEMENT_ALREADY, identicalModifierAlready } from "./toolImprovement";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
@@ -382,6 +390,10 @@ function assignLabour(
   if (!proj || proj.status !== "active") {
     return fail(state, "No such active project.", p.summary);
   }
+  if (isPersonalSmithProject(proj)) {
+    const reason = villageNotCalledReason(state, proj.name);
+    return fail(state, reason, p.summary);
+  }
   const projectId = proj.id;
   const remaining = labourRemaining(state);
   const existing = state.labour.assigned.find((a) => a.projectId === projectId);
@@ -443,6 +455,9 @@ function startProject(
     return fail(state, `${catalog.name} needs a ${catalog.requiresSpecialist.replaceAll("_", " ")} in the lord's service before the work can begin.`, p.summary);
   }
   const bill = projectStoreBill(p);
+  const personal = startIsPersonalSmithing(p);
+  const waiting = smithStartRefusal(state, p);
+  if (waiting) return fail(state, waiting, p.summary);
   const labourDays = bill.labourDays;
   const lumber = bill.lumber;
   const iron = bill.iron;
@@ -482,14 +497,18 @@ function startProject(
     status: "active",
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
+    ...(personal
+      ? { smithing: { durationSeasons: personalSeasonsForStart(p), seasonsElapsed: 0 } }
+      : {}),
   });
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
-  const fill = autoAssignLeftoverToProject(state, id);
+  const fill = personal ? null : autoAssignLeftoverToProject(state, id);
   const clayNote = clay > 0 ? " The clay for the shaft will be dug with the work." : "";
   const coinNote = denarii > 0 ? ` ${amountWord(denarii)} denarii leave the chest.` : "";
   const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${coinNote}${clayNote}`;
-  return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : started);
+  const own = personal ? ` ${ownWorkBegunPhrase(state, personalSeasonsForStart(p))}` : "";
+  return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : `${started}${own}`);
 }
 
 function amountWord(n: number): string {

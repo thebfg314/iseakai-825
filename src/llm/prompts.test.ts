@@ -119,6 +119,10 @@ describe("signed-off NPC personalities", () => {
     expect(bernard).toMatch(/speak to Aldric/i);
     expect(bernard).toMatch(/do not write the harvest/i);
     expect(bernard).toMatch(/Forging a tool does not change the yield/i);
+    expect(bernard).toMatch(/your own work/i);
+    expect(bernard).toMatch(/village's spare days/i);
+    expect(bernard).toMatch(/still at that work/i);
+    expect(bernard).toMatch(/next thing waits/i);
     expect(bernard).not.toMatch(/mouldboard|moldboard/i);
     expect(bernard).not.toMatch(/\b1\.2\b/);
     expect(bernard).toMatch(/bloomery/i);
