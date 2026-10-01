@@ -2,13 +2,8 @@ import type { MechanicalProposal, WorldState } from "./schema";
 import { labourRemaining } from "./labour";
 import { lookupProject } from "./projectCatalog";
 import { resourceOutputBonus } from "./applyDelta";
+import { beginCostLine, beginStoreGaps, projectStoreBill, stillNeededSentence } from "./projectBegin";
 import { round1 } from "./util";
-
-/** A purse that can bear the work. Not a hoard. */
-export const BLOOMERY_DECENT_PURSE = 120;
-
-/** Opening store is 1 cart-load. Four is a real pile, not a hoard. */
-export const BLOOMERY_DECENT_CHARCOAL = 4;
 
 /** One firing: a cart of charcoal and a few days, for a few pounds of bloom iron. */
 export const BLOOMERY_SMELT_CHARCOAL = 1;
@@ -18,8 +13,29 @@ export const BLOOMERY_SMELT_IRON = 4;
 /** Labour row used only while the season resolves, then dropped. Not a project. */
 export const BLOOMERY_HEARTH_LABOUR = "bloomery-hearth";
 
-export const BERNARD_BLOOMERY_SUGGESTION =
-  "Charcoal enough, and the chest can bear it. I would raise a bloomery — a clay shaft and bellows — and burn bog ore from the wet ground. About a season of work. Clay, stone, timber, and charcoal. The iron comes slow, a few pounds in a season. Bought iron still goes further. If you will have it, Confirm, and I will set the stores aside.";
+/** Said once, in Bernard's own talk, when the stores can bear the work. No card yet. */
+export const BERNARD_BLOOMERY_MENTION =
+  "A bloomery could keep a steady supply of iron for this hearth. Ask me, if you would hear more.";
+
+/** Aldric sends the lord to the forge. He does not quote Bernard or queue the work. */
+export const ALDRIC_BLOOMERY_REFERRAL =
+  "A bloomery is Bernard's work at the forge. I do not raise it, and I will not set the stores aside for it. Speak to him if you would hear more.";
+
+function bloomeryBillProposal(): Extract<MechanicalProposal, { type: "start_project" }> {
+  return {
+    type: "start_project",
+    summary: "Raise a bloomery",
+    projectKey: "bloomery",
+  };
+}
+
+/** The explanation he gives only after the lord asks. Costs are the ones Confirm takes. */
+export function bernardBloomeryPitch(): string {
+  const cost = beginCostLine(projectStoreBill(bloomeryBillProposal()));
+  return `I would raise a bloomery — a clay shaft and bellows — and burn bog ore from the wet ground. ${cost} The iron comes slow, a few pounds in a season. Bought iron still goes further. If you will have it, Confirm, and I will set the stores aside.`;
+}
+
+export const BERNARD_BLOOMERY_SUGGESTION = bernardBloomeryPitch();
 
 export const BERNARD_BOG_ORE_SPEECH =
   "Bog ore is the rusty mud in the wet ground, swamp and the low banks. We dry it, then burn it with charcoal in a clay shaft until the iron gathers in a spongy lump. That lump is bloom iron. The shaft is a bloomery. Slow work. It will not fill the forge the way a cart of bought iron does.";
@@ -38,22 +54,14 @@ export function bloomeryUnderway(state: WorldState): boolean {
   return state.projects.some((p) => p.key === "bloomery" && p.status === "active");
 }
 
-/** Charcoal-burners at work, or a finished burning, or a decent store. */
-export function charcoalSupplyReady(state: WorldState): boolean {
-  if (state.resources.charcoal >= BLOOMERY_DECENT_CHARCOAL) return true;
-  return state.projects.some(
-    (p) => p.key === "charcoal_burning" && (p.status === "active" || p.status === "completed"),
-  );
-}
-
-export function bloomeryPurseReady(state: WorldState): boolean {
-  return state.resources.denarii >= BLOOMERY_DECENT_PURSE;
-}
-
-/** Bernard may put a bloomery on the table. False at the opening of the game. */
+/**
+ * The estate holds every store Confirm will set aside for a bloomery.
+ * Timber, stone, charcoal, and any coin on that bill. Clay is dug with the work, not taken from a store.
+ * A burning mound or a fat purse does not stand in for those stores.
+ */
 export function bloomerySuggestReady(state: WorldState): boolean {
   if (estateHasBloomery(state) || bloomeryUnderway(state)) return false;
-  return charcoalSupplyReady(state) && bloomeryPurseReady(state);
+  return beginStoreGaps(state, bloomeryBillProposal()).length === 0;
 }
 
 export function asksAboutBogOre(text: string): boolean {
@@ -67,15 +75,34 @@ export function looksLikeBloomeryOrder(text: string): boolean {
   return BLOOMERY_ORDER.test(t);
 }
 
+const HEAR_MORE =
+  /\b(tell me more|hear more|i would hear|say on|go on|explain that|what would it take|what does it take|speak of it)\b/i;
+
+/**
+ * The lord asked Bernard to explain or begin a bloomery.
+ * After he has already mentioned it, "tell me more" counts. A question about bog ore alone does not.
+ */
+export function playerAskedBloomery(text: string, alreadyMentioned = false): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (looksLikeBloomeryOrder(t)) return true;
+  if (/\bbloomery\b/i.test(t) && /\b(what|how|tell|explain|hear|more|about|describe|speak|raise|build|want|need)\b/i.test(t)) {
+    return true;
+  }
+  return alreadyMentioned && HEAR_MORE.test(t);
+}
+
+export function isBernardBloomeryPitch(text: string): boolean {
+  return /bloomery/i.test(text) && /clay shaft/i.test(text);
+}
+
 export function bloomeryNotReadyReason(state: WorldState): string | null {
   if (estateHasBloomery(state)) return "The bloomery already stands.";
   if (bloomeryUnderway(state)) return "The bloomery is already begun.";
   if (bloomerySuggestReady(state)) return null;
-  const charcoal = charcoalSupplyReady(state);
-  const purse = bloomeryPurseReady(state);
-  if (!charcoal && !purse) return "Not yet. Charcoal is too thin, and the chest is too thin, for a bloomery.";
-  if (!charcoal) return "Not yet. I need the charcoal-burners at it, or a decent store of charcoal, before I raise a bloomery.";
-  return "The charcoal could bear it, but the chest is too thin. I will not start a bloomery on an empty purse.";
+  const gaps = beginStoreGaps(state, bloomeryBillProposal());
+  if (!gaps.length) return null;
+  return `Not yet. ${stillNeededSentence("Bloomery", gaps)}`;
 }
 
 export function isBloomeryStart(p: { type: string; projectKey?: string }): boolean {
@@ -95,8 +122,8 @@ export function bloomeryStartProposal(state: WorldState): MechanicalProposal {
   };
 }
 
-export function inferSmithProposals(state: WorldState, playerText: string): MechanicalProposal[] {
-  if (!looksLikeBloomeryOrder(playerText)) return [];
+export function inferSmithProposals(state: WorldState, playerText: string, alreadyMentioned = false): MechanicalProposal[] {
+  if (!playerAskedBloomery(playerText, alreadyMentioned)) return [];
   if (!bloomerySuggestReady(state)) return [];
   return [bloomeryStartProposal(state)];
 }

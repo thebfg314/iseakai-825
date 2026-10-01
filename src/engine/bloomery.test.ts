@@ -1,25 +1,27 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
+import type { MechanicalProposal } from "./schema";
 import {
+  BERNARD_BLOOMERY_MENTION,
   BERNARD_BOG_ORE_SPEECH,
-  BLOOMERY_DECENT_CHARCOAL,
-  BLOOMERY_DECENT_PURSE,
   BLOOMERY_SMELT_CHARCOAL,
   BLOOMERY_SMELT_DAYS,
   BLOOMERY_SMELT_IRON,
+  bernardBloomeryPitch,
   bloomeryNotReadyReason,
   bloomeryStartProposal,
   bloomerySuggestReady,
-  charcoalSupplyReady,
   estateHasBloomery,
   inferSmithProposals,
   looksLikeBloomeryOrder,
+  playerAskedBloomery,
   smeltBloomeries,
 } from "./bloomery";
 import { lookupProject } from "./projectCatalog";
 import { WorldStateSchema, type WorldState } from "./schema";
 import { resolveAgricultureAndProjects } from "./season";
+import { playerFacingReason } from "../ui/ledgerCopy";
 
 function boot(): WorldState {
   return WorldStateSchema.parse(structuredClone(startingEstate));
@@ -42,24 +44,25 @@ describe("bloomery", () => {
     expect(bloomerySuggestReady(state)).toBe(false);
   });
 
-  it("waits on charcoal and a purse, and does not demand both a hoard and a fortune", () => {
+  it("waits until the stores can bear the same charge Confirm will take", () => {
     const state = boot();
-    expect(state.resources.charcoal).toBeLessThan(BLOOMERY_DECENT_CHARCOAL);
     expect(state.resources.denarii).toBe(138);
-    expect(charcoalSupplyReady(state)).toBe(false);
     expect(bloomerySuggestReady(state)).toBe(false);
+    expect(bloomeryNotReadyReason(state)).toMatch(/not yet/i);
+    expect(bloomeryNotReadyReason(state)).toMatch(/timber/i);
+    expect(bloomeryNotReadyReason(state)).toMatch(/stone/i);
     expect(bloomeryNotReadyReason(state)).toMatch(/charcoal/i);
     expect(inferSmithProposals(state, "Build a bloomery.")).toEqual([]);
+    expect(inferSmithProposals(state, "Good day, Bernard.")).toEqual([]);
 
-    state.resources.denarii = BLOOMERY_DECENT_PURSE - 1;
-    state.resources.charcoal = BLOOMERY_DECENT_CHARCOAL;
-    expect(bloomerySuggestReady(state)).toBe(false);
-    expect(bloomeryNotReadyReason(state)).toMatch(/chest/i);
-
+    state.resources.softwood = 6;
+    state.resources.hardwood = 0;
+    state.resources.stone = 4;
     state.resources.charcoal = 1;
-    state.resources.denarii = BLOOMERY_DECENT_PURSE;
+    state.resources.denarii = 200;
     expect(bloomerySuggestReady(state)).toBe(false);
-    expect(bloomeryNotReadyReason(state)).toMatch(/charcoal/i);
+    expect(bloomeryNotReadyReason(state)).toMatch(/1 cart-load of charcoal/);
+    expect(bloomeryNotReadyReason(state)).not.toMatch(/timber/i);
 
     state.projects.push({
       id: "char-1",
@@ -68,21 +71,33 @@ describe("bloomery", () => {
       holdingId: "fontenay",
       labourDaysRequired: 60,
       labourDaysDone: 10,
-      materials: { lumber: 2, iron: 10, stone: 0 },
+      materials: { lumber: 2, iron: 0, stone: 0 },
       materialsReserved: true,
       status: "active",
     });
+    expect(bloomerySuggestReady(state)).toBe(false);
+
+    state.resources.charcoal = 2;
+    state.resources.denarii = 40;
     expect(bloomerySuggestReady(state)).toBe(true);
     expect(bloomeryNotReadyReason(state)).toBeNull();
-
-    state.projects = [];
-    state.resources.charcoal = BLOOMERY_DECENT_CHARCOAL;
-    expect(bloomerySuggestReady(state)).toBe(true);
+    expect(inferSmithProposals(state, "Good day, Bernard.")).toEqual([]);
+    expect(playerAskedBloomery("Tell me more about the bloomery.")).toBe(true);
     const proposed = inferSmithProposals(state, "I want a bloomery.");
     expect(proposed).toHaveLength(1);
     expect(proposed[0]).toMatchObject({ type: "start_project", projectKey: "bloomery", name: "Bloomery" });
     expect(proposed[0].summary).toMatch(/bloomery/i);
     expect(proposed[0].summary).toMatch(/clay/i);
+    const pitch = bernardBloomeryPitch();
+    expect(pitch).toMatch(/4 cart-loads of timber/);
+    expect(pitch).toMatch(/2 cart-loads of stone/);
+    expect(pitch).toMatch(/2 cart-loads of charcoal/);
+    expect(pitch).toMatch(/clay/i);
+    expect(pitch).toMatch(/bog ore/i);
+    expect(pitch).toMatch(/bought iron still goes further/i);
+    expect(BERNARD_BLOOMERY_MENTION).toMatch(/steady supply of iron/i);
+    expect(BERNARD_BLOOMERY_MENTION).toMatch(/ask me/i);
+    expect(BERNARD_BLOOMERY_MENTION).not.toMatch(/confirm/i);
 
     state.holdings[0].features.push("bloomery");
     expect(bloomerySuggestReady(state)).toBe(false);
@@ -170,5 +185,77 @@ describe("bloomery", () => {
     expect(busy.resources.charcoal).toBe(busyCharcoal);
     expect(busyLines.join(" ")).toMatch(/already at other work/i);
     expect(BLOOMERY_SMELT_DAYS).toBeGreaterThan(0);
+  });
+});
+
+function plough(over?: Partial<{ lumber: number; iron: number; charcoal: number; tag?: string }>): MechanicalProposal {
+  return {
+    type: "start_project",
+    summary: "One plough of a new design: a long heavy coulter, a wider one-sided share, an iron-shod wooden board, and a socketed replaceable share.",
+    projectKey: "heavy_coulter_plough",
+    name: "Heavy coulter plough",
+    holdingId: "fontenay",
+    ...(over?.tag ? { tag: over.tag } : {}),
+    customCosts: {
+      labourDays: 40,
+      lumber: over?.lumber ?? 2,
+      iron: over?.iron ?? 8,
+      stone: 0,
+      charcoal: over?.charcoal ?? 1,
+    },
+  };
+}
+
+describe("Bernard's own forge designs", () => {
+  it("writes a free-key plough he priced, and names each short store instead of refusing the order", () => {
+    const state = boot();
+    const started = applyProposal(state, plough(), "smith");
+    expect(started.ok).toBe(true);
+    expect(started.reason).toBeUndefined();
+    const made = state.projects.find((p) => p.key === "heavy_coulter_plough");
+    expect(made?.status).toBe("active");
+    expect(made?.tag).toBe("forge");
+    expect(made?.materials).toMatchObject({ lumber: 2, iron: 8, charcoal: 1 });
+    expect(state.resources.iron).toBe(17);
+
+    const short = boot();
+    const refused = applyProposal(short, plough({ lumber: 8, iron: 40, charcoal: 6 }), "smith");
+    expect(refused.ok).toBe(false);
+    expect(refused.reason).not.toBe("npc_not_authorized");
+    expect(refused.reason).toMatch(/Need 8 cart-loads of timber; have 3/);
+    expect(refused.reason).toMatch(/Need 40 lb iron; have 25/);
+    expect(refused.reason).toMatch(/Need 6 cart-loads of charcoal; have 1/);
+    expect(playerFacingReason(refused.reason ?? "")).not.toMatch(/not theirs to order/i);
+    expect(short.projects).toHaveLength(0);
+  });
+
+  it("keeps catalogue forge buildings and does not give an iron plough to the carpenter or a clearing to Bernard", () => {
+    const forge = boot();
+    forge.resources.softwood = 20;
+    forge.resources.hardwood = 5;
+    forge.resources.iron = 200;
+    forge.resources.stone = 20;
+    forge.resources.charcoal = 10;
+    expect(applyProposal(forge, { type: "start_project", summary: "Forge", projectKey: "forge", holdingId: "fontenay" }, "smith").ok).toBe(true);
+
+    const mill = boot();
+    mill.resources.softwood = 20;
+    mill.resources.hardwood = 5;
+    mill.resources.iron = 200;
+    mill.resources.stone = 20;
+    expect(applyProposal(mill, { type: "start_project", summary: "Mill", projectKey: "forge_mill", holdingId: "fontenay" }, "smith").ok).toBe(true);
+
+    const clearing = applyProposal(
+      boot(),
+      { type: "start_project", summary: "Clear the north scrub", projectKey: "clear_scrub", holdingId: "fontenay", tag: "forge" },
+      "smith",
+    );
+    expect(clearing.ok).toBe(false);
+    expect(clearing.reason).toBe("npc_not_authorized");
+
+    const carpenter = applyProposal(boot(), plough({ tag: "timber" }), "carpenter");
+    expect(carpenter.ok).toBe(false);
+    expect(carpenter.reason).toBe("npc_not_authorized");
+    expect(playerFacingReason(carpenter.reason ?? "")).toMatch(/not theirs to order/i);
   });
 });

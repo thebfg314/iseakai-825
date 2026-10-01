@@ -26,7 +26,8 @@ import {
   specialistNpc,
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
-import { projectStoreBill } from "./projectBegin";
+import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
+import { IMPROVEMENT_ALREADY, IMPROVEMENT_TARGETS, improvementKind, sameImprovementAlready } from "./toolImprovement";
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
@@ -113,6 +114,21 @@ function hasForge(state: WorldState): boolean {
   return state.holdings.some((h) => h.features.some((f) => FORGE_FEATURES.has(f)));
 }
 
+/**
+ * Catalogue forge works (forge, bloomery, trip-hammer) stay his.
+ * A free key with its own costs is a design he agreed to, not a stranger's building.
+ * A catalogue work that is not forge work — clearing, a carpenter's shop — is not his to order.
+ */
+function smithMayBeginProject(p: Extract<MechanicalProposal, { type: "start_project" }>): boolean {
+  const catalog = lookupProject(p.projectKey);
+  if (catalog) return FORGE_PROJECT_KEYS.has(catalog.key);
+  return Boolean(p.customCosts) || p.tag === "forge";
+}
+
+function smithProjectIsHis(key: string, tag?: string): boolean {
+  return FORGE_PROJECT_KEYS.has(key) || tag === "forge";
+}
+
 function smithAllowed(state: WorldState, p: MechanicalProposal): string | null {
   if (!hasForge(state)) return "No forge on the estate; the smith has no workshop.";
   switch (p.type) {
@@ -124,14 +140,12 @@ function smithAllowed(state: WorldState, p: MechanicalProposal): string | null {
       if (custom?.tags?.some((t) => t === "metal" || t === "craft" || t === "forge")) return null;
       return "npc_not_authorized";
     }
-    case "start_project": {
-      if (FORGE_PROJECT_KEYS.has(p.projectKey) || p.tag === "forge") return null;
-      return "npc_not_authorized";
-    }
+    case "start_project":
+      return smithMayBeginProject(p) ? null : "npc_not_authorized";
     case "adjust_project": {
       const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
-      if (FORGE_PROJECT_KEYS.has(proj.key) || proj.tag === "forge") return null;
+      if (smithProjectIsHis(proj.key, proj.tag)) return null;
       return "npc_not_authorized";
     }
     case "add_modifier": {
@@ -315,6 +329,9 @@ export function applyProposal(
     case "set_standing_order":
       return setStandingOrder(state, proposal);
     case "start_project":
+      if (actor === "smith" && !lookupProject(proposal.projectKey) && proposal.customCosts) {
+        proposal.tag = "forge";
+      }
       return startProject(state, proposal);
     case "adjust_project":
       return adjustProject(state, proposal);
@@ -433,16 +450,8 @@ function startProject(
   const charcoal = bill.charcoal;
   const clay = bill.clay;
   const denarii = bill.denarii;
-  const wood = state.resources.softwood + state.resources.hardwood;
-  if (wood < lumber) return fail(state, `Need ${lumber} cart-loads of timber; have ${round1(wood)}.`, p.summary);
-  if (state.resources.iron < iron) return fail(state, `Need ${iron} lb iron; have ${state.resources.iron}.`, p.summary);
-  if (state.resources.stone < stone) return fail(state, `Need ${stone} cart-loads of stone; have ${state.resources.stone}.`, p.summary);
-  if (state.resources.charcoal < charcoal) {
-    return fail(state, `Need ${charcoal} cart-loads of charcoal; have ${state.resources.charcoal}.`, p.summary);
-  }
-  if (state.resources.denarii < denarii) {
-    return fail(state, `Need ${denarii} denarii; have ${state.resources.denarii}.`, p.summary);
-  }
+  const short = beginStoreRefusal(state, p);
+  if (short) return fail(state, short, p.summary);
 
   let remainingLumber = lumber;
   const fromSoft = Math.min(state.resources.softwood, remainingLumber);
@@ -686,6 +695,13 @@ function addModifier(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "add_modifier" }>,
 ): ApplyResult {
+  if (
+    IMPROVEMENT_TARGETS.has(p.target) &&
+    improvementKind(p.target, p.effect) &&
+    sameImprovementAlready(state, p.target, p.effect)
+  ) {
+    return fail(state, IMPROVEMENT_ALREADY, p.summary);
+  }
   const id = newId("mod");
   state.modifiers.push({
     id,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { GERULF_NOTES } from "../engine/hunts";
+import { STEWARD_TOOL_IMPROVEMENT } from "../engine/toolImprovement";
 import { MERCHANT_VISITORS } from "../engine/merchant";
 import { HIREABLE_SPECIALISTS } from "../engine/specialists";
 import { WorldStateSchema, type WorldState } from "../engine/schema";
@@ -74,6 +75,19 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/witless noble/i);
     expect(aldric).toMatch(/treasury chest is low/i);
     expect(aldric).toMatch(/shoe a horse/i);
+    expect(aldric).toContain(STEWARD_TOOL_IMPROVEMENT);
+    expect(aldric).toMatch(/around a quarter more/i);
+    expect(aldric).toMatch(/not a doubling/i);
+    expect(aldric).toMatch(/does not stack a second time/i);
+    expect(aldric).toMatch(/Historians do not have a clean medieval percent/);
+    expect(aldric).toMatch(/scratch-plough/);
+    expect(aldric).toMatch(/about a quarter more wheat/);
+    expect(aldric).toMatch(/new clay land/);
+    expect(aldric).toMatch(/cross-ploughing/);
+    expect(aldric).toMatch(/not getting from one new plough/);
+    expect(aldric).toMatch(/put the people onto that tool/i);
+    expect(aldric).not.toMatch(/mouldboard|moldboard/i);
+    expect(aldric).not.toMatch(/\b1\.2\b/);
     expect(aldric).toMatch(/Hiring a full-time specialist is YOUR work/i);
     expect(aldric).toMatch(/defer_proposal/);
     expect(aldric).toMatch(/after harvest/i);
@@ -93,6 +107,10 @@ describe("signed-off NPC personalities", () => {
     expect(bernard).toMatch(/short sentences/i);
     expect(bernard).toMatch(/do not hire craftsmen/i);
     expect(bernard).toMatch(/speak to Aldric/i);
+    expect(bernard).toMatch(/do not write the harvest/i);
+    expect(bernard).toMatch(/Forging a tool does not change the yield/i);
+    expect(bernard).not.toMatch(/mouldboard|moldboard/i);
+    expect(bernard).not.toMatch(/\b1\.2\b/);
     expect(bernard).toMatch(/bloomery/i);
     expect(bernard).toMatch(/bog ore/i);
     expect(bernard).toMatch(/rusty mud/i);

@@ -6,6 +6,7 @@ import { hireFulfillReason, inferHireProposals, looksLikeHireOrder, specialistBy
 import { isDeferProposal } from "./forthcoming";
 import { inferSponsoredFeast, looksLikeSponsoredFeastOrder } from "./church";
 import { forthcomingOrderText } from "../ui/ledgerCopy";
+import { BERNARD_HARVEST_REDIRECT } from "./toolImprovement";
 
 const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
 const ORDER_VERB =
@@ -297,7 +298,8 @@ export function cannotFulfillReason(state: WorldState, npcId: string, playerText
     const why = bloomeryNotReadyReason(state);
     if (why) return why;
   }
-  if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor)\b/.test(t)) {
+  if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor|harvest)\b/.test(t)) {
+    if (/\bharvest\b/.test(t)) return BERNARD_HARVEST_REDIRECT;
     return "Bernard does not keep the fields. Speak to Aldric the steward.";
   }
   if (specialistById(npcId) && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor|hire)\b/.test(t)) {

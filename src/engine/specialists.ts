@@ -505,6 +505,16 @@ function projectAllowed(p: MechanicalProposal, keys: Set<string>, tag?: string):
   return false;
 }
 
+/** An iron plough is Bernard's forge work, even if the words mention a wooden board. */
+function isIronPloughText(text: string): boolean {
+  return /\bploughs?\b|\bplows?\b|\bcoulters?\b/i.test(text);
+}
+
+function startIsIronPlough(p: MechanicalProposal): boolean {
+  if (p.type !== "start_project") return false;
+  return isIronPloughText(`${p.projectKey} ${p.name ?? ""} ${p.summary}`);
+}
+
 /**
  * Hired specialists may speak of their craft. They do not run the demesne.
  * adjust_project / assign_labour are checked against the live project in applyDelta.
@@ -529,10 +539,12 @@ export function specialistAllowed(
       return "npc_not_authorized";
     }
     case "start_project":
+      if (startIsIronPlough(p)) return "npc_not_authorized";
       return projectAllowed(p, keys, tag) ? null : "npc_not_authorized";
     case "adjust_project": {
       const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
+      if (isIronPloughText(`${proj.key} ${proj.name}`)) return "npc_not_authorized";
       if (keys.has(proj.key) || proj.tag === tag) return null;
       return "npc_not_authorized";
     }
@@ -540,6 +552,7 @@ export function specialistAllowed(
       if (p.projectId === "unassigned") return "npc_not_authorized";
       const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
+      if (isIronPloughText(`${proj.key} ${proj.name}`)) return "npc_not_authorized";
       if (keys.has(proj.key) || proj.tag === tag) return null;
       return "npc_not_authorized";
     }

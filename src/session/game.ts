@@ -95,15 +95,26 @@ import {
 } from "../engine/specialists";
 import { askAboutCue, compactOfferLine, isRevisionOf, pendingOfferScrap } from "../engine/askAbout";
 import {
-  BERNARD_BLOOMERY_SUGGESTION,
+  ALDRIC_BLOOMERY_REFERRAL,
+  BERNARD_BLOOMERY_MENTION,
   BERNARD_BOG_ORE_SPEECH,
   asksAboutBogOre,
+  bernardBloomeryPitch,
   bloomeryNotReadyReason,
   bloomeryStartProposal,
   bloomerySuggestReady,
+  isBernardBloomeryPitch,
   isBloomeryStart,
+  playerAskedBloomery,
 } from "../engine/bloomery";
 import { asksBeginAmount, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
+import {
+  asksAboutTheHarvest,
+  BERNARD_HARVEST_REDIRECT,
+  parseSpokenImprovement,
+  prepareStewardToolProposals,
+  proposalWritesTheFields,
+} from "../engine/toolImprovement";
 import { playerFacingLogLine, playerFacingReason, playerFacingSummary } from "../ui/ledgerCopy";
 import {
   confirmGate,
@@ -156,8 +167,10 @@ export class GameController {
   historyTail: string[] = [];
   /** In-memory: expansion hires already recommended this session. Does not write world-state. */
   recommendedHireIds = new Set<string>();
-  /** In-memory: Bernard has already put a bloomery on the table this session. */
-  bloomerySuggested = false;
+  /** In-memory: Bernard has already mentioned a bloomery in his own talk this session. */
+  bloomeryMentioned = false;
+  /** Speech the lord just heard, so a named figure can be copied onto the card. */
+  private turnSpeech = "";
   /** Pending card the lord asked about; next talk with that NPC can revise it. */
   askedAboutId: string | null = null;
   npcEmotions: Record<string, AldricEmotion> = {
@@ -363,6 +376,7 @@ export class GameController {
       return { ...this.view(), error: "That craftsman is not of this house." };
     }
     this.sceneNpcId = npcId;
+    this.turnSpeech = "";
     this.speakIntroIfNeeded(npcId);
     dismissNewsWantsTalk(this.state, npcId, this.pending);
     this.messages.push({
@@ -441,6 +455,9 @@ export class GameController {
       if (!order) {
         if (!speechDelaysWorkForShortage(answer.speech) && !asksBeginAmount(playerText)) {
           this.pushNpcSpeech(npcId, answer);
+          if (npcId === "smith" && playerAskedBloomery(playerText, this.bloomeryMentioned)) {
+            this.ingestParsedDialogue(npcId, { proposals: [], parseErrors: [] }, playerText);
+          }
           return this.finishTalk();
         }
         const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, drawers);
@@ -610,17 +627,36 @@ export class GameController {
     npcId: string,
     spoken: { speech: string; chronicle?: string; emotion?: AldricEmotion },
   ) {
+    if (npcId === "steward" && isBernardBloomeryPitch(spoken.speech)) {
+      spoken = { ...spoken, speech: ALDRIC_BLOOMERY_REFERRAL };
+    }
+    if (npcId === "smith" && isBernardBloomeryPitch(spoken.speech)) {
+      const asked = playerAskedBloomery(this.lastPlayerText("smith"), this.bloomeryMentioned);
+      if (!asked || !bloomerySuggestReady(this.state)) {
+        if (bloomerySuggestReady(this.state)) {
+          spoken = { ...spoken, speech: BERNARD_BLOOMERY_MENTION };
+          this.bloomeryMentioned = true;
+        } else {
+          spoken = { ...spoken, speech: bloomeryNotReadyReason(this.state) ?? "Not yet." };
+        }
+      }
+    }
     if (spoken.emotion && PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = spoken.emotion;
+    const spokenText = stripToolMarkers(spoken.speech);
+    this.turnSpeech = spokenText;
     this.messages.push({
       id: newId("msg"),
       role: "npc",
       npcId,
       npcName: this.npcName(npcId),
-      text: stripToolMarkers(spoken.speech),
+      text: spokenText,
       chronicle: spoken.chronicle,
       emotion: PORTRAIT_NPCS.has(npcId) ? spoken.emotion ?? this.npcEmotions[npcId] : undefined,
       at: new Date().toISOString(),
     });
+    if (npcId === "smith") this.ensureBloomeryWord(this.lastPlayerText("smith"));
+    if (npcId === "smith" && asksAboutTheHarvest(this.lastPlayerText("smith"))) this.referHarvestToAldric();
+    if (npcId === "steward" && playerAskedBloomery(this.lastPlayerText("steward"))) this.referBloomeryToBernard();
     if (npcId === "steward") this.flushHireRecommendations();
   }
 
@@ -697,7 +733,7 @@ export class GameController {
   /** Testable: parse result → pending queue and ledger notes. Does not call the model. */
   ingestParsedDialogue(
     npcId: string,
-    parsed: { proposals: MechanicalProposal[]; parseErrors: string[]; incomplete?: boolean },
+    parsed: { proposals: MechanicalProposal[]; parseErrors: string[]; incomplete?: boolean; response?: { speech?: string } },
     playerText: string,
     huntDifficulty?: HuntDifficulty,
     huntJudged?: number,
@@ -706,7 +742,9 @@ export class GameController {
     if (npcId === "steward") this.flushHireRecommendations();
     if (npcId === "smith") this.ensureBogOreSpeech(playerText);
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
-    if (npcId === "smith") proposals = this.dropPrematureBloomery(proposals);
+    if (npcId !== "smith") proposals = proposals.filter((p) => !isBloomeryStart(p));
+    const askedBloomery = npcId === "smith" && playerAskedBloomery(playerText, this.bloomeryMentioned);
+    if (npcId === "smith") proposals = this.dropUnaskedBloomery(proposals, playerText);
     let huntChoice: unknown;
     let huntSettled = false;
     if (isNegotiatorId(npcId)) {
@@ -736,9 +774,35 @@ export class GameController {
         fromEngine = true;
       }
     }
+    if (
+      askedBloomery &&
+      bloomerySuggestReady(this.state) &&
+      !proposals.some((p) => isBloomeryStart(p)) &&
+      !this.pending.some((p) => p.status === "pending" && isBloomeryStart(p.proposal))
+    ) {
+      proposals = [...proposals, bloomeryStartProposal(this.state)];
+      fromEngine = false;
+    }
+    if (fromEngine && proposals.length > 0 && proposals.every((p) => isBloomeryStart(p))) fromEngine = false;
+    if (npcId === "smith") this.ensureBloomeryWord(playerText);
+    if (npcId === "steward" && playerAskedBloomery(playerText)) this.referBloomeryToBernard();
+    if (npcId === "steward") {
+      const fromTurn = this.turnSpeech.trim();
+      const fromParsed = parsed.response?.speech ?? "";
+      const speech =
+        parseSpokenImprovement(fromTurn) != null
+          ? fromTurn
+          : parseSpokenImprovement(fromParsed) != null
+            ? fromParsed
+            : fromTurn || fromParsed;
+      const pendingMods = this.pending.filter((p) => p.status === "pending").map((p) => p.proposal);
+      const prepared = prepareStewardToolProposals(this.state, playerText, proposals, speech, pendingMods);
+      proposals = prepared.proposals;
+      if (prepared.note) this.ledgerNote(prepared.note, npcId);
+    }
     if (npcId === "smith") {
-      const suggested = this.bloomerySuggestionProposal(proposals);
-      if (suggested) proposals = [...proposals, suggested];
+      proposals = proposals.filter((p) => !proposalWritesTheFields(p));
+      if (asksAboutTheHarvest(playerText)) this.referHarvestToAldric();
     }
     const asked = this.discussedPending(npcId);
     let replaceId = asked?.id;
@@ -762,6 +826,13 @@ export class GameController {
       );
       return;
     }
+    if (askedBloomery && !bloomerySuggestReady(this.state)) {
+      const why = bloomeryNotReadyReason(this.state);
+      const already = why != null && this.messages.some((m) => m.npcId === "smith" && m.text.includes(why));
+      if (why && !already) this.ledgerNote(why, "smith");
+      return;
+    }
+    if (npcId === "steward" && playerAskedBloomery(playerText)) return;
     if (huntSettled) {
       const why = huntFulfillReason(this.state, playerText, huntChoice);
       this.ledgerNote(
@@ -804,51 +875,95 @@ export class GameController {
     });
   }
 
-  /** Drop a bloomery the smith offered before charcoal and the chest allow it. */
-  private dropPrematureBloomery(proposals: MechanicalProposal[]): MechanicalProposal[] {
-    if (bloomerySuggestReady(this.state)) return proposals;
+  /** A bloomery card stays only when Bernard was asked and the stores can bear it. */
+  private dropUnaskedBloomery(proposals: MechanicalProposal[], playerText: string): MechanicalProposal[] {
+    const asked = playerAskedBloomery(playerText, this.bloomeryMentioned);
+    if (asked && bloomerySuggestReady(this.state)) return proposals;
     let dropped = false;
     const kept = proposals.filter((p) => {
       if (!isBloomeryStart(p)) return true;
       dropped = true;
       return false;
     });
-    if (dropped && kept.length) this.ledgerNote(bloomeryNotReadyReason(this.state) ?? "Not yet.", "smith");
+    if (dropped && asked && kept.length) this.ledgerNote(bloomeryNotReadyReason(this.state) ?? "Not yet.", "smith");
     return kept;
   }
 
-  /**
-   * Once a session, when charcoal and the chest allow, Bernard puts the bloomery forward.
-   * Returns the proposal for the caller to queue; does not write the books.
-   */
-  private bloomerySuggestionProposal(already: MechanicalProposal[]): MechanicalProposal | null {
-    if (this.bloomerySuggested || !bloomerySuggestReady(this.state)) return null;
-    if (already.some((p) => isBloomeryStart(p))) {
-      this.bloomerySuggested = true;
-      return null;
-    }
-    if (this.pending.some((p) => p.status === "pending" && isBloomeryStart(p.proposal))) {
-      this.bloomerySuggested = true;
-      return null;
-    }
-    this.bloomerySuggested = true;
-    this.npcEmotions.smith = "pleased";
+  private lastPlayerText(npcId: string): string {
+    const line = [...this.messages].reverse().find((m) => m.role === "player" && m.npcId === npcId);
+    return line?.text ?? "";
+  }
+
+  private pushSmithLine(text: string) {
+    this.npcEmotions.smith = "thoughtful";
     this.messages.push({
       id: newId("msg"),
       role: "npc",
       npcId: "smith",
       npcName: this.npcName("smith"),
-      text: BERNARD_BLOOMERY_SUGGESTION,
-      emotion: "pleased",
+      text,
+      emotion: "thoughtful",
       at: new Date().toISOString(),
     });
-    return bloomeryStartProposal(this.state);
   }
 
-  /** Season's end: the same offer, queued here because no talk is in flight. */
-  private flushBloomerySuggestion() {
-    const proposal = this.bloomerySuggestionProposal([]);
-    if (proposal) this.queueProposal("smith", proposal);
+  /**
+   * Mention only in Bernard's own talk, and only when Confirm could begin the work.
+   * The card waits until the lord asks. Then he explains, at the costs the books take.
+   */
+  private ensureBloomeryWord(playerText: string) {
+    const asked = playerAskedBloomery(playerText, this.bloomeryMentioned);
+    if (asked) {
+      if (!bloomerySuggestReady(this.state)) return;
+      this.bloomeryMentioned = true;
+      const pitched = this.messages.some(
+        (m) => m.role === "npc" && m.npcId === "smith" && /4 cart-loads of timber/.test(m.text) && /bog ore/i.test(m.text),
+      );
+      if (!pitched) this.pushSmithLine(bernardBloomeryPitch());
+      return;
+    }
+    if (this.bloomeryMentioned || !bloomerySuggestReady(this.state)) return;
+    if (this.pending.some((p) => p.status === "pending" && isBloomeryStart(p.proposal))) return;
+    this.bloomeryMentioned = true;
+    this.pushSmithLine(BERNARD_BLOOMERY_MENTION);
+  }
+
+  /** Bernard forges. The harvest is Aldric's to write. */
+  private referHarvestToAldric() {
+    const lastPlayer = this.messages.map((m) => m.role).lastIndexOf("player");
+    const since = lastPlayer >= 0 ? this.messages.slice(lastPlayer + 1) : this.messages;
+    if (since.some((m) => m.npcId === "smith" && m.role === "npc" && /aldric/i.test(m.text) && /harvest/i.test(m.text))) {
+      return;
+    }
+    this.npcEmotions.smith = "thoughtful";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "smith",
+      npcName: this.npcName("smith"),
+      text: BERNARD_HARVEST_REDIRECT,
+      emotion: "thoughtful",
+      at: new Date().toISOString(),
+    });
+  }
+
+  /** Aldric names Bernard. He does not queue the work or speak the smith's lines. */
+  private referBloomeryToBernard() {
+    const lastPlayer = this.messages.map((m) => m.role).lastIndexOf("player");
+    const since = lastPlayer >= 0 ? this.messages.slice(lastPlayer + 1) : this.messages;
+    if (since.some((m) => m.npcId === "steward" && m.role === "npc" && /speak to him/i.test(m.text) && /bernard/i.test(m.text))) {
+      return;
+    }
+    this.npcEmotions.steward = "thoughtful";
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "steward",
+      npcName: this.npcName("steward"),
+      text: ALDRIC_BLOOMERY_REFERRAL,
+      emotion: "thoughtful",
+      at: new Date().toISOString(),
+    });
   }
 
   /** Engine-authored Aldric lines when an expansion hire first unlocks. Chat only; does not write the ledger. */
@@ -956,7 +1071,6 @@ export class GameController {
       if (!result.ok && next.proposal.type === "start_project") this.withholdFollowOns(next, noted);
     }
     this.flushHireRecommendations(newlyUnlockedHires(before, this.state));
-    this.flushBloomerySuggestion();
     for (const npcId of new Set(batch.map((p) => p.npcId))) {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);
     }
@@ -1026,7 +1140,6 @@ export class GameController {
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
       this.flushHireRecommendations(newlyUnlockedHires(beforeNpc, this.state));
-      this.flushBloomerySuggestion();
     }
     return result.ok ? { ok: true } : { ok: false, error: playerFacingReason(result.reason ?? logLine) };
   }
@@ -1316,7 +1429,6 @@ export class GameController {
         at: new Date().toISOString(),
       });
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
-      this.flushBloomerySuggestion();
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
@@ -1346,7 +1458,6 @@ export class GameController {
         });
       }
       this.flushHireRecommendations(newlyUnlockedHires(beforeSeason, this.state));
-      this.flushBloomerySuggestion();
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);

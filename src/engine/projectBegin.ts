@@ -176,6 +176,29 @@ export function stillNeededSentence(workName: string, gaps: BeginGap[]): string 
   return `Before ${theWork(workName)} can begin, we still need ${joinPhrases(gaps.map((g) => g.stillPhrase))}.`;
 }
 
+/** Stores the books will take that are not yet on hand. Clay is dug with the work and is not a store. */
+export function beginStoreGaps(state: WorldState, p: StartProject): BeginGap[] {
+  return materialGaps(state, projectStoreBill(p));
+}
+
+/**
+ * One books line for every store still short.
+ * The wording is the one Confirm already uses: the full charge, and what is on hand.
+ */
+export function beginStoreRefusal(state: WorldState, p: StartProject): string | null {
+  const bill = projectStoreBill(p);
+  const wood = state.resources.softwood + state.resources.hardwood;
+  const parts: string[] = [];
+  if (wood < bill.lumber) parts.push(`Need ${bill.lumber} cart-loads of timber; have ${round1(wood)}.`);
+  if (state.resources.iron < bill.iron) parts.push(`Need ${bill.iron} lb iron; have ${state.resources.iron}.`);
+  if (state.resources.stone < bill.stone) parts.push(`Need ${bill.stone} cart-loads of stone; have ${state.resources.stone}.`);
+  if (state.resources.charcoal < bill.charcoal) {
+    parts.push(`Need ${bill.charcoal} cart-loads of charcoal; have ${state.resources.charcoal}.`);
+  }
+  if (state.resources.denarii < bill.denarii) parts.push(`Need ${bill.denarii} denarii; have ${state.resources.denarii}.`);
+  return parts.length ? parts.join(" ") : null;
+}
+
 const DELAY =
   /\b(more charcoal|more iron|more timber|more stone|more coin|more denarii|more hands|short of|not enough (?:charcoal|iron|timber|stone|coin|denarii|hands|labour|labor|days)|cannot begin|can't begin|before [\w\s']{0,32} can begin)\b/i;
 
