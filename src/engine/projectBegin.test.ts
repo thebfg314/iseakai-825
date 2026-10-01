@@ -83,7 +83,10 @@ describe("shortage speech matches the card", () => {
     expect(card).toMatch(/6 cart-loads of charcoal/);
     expect(card).toMatch(/8 lb of iron/);
     expect(card).toMatch(/2 cart-loads of timber/);
-    expect(card).toMatch(/40 days of work/);
+    expect(card).toMatch(/two seasons/i);
+    expect(card).toMatch(/village is not called/i);
+    expect(card).not.toMatch(/labour days/i);
+    expect(card).not.toMatch(/40 days of work/);
     expect(card).not.toMatch(/5 cart-loads of charcoal/);
     expect(card).not.toMatch(JARGON);
     expect(speech).not.toMatch(/\b6 cart-loads of charcoal\b/);

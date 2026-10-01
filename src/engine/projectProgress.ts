@@ -19,12 +19,14 @@ export function markProjectSeason(state: WorldState, proj: Project): void {
   if (last && last.year === state.meta.year && last.season === state.meta.season) {
     last.labourDaysDone = proj.labourDaysDone;
     if (proj.hunt) last.huntSeasonsElapsed = proj.hunt.seasonsElapsed;
+    if (proj.smithing) last.smithingSeasonsElapsed = proj.smithing.seasonsElapsed;
   } else {
     marks.push({
       year: state.meta.year,
       season: state.meta.season,
       labourDaysDone: proj.labourDaysDone,
       huntSeasonsElapsed: proj.hunt?.seasonsElapsed,
+      smithingSeasonsElapsed: proj.smithing?.seasonsElapsed,
     });
   }
   proj.seasonMarks = marks;

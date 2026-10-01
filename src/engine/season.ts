@@ -7,6 +7,7 @@ import { applyProposal, projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
+import { isPersonalSmithProject, resolvePersonalSmithing } from "./smithing";
 import { smeltBloomeries } from "./bloomery";
 import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
@@ -151,6 +152,7 @@ function advanceProjects(state: WorldState): string[] {
   notes.push(...autoFillLeftoverLabour(state));
   for (const proj of state.projects.filter((p) => p.status === "active")) {
     if (proj.tag === "hunt" || proj.hunt) continue;
+    if (isPersonalSmithProject(proj)) continue;
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
       markProjectSeason(state, proj);
@@ -237,6 +239,11 @@ export function resolveAgricultureAndProjects(state: WorldState): SeasonEffectLi
   auditChurchLabourOrders(state).forEach(add);
   closeChurchSeason(state);
   advanceProjects(state).forEach(add);
+  const smithingBefore = new Set(state.projects.filter((p) => p.status === "completed").map((p) => p.id));
+  resolvePersonalSmithing(state).forEach(add);
+  for (const proj of state.projects) {
+    if (proj.status === "completed" && proj.smithing && !smithingBefore.has(proj.id)) flagCompletedProjectWantsTalk(state, proj);
+  }
   resolveHunts(state).forEach(add);
   return lines;
 }

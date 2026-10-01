@@ -467,6 +467,15 @@
             "reportEmotion": { "type": "string" },
             "reported": { "type": "boolean" }
           }
+        },
+        "smithing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["durationSeasons", "seasonsElapsed"],
+          "properties": {
+            "durationSeasons": { "type": "integer" },
+            "seasonsElapsed": { "type": "integer" }
+          }
         }
       }
     },
@@ -478,7 +487,8 @@
         "year": { "type": "integer" },
         "season": { "$ref": "#/$defs/season" },
         "labourDaysDone": { "type": "number" },
-        "huntSeasonsElapsed": { "type": "integer" }
+        "huntSeasonsElapsed": { "type": "integer" },
+        "smithingSeasonsElapsed": { "type": "integer" }
       }
     },
     "estateSeasonSnapshot": {

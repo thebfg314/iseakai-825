@@ -7,6 +7,7 @@ import { isDeferProposal } from "./forthcoming";
 import { inferSponsoredFeast, looksLikeSponsoredFeastOrder } from "./church";
 import { forthcomingOrderText } from "../ui/ledgerCopy";
 import { BERNARD_HARVEST_REDIRECT } from "./toolImprovement";
+import { smithSpeechForOrder } from "./smithing";
 
 const QUESTION_PREFIX = /^(how|what|why|who|where|when|tell me|report|status|explain|describe)\b/i;
 const ORDER_VERB =
@@ -297,6 +298,10 @@ export function cannotFulfillReason(state: WorldState, npcId: string, playerText
   if (npcId === "smith" && looksLikeBloomeryOrder(playerText)) {
     const why = bloomeryNotReadyReason(state);
     if (why) return why;
+  }
+  if (npcId === "smith") {
+    const busy = smithSpeechForOrder(state, playerText);
+    if (busy) return busy;
   }
   if (npcId === "smith" && looksLikeMechanicalOrder(playerText) && /\b(sow|grain|field|household|labour|labor|harvest)\b/.test(t)) {
     if (/\bharvest\b/.test(t)) return BERNARD_HARVEST_REDIRECT;

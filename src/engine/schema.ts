@@ -180,6 +180,8 @@ export const ProjectSeasonMarkSchema = z.object({
   season: z.enum(SEASONS),
   labourDaysDone: z.number(),
   huntSeasonsElapsed: z.number().int().optional(),
+  /** Seasons of the smith's own work, when this mark is his hands and not the village. */
+  smithingSeasonsElapsed: z.number().int().optional(),
 });
 export type ProjectSeasonMark = z.infer<typeof ProjectSeasonMarkSchema>;
 
@@ -283,6 +285,16 @@ export const ProjectSchema = z.object({
       reportSpeech: z.string().optional(),
       reportEmotion: z.string().optional(),
       reported: z.boolean().optional(),
+    })
+    .optional(),
+  /**
+   * His own smithing: seasons of the smith, not the village's spare days.
+   * The same clock a road errand uses — duration and seasons already spent.
+   */
+  smithing: z
+    .object({
+      durationSeasons: z.number().int(),
+      seasonsElapsed: z.number().int(),
     })
     .optional(),
 });
