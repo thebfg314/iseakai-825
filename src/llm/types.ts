@@ -11,6 +11,12 @@ export type ChatMessageParam = { role: "system" | "user" | "assistant"; content:
 
 export type ChatOpts = { maxTokens?: number; temperature?: number };
 
+/** Reply text the game parses, plus any hidden reasoning the provider sent beside it. */
+export type LlmCompletion = {
+  content: string;
+  reasoning: string;
+};
+
 export type LlmModel = {
   id: string;
   name?: string;

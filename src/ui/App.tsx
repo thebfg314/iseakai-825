@@ -1038,6 +1038,11 @@ function SettingsModal({
           </select>
         </label>
         <p className="settings-help">{meta.help}</p>
+        <p className="settings-help">
+          When a play ends — you quit, start a new estate, or load another save — the game writes a text file of the
+          hidden machinery: the model’s reasoning, the system pack, tool calls, proposals, and refusals. Look in the
+          play-logs folder next to the save. A new play does not delete the older files.
+        </p>
         <div className="settings-ink" title={hudInkTitle({ ...ink, provider })}>
           {settingsInkLines({ ...ink, provider }, provider).map((line) => (
             <p key={line}>{line}</p>

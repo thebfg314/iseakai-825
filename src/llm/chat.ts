@@ -1,7 +1,15 @@
 import { anthropicChat, listAnthropicModels } from "./anthropic";
 import { isOpenAiChatModel, openaiCompatibleChat, openaiCompatibleListModels } from "./openaiCompat";
 import { listRfabModels, rfabChat } from "./rfab";
-import { PROVIDER_META, activeConfig, type AppSettings, type ChatMessageParam, type ChatOpts, type LlmModel } from "./types";
+import {
+  PROVIDER_META,
+  activeConfig,
+  type AppSettings,
+  type ChatMessageParam,
+  type ChatOpts,
+  type LlmCompletion,
+  type LlmModel,
+} from "./types";
 
 const OPENROUTER_HEADERS = {
   "HTTP-Referer": "https://isekai.local",
@@ -18,7 +26,8 @@ function requireConfig(settings: AppSettings) {
   return config;
 }
 
-export async function llmChat(settings: AppSettings, messages: ChatMessageParam[], opts?: ChatOpts): Promise<string> {
+/** Content plus any reasoning the provider returned beside it. */
+export async function llmComplete(settings: AppSettings, messages: ChatMessageParam[], opts?: ChatOpts): Promise<LlmCompletion> {
   const config = requireConfig(settings);
   switch (settings.provider) {
     case "rfab":
@@ -63,6 +72,10 @@ export async function llmChat(settings: AppSettings, messages: ChatMessageParam[
         providerLabel: "Google",
       });
   }
+}
+
+export async function llmChat(settings: AppSettings, messages: ChatMessageParam[], opts?: ChatOpts): Promise<string> {
+  return (await llmComplete(settings, messages, opts)).content;
 }
 
 function isGeminiChatModel(id: string): boolean {

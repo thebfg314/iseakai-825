@@ -1,4 +1,5 @@
-import type { ChatMessageParam, ChatOpts, LlmModel, ProviderConfig } from "./types";
+import type { ChatMessageParam, ChatOpts, LlmCompletion, LlmModel, ProviderConfig } from "./types";
+import { combineReasoning } from "./reasoning";
 import { rememberChatResponse } from "./usage";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
@@ -24,7 +25,7 @@ export async function anthropicChat(
   config: ProviderConfig,
   messages: ChatMessageParam[],
   opts?: ChatOpts,
-): Promise<string> {
+): Promise<LlmCompletion> {
   const system = messages
     .filter((m) => m.role === "system")
     .map((m) => m.content)
@@ -56,7 +57,8 @@ export async function anthropicChat(
     throw new Error("Anthropic returned non-JSON.");
   }
   rememberChatResponse(data, res.headers);
-  return extractText(data);
+  const content = extractText(data);
+  return { content, reasoning: combineReasoning(data, content) };
 }
 
 export async function listAnthropicModels(apiKey: string): Promise<LlmModel[]> {

@@ -28,7 +28,10 @@ import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
 import fs from "node:fs";
 import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from "../llm/parse";
-import { llmChat, type AppSettings } from "../llm";
+import type { AppSettings } from "../llm";
+import * as llmApi from "../llm/chat";
+import { activeConfig } from "../llm/types";
+import { PlayLog } from "./playLog";
 import { fetchProviderBalance } from "../llm/credits";
 import { consumeLastLlmCall, LlmMeterStore } from "../llm/usage";
 import {
@@ -189,11 +192,24 @@ export class GameController {
     negotiator: "neutral",
   };
   meter = new LlmMeterStore("rfab");
+  /** Hidden machinery for this play. A new controller writes a new file. */
+  readonly playLog: PlayLog;
 
   constructor(state: WorldState, saveDir: string, settings: AppSettings, opts?: { resetUsage?: boolean }) {
     this.state = state;
     this.saveDir = saveDir;
     this.settings = settings;
+    this.playLog = new PlayLog(
+      saveDir,
+      {
+        year: state.meta.year,
+        season: state.meta.season,
+        turn: state.meta.turn,
+        provider: settings.provider,
+        model: settings.providers[settings.provider]?.model ?? "",
+      },
+      Object.values(settings.providers).map((p) => p.apiKey),
+    );
     this.meter.setProvider(settings.provider);
     if (opts?.resetUsage) this.meter.reset();
     else this.loadUsage();
@@ -424,7 +440,7 @@ export class GameController {
       const spoken = await this.callLlm(
         [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
         800,
-        { requireProposals: false, allowRepair: false },
+        { requireProposals: false, allowRepair: false, purpose: "speech" },
       );
 
       const tool = parseToolRequest(spoken.raw);
@@ -440,6 +456,18 @@ export class GameController {
         this.pushHoldingLine(npcId, tool.drawers);
         fetched = tool.drawers;
         drawers = collectDrawers(this.state, fetched, npcId);
+        this.playLog.note(
+          "Tool call",
+          [
+            `The model asked the game for these drawers: ${fetched.join(", ") || "(none)"}.`,
+            tool.unknown.length ? `Unknown names: ${tool.unknown.join(", ")}.` : "",
+            "",
+            "World-state pack the game handed back:",
+            JSON.stringify(drawers, null, 2),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        );
         try {
           answer = await this.callLlm(
             [
@@ -449,7 +477,7 @@ export class GameController {
               { role: "user", content: `${npcFactsFollowUp(playerText, drawers)}\n\n${SPEECH_PASS_HINT}` },
             ],
             800,
-            { requireProposals: false, allowRepair: false },
+            { requireProposals: false, allowRepair: false, purpose: "speech after a tool call" },
           );
           if (parseToolRequest(answer.raw).malformed) {
             throw new Error(INCOMPLETE_MODEL_JSON);
@@ -496,7 +524,7 @@ export class GameController {
             { role: "user", content: beginFiguresFollowUp(playerText) },
           ],
           900,
-          { requireProposals: false, allowRepair: false },
+          { requireProposals: false, allowRepair: false, purpose: "books, figures for a short work" },
         );
         this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
         this.ingestParsedDialogue(npcId, books, playerText);
@@ -512,6 +540,7 @@ export class GameController {
           { role: "user", content: npcBooksFollowUp(playerText, discussed ? compactOfferLine(discussed.proposal) : undefined) },
         ];
         let books = await this.callLlm(booksMessages, 900, {
+          purpose: "books",
           requireProposals: true,
           allowRepair: true,
           repairHint:
@@ -532,7 +561,7 @@ export class GameController {
               ),
             ],
             900,
-            { requireProposals: true, allowRepair: false },
+            { requireProposals: true, allowRepair: false, purpose: "books, missing drawers" },
           );
         }
 
@@ -1153,6 +1182,9 @@ export class GameController {
     this.state = result.state;
     const logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
     this.log("merchant", result.ok ? "APPLY" : "REJECT", logLine);
+    if (!result.ok) {
+      this.playLog.note("Refusal", `The stall was refused.\n\nReason: ${result.reason ?? result.logLine}`);
+    }
     this.ledgerNote(
       result.ok
         ? playerFacingLogLine(logLine)
@@ -1179,6 +1211,12 @@ export class GameController {
     this.state = result.state;
     item.status = result.ok ? "applied" : "rejected";
     item.rejectReason = result.reason;
+    if (!result.ok) {
+      this.playLog.note(
+        "Refusal",
+        `The books refused this proposal.\n\n${JSON.stringify(item.proposal, null, 2)}\n\nReason: ${result.reason ?? result.logLine}`,
+      );
+    }
     const logLine = result.ok ? result.logLine : result.reason ?? result.logLine;
     if (result.ok && item.proposal.type === "start_project") {
       const created = this.state.projects.find((p) => !beforeIds.has(p.id));
@@ -1238,6 +1276,10 @@ export class GameController {
     if (item) {
       item.status = "rejected";
       item.rejectReason = "Player rejected";
+      this.playLog.note(
+        "Player refused a proposal",
+        `${JSON.stringify(item.proposal, null, 2)}\n\nConfirm was not pressed. The books were left unchanged.`,
+      );
       this.log(item.npcId, "REJECT", item.proposal.summary);
       const followOns =
         item.proposal.type === "start_project"
@@ -1280,7 +1322,7 @@ export class GameController {
 
   private battleDeps(): BattleDeps {
     return {
-      chat: (messages, maxTokens) => this.llmRaw(messages, { maxTokens, temperature: 0.7 }),
+      chat: (messages, maxTokens) => this.llmRaw(messages, { maxTokens, temperature: 0.7, purpose: "battle" }),
       log: (actor, kind, summary) => this.log(actor, kind, summary),
     };
   }
@@ -1458,6 +1500,7 @@ export class GameController {
         ],
         2000,
         {
+          purpose: "season report",
           requireProposals: true,
           repairHint:
             "Each rolled event MUST have an event_effect that changes numbers (resource+amount+direction, moodDelta, or nested proposals). Flavour-only event_effect is not enough.",
@@ -1538,7 +1581,10 @@ export class GameController {
   private resolveHappinessMovement(effects: SeasonEffectLine[]) {
     const movement = resolvePeopleMovement(this.state);
     if (movement.departureNote) effects.push({ kind: "info", text: movement.departureNote });
-    if (movement.gameOverNote) effects.push({ kind: "info", text: movement.gameOverNote });
+    if (movement.gameOverNote) {
+      effects.push({ kind: "info", text: movement.gameOverNote });
+      this.finishPlay("The estate was abandoned. This play is over.");
+    }
     if (movement.arrivalNote) effects.push({ kind: "info", text: movement.arrivalNote });
     if (
       movement.arrival &&
@@ -1569,6 +1615,7 @@ export class GameController {
           text: r.ok ? playerFacingLogLine(r.logLine) : playerFacingReason(r.reason ?? r.logLine),
         });
         this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
+        if (!r.ok) this.playLog.note("Refusal", `A season change was refused.\n\n${JSON.stringify(p, null, 2)}\n\nReason: ${r.reason ?? r.logLine}`);
         continue;
       }
       if (!eventEffectHasMechanics(p)) {
@@ -1583,6 +1630,7 @@ export class GameController {
         text: r.ok ? playerFacingLogLine(r.logLine) : playerFacingReason(r.reason ?? r.logLine),
       });
       this.log("referee", r.ok ? "APPLY" : "REJECT", r.logLine);
+      if (!r.ok) this.playLog.note("Refusal", `A season change was refused.\n\n${JSON.stringify(p, null, 2)}\n\nReason: ${r.reason ?? r.logLine}`);
     }
     for (const ev of rolled) {
       if (covered.has(ev.id)) continue;
@@ -1651,7 +1699,7 @@ export class GameController {
   private async callLlm(
     messages: { role: "system" | "user" | "assistant"; content: string }[],
     maxTokens: number,
-    opts?: { requireProposals?: boolean; repairHint?: string; allowRepair?: boolean },
+    opts?: { requireProposals?: boolean; repairHint?: string; allowRepair?: boolean; purpose?: string },
   ): Promise<{
     speech: string;
     chronicle?: string;
@@ -1660,7 +1708,8 @@ export class GameController {
     emotion?: AldricEmotion;
     parseErrors: string[];
   }> {
-    const raw1 = await this.llmRaw(messages, { maxTokens });
+    const purpose = opts?.purpose ?? "dialogue";
+    const raw1 = await this.llmRaw(messages, { maxTokens, purpose });
     let parsed = parseLlmResponse(raw1);
     if (parsed.incomplete) {
       throw new Error(INCOMPLETE_MODEL_JSON);
@@ -1679,37 +1728,89 @@ export class GameController {
         {
           maxTokens,
           temperature: 0.2,
+          purpose: `${purpose} repair`,
         },
       );
       parsed = parseLlmResponse(raw2);
       if (parsed.incomplete) {
         throw new Error(INCOMPLETE_MODEL_JSON);
       }
+      const speech = playerFacingNpcSpeech(raw2, parsed.response.speech);
+      const proposals = parsed.proposals.map(ensureSummary);
+      this.noteParsedReply(proposals, parsed.parseErrors, speech);
       return {
-        speech: playerFacingNpcSpeech(raw2, parsed.response.speech),
+        speech,
         chronicle: parsed.response.chronicle,
-        proposals: parsed.proposals.map(ensureSummary),
+        proposals,
         raw: raw2,
         emotion: parsed.emotion,
         parseErrors: parsed.parseErrors,
       };
     }
+    const speech = playerFacingNpcSpeech(raw1, parsed.response.speech);
+    const proposals = parsed.proposals.map(ensureSummary);
+    this.noteParsedReply(proposals, parsed.parseErrors, speech);
     return {
-      speech: playerFacingNpcSpeech(raw1, parsed.response.speech),
+      speech,
       chronicle: parsed.response.chronicle,
-      proposals: parsed.proposals.map(ensureSummary),
+      proposals,
       raw: raw1,
       emotion: parsed.emotion,
       parseErrors: parsed.parseErrors,
     };
   }
 
+  /** Seal this play's machinery file. A second call leaves the file as it is. */
+  finishPlay(reason: string): string {
+    return this.playLog.finish(reason);
+  }
+
+  private noteParsedReply(proposals: MechanicalProposal[], parseErrors: string[], hallSpeech: string) {
+    const lines = [
+      "Proposals the books took from that reply:",
+      proposals.length ? JSON.stringify(proposals, null, 2) : "(none)",
+      "",
+      "Parse notes and dropped proposals:",
+      parseErrors.length ? parseErrors.join("\n") : "(none)",
+      "",
+      "Speech the hall was allowed to show:",
+      hallSpeech || "(none)",
+    ];
+    this.playLog.note("What the books made of that reply", lines.join("\n"));
+  }
+
   private async llmRaw(
     messages: { role: "system" | "user" | "assistant"; content: string }[],
-    opts?: { maxTokens?: number; temperature?: number },
+    opts?: { maxTokens?: number; temperature?: number; purpose?: string },
   ): Promise<string> {
+    const purpose = opts?.purpose ?? "model";
+    const config = activeConfig(this.settings);
     try {
-      return await llmChat(this.settings, messages, opts);
+      const done = await llmApi.llmComplete(this.settings, messages, opts);
+      this.playLog.recordModel({
+        purpose,
+        provider: this.settings.provider,
+        model: config.model,
+        messages,
+        content: done.content,
+        reasoning: done.reasoning,
+      });
+      return done.content;
+    } catch (err) {
+      const systems = messages.filter((m) => m.role === "system").map((m) => m.content);
+      this.playLog.note(
+        `Model call failed (${purpose})`,
+        [
+          `Provider: ${this.settings.provider}`,
+          `Model: ${config.model || "(none selected)"}`,
+          "",
+          "System information given to the model",
+          systems.join("\n\n") || "(none)",
+          "",
+          `Error: ${err instanceof Error ? err.message : String(err)}`,
+        ].join("\n"),
+      );
+      throw err;
     } finally {
       this.noteLlmUsage();
     }
