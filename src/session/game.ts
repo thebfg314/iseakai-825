@@ -108,6 +108,13 @@ import {
   playerAskedBloomery,
 } from "../engine/bloomery";
 import { asksBeginAmount, prepareSameSeasonUse, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
+import {
+  claimsBooksWrote,
+  looksLikeSpokenAgree,
+  pricedWorkFromTalk,
+  samePricedOffer,
+  unconfirmedWorkSpeech,
+} from "../engine/spokenWork";
 import { undoPaidProjectResult } from "../engine/projectResult";
 import { guardSmithProposals, smithSpeechForOrder } from "../engine/smithing";
 import {
@@ -450,6 +457,24 @@ export class GameController {
         } catch (err) {
           if (this.recoverHuntOffer(npcId, playerText)) return this.finishTalk();
           this.noteTalkFailure(err, npcId);
+          return this.finishTalk();
+        }
+      }
+
+      if (looksLikeSpokenAgree(playerText)) {
+        const prior = this.messages
+          .filter((m) => m.role === "npc" && m.npcId === npcId)
+          .map((m) => m.text)
+          .join("\n");
+        const holdingId = this.state.holdings[0]?.id ?? "fontenay";
+        const priced = pricedWorkFromTalk(`${prior}\n${answer.speech}`, holdingId);
+        if (priced || claimsBooksWrote(answer.speech)) {
+          const speech = claimsBooksWrote(answer.speech) ? unconfirmedWorkSpeech(priced) : answer.speech;
+          this.pushNpcSpeech(npcId, { ...answer, speech });
+          if (priced && !this.pending.some((p) => p.status === "pending" && samePricedOffer(p.proposal, priced))) {
+            this.queueProposal(npcId, priced);
+            this.ledgerNote("1 proposed change awaits Confirm. Nothing is written to the books until then.", npcId);
+          }
           return this.finishTalk();
         }
       }
