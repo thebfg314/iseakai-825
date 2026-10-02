@@ -1,4 +1,4 @@
-import type { ChatMessage, MechanicalProposal, PendingProposal, SeasonEffectLine, WorldState } from "../engine/schema";
+import type { ChatMessage, MechanicalProposal, PendingProposal, Project, SeasonEffectLine, WorldState } from "../engine/schema";
 import type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 import { applyProposal } from "../engine/applyDelta";
 import { defaultEventStub, rollSeasonEvents, type RolledEvent } from "../engine/events";
@@ -107,7 +107,8 @@ import {
   isBloomeryStart,
   playerAskedBloomery,
 } from "../engine/bloomery";
-import { asksBeginAmount, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
+import { asksBeginAmount, prepareSameSeasonUse, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
+import { undoPaidProjectResult } from "../engine/projectResult";
 import { guardSmithProposals, smithSpeechForOrder } from "../engine/smithing";
 import {
   asksAboutTheHarvest,
@@ -1066,6 +1067,7 @@ export class GameController {
   private finishConfirm(batch: PendingProposal[], errorOnId?: string): GameView & { error?: string } {
     const before = cloneState(this.state);
     const noted = new Set<string>();
+    const startedThisPack: Project[] = [];
     let error: string | undefined;
     for (const next of batch) {
       if (next.status !== "pending") continue;
@@ -1075,7 +1077,30 @@ export class GameController {
         if (errorOnId && next.id === errorOnId) error = next.rejectReason || dependentSkipLine(workLabelOf(dep));
         continue;
       }
+      let credited: Project[] = [];
+      if (next.proposal.type === "start_project" && startedThisPack.length) {
+        const step = prepareSameSeasonUse(this.state, next.proposal, startedThisPack);
+        if (step.block) {
+          next.status = "rejected";
+          next.rejectReason = step.block;
+          this.log(next.npcId, "REJECT", step.block);
+          this.ledgerNote(`It cannot be made so. ${playerFacingReason(step.block)}`, next.npcId);
+          this.withholdFollowOns(next, noted);
+          if (this.askedAboutId === next.id) this.askedAboutId = null;
+          if (errorOnId && next.id === errorOnId) error = playerFacingReason(step.block);
+          continue;
+        }
+        credited = step.credited;
+      }
+      const beforeIds = new Set(this.state.projects.map((p) => p.id));
       const result = this.applyOnePending(next);
+      if (!result.ok && credited.length) {
+        for (const project of credited) undoPaidProjectResult(this.state, project);
+      }
+      if (result.ok && next.proposal.type === "start_project") {
+        const created = this.state.projects.find((p) => !beforeIds.has(p.id));
+        if (created) startedThisPack.push(created);
+      }
       if (errorOnId && next.id === errorOnId && result.error) error = result.error;
       if (!result.ok && next.proposal.type === "start_project") this.withholdFollowOns(next, noted);
     }

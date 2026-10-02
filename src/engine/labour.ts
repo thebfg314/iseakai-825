@@ -79,6 +79,23 @@ export function labourDaysFromAssignment(kind: LabourKind, men: number, women: n
   return men + women * womanFactor + youths * youthFactor;
 }
 
+/**
+ * Days of work one season of spare labour can cover for this kind of work.
+ * The whole callable pool, not what is left after other works in the same pack.
+ */
+export function oneSeasonSpareDays(state: WorldState, kind: LabourKind, projectKey: string): number {
+  const pool = labourPool(state);
+  if (kind === "mixed") return labourDaysFromAssignment("mixed", pool.men, pool.women, pool.youths);
+  if (kind === "men_women") {
+    const youths = LIGHT_YOUTH_ASSIST_KEYS.has(projectKey) ? pool.youths : 0;
+    return labourDaysFromAssignment("men_women", pool.men, pool.women, youths);
+  }
+  const assist = MOSTLY_MEN_NO_WOMEN_KEYS.has(projectKey)
+    ? 0
+    : Math.min(MOSTLY_MEN_WOMAN_ASSIST_DAYS, pool.women * 0.6);
+  return pool.men + assist;
+}
+
 export function isLabourDayProject(project: Project): boolean {
   if (project.status !== "active") return false;
   if (project.tag === "hunt" || project.hunt) return false;

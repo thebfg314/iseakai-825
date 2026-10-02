@@ -417,6 +417,10 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/coppicing/i);
     expect(aldric).toMatch(/makes farmland/i);
     expect(aldric).toMatch(/do not say result, customCosts, reward/i);
+    expect(aldric).toMatch(/same proposal pack/i);
+    expect(aldric).toMatch(/do not spend the yield early/i);
+    expect(aldric).toMatch(/finishesThisSeason/);
+    expect(aldric).not.toMatch(/does not pay for another work confirmed in that same sitting/i);
     expect(aldric).not.toMatch(/two cart-loads of wood in/i);
     expect(aldric).not.toMatch(/40%/);
     expect(aldric).not.toMatch(/2-to-1/);

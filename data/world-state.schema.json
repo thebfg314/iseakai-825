@@ -491,6 +491,14 @@
               "unit": { "type": "string" }
             }
           }
+        },
+        "finishesThisSeason": {
+          "type": "boolean",
+          "description": "The chronicler's judgment that this work finishes inside the season it was begun. Omit to let the books judge from the days."
+        },
+        "resultPaid": {
+          "type": "boolean",
+          "description": "True once the named result has been added to the stores. Absent until then. Cancel does not set it."
         }
       }
     },

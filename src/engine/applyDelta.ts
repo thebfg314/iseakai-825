@@ -500,6 +500,7 @@ function startProject(
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
     ...(result.length ? { result } : {}),
+    ...(typeof p.finishesThisSeason === "boolean" ? { finishesThisSeason: p.finishesThisSeason } : {}),
     ...(personal
       ? { smithing: { durationSeasons: personalSeasonsForStart(p), seasonsElapsed: 0 } }
       : {}),

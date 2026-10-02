@@ -311,6 +311,13 @@ export const ProjectSchema = z.object({
       }),
     )
     .optional(),
+  /**
+   * The chronicler's judgment that this work finishes inside the season it was begun.
+   * Absent means the books judge from the days and one season of spare labour.
+   */
+  finishesThisSeason: z.boolean().optional(),
+  /** Set once the named result has been added to the stores. Cancel does not set this. */
+  resultPaid: z.boolean().optional(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
@@ -878,6 +885,20 @@ export const StartProjectProposalSchema = ProposalBase.extend({
     .optional(),
   /** Goods the stores gain once, when this work is finished. Omitted when it pays nothing. */
   result: ProjectResultSchema,
+  /**
+   * True when this work finishes inside the season, false when it runs past it.
+   * Omitted, the books judge from the days and one season of spare labour.
+   */
+  finishesThisSeason: z.preprocess((val) => {
+    if (val == null || val === "") return undefined;
+    if (typeof val === "boolean") return val;
+    if (typeof val === "string") {
+      const s = val.trim().toLowerCase();
+      if (s === "true" || s === "yes") return true;
+      if (s === "false" || s === "no") return false;
+    }
+    return undefined;
+  }, z.boolean().optional()),
   tag: z.string().optional(),
   notes: z.string().optional(),
 });

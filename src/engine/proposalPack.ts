@@ -49,6 +49,13 @@ export function theWork(name: string): string {
   return `the ${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}`;
 }
 
+/** The work named here will not finish inside this season, so a later cost waits. */
+export function notDoneThisSeasonLine(name: string): string {
+  const phrase = theWork(name);
+  const sentence = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  return `${sentence} is not done this season, so the next waits.`;
+}
+
 export function isWorkFollowOn(proposal: MechanicalProposal): proposal is Extract<MechanicalProposal, { type: "assign_labour" | "adjust_project" }> {
   return proposal.type === "assign_labour" || proposal.type === "adjust_project";
 }
