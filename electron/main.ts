@@ -92,6 +92,18 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+app.on("before-quit", () => {
+  endPlay("The player quit.");
+});
+
+function endPlay(reason: string) {
+  try {
+    controller?.finishPlay(reason);
+  } catch {
+    /* a log must not block quitting or a new estate */
+  }
+}
+
 function requireGame(): GameController {
   if (!controller) throw new Error("No game loaded.");
   return controller;
@@ -100,6 +112,7 @@ function requireGame(): GameController {
 ipcMain.handle("game:getView", () => requireGame().view());
 
 ipcMain.handle("game:new", () => {
+  endPlay("The player started a new estate.");
   controller = newController(WorldStateSchema.parse(startingEstate), defaultSaveDir(), { resetUsage: true });
   return controller.view();
 });
@@ -127,6 +140,7 @@ ipcMain.handle("game:load", async () => {
   if (result.canceled || !result.filePaths[0]) return null;
   const file = result.filePaths[0];
   const state = loadWorldState(file);
+  endPlay("The player loaded another save.");
   controller = newController(state, path.dirname(file));
   return controller.view();
 });

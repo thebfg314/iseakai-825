@@ -1,4 +1,5 @@
-import type { ChatMessageParam, ChatOpts, LlmModel, ProviderConfig } from "./types";
+import type { ChatMessageParam, ChatOpts, LlmCompletion, LlmModel, ProviderConfig } from "./types";
+import { combineReasoning } from "./reasoning";
 import { rememberChatResponse } from "./usage";
 
 const RFAB_BASE = "https://api.rfab.ai";
@@ -31,7 +32,7 @@ export async function rfabChat(
   config: ProviderConfig,
   messages: ChatMessageParam[],
   opts?: ChatOpts,
-): Promise<string> {
+): Promise<LlmCompletion> {
   if (!config.apiKey) throw new Error("No Reality Fabricator API key. Open Settings and paste a key from rfab.ai.");
   if (!config.model) throw new Error("No model selected.");
   const system = messages.find((m) => m.role === "system");
@@ -61,5 +62,5 @@ export async function rfabChat(
   }
   rememberChatResponse(data, res.headers);
   if (!data.content) throw new Error("RFAB response had no content.");
-  return data.content;
+  return { content: data.content, reasoning: combineReasoning(data, data.content) };
 }

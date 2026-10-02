@@ -6,4 +6,4 @@ export * from "./providerErrors";
 export * from "./usage";
 export * from "./credits";
 export { rfabChat, listRfabModels } from "./rfab";
-export { llmChat, listLlmModels } from "./chat";
+export { llmChat, llmComplete, listLlmModels, takeLastReasoning, stashReasoning } from "./chat";

@@ -1,4 +1,5 @@
-import type { ChatMessageParam, ChatOpts, LlmModel } from "./types";
+import type { ChatMessageParam, ChatOpts, LlmCompletion, LlmModel } from "./types";
+import { combineReasoning } from "./reasoning";
 import { rememberChatResponse } from "./usage";
 
 function extractContent(data: unknown): string {
@@ -41,7 +42,7 @@ export async function openaiCompatibleChat(
     extraHeaders?: Record<string, string>;
     providerLabel: string;
   },
-): Promise<string> {
+): Promise<LlmCompletion> {
   const res = await fetch(opts.url, {
     method: "POST",
     headers: {
@@ -66,7 +67,8 @@ export async function openaiCompatibleChat(
   }
   rememberChatResponse(data, res.headers);
   try {
-    return extractContent(data);
+    const content = extractContent(data);
+    return { content, reasoning: combineReasoning(data, content) };
   } catch (e) {
     throw new Error(`${opts.providerLabel} ${e instanceof Error ? e.message : String(e)}`);
   }
