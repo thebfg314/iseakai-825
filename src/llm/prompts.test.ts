@@ -419,6 +419,8 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/do not say result, customCosts, reward/i);
     expect(aldric).toMatch(/same proposal pack/i);
     expect(aldric).toMatch(/do not spend the yield early/i);
+    expect(aldric).toMatch(/does not write the books/i);
+    expect(aldric).toMatch(/Do not say the work has begun/);
     expect(aldric).toMatch(/finishesThisSeason/);
     expect(aldric).not.toMatch(/does not pay for another work confirmed in that same sitting/i);
     expect(aldric).not.toMatch(/two cart-loads of wood in/i);
