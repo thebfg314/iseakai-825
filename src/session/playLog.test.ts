@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
-import * as llmApi from "../llm/chat";
+import * as llm from "../llm";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
 
@@ -25,9 +25,9 @@ function gameIn(dir: string) {
 }
 
 function reply(speech: string, reasoning: string) {
-  return {
-    content: JSON.stringify({ speech, emotion: "neutral", proposals: [] }),
-    reasoning,
+  return async () => {
+    llm.stashReasoning(reasoning);
+    return JSON.stringify({ speech, emotion: "neutral", proposals: [] });
   };
 }
 
@@ -38,10 +38,10 @@ describe("a finished play keeps a machinery file", () => {
 
   it("writes the reasoning and the system pack, and a second play leaves that file", async () => {
     const dir = tempDir();
-    const spy = vi.spyOn(llmApi, "llmComplete");
+    const spy = vi.spyOn(llm, "llmChat");
     spy
-      .mockResolvedValueOnce(reply("Let me look. <=-tool: grain -=>", FIRST_REASON))
-      .mockResolvedValueOnce(reply("The rye is in the barn.", "The drawer listed the rye."));
+      .mockImplementationOnce(reply("Let me look. <=-tool: grain -=>", FIRST_REASON))
+      .mockImplementationOnce(reply("The rye is in the barn.", "The drawer listed the rye."));
 
     const first = gameIn(dir);
     await first.sendDialogue("steward", "How much rye do we hold?");
@@ -65,7 +65,7 @@ describe("a finished play keeps a machinery file", () => {
     expect(first.finishPlay("again")).toBe(firstFile);
     expect(fs.readFileSync(firstFile, "utf8")).toBe(text);
 
-    spy.mockResolvedValueOnce(reply("The oats can wait.", SECOND_REASON));
+    spy.mockImplementationOnce(reply("The oats can wait.", SECOND_REASON));
     const second = gameIn(dir);
     await second.sendDialogue("steward", "How fares the rye?");
     const secondFile = second.finishPlay("The player started a new estate.");

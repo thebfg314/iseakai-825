@@ -74,8 +74,25 @@ export async function llmComplete(settings: AppSettings, messages: ChatMessagePa
   }
 }
 
+let lastReasoning = "";
+
+/** Reasoning from the completion just returned. Empty when that reply had none. */
+export function takeLastReasoning(): string {
+  const reasoning = lastReasoning;
+  lastReasoning = "";
+  return reasoning;
+}
+
+/** Lets a test attach reasoning to a stubbed reply. */
+export function stashReasoning(reasoning: string) {
+  lastReasoning = reasoning;
+}
+
 export async function llmChat(settings: AppSettings, messages: ChatMessageParam[], opts?: ChatOpts): Promise<string> {
-  return (await llmComplete(settings, messages, opts)).content;
+  lastReasoning = "";
+  const done = await llmComplete(settings, messages, opts);
+  lastReasoning = done.reasoning;
+  return done.content;
 }
 
 function isGeminiChatModel(id: string): boolean {

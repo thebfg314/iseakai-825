@@ -28,8 +28,9 @@ import { PORTRAIT_NPCS, type AldricEmotion } from "../engine/emotion";
 import path from "node:path";
 import fs from "node:fs";
 import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from "../llm/parse";
+import * as llm from "../llm";
 import type { AppSettings } from "../llm";
-import * as llmApi from "../llm/chat";
+import { takeLastReasoning } from "../llm/chat";
 import { activeConfig } from "../llm/types";
 import { PlayLog } from "./playLog";
 import { fetchProviderBalance } from "../llm/credits";
@@ -1786,16 +1787,17 @@ export class GameController {
     const purpose = opts?.purpose ?? "model";
     const config = activeConfig(this.settings);
     try {
-      const done = await llmApi.llmComplete(this.settings, messages, opts);
+      const content = await llm.llmChat(this.settings, messages, opts);
+      const reasoning = takeLastReasoning();
       this.playLog.recordModel({
         purpose,
         provider: this.settings.provider,
         model: config.model,
         messages,
-        content: done.content,
-        reasoning: done.reasoning,
+        content,
+        reasoning,
       });
-      return done.content;
+      return content;
     } catch (err) {
       const systems = messages.filter((m) => m.role === "system").map((m) => m.content);
       this.playLog.note(
