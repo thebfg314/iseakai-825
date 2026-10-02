@@ -1,6 +1,7 @@
 import type { MechanicalProposal, Project, WorldState } from "./schema";
 import { FORGE_PROJECT_KEYS, LABOUR_MIDPOINTS, lookupProject } from "./projectCatalog";
 import { markProjectSeason, stampProjectEnded } from "./projectProgress";
+import { payFinishedProjectResult } from "./projectResult";
 import { round1 } from "./util";
 
 /**
@@ -289,6 +290,8 @@ export function resolvePersonalSmithing(state: WorldState): string[] {
     proj.status = "completed";
     stampProjectEnded(state, proj);
     lines.push(`${sentenceWork(proj.name)} is finished.`);
+    const gained = payFinishedProjectResult(state, proj);
+    if (gained) lines.push(gained);
   }
   return lines;
 }

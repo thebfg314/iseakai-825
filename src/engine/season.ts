@@ -16,6 +16,7 @@ import { markProjectSeason, stampProjectEnded } from "./projectProgress";
 import { autumnFieldAcres, fieldRotation, springFieldAcres } from "./agriculture";
 import { fireForthcomingBeat } from "./forthcoming";
 import { auditChurchLabourOrders, closeChurchSeason, resolveChurchGrainAndWool, resolveChurchSheep } from "./church";
+import { payFinishedProjectResult } from "./projectResult";
 
 function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats"): string | null {
   let acres = 0;
@@ -187,6 +188,8 @@ function advanceProjects(state: WorldState): string[] {
       } else {
         notes.push(`${proj.name} is finished.`);
       }
+      const gained = payFinishedProjectResult(state, proj);
+      if (gained) notes.push(gained);
       flagCompletedProjectWantsTalk(state, proj);
       syncTradeFromFeatures(state);
     }

@@ -3,6 +3,7 @@ import { lookupProject } from "./projectCatalog";
 import { labourDaysPhrase, labourRemaining } from "./labour";
 import { hiredSmithName, ownWorkCostPhrase, personalSeasonsForStart, startIsPersonalSmithing } from "./smithing";
 import { theWork } from "./proposalPack";
+import { proposalResult, resultSpeechTargets, type ResultSpeechTarget } from "./projectResult";
 import { round1 } from "./util";
 
 export type ProjectStoreBill = {
@@ -315,7 +316,7 @@ function labourGap(state: WorldState, assigns: AssignLabour[]): BeginGap | null 
   };
 }
 
-type Group = { workName: string; bill: ProjectStoreBill; gaps: BeginGap[] };
+type Group = { workName: string; bill: ProjectStoreBill; gaps: BeginGap[]; results: ReturnType<typeof proposalResult> };
 
 function groupsFor(state: WorldState, offers: StartProject[], proposals: MechanicalProposal[]): Group[] {
   const assigns = proposals.filter((p): p is AssignLabour => p.type === "assign_labour");
@@ -330,11 +331,11 @@ function groupsFor(state: WorldState, offers: StartProject[], proposals: Mechani
     const gaps = materialGaps(state, bill);
     const hands = labourGap(state, related);
     if (hands) gaps.push(hands);
-    return { workName: workNameOf(offer), bill, gaps };
+    return { workName: workNameOf(offer), bill, gaps, results: proposalResult(offer) };
   });
   const leftover = assigns.filter((a) => !used.has(a));
   const hands = labourGap(state, leftover);
-  if (hands) groups.push({ workName: "that work", bill: { ...EMPTY_BILL }, gaps: [hands] });
+  if (hands) groups.push({ workName: "that work", bill: { ...EMPTY_BILL }, gaps: [hands], results: [] });
   return groups;
 }
 
@@ -372,8 +373,34 @@ function stripBareShortage(speech: string, bare: string): string {
   return s;
 }
 
+function costMatches(n: number, target: ResultSpeechTarget, groups: Group[]): boolean {
+  if (!target.costKey) return false;
+  const key = target.costKey;
+  return groups.some((g) => g.bill[key] > 0 && approx(n, g.bill[key]));
+}
+
+/** A spoken yield that is not the figure the books will pay is rewritten to that figure. */
+function alignNamedResults(speech: string, groups: Group[], targets: ResultSpeechTarget[]): string {
+  let s = speech;
+  for (const target of targets) {
+    if (!target.names) continue;
+    const re = new RegExp(
+      `\\b(${NUM_TOKEN})\\s+(?:cart-loads?|loads?|lb|lbs|pounds?|denarii|pieces?|modii|barrels?|lots?)?\\s*(?:of\\s+)?(?:${target.names})\\b`,
+      "gi",
+    );
+    s = s.replace(re, (full, numTok: string) => {
+      const n = parseNum(numTok);
+      if (n == null) return full;
+      if (approx(n, target.amount) || costMatches(n, target, groups)) return full;
+      return target.phrase;
+    });
+  }
+  return s;
+}
+
 function alignQuantities(speech: string, groups: Group[]): string {
   const gaps = groups.flatMap((g) => g.gaps);
+  const targets = groups.flatMap((g) => resultSpeechTargets(g.results));
   let s = speech;
   for (const tracked of TRACKED) {
     const gap = gaps.find((g) => g.key === tracked.key);
@@ -388,14 +415,17 @@ function alignQuantities(speech: string, groups: Group[]): string {
       })
       .filter((n) => n > 0);
     if (tracked.key === "denarii" && !gap && fullNeeds.length === 0) continue;
+    const target = targets.find((t) => t.costKey === tracked.key);
     const re = tracked.key === "denarii" ? coinPattern() : quantityPattern(tracked.names);
     s = s.replace(re, (full, numTok: string) => {
       const n = parseNum(numTok);
       if (n == null) return full;
       if (gap && (approx(n, gap.still) || approx(n, gap.need))) return full;
-      if (!gap && fullNeeds.some((need) => approx(n, need))) return full;
+      if (fullNeeds.some((need) => approx(n, need))) return full;
+      if (target && approx(n, target.amount)) return full;
       if (gap) return gap.stillPhrase;
       if (fullNeeds.length) return fullPhraseFor(tracked.key, fullNeeds[0]);
+      if (target) return target.phrase;
       return "";
     });
     if (!gap) {
@@ -430,7 +460,7 @@ function alignQuantities(speech: string, groups: Group[]): string {
       return `${amountWord(labourDays)} days of work`;
     });
   }
-  return s;
+  return alignNamedResults(s, groups, targets);
 }
 
 function tidy(speech: string): string {

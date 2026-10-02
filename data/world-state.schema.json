@@ -476,6 +476,21 @@
             "durationSeasons": { "type": "integer" },
             "seasonsElapsed": { "type": "integer" }
           }
+        },
+        "result": {
+          "type": "array",
+          "description": "Goods added to the stores once, when the work finishes. The amounts named on the proposal. Omit when the work pays nothing.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["resource", "amount"],
+            "properties": {
+              "resource": { "type": "string" },
+              "amount": { "type": "number" },
+              "name": { "type": "string" },
+              "unit": { "type": "string" }
+            }
+          }
         }
       }
     },

@@ -27,6 +27,7 @@ import {
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
+import { proposalResult, resultPayLine } from "./projectResult";
 import {
   isPersonalSmithProject,
   ownWorkBegunPhrase,
@@ -479,6 +480,7 @@ function startProject(
   if (denarii > 0) state.resources.denarii = round1(state.resources.denarii - denarii);
 
   const id = newId("proj");
+  const result = proposalResult(p);
   state.projects.push({
     id,
     key: catalog?.key ?? p.projectKey,
@@ -497,6 +499,7 @@ function startProject(
     status: "active",
     tag: p.tag ?? catalog?.tag,
     notes: p.notes,
+    ...(result.length ? { result } : {}),
     ...(personal
       ? { smithing: { durationSeasons: personalSeasonsForStart(p), seasonsElapsed: 0 } }
       : {}),
@@ -506,7 +509,8 @@ function startProject(
   const fill = personal ? null : autoAssignLeftoverToProject(state, id);
   const clayNote = clay > 0 ? " The clay for the shaft will be dug with the work." : "";
   const coinNote = denarii > 0 ? ` ${amountWord(denarii)} denarii leave the chest.` : "";
-  const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${coinNote}${clayNote}`;
+  const gainNote = result.length ? ` ${resultPayLine(result)}` : "";
+  const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${coinNote}${clayNote}${gainNote}`;
   const own = personal ? ` ${ownWorkBegunPhrase(state, personalSeasonsForStart(p))}` : "";
   return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : `${started}${own}`);
 }

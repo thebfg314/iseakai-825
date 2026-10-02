@@ -67,6 +67,35 @@ describe("parseLlmResponse", () => {
     });
   });
 
+  it("keeps a named result for a work with no catalogue entry", () => {
+    const parsed = parseProposal({
+      type: "start_project",
+      summary: "Burn for powder",
+      projectKey: "gunpowder",
+      customCosts: { labourDays: 8, lumber: 0, iron: 0, stone: 0 },
+      result: { gunpowder: { amount: 2, unit: "pounds", name: "gunpowder" }, charcoal: 1 },
+    });
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.proposal).toMatchObject({
+      type: "start_project",
+      result: expect.arrayContaining([
+        expect.objectContaining({ resource: "gunpowder", amount: 2, unit: "pounds" }),
+        expect.objectContaining({ resource: "charcoal", amount: 1 }),
+      ]),
+    });
+    const aliased = parseProposal({
+      type: "start_project",
+      summary: "Steel",
+      projectKey: "steel",
+      customCosts: { labourDays: 12, lumber: 0, iron: 4, stone: 0 },
+      reward: [{ resource: "steel", amount: 3, unit: "pounds" }],
+    });
+    expect(aliased.proposal).toMatchObject({
+      type: "start_project",
+      result: [expect.objectContaining({ resource: "steel", amount: 3 })],
+    });
+  });
+
   it("coerces start_project without holdingId and fuzzy project key", () => {
     const parsed = parseProposal({
       type: "start_project",
