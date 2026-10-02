@@ -1,8 +1,22 @@
-import type { MechanicalProposal, WorldState } from "./schema";
-import { lookupProject } from "./projectCatalog";
-import { labourDaysPhrase, labourRemaining } from "./labour";
-import { hiredSmithName, ownWorkCostPhrase, personalSeasonsForStart, startIsPersonalSmithing } from "./smithing";
+import type { MechanicalProposal, Project, WorldState } from "./schema";
+import { labourKindFor, lookupProject } from "./projectCatalog";
+import { labourDaysPhrase, labourRemaining, oneSeasonSpareDays } from "./labour";
+import {
+  hiredSmithName,
+  isPersonalSmithProject,
+  ownWorkCostPhrase,
+  personalSeasonsForStart,
+  startIsPersonalSmithing,
+} from "./smithing";
 import { theWork } from "./proposalPack";
+import { payFinishedProjectResult, proposalResult, resultSpeechTargets, type ResultSpeechTarget } from "./projectResult";
+import {
+  resultSuppliesStore,
+  sameSeasonYieldPlan,
+  storePurse,
+  type SeasonWork,
+  type StorePurse,
+} from "./sameSeason";
 import { round1 } from "./util";
 
 export type ProjectStoreBill = {
@@ -55,6 +69,73 @@ export function projectStoreBill(p: StartProject): ProjectStoreBill {
   return bill;
 }
 
+/** The chronicler's mark, or else whether the days fit in one season of spare labour. */
+export function startFinishesThisSeason(state: WorldState, p: StartProject): boolean {
+  if (p.finishesThisSeason === true) return true;
+  if (p.finishesThisSeason === false) return false;
+  if (startIsPersonalSmithing(p)) return personalSeasonsForStart(p) <= 1;
+  const bill = projectStoreBill(p);
+  const catalog = lookupProject(p.projectKey);
+  const kind = catalog?.labourKind ?? "mostly_men";
+  const key = catalog?.key ?? p.projectKey;
+  return bill.labourDays <= oneSeasonSpareDays(state, kind, key) + 1e-9;
+}
+
+/** Same judgment, once the work is already on the books. */
+export function projectFinishesThisSeason(state: WorldState, project: Project): boolean {
+  if (project.finishesThisSeason === true) return true;
+  if (project.finishesThisSeason === false) return false;
+  if (isPersonalSmithProject(project)) return (project.smithing?.durationSeasons ?? 1) <= 1;
+  const owed = Math.max(0, project.labourDaysRequired - project.labourDaysDone);
+  return owed <= oneSeasonSpareDays(state, labourKindFor(project), project.key) + 1e-9;
+}
+
+function yieldPurse(works: SeasonWork[]): StorePurse {
+  const purse: StorePurse = { softwood: 0, hardwood: 0, iron: 0, stone: 0, charcoal: 0, denarii: 0 };
+  for (const work of works) {
+    for (const entry of work.result) {
+      if (entry.amount <= 0) continue;
+      if (entry.resource === "softwood") purse.softwood += entry.amount;
+      else if (entry.resource === "hardwood") purse.hardwood += entry.amount;
+      else if (entry.resource === "iron") purse.iron += entry.amount;
+      else if (entry.resource === "stone") purse.stone += entry.amount;
+      else if (entry.resource === "charcoal") purse.charcoal += entry.amount;
+      else if (entry.resource === "denarii") purse.denarii += entry.amount;
+    }
+  }
+  return purse;
+}
+
+/**
+ * Before a later work in this Confirm pack pays, put earlier same-season yields in the stores.
+ * If the getting or the using runs past the season, refuse in hall language and add nothing.
+ */
+export function prepareSameSeasonUse(
+  state: WorldState,
+  proposal: StartProject,
+  earlier: Project[],
+): { block?: string; credited: Project[] } {
+  const works: (SeasonWork & { project: Project })[] = earlier.map((project) => ({
+    name: project.name,
+    finishes: projectFinishesThisSeason(state, project),
+    result: project.resultPaid ? [] : proposalResult(project),
+    project,
+  }));
+  const plan = sameSeasonYieldPlan(storePurse(state), projectStoreBill(proposal), works, {
+    name: workNameOf(proposal),
+    finishes: startFinishesThisSeason(state, proposal),
+  });
+  if (plan.block) return { block: plan.block, credited: [] };
+  const credited: Project[] = [];
+  for (const work of plan.credit) {
+    const row = works.find((item) => item === work);
+    if (!row) continue;
+    payFinishedProjectResult(state, row.project);
+    credited.push(row.project);
+  }
+  return { credited };
+}
+
 export type BeginGap = {
   key: "lumber" | "iron" | "stone" | "charcoal" | "denarii" | "men" | "women" | "youths";
   need: number;
@@ -103,8 +184,8 @@ function shortOf(need: number, have: number): number {
   return round1(Math.max(0, need - have));
 }
 
-function materialGaps(state: WorldState, bill: ProjectStoreBill): BeginGap[] {
-  const wood = state.resources.softwood + state.resources.hardwood;
+function materialGaps(state: WorldState, bill: ProjectStoreBill, extra?: StorePurse): BeginGap[] {
+  const wood = state.resources.softwood + state.resources.hardwood + (extra?.softwood ?? 0) + (extra?.hardwood ?? 0);
   const rows: BeginGap[] = [];
   const push = (gap: BeginGap) => {
     if (gap.still > 0.001) rows.push(gap);
@@ -121,36 +202,36 @@ function materialGaps(state: WorldState, bill: ProjectStoreBill): BeginGap[] {
   push({
     key: "iron",
     need: bill.iron,
-    have: state.resources.iron,
-    still: shortOf(bill.iron, state.resources.iron),
-    stillPhrase: ironPhrase(shortOf(bill.iron, state.resources.iron)),
+    have: state.resources.iron + (extra?.iron ?? 0),
+    still: shortOf(bill.iron, state.resources.iron + (extra?.iron ?? 0)),
+    stillPhrase: ironPhrase(shortOf(bill.iron, state.resources.iron + (extra?.iron ?? 0))),
     fullPhrase: ironPhrase(bill.iron),
     names: "iron",
   });
   push({
     key: "stone",
     need: bill.stone,
-    have: state.resources.stone,
-    still: shortOf(bill.stone, state.resources.stone),
-    stillPhrase: loads(shortOf(bill.stone, state.resources.stone), "stone"),
+    have: state.resources.stone + (extra?.stone ?? 0),
+    still: shortOf(bill.stone, state.resources.stone + (extra?.stone ?? 0)),
+    stillPhrase: loads(shortOf(bill.stone, state.resources.stone + (extra?.stone ?? 0)), "stone"),
     fullPhrase: loads(bill.stone, "stone"),
     names: "stone",
   });
   push({
     key: "charcoal",
     need: bill.charcoal,
-    have: state.resources.charcoal,
-    still: shortOf(bill.charcoal, state.resources.charcoal),
-    stillPhrase: loads(shortOf(bill.charcoal, state.resources.charcoal), "charcoal"),
+    have: state.resources.charcoal + (extra?.charcoal ?? 0),
+    still: shortOf(bill.charcoal, state.resources.charcoal + (extra?.charcoal ?? 0)),
+    stillPhrase: loads(shortOf(bill.charcoal, state.resources.charcoal + (extra?.charcoal ?? 0)), "charcoal"),
     fullPhrase: loads(bill.charcoal, "charcoal"),
     names: "charcoal",
   });
   push({
     key: "denarii",
     need: bill.denarii,
-    have: state.resources.denarii,
-    still: shortOf(bill.denarii, state.resources.denarii),
-    stillPhrase: coinPhrase(shortOf(bill.denarii, state.resources.denarii)),
+    have: state.resources.denarii + (extra?.denarii ?? 0),
+    still: shortOf(bill.denarii, state.resources.denarii + (extra?.denarii ?? 0)),
+    stillPhrase: coinPhrase(shortOf(bill.denarii, state.resources.denarii + (extra?.denarii ?? 0))),
     fullPhrase: coinPhrase(bill.denarii),
     names: "denarii|denarius",
   });
@@ -315,26 +396,51 @@ function labourGap(state: WorldState, assigns: AssignLabour[]): BeginGap | null 
   };
 }
 
-type Group = { workName: string; bill: ProjectStoreBill; gaps: BeginGap[] };
+type Group = {
+  workName: string;
+  bill: ProjectStoreBill;
+  gaps: BeginGap[];
+  results: ReturnType<typeof proposalResult>;
+  waitLine?: string;
+};
 
 function groupsFor(state: WorldState, offers: StartProject[], proposals: MechanicalProposal[]): Group[] {
   const assigns = proposals.filter((p): p is AssignLabour => p.type === "assign_labour");
   const used = new Set<AssignLabour>();
-  const groups: Group[] = offers.map((offer) => {
+  const prior: SeasonWork[] = [];
+  const groups: Group[] = [];
+  for (const offer of offers) {
     const related = assigns.filter((a) => {
       if (!assignMatches(a, offer) || used.has(a)) return false;
       used.add(a);
       return true;
     });
     const bill = projectStoreBill(offer);
-    const gaps = materialGaps(state, bill);
+    const finishes = startFinishesThisSeason(state, offer);
+    const plan = sameSeasonYieldPlan(storePurse(state), bill, prior, { name: workNameOf(offer), finishes });
+    const gaps = materialGaps(state, bill, plan.credit.length ? yieldPurse(plan.credit) : undefined);
+    if (plan.block) {
+      const supplied = prior.flatMap((work) => work.result);
+      for (let i = gaps.length - 1; i >= 0; i--) {
+        const key = gaps[i].key;
+        if (key === "men" || key === "women" || key === "youths") continue;
+        if (resultSuppliesStore(supplied, key)) gaps.splice(i, 1);
+      }
+    }
     const hands = labourGap(state, related);
     if (hands) gaps.push(hands);
-    return { workName: workNameOf(offer), bill, gaps };
-  });
+    groups.push({
+      workName: workNameOf(offer),
+      bill,
+      gaps,
+      results: proposalResult(offer),
+      ...(plan.block ? { waitLine: plan.block } : {}),
+    });
+    prior.push({ name: workNameOf(offer), finishes, result: proposalResult(offer) });
+  }
   const leftover = assigns.filter((a) => !used.has(a));
   const hands = labourGap(state, leftover);
-  if (hands) groups.push({ workName: "that work", bill: { ...EMPTY_BILL }, gaps: [hands] });
+  if (hands) groups.push({ workName: "that work", bill: { ...EMPTY_BILL }, gaps: [hands], results: [] });
   return groups;
 }
 
@@ -372,8 +478,34 @@ function stripBareShortage(speech: string, bare: string): string {
   return s;
 }
 
+function costMatches(n: number, target: ResultSpeechTarget, groups: Group[]): boolean {
+  if (!target.costKey) return false;
+  const key = target.costKey;
+  return groups.some((g) => g.bill[key] > 0 && approx(n, g.bill[key]));
+}
+
+/** A spoken yield that is not the figure the books will pay is rewritten to that figure. */
+function alignNamedResults(speech: string, groups: Group[], targets: ResultSpeechTarget[]): string {
+  let s = speech;
+  for (const target of targets) {
+    if (!target.names) continue;
+    const re = new RegExp(
+      `\\b(${NUM_TOKEN})\\s+(?:cart-loads?|loads?|lb|lbs|pounds?|denarii|pieces?|modii|barrels?|lots?)?\\s*(?:of\\s+)?(?:${target.names})\\b`,
+      "gi",
+    );
+    s = s.replace(re, (full, numTok: string) => {
+      const n = parseNum(numTok);
+      if (n == null) return full;
+      if (approx(n, target.amount) || costMatches(n, target, groups)) return full;
+      return target.phrase;
+    });
+  }
+  return s;
+}
+
 function alignQuantities(speech: string, groups: Group[]): string {
   const gaps = groups.flatMap((g) => g.gaps);
+  const targets = groups.flatMap((g) => resultSpeechTargets(g.results));
   let s = speech;
   for (const tracked of TRACKED) {
     const gap = gaps.find((g) => g.key === tracked.key);
@@ -388,18 +520,26 @@ function alignQuantities(speech: string, groups: Group[]): string {
       })
       .filter((n) => n > 0);
     if (tracked.key === "denarii" && !gap && fullNeeds.length === 0) continue;
+    const target = targets.find((t) => t.costKey === tracked.key);
     const re = tracked.key === "denarii" ? coinPattern() : quantityPattern(tracked.names);
     s = s.replace(re, (full, numTok: string) => {
       const n = parseNum(numTok);
       if (n == null) return full;
       if (gap && (approx(n, gap.still) || approx(n, gap.need))) return full;
-      if (!gap && fullNeeds.some((need) => approx(n, need))) return full;
+      if (fullNeeds.some((need) => approx(n, need))) return full;
+      if (target && approx(n, target.amount)) return full;
       if (gap) return gap.stillPhrase;
       if (fullNeeds.length) return fullPhraseFor(tracked.key, fullNeeds[0]);
+      if (target) return target.phrase;
       return "";
     });
     if (!gap) {
       for (const bare of tracked.bares) s = stripBareShortage(s, bare);
+      const names = new RegExp(`\\b(?:${tracked.names})\\b`, "i");
+      s = s
+        .split(/(?<=[.!?])\s+/)
+        .filter((sentence) => !(/\bstill\s+need/i.test(sentence) && names.test(sentence)))
+        .join(" ");
     }
   }
   const loadGaps = gaps.filter((g) => g.key === "charcoal" || g.key === "lumber" || g.key === "stone");
@@ -430,7 +570,7 @@ function alignQuantities(speech: string, groups: Group[]): string {
       return `${amountWord(labourDays)} days of work`;
     });
   }
-  return s;
+  return alignNamedResults(s, groups, targets);
 }
 
 function tidy(speech: string): string {
@@ -441,10 +581,27 @@ function tidy(speech: string): string {
     .replace(/\b(?:and|or)\s+(?:and|or)\b/gi, "and")
     .replace(/\b(?:need|needs|needed)\s+more\s*(?=[.,]|$)/gi, "")
     .replace(/\bmore\s*(?=[.,]|$)/gi, "")
+    .replace(/\b(?:we|i)\s*(?=[.])/gi, "")
     .replace(/\s+([,.;])/g, "$1")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+\./g, ".")
+    .replace(/^\.\s*/, "")
     .trim();
+}
+
+/** A yield that will not be in the barn this season must not be spoken of as ready. */
+function imposeWait(speech: string, line: string): string {
+  const kept = speech
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => {
+      if (/not done this season/i.test(sentence)) return true;
+      if (/\bcan begin\b/i.test(sentence)) return false;
+      if (/\b(in the barn|in the stores|ready this season)\b/i.test(sentence)) return false;
+      return true;
+    });
+  const body = kept.join(" ").trim();
+  if (body.toLowerCase().includes(line.toLowerCase())) return body;
+  return `${body} ${line}`.trim();
 }
 
 /**
@@ -482,7 +639,11 @@ export function withBeginShortfalls(
         .filter(Boolean);
       out = `${out} ${sentences.join(" ")}`.trim();
     }
-  } else if (asking && offers.length) {
+  }
+  for (const line of groups.map((g) => g.waitLine).filter((line): line is string => Boolean(line))) {
+    out = imposeWait(out, line);
+  }
+  if (!gaps.length && asking && offers.length && !groups.some((g) => g.waitLine)) {
     const costs = offers
       .map((offer) => {
         const bill = projectStoreBill(offer);

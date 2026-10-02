@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { GERULF_NOTES } from "../engine/hunts";
+import { PROJECT_RESULT_RULE } from "../engine/projectResult";
 import { STEWARD_TOOL_IMPROVEMENT } from "../engine/toolImprovement";
 import { MERCHANT_VISITORS } from "../engine/merchant";
 import { HIREABLE_SPECIALISTS } from "../engine/specialists";
@@ -403,6 +404,27 @@ describe("signed-off NPC personalities", () => {
     expect(gerulf).toMatch(/1\.4/);
     expect(gerulf).toMatch(/1\.7/);
     expect(gerulf).toContain(BEGIN_SHORTFALL_RULE);
+    expect(books).toContain(PROJECT_RESULT_RULE);
+    expect(speech).toContain(PROJECT_RESULT_RULE);
+  });
+
+  it("tells the chronicler to reason a cost, the days, and a result the books will pay", () => {
+    const aldric = stewardSystemPrompt(boot());
+    expect(aldric).toContain(PROJECT_RESULT_RULE);
+    expect(aldric).toMatch(/no yield table/i);
+    expect(aldric).toMatch(/gunpowder/);
+    expect(aldric).toMatch(/steel/i);
+    expect(aldric).toMatch(/coppicing/i);
+    expect(aldric).toMatch(/makes farmland/i);
+    expect(aldric).toMatch(/do not say result, customCosts, reward/i);
+    expect(aldric).toMatch(/same proposal pack/i);
+    expect(aldric).toMatch(/do not spend the yield early/i);
+    expect(aldric).toMatch(/finishesThisSeason/);
+    expect(aldric).not.toMatch(/does not pay for another work confirmed in that same sitting/i);
+    expect(aldric).not.toMatch(/two cart-loads of wood in/i);
+    expect(aldric).not.toMatch(/40%/);
+    expect(aldric).not.toMatch(/2-to-1/);
+    expect(refereeSystemPrompt()).toContain(PROJECT_RESULT_RULE);
   });
 
   it("tells the Court Chronicler never to mention JSON, emotion tags, or being an AI", () => {

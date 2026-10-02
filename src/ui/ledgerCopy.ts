@@ -3,6 +3,7 @@ import { CANONICAL_RESOURCES, RESOURCE_UNITS, type CanonicalResource } from "../
 import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
 import { beginCostLine, projectStoreBill } from "../engine/projectBegin";
+import { proposalResult, resultPayLine } from "../engine/projectResult";
 import { hiredSmithName, ownWorkCostPhrase, personalSeasonsForStart, startIsPersonalSmithing } from "../engine/smithing";
 import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
@@ -445,7 +446,9 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
         ? ownWorkCostPhrase(personalSeasonsForStart(p), hiredSmithName(state))
         : undefined;
       const cost = beginCostLine(bill, own);
-      return cost ? `Begin ${name} on ${holding}. ${cost}` : `Begin ${name} on ${holding}.`;
+      const pay = resultPayLine(proposalResult(p));
+      const body = [cost, pay].filter(Boolean).join(" ");
+      return body ? `Begin ${name} on ${holding}. ${body}` : `Begin ${name} on ${holding}.`;
     }
     case "adjust_project": {
       const proj = state ? resolveActiveProject(state, p.projectId, p.summary) : undefined;

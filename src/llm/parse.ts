@@ -310,6 +310,9 @@ export function coerceProposalInput(raw: unknown): unknown {
     if (typeof next.projectKey === "string") next.projectKey = normalizeProjectKey(next.projectKey);
     else if (typeof next.key === "string") next.projectKey = normalizeProjectKey(next.key);
     if (next.holdingId == null && typeof next.holding === "string") next.holdingId = next.holding;
+    if (next.result == null) {
+      next.result = next.yields ?? next.yield ?? next.output ?? next.produces ?? next.reward;
+    }
   }
   if (next.type === "assign_labour") {
     if (next.projectId == null && typeof next.project === "string") next.projectId = next.project;

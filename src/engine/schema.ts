@@ -297,6 +297,27 @@ export const ProjectSchema = z.object({
       seasonsElapsed: z.number().int(),
     })
     .optional(),
+  /**
+   * Goods added to the stores once, when the work is marked finished.
+   * The amounts the chronicler named. Absent when the work pays nothing.
+   */
+  result: z
+    .array(
+      z.object({
+        resource: z.string(),
+        amount: z.number(),
+        name: z.string().optional(),
+        unit: z.string().optional(),
+      }),
+    )
+    .optional(),
+  /**
+   * The chronicler's judgment that this work finishes inside the season it was begun.
+   * Absent means the books judge from the days and one season of spare labour.
+   */
+  finishesThisSeason: z.boolean().optional(),
+  /** Set once the named result has been added to the stores. Cancel does not set this. */
+  resultPaid: z.boolean().optional(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
@@ -797,6 +818,54 @@ export const SetStandingOrderProposalSchema = ProposalBase.extend({
   active: z.boolean().default(true),
 });
 
+export const ProjectResultEntrySchema = z.object({
+  resource: z.string().min(1),
+  amount: z.coerce.number(),
+  name: z.string().optional(),
+  unit: z.string().optional(),
+});
+export type ProjectResultEntry = z.infer<typeof ProjectResultEntrySchema>;
+
+/**
+ * A result may arrive as a list of stores, or as an object of resource → amount
+ * (or resource → { amount, name, unit }). Junk is dropped so one bad figure
+ * does not throw out the whole work.
+ */
+function coerceProjectResult(val: unknown): unknown {
+  if (val == null || val === "") return [];
+  const items: { resource: string; amount: number; name?: string; unit?: string }[] = [];
+  const push = (resource: unknown, raw: unknown) => {
+    if (typeof resource !== "string" || !resource.trim()) return;
+    let amount: unknown = raw;
+    let name: string | undefined;
+    let unit: string | undefined;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const row = raw as Record<string, unknown>;
+      amount = row.amount ?? row.qty ?? row.value;
+      if (typeof row.name === "string" && row.name.trim()) name = row.name.trim();
+      if (typeof row.unit === "string" && row.unit.trim()) unit = row.unit.trim();
+    }
+    const n = typeof amount === "number" ? amount : typeof amount === "string" && amount.trim() ? Number(amount) : NaN;
+    if (!Number.isFinite(n)) return;
+    items.push({ resource: resource.trim(), amount: n, ...(name ? { name } : {}), ...(unit ? { unit } : {}) });
+  };
+  if (Array.isArray(val)) {
+    for (const row of val) {
+      if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+      const o = row as Record<string, unknown>;
+      push(o.resource ?? o.id ?? o.good ?? o.store, o);
+    }
+    return items;
+  }
+  if (typeof val === "object") {
+    for (const [resource, raw] of Object.entries(val as Record<string, unknown>)) push(resource, raw);
+    return items;
+  }
+  return [];
+}
+
+export const ProjectResultSchema = z.preprocess(coerceProjectResult, z.array(ProjectResultEntrySchema)).optional();
+
 export const StartProjectProposalSchema = ProposalBase.extend({
   type: z.literal("start_project"),
   projectKey: z.string(),
@@ -814,6 +883,22 @@ export const StartProjectProposalSchema = ProposalBase.extend({
       denarii: z.coerce.number().optional(),
     })
     .optional(),
+  /** Goods the stores gain once, when this work is finished. Omitted when it pays nothing. */
+  result: ProjectResultSchema,
+  /**
+   * True when this work finishes inside the season, false when it runs past it.
+   * Omitted, the books judge from the days and one season of spare labour.
+   */
+  finishesThisSeason: z.preprocess((val) => {
+    if (val == null || val === "") return undefined;
+    if (typeof val === "boolean") return val;
+    if (typeof val === "string") {
+      const s = val.trim().toLowerCase();
+      if (s === "true" || s === "yes") return true;
+      if (s === "false" || s === "no") return false;
+    }
+    return undefined;
+  }, z.boolean().optional()),
   tag: z.string().optional(),
   notes: z.string().optional(),
 });
