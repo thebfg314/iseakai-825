@@ -129,6 +129,7 @@ import {
 } from "../engine/spokenWork";
 import { undoPaidProjectResult } from "../engine/projectResult";
 import { guardSmithProposals, smithSpeechForOrder } from "../engine/smithing";
+import { stampSpeakerTag } from "../engine/speakerTag";
 import {
   asksAboutTheHarvest,
   BERNARD_HARVEST_REDIRECT,
@@ -946,6 +947,7 @@ export class GameController {
     if (npcId === "steward") this.flushHireRecommendations();
     if (npcId === "smith") this.ensureBogOreSpeech(playerText);
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
+    proposals = proposals.map((p) => stampSpeakerTag(npcId, p));
     if (npcId !== "smith") proposals = proposals.filter((p) => !isBloomeryStart(p));
     const askedBloomery = npcId === "smith" && playerAskedBloomery(playerText, this.bloomeryMentioned);
     if (npcId === "smith") proposals = this.dropUnaskedBloomery(proposals, playerText);

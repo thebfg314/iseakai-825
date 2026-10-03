@@ -316,6 +316,13 @@ export function coerceProposalInput(raw: unknown): unknown {
     if (next.result == null) {
       next.result = next.yields ?? next.yield ?? next.output ?? next.produces ?? next.reward;
     }
+    // Models write tags: ["church"] as often as tag: "church". The card keeps one tag; the first string wins.
+    if (typeof next.tag !== "string" || !next.tag.trim()) {
+      const tags = Array.isArray(next.tags) ? next.tags : typeof next.tags === "string" ? [next.tags] : [];
+      const first = tags.find((t): t is string => typeof t === "string" && t.trim().length > 0);
+      if (first) next.tag = first.trim().toLowerCase();
+      else delete next.tag;
+    }
   }
   if (next.type === "assign_labour") {
     if (next.projectId == null && typeof next.project === "string") next.projectId = next.project;

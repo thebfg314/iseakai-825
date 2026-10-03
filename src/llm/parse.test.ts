@@ -105,6 +105,55 @@ describe("parseLlmResponse", () => {
     expect(parsed.proposal).toMatchObject({ type: "start_project", projectKey: "clear_scrub" });
   });
 
+  it("keeps a tags array on start_project as the card's single tag (Ermenald's roof repair)", () => {
+    const parsed = parseProposal({
+      type: "start_project",
+      summary: "Mend the oratory roof",
+      projectKey: "oratory_roof_repair",
+      name: "Oratory roof repair",
+      holdingId: "fontenay",
+      tags: ["church", "repair"],
+      customCosts: { labourDays: 12, lumber: 1 },
+    });
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.proposal).toMatchObject({ type: "start_project", tag: "church" });
+    expect(parsed.proposal && "tags" in parsed.proposal).toBe(false);
+
+    const single = parseProposal({
+      type: "start_project",
+      summary: "Mend the oratory roof",
+      projectKey: "oratory_roof_repair",
+      holdingId: "fontenay",
+      tags: "Church",
+      customCosts: { labourDays: 12 },
+    });
+    expect(single.proposal).toMatchObject({ tag: "church" });
+
+    const explicit = parseProposal({
+      type: "start_project",
+      summary: "Mend the oratory roof",
+      projectKey: "oratory_roof_repair",
+      holdingId: "fontenay",
+      tag: "church",
+      tags: ["repair"],
+      customCosts: { labourDays: 12 },
+    });
+    expect(explicit.proposal).toMatchObject({ tag: "church" });
+  });
+
+  it("reads forgeDays beside labourDays on a smith's card", () => {
+    const parsed = parseProposal({
+      type: "start_project",
+      summary: "Two heavy ploughs",
+      projectKey: "two_heavy_ploughs",
+      holdingId: "fontenay",
+      tag: "forge",
+      customCosts: { forgeDays: "10", labourDays: 3, iron: 40, charcoal: 2 },
+    });
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.proposal).toMatchObject({ customCosts: { forgeDays: 10, labourDays: 3, iron: 40, lumber: 0, stone: 0 } });
+  });
+
   it("still returns speech when the wrapper schema is messy but proposals are present", () => {
     const raw = JSON.stringify({
       speech: "As you will.",
