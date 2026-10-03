@@ -6,4 +6,5 @@ export * from "./providerErrors";
 export * from "./usage";
 export * from "./credits";
 export { rfabChat, listRfabModels } from "./rfab";
-export { llmChat, llmComplete, listLlmModels, takeLastReasoning, stashReasoning } from "./chat";
+export { llmChat, llmComplete, listLlmModels, takeLastReasoning, takeLastCompletion, stashReasoning, stashCompletion } from "./chat";
+export { requestWithTimeout, SseParser, sseJson, DEFAULT_TOTAL_MS, DEFAULT_IDLE_MS } from "./transport";

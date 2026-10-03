@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { ChatMessageParam } from "../llm/types";
+import type { ChatMessageParam, CompletionUsage } from "../llm/types";
 import { newId } from "../engine/util";
 
 export type PlayLogModelCall = {
@@ -10,10 +10,34 @@ export type PlayLogModelCall = {
   messages: ChatMessageParam[];
   content: string;
   reasoning: string;
+  /** Provider's finish reason ("stop", "length", "end_turn", "max_tokens"). Absent when it sent none. */
+  finishReason?: string;
+  usage?: CompletionUsage;
+  elapsedMs?: number;
+  /** Token cap the game asked for on this call. */
+  maxTokens?: number;
   proposals?: unknown;
   parseErrors?: string[];
   hallSpeech?: string;
 };
+
+/** "Finish reason: length (reply cut at the token cap)" and the like, for the log. */
+export function describeFinish(reason: string | undefined): string {
+  if (!reason) return "(provider sent none)";
+  const r = reason.toLowerCase();
+  if (r === "length" || r === "max_tokens") return `${reason} (reply cut at the token cap)`;
+  if (r === "stop" || r === "end_turn" || r === "stop_sequence") return `${reason} (whole reply)`;
+  return reason;
+}
+
+function usageLine(usage: CompletionUsage | undefined): string {
+  if (!usage) return "(provider sent none)";
+  const parts: string[] = [];
+  if (usage.promptTokens != null) parts.push(`${usage.promptTokens} prompt`);
+  if (usage.completionTokens != null) parts.push(`${usage.completionTokens} completion`);
+  if (usage.reasoningTokens != null) parts.push(`${usage.reasoningTokens} of those reasoning`);
+  return parts.length ? parts.join(", ") : "(provider sent none)";
+}
 
 /** One text file per play, beside the save. A later play writes a new file. */
 export function playLogsDirectory(saveDir: string): string {
@@ -100,6 +124,10 @@ export class PlayLog {
       `When: ${new Date().toISOString()}`,
       `Provider: ${call.provider}`,
       `Model: ${call.model || "(none selected)"}`,
+      `Elapsed: ${call.elapsedMs != null ? `${(call.elapsedMs / 1000).toFixed(1)}s` : "(not measured)"}`,
+      `Token budget: ${call.maxTokens ?? "(adapter default)"}`,
+      `Finish reason: ${describeFinish(call.finishReason)}`,
+      `Tokens: ${usageLine(call.usage)}`,
       "",
       "System information given to the model",
       "--------------------------------------",

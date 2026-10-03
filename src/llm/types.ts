@@ -11,11 +11,46 @@ export type ChatMessageParam = { role: "system" | "user" | "assistant"; content:
 
 export type ChatOpts = { maxTokens?: number; temperature?: number };
 
+/** Token counts a provider reported for one call. */
+export type CompletionUsage = {
+  promptTokens?: number;
+  completionTokens?: number;
+  /** Hidden reasoning tokens, when the provider breaks them out. */
+  reasoningTokens?: number;
+};
+
 /** Reply text the game parses, plus any hidden reasoning the provider sent beside it. */
 export type LlmCompletion = {
   content: string;
   reasoning: string;
+  /** Provider's own word: "stop", "length", "end_turn", "max_tokens", … Undefined when it sent none. */
+  finishReason?: string;
+  usage?: CompletionUsage;
+  /** Wall-clock time the request took. */
+  elapsedMs?: number;
+  /** True when the provider cut the reply short (ran out of tokens). */
+  truncated?: boolean;
 };
+
+/** Thrown by the transport when a request runs past its budget. Carries whatever text had arrived. */
+export class LlmTimeoutError extends Error {
+  readonly partialContent: string;
+  readonly elapsedMs: number;
+  readonly kind: "total" | "idle";
+
+  constructor(kind: "total" | "idle", elapsedMs: number, partialContent = "", providerLabel = "Model") {
+    const seconds = Math.round(elapsedMs / 1000);
+    super(
+      kind === "idle"
+        ? `${providerLabel} timed out: no data for ${seconds}s into the reply.`
+        : `${providerLabel} timed out after ${seconds}s.`,
+    );
+    this.name = "LlmTimeoutError";
+    this.kind = kind;
+    this.elapsedMs = elapsedMs;
+    this.partialContent = partialContent;
+  }
+}
 
 export type LlmModel = {
   id: string;

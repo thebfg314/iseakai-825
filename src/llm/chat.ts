@@ -51,6 +51,8 @@ export async function llmComplete(settings: AppSettings, messages: ChatMessagePa
         messages,
         chatOpts: opts,
         extraHeaders: OPENROUTER_HEADERS,
+        // OpenRouter's own switch for a usage block on the final chunk.
+        extraBody: { usage: { include: true } },
         providerLabel: "OpenRouter",
       });
     case "xai":
@@ -69,12 +71,15 @@ export async function llmComplete(settings: AppSettings, messages: ChatMessagePa
         model: config.model,
         messages,
         chatOpts: opts,
+        // Gemini's OpenAI shim rejects fields it does not know; usage arrives on the chunks anyway.
+        includeUsageOption: false,
         providerLabel: "Google",
       });
   }
 }
 
 let lastReasoning = "";
+let lastCompletion: LlmCompletion | null = null;
 
 /** Reasoning from the completion just returned. Empty when that reply had none. */
 export function takeLastReasoning(): string {
@@ -83,15 +88,30 @@ export function takeLastReasoning(): string {
   return reasoning;
 }
 
+/** Finish reason, usage, and timing of the completion just returned. Null when a stub answered. */
+export function takeLastCompletion(): LlmCompletion | null {
+  const done = lastCompletion;
+  lastCompletion = null;
+  return done;
+}
+
 /** Lets a test attach reasoning to a stubbed reply. */
 export function stashReasoning(reasoning: string) {
   lastReasoning = reasoning;
 }
 
+/** Lets a test attach finish reason / usage to a stubbed reply. */
+export function stashCompletion(done: LlmCompletion) {
+  lastCompletion = done;
+  lastReasoning = done.reasoning;
+}
+
 export async function llmChat(settings: AppSettings, messages: ChatMessageParam[], opts?: ChatOpts): Promise<string> {
   lastReasoning = "";
+  lastCompletion = null;
   const done = await llmComplete(settings, messages, opts);
   lastReasoning = done.reasoning;
+  lastCompletion = done;
   return done.content;
 }
 

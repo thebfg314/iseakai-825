@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
-import { HOLD_AT_ONCE_APOLOGY } from "../llm/providerErrors";
+import { BOOKS_NOT_TAKEN_LINE, HOLD_AT_ONCE_APOLOGY } from "../llm/providerErrors";
 import { defaultAppSettings } from "../llm/settings";
 
 const llmChatMock = vi.hoisted(() => vi.fn());
@@ -116,23 +116,24 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     expect(game.state.holdings[0].sown.barley).toBe(0);
   });
 
-  it("lets Aldric speak the apology when the books pass times out — no Books line, no order-speech", async () => {
+  it("keeps Aldric's speech when the books pass times out, with a books line and nothing queued", async () => {
     const game = tempGame();
     llmChatMock.mockResolvedValueOnce(speechJson("I hear you. Barley, then."));
     llmChatMock.mockRejectedValueOnce(new Error(RFAB_502));
     const result = await game.sendDialogue("steward", "Sow more barley on the remaining acres.");
     expect(result.error).toBeUndefined();
+    // A network failure is not retried.
     expect(llmChatMock).toHaveBeenCalledTimes(2);
-    expectNpcApologyOnly(game);
-    expect(game.messages.some((m) => m.role === "npc" && /I hear you/.test(m.text))).toBe(false);
+    const turn = lastTurn(game);
+    expect(turn.map((m) => m.role)).toEqual(["player", "npc", "system"]);
+    expect(turn[1]).toMatchObject({ role: "npc", npcId: "steward", text: "I hear you. Barley, then." });
+    expect(turn[2].text).toBe(BOOKS_NOT_TAKEN_LINE);
+    expect(playerFacing(game)).not.toContain(HOLD_AT_ONCE_APOLOGY);
     expect(playerFacing(game)).not.toMatch(/RFAB|Grok|PROVIDER_ERROR|502|world-state/i);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
-  it("treats a truncated speech dump as a timeout: apology only, no NPC speech, nothing queued", async () => {
-    const speech =
-      "It makes good sense, my lord. We shall keep a three-field rotation, legumes and peas on the rest year, manure on the tired acres, and the best seed set aside.";
-    const truncated = `{ "speech": "${speech}",
+  const TRUNCATED_SPEECH_DUMP = `{ "speech": "It makes good sense, my lord. We shall keep a three-field rotation, legumes and peas on the rest year, manure on the tired acres, and the best seed set aside.",
   "chronicle": "The lord ordered a three-field rotation.",
   "emotion": "thoughtful",
   "proposals": [
@@ -141,21 +142,38 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
       "summary": "Begin tracking peas (field legumes) in the estate stores",
       "text": "Three-field rotation with legumes",
       "active": true }`;
-    const order =
-      "ok. Id like us to split our farming fields into a three-field rotation, rest one year under legumes (peas), put manure on the tired acres, and keep the best seed-selection back for sowing.";
+  const THREE_FIELD_ORDER =
+    "ok. Id like us to split our farming fields into a three-field rotation, rest one year under legumes (peas), put manure on the tired acres, and keep the best seed-selection back for sowing.";
+
+  it("asks once more with twice the budget when the speech dump is truncated, then apologizes if it is cut again", async () => {
     const game = tempGame();
     const resourcesBefore = { ...game.state.resources };
-    llmChatMock.mockResolvedValueOnce(truncated);
-    llmChatMock.mockResolvedValueOnce(sowingJson());
-    await game.sendDialogue("steward", order);
-    expect(llmChatMock).toHaveBeenCalledTimes(1);
+    llmChatMock.mockResolvedValueOnce(TRUNCATED_SPEECH_DUMP);
+    llmChatMock.mockResolvedValueOnce(TRUNCATED_SPEECH_DUMP);
+    await game.sendDialogue("steward", THREE_FIELD_ORDER);
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    const budgets = llmChatMock.mock.calls.map((c) => (c[2] as { maxTokens?: number } | undefined)?.maxTokens ?? 0);
+    expect(budgets[1]).toBe(budgets[0] * 2);
     expectNpcApologyOnly(game);
     expect(game.messages.some((m) => m.role === "npc" && /It makes good sense/.test(m.text))).toBe(false);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
     expect(game.state.resources).toEqual(resourcesBefore);
   });
 
-  it("lets Aldric speak the apology when the books pass is chopped — no order-speech, no Books line", async () => {
+  it("uses the whole reply from the larger-budget retry after a truncated speech dump", async () => {
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce(TRUNCATED_SPEECH_DUMP);
+    llmChatMock.mockResolvedValueOnce(speechJson("It makes good sense, my lord. The three-field course waits on the harvest."));
+    // Books pass, and any drawer repair after it.
+    llmChatMock.mockResolvedValue(sowingJson());
+    await game.sendDialogue("steward", THREE_FIELD_ORDER);
+    const turn = lastTurn(game);
+    expect(turn.some((m) => m.role === "npc" && /It makes good sense/.test(m.text))).toBe(true);
+    expect(turn.some((m) => m.text === HOLD_AT_ONCE_APOLOGY)).toBe(false);
+    expect(game.pending.filter((p) => p.status === "pending").length).toBeGreaterThan(0);
+  });
+
+  it("keeps the speech when the books pass is chopped twice — a books line, nothing queued", async () => {
     const speech = "I hear you. Barley, then.";
     const truncated = `{ "speech": "The barley share is written.",
   "emotion": "thoughtful",
@@ -163,11 +181,15 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     const game = tempGame();
     llmChatMock.mockResolvedValueOnce(speechJson(speech));
     llmChatMock.mockResolvedValueOnce(truncated);
+    llmChatMock.mockResolvedValueOnce(truncated);
     await game.sendDialogue("steward", "Sow more barley on the remaining acres.");
-    expect(llmChatMock).toHaveBeenCalledTimes(2);
-    expectNpcApologyOnly(game);
-    expect(game.messages.some((m) => m.role === "npc" && m.text === speech)).toBe(false);
+    expect(llmChatMock).toHaveBeenCalledTimes(3);
+    const turn = lastTurn(game);
+    expect(turn.map((m) => m.role)).toEqual(["player", "npc", "system"]);
+    expect(turn[1].text).toBe(speech);
+    expect(turn[2].text).toBe(BOOKS_NOT_TAKEN_LINE);
     expect(game.messages.some((m) => /The barley share is written/.test(m.text))).toBe(false);
+    expect(game.messages.some((m) => m.text === HOLD_AT_ONCE_APOLOGY)).toBe(false);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
@@ -179,8 +201,10 @@ describe("mid-season talk timeouts and two-phase NPC calls", () => {
     const game = tempGame();
     const denariiBefore = game.state.resources.denarii;
     llmChatMock.mockResolvedValueOnce(dirty);
+    llmChatMock.mockResolvedValueOnce(dirty);
     await game.advanceSeason();
-    expect(llmChatMock).toHaveBeenCalledTimes(1);
+    // Chopped once, retried at twice the budget, chopped again: engine stubs only.
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
     expect(game.messages.some((m) => m.role === "npc" && /Peas are on the ledger|It makes good sense/.test(m.text))).toBe(
       false,
     );

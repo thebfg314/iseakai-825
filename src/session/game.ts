@@ -30,8 +30,8 @@ import fs from "node:fs";
 import { parseLlmResponse, playerFacingNpcSpeech, eventEffectHasMechanics } from "../llm/parse";
 import * as llm from "../llm";
 import type { AppSettings } from "../llm";
-import { takeLastReasoning } from "../llm/chat";
-import { activeConfig } from "../llm/types";
+import { takeLastCompletion, takeLastReasoning } from "../llm/chat";
+import { activeConfig, LlmTimeoutError } from "../llm/types";
 import { PlayLog } from "./playLog";
 import { fetchProviderBalance } from "../llm/credits";
 import { consumeLastLlmCall, LlmMeterStore } from "../llm/usage";
@@ -57,9 +57,11 @@ import {
 } from "../llm/toolProtocol";
 import {
   booksHearFailureLine,
+  BOOKS_NOT_TAKEN_LINE,
   HOLD_AT_ONCE_APOLOGY,
   INCOMPLETE_MODEL_JSON,
   isHoldAtOnceFailure,
+  isTruncationError,
 } from "../llm/providerErrors";
 import { introAlreadySpoken, introSpeechFor, markIntroSpoken } from "../engine/intros";
 import { recordConfirmedTransaction } from "../engine/memory";
@@ -169,6 +171,15 @@ import { healPersonalFully, tickWounds } from "../engine/wounds";
 import { createRng, seedFromString } from "../combat/rng";
 
 export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
+
+/**
+ * Token caps per call. Reasoning models spend hidden thinking tokens inside the
+ * same cap before any visible text, so these leave generous room; the cap is a
+ * ceiling, not a spend. A reply that still hits it is asked again at twice the budget.
+ */
+export const SPEECH_TOKENS = 2500;
+export const BOOKS_TOKENS = 3500;
+export const SEASON_TOKENS = 4000;
 
 export class GameController {
   state: WorldState;
@@ -440,7 +451,7 @@ export class GameController {
     try {
       const spoken = await this.callLlm(
         [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
-        800,
+        SPEECH_TOKENS,
         { requireProposals: false, allowRepair: false, purpose: "speech" },
       );
 
@@ -477,7 +488,7 @@ export class GameController {
               { role: "assistant", content: spoken.raw },
               { role: "user", content: `${npcFactsFollowUp(playerText, drawers)}\n\n${SPEECH_PASS_HINT}` },
             ],
-            800,
+            SPEECH_TOKENS,
             { requireProposals: false, allowRepair: false, purpose: "speech after a tool call" },
           );
           if (parseToolRequest(answer.raw).malformed) {
@@ -517,16 +528,22 @@ export class GameController {
           return this.finishTalk();
         }
         const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, drawers);
-        const books = await this.callLlm(
-          [
-            { role: "system", content: system },
-            { role: "user", content: booksUser },
-            { role: "assistant", content: answer.raw },
-            { role: "user", content: beginFiguresFollowUp(playerText) },
-          ],
-          900,
-          { requireProposals: false, allowRepair: false, purpose: "books, figures for a short work" },
-        );
+        let books: Awaited<ReturnType<GameController["callLlm"]>>;
+        try {
+          books = await this.callLlm(
+            [
+              { role: "system", content: system },
+              { role: "user", content: booksUser },
+              { role: "assistant", content: answer.raw },
+              { role: "user", content: beginFiguresFollowUp(playerText) },
+            ],
+            BOOKS_TOKENS,
+            { requireProposals: false, allowRepair: false, purpose: "books, figures for a short work" },
+          );
+        } catch (err) {
+          this.keepSpeechAfterBooksFailure(err, npcId, answer);
+          return this.finishTalk();
+        }
         this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
         this.ingestParsedDialogue(npcId, books, playerText);
         return this.finishTalk();
@@ -540,7 +557,7 @@ export class GameController {
           { role: "assistant", content: answer.raw },
           { role: "user", content: npcBooksFollowUp(playerText, discussed ? compactOfferLine(discussed.proposal) : undefined) },
         ];
-        let books = await this.callLlm(booksMessages, 900, {
+        let books = await this.callLlm(booksMessages, BOOKS_TOKENS, {
           purpose: "books",
           requireProposals: true,
           allowRepair: true,
@@ -561,7 +578,7 @@ export class GameController {
                 `The engine fetched these missing drawers. Use only these numbers. Do not emit tool markers.\n${JSON.stringify(repairFacts)}`,
               ),
             ],
-            900,
+            BOOKS_TOKENS,
             { requireProposals: true, allowRepair: false, purpose: "books, missing drawers" },
           );
         }
@@ -612,7 +629,7 @@ export class GameController {
         return this.finishTalk();
       } catch (err) {
         if (this.recoverHuntOffer(npcId, playerText, answer)) return this.finishTalk();
-        this.noteTalkFailure(err, npcId);
+        this.keepSpeechAfterBooksFailure(err, npcId, answer);
         return this.finishTalk();
       }
     } catch (err) {
@@ -738,6 +755,25 @@ export class GameController {
       return;
     }
     this.ledgerNote(booksHearFailureLine(this.npcName(npcId)), npcId);
+  }
+
+  /**
+   * The speech pass already answered; only the books pass failed. The lord keeps
+   * the words he was given and a ledger line says nothing was written. If the
+   * speech itself was unusable, fall back to the ordinary failure line.
+   */
+  private keepSpeechAfterBooksFailure(
+    err: unknown,
+    npcId: string,
+    spoken: { speech: string; chronicle?: string; emotion?: AldricEmotion },
+  ) {
+    const speech = stripToolMarkers(spoken.speech).trim();
+    if (!speech || speech === HOLD_AT_ONCE_APOLOGY) {
+      this.noteTalkFailure(err, npcId);
+      return;
+    }
+    this.pushNpcSpeech(npcId, spoken);
+    this.ledgerNote(BOOKS_NOT_TAKEN_LINE, npcId);
   }
 
   /** Spoken by the NPC they were talking to — not a Books line. */
@@ -1499,7 +1535,7 @@ export class GameController {
             ),
           },
         ],
-        2000,
+        SEASON_TOKENS,
         {
           purpose: "season report",
           requireProposals: true,
@@ -1710,8 +1746,9 @@ export class GameController {
     parseErrors: string[];
   }> {
     const purpose = opts?.purpose ?? "dialogue";
-    const raw1 = await this.llmRaw(messages, { maxTokens, purpose });
-    let parsed = parseLlmResponse(raw1);
+    const first = await this.llmParsedWithRetry(messages, { maxTokens, purpose });
+    const raw1 = first.raw;
+    let parsed = first.parsed;
     if (parsed.incomplete) {
       throw new Error(INCOMPLETE_MODEL_JSON);
     }
@@ -1724,7 +1761,7 @@ export class GameController {
       const errors = parsed.parseErrors.length
         ? parsed.parseErrors
         : ["proposals was empty but this turn must change the ledger."];
-      const raw2 = await this.llmRaw(
+      const second = await this.llmParsedWithRetry(
         [...messages, { role: "assistant", content: raw1 }, repairPrompt(raw1, errors, opts?.repairHint)],
         {
           maxTokens,
@@ -1732,7 +1769,8 @@ export class GameController {
           purpose: `${purpose} repair`,
         },
       );
-      parsed = parseLlmResponse(raw2);
+      const raw2 = second.raw;
+      parsed = second.parsed;
       if (parsed.incomplete) {
         throw new Error(INCOMPLETE_MODEL_JSON);
       }
@@ -1780,15 +1818,63 @@ export class GameController {
     this.playLog.note("What the books made of that reply", lines.join("\n"));
   }
 
+  /**
+   * One model call, parsed. If the provider cut the reply at the token cap, or
+   * the JSON never closed, ask once more with twice the budget before giving up.
+   * A real network failure or timeout is not retried.
+   */
+  private async llmParsedWithRetry(
+    messages: { role: "system" | "user" | "assistant"; content: string }[],
+    opts: { maxTokens: number; temperature?: number; purpose: string },
+  ): Promise<{ raw: string; parsed: ReturnType<typeof parseLlmResponse> }> {
+    const attempt = async (maxTokens: number, purpose: string) => {
+      let raw = "";
+      let truncated = false;
+      try {
+        const done = await this.llmCall(messages, { ...opts, maxTokens, purpose });
+        raw = done.content;
+        truncated = done.truncated;
+      } catch (err) {
+        if (!isTruncationError(err)) throw err;
+        truncated = true;
+      }
+      const parsed = parseLlmResponse(raw);
+      return { raw, parsed, cut: truncated || Boolean(parsed.incomplete) };
+    };
+    let result = await attempt(opts.maxTokens, opts.purpose);
+    if (result.cut) {
+      const larger = opts.maxTokens * 2;
+      this.playLog.note(
+        `Reply cut short (${opts.purpose})`,
+        `The model's reply ended before it was whole: it ran out of tokens, or its JSON never closed. Asking once more with a budget of ${larger} tokens.`,
+      );
+      result = await attempt(larger, `${opts.purpose}, larger budget`);
+    }
+    return { raw: result.raw, parsed: result.parsed };
+  }
+
+  /** Reply text only; battle narration and other callers that do not parse the contract. */
   private async llmRaw(
     messages: { role: "system" | "user" | "assistant"; content: string }[],
     opts?: { maxTokens?: number; temperature?: number; purpose?: string },
   ): Promise<string> {
+    const done = await this.llmCall(messages, opts);
+    return done.content;
+  }
+
+  /** One model call, written to the play log with its finish reason, token counts, and timing. */
+  private async llmCall(
+    messages: { role: "system" | "user" | "assistant"; content: string }[],
+    opts?: { maxTokens?: number; temperature?: number; purpose?: string },
+  ): Promise<{ content: string; truncated: boolean; finishReason?: string }> {
     const purpose = opts?.purpose ?? "model";
     const config = activeConfig(this.settings);
+    const started = Date.now();
     try {
       const content = await llm.llmChat(this.settings, messages, opts);
       const reasoning = takeLastReasoning();
+      const done = takeLastCompletion();
+      const elapsedMs = done?.elapsedMs ?? Date.now() - started;
       this.playLog.recordModel({
         purpose,
         provider: this.settings.provider,
@@ -1796,20 +1882,29 @@ export class GameController {
         messages,
         content,
         reasoning,
+        finishReason: done?.finishReason,
+        usage: done?.usage,
+        elapsedMs,
+        maxTokens: opts?.maxTokens,
       });
-      return content;
+      return { content, truncated: Boolean(done?.truncated), finishReason: done?.finishReason };
     } catch (err) {
       const systems = messages.filter((m) => m.role === "system").map((m) => m.content);
+      const elapsedMs = err instanceof LlmTimeoutError ? err.elapsedMs : Date.now() - started;
+      const partial = err instanceof LlmTimeoutError ? err.partialContent : "";
       this.playLog.note(
         `Model call failed (${purpose})`,
         [
           `Provider: ${this.settings.provider}`,
           `Model: ${config.model || "(none selected)"}`,
+          `Elapsed: ${(elapsedMs / 1000).toFixed(1)}s`,
+          `Token budget: ${opts?.maxTokens ?? "(adapter default)"}`,
           "",
           "System information given to the model",
           systems.join("\n\n") || "(none)",
           "",
           `Error: ${err instanceof Error ? err.message : String(err)}`,
+          ...(partial ? ["", "Partial text that had arrived before the cut:", partial] : []),
         ].join("\n"),
       );
       throw err;

@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
-import { HOLD_AT_ONCE_APOLOGY } from "../llm/providerErrors";
+import { BOOKS_NOT_TAKEN_LINE, HOLD_AT_ONCE_APOLOGY } from "../llm/providerErrors";
 import { CHECK_RECORDS_LINE, RECALL_DEALS_LINE } from "../llm/toolProtocol";
 import { defaultAppSettings } from "../llm/settings";
 
@@ -166,12 +166,14 @@ describe("mid-season hidden ledger tools", () => {
     expect(lastTurn(game).every((m) => m.text !== "")).toBe(true);
   });
 
-  it("apologizes as the NPC when the tool marker is chopped — no Confirm, books untouched", async () => {
+  it("apologizes as the NPC when the tool marker is chopped twice — no Confirm, books untouched", async () => {
     const game = tempGame();
     const ryeBefore = game.state.resources.rye;
     llmChatMock.mockResolvedValueOnce("Let me see the stores.\n<=-tool: grain, chest");
+    llmChatMock.mockResolvedValueOnce("Let me see the stores.\n<=-tool: grain, chest");
     await game.sendDialogue("steward", "How much rye do we hold?");
-    expect(llmChatMock).toHaveBeenCalledTimes(1);
+    // One retry with a larger budget, then the apology.
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
     const turn = lastTurn(game);
     expect(turn.map((m) => m.role)).toEqual(["player", "npc"]);
     expect(turn[1].text).toBe(HOLD_AT_ONCE_APOLOGY);
@@ -180,16 +182,32 @@ describe("mid-season hidden ledger tools", () => {
     expect(game.state.resources.rye).toBe(ryeBefore);
   });
 
-  it("apologizes as the NPC when quiet repair JSON is chopped — no Confirm", async () => {
+  it("asks once more with a larger budget when the tool marker is chopped, then checks the records", async () => {
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce("Let me see the stores.\n<=-tool: grain, chest");
+    llmChatMock.mockResolvedValueOnce("Let me see the stores.\n<=-tool: grain, chest -=>");
+    llmChatMock.mockResolvedValueOnce("Eight modii of rye, my lord.");
+    await game.sendDialogue("steward", "How much rye do we hold?");
+    expect(llmChatMock).toHaveBeenCalledTimes(3);
+    const budgets = llmChatMock.mock.calls.map((c) => (c[2] as { maxTokens?: number } | undefined)?.maxTokens);
+    expect(budgets[1]).toBe((budgets[0] ?? 0) * 2);
+    const turn = lastTurn(game);
+    expect(turn.some((m) => m.role === "npc" && /Eight modii of rye/.test(m.text))).toBe(true);
+    expect(turn.some((m) => m.text === HOLD_AT_ONCE_APOLOGY)).toBe(false);
+  });
+
+  it("keeps the speech when quiet repair JSON is chopped twice — no Confirm, a books line", async () => {
     const game = tempGame();
     llmChatMock.mockResolvedValueOnce(speechJson("The brothers will have bread."));
     llmChatMock.mockResolvedValueOnce(grainGiveJson());
     llmChatMock.mockResolvedValueOnce(`{ "speech": "Two modii", "proposals": [ { "type": "transfer_resources"`);
+    llmChatMock.mockResolvedValueOnce(`{ "speech": "Two modii", "proposals": [ { "type": "transfer_resources"`);
     await game.sendDialogue("steward", "Give the cell two modii of rye.");
-    expect(llmChatMock).toHaveBeenCalledTimes(3);
+    expect(llmChatMock).toHaveBeenCalledTimes(4);
     const turn = lastTurn(game);
-    expect(turn.some((m) => m.role === "npc" && m.text === HOLD_AT_ONCE_APOLOGY)).toBe(true);
-    expect(turn.some((m) => m.role === "system")).toBe(false);
+    expect(turn.some((m) => m.role === "npc" && /The brothers will have bread/.test(m.text))).toBe(true);
+    expect(turn.some((m) => m.text === HOLD_AT_ONCE_APOLOGY)).toBe(false);
+    expect(turn.some((m) => m.role === "system" && m.text === BOOKS_NOT_TAKEN_LINE)).toBe(true);
     expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
   });
 
