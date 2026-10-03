@@ -48,6 +48,7 @@ import {
   SPEECH_PASS_HINT,
 } from "../llm/prompts";
 import {
+  baselineDrawersFor,
   collectDrawers,
   holdingLineForDrawers,
   missingCitedDrawers,
@@ -519,6 +520,12 @@ export class GameController {
         }
       }
 
+      // The books pass sees what the speech pass fetched plus this speaker's baseline
+      // drawers, so proposals citing land, projects, labour, customs, or the chest
+      // need no second fetch and no second writing of the same proposals.
+      const booksFetched = [...new Set<ToolDrawer>([...fetched, ...baselineDrawersFor(npcId)])];
+      const booksDrawers = collectDrawers(this.state, booksFetched, npcId);
+
       if (!order) {
         if (!speechDelaysWorkForShortage(answer.speech) && !asksBeginAmount(playerText)) {
           this.pushNpcSpeech(npcId, answer);
@@ -527,7 +534,7 @@ export class GameController {
           }
           return this.finishTalk();
         }
-        const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, drawers);
+        const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, booksDrawers);
         let books: Awaited<ReturnType<GameController["callLlm"]>>;
         try {
           books = await this.callLlm(
@@ -550,7 +557,7 @@ export class GameController {
       }
 
       try {
-        const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, drawers);
+        const booksUser = npcUserPrompt(this.state, npcId, playerText, extra, booksDrawers);
         const booksMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
           { role: "system", content: system },
           { role: "user", content: booksUser },
@@ -565,7 +572,7 @@ export class GameController {
             "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, start_hunt, or sponsor_feast) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
         });
 
-        const missing = missingCitedDrawers(books.proposals, fetched);
+        const missing = missingCitedDrawers(books.proposals, booksFetched);
         if (missing.length) {
           const repairFacts = collectDrawers(this.state, missing, npcId);
           books = await this.callLlm(

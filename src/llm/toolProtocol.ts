@@ -255,6 +255,31 @@ function drawerPayload(state: WorldState, name: ToolDrawer, npcId?: string): unk
   }
 }
 
+/**
+ * Small drawers a speaker's book proposals almost always cite. Handed to the
+ * books pass up front so the engine need not fetch them afterwards and ask the
+ * model to write the same proposals again. Numeric stores (grain, livestock,
+ * stores) are left to the explicit tool request or the cited-drawer repair.
+ */
+export function baselineDrawersFor(npcId: string): ToolDrawer[] {
+  switch (npcId) {
+    case "steward":
+      return ["projects", "land", "labour", "customs", "chest"];
+    case "smith":
+      return ["forge", "projects"];
+    case "negotiator":
+      return ["chest", "projects"];
+    case "chaplain":
+      return ["chest", "customs"];
+    case "captain":
+      return ["arms", "projects"];
+    case "merchant":
+      return ["merchant", "chest"];
+    default:
+      return ["projects"];
+  }
+}
+
 /** Live WorldState drawers. Unknown names are skipped. */
 export function collectDrawers(state: WorldState, names: string[], npcId?: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};

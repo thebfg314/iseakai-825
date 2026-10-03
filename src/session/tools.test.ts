@@ -166,6 +166,31 @@ describe("mid-season hidden ledger tools", () => {
     expect(lastTurn(game).every((m) => m.text !== "")).toBe(true);
   });
 
+  it("hands the books pass the steward's baseline drawers so a land or project proposal needs no second fetch", async () => {
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce(speechJson("One acre of scrub, my lord. Twenty days."));
+    llmChatMock.mockResolvedValueOnce(
+      JSON.stringify({
+        speech: "Written.",
+        emotion: "pleased",
+        proposals: [
+          { type: "start_project", summary: "Clear one acre of scrub", projectKey: "clear_scrub", holdingId: "fontenay" },
+          { type: "set_standing_order", summary: "Keep the brush down", text: "Cut the scrub edge back each autumn.", active: true },
+        ],
+      }),
+    );
+    await game.sendDialogue("steward", "Start clearing an acre of scrub.");
+    // Speech, then books. No "missing drawers" pass: projects, land, and customs were already on the table.
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    const books = callText(1);
+    expect(books).toMatch(/RECORD DRAWERS/);
+    expect(books).toMatch(/"projects"/);
+    expect(books).toMatch(/"land"/);
+    expect(books).toMatch(/"customs"/);
+    expect(books).toMatch(/"labour"/);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(2);
+  });
+
   it("apologizes as the NPC when the tool marker is chopped twice — no Confirm, books untouched", async () => {
     const game = tempGame();
     const ryeBefore = game.state.resources.rye;
