@@ -41,7 +41,21 @@ export function looksLikeSpokenAgree(text: string): boolean {
   const t = text.trim().toLowerCase().replace(/[.!?]+$/g, "").trim();
   if (!t || t.length > 80) return false;
   if (/^(how|what|why|who|where|when|tell me)\b/.test(t)) return false;
-  if (/^(yes|aye|agreed|agree|do it|do so|make them|make it so|go ahead|proceed|so ordered|very well|that will do|please do)\b/.test(t)) {
+  if (
+    /^(yes|aye|agreed|agree|approved|approve|do it|do so|make them|make it so|go ahead|proceed|so ordered|very well|that will do|please do|let us do it|let's do it)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // "Send me the projects to approve", "put it in the books", "write it down", "draw up the cards".
+  if (
+    /\b(send|give|bring|show)\s+(me\s+)?(the\s+)?(projects?|proposals?|cards?|plans?)\b/.test(t) ||
+    /\b(put|set)\s+(it|that|them|this|the plan|the work)\s+(down\s+)?(in|into|on)\s+the\s+books\b/.test(t) ||
+    /\b(write|set)\s+(it|that|them|this)\s+down\b/.test(t) ||
+    /\bdraw\s+(it|that|them|this|up)\b.*\b(cards?|books?|proposals?)\b/.test(t) ||
+    /\bdraw\s+up\s+(the\s+)?(cards?|proposals?|plans?)\b/.test(t)
+  ) {
     return true;
   }
   const word = (t.split(/\s+/)[0] ?? "").replace(/[^a-z]/g, "");

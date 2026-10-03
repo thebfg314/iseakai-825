@@ -4,6 +4,7 @@ import { matchHireableSpecialist, specialistNpc } from "../engine/specialists";
 import { stripEmotionCommands, normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 import { HOLD_AT_ONCE_APOLOGY } from "./providerErrors";
 import { hasMalformedToolMarker, stripToolMarkers } from "./toolProtocol";
+import { stripBooksTag } from "./hiddenTags";
 import { flattenDeferInner } from "../engine/forthcoming";
 import { parseHuntDifficulty } from "../engine/hunts";
 
@@ -14,6 +15,8 @@ export type ParseLlmResult = {
   emotion?: AldricEmotion;
   /** True when the model blob was chopped / not a complete parseable contract. */
   incomplete?: boolean;
+  /** Hidden speech-pass tag: did the model judge that the lord's words should change the ledger? */
+  books?: boolean;
 };
 
 /** First balanced `{...}` (strings and nested arrays respected). Null if braces never close. */
@@ -443,9 +446,9 @@ export function salvageSpeechFromLlmText(raw: string): string | null {
 export function playerFacingNpcSpeech(raw: string, parsedSpeech?: string): string {
   if (!isCompleteLlmPayload(raw) || hasMalformedToolMarker(raw)) return HOLD_AT_ONCE_APOLOGY;
   const fromParse = parsedSpeech?.trim() ?? "";
-  if (fromParse && !looksLikeJsonDump(fromParse)) return stripToolMarkers(fromParse);
+  if (fromParse && !looksLikeJsonDump(fromParse)) return stripBooksTag(stripToolMarkers(fromParse)).text;
   const salvaged = salvageSpeechFromLlmText(raw);
-  if (salvaged && !looksLikeJsonDump(salvaged)) return stripToolMarkers(salvaged);
+  if (salvaged && !looksLikeJsonDump(salvaged)) return stripBooksTag(stripToolMarkers(salvaged)).text;
   return HOLD_AT_ONCE_APOLOGY;
 }
 
@@ -465,13 +468,15 @@ export function parseLlmResponse(raw: string): ParseLlmResult {
   const jsonText = extractJsonObject(raw);
   const parseErrors: string[] = [];
   if (!jsonText) {
-    const facing = playerFacingNpcSpeech(raw, raw.trim());
+    const tagged = stripBooksTag(raw);
+    const facing = playerFacingNpcSpeech(tagged.text, tagged.text.trim());
     const stripped = stripEmotionCommands(facing);
     return {
       response: { speech: stripped.speech, proposals: [] },
       proposals: [],
       parseErrors: ["No JSON object in model output."],
       emotion: stripped.emotion,
+      books: tagged.books,
     };
   }
   const data = tryParseJson(jsonText);
@@ -504,11 +509,14 @@ export function parseLlmResponse(raw: string): ParseLlmResult {
     if (result.proposal) proposals.push(result.proposal);
     else parseErrors.push(`Dropped proposal: ${result.error}`);
   }
-  const stripped = stripEmotionCommands(stripToolMarkers(speech));
+  const stripped = stripEmotionCommands(stripBooksTag(stripToolMarkers(speech)).text);
+  // The tag may sit inside the speech string or after the closing brace.
+  const books = stripBooksTag(raw).books;
   return {
     response: { speech: stripped.speech, chronicle, proposals: rawProposals },
     proposals,
     parseErrors,
     emotion: stripped.emotion ?? normalizeEmotion(emotionRaw),
+    books,
   };
 }

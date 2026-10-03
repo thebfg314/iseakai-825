@@ -874,9 +874,10 @@ export const StartProjectProposalSchema = ProposalBase.extend({
   customCosts: z
     .object({
       labourDays: z.coerce.number(),
-      lumber: z.coerce.number(),
-      iron: z.coerce.number(),
-      stone: z.coerce.number(),
+      /** A new design that needs no timber, iron, or stone may leave those out; they read as 0. */
+      lumber: z.coerce.number().default(0),
+      iron: z.coerce.number().default(0),
+      stone: z.coerce.number().default(0),
       /** Cart-loads. A new design only; a catalogue key keeps its own charcoal charge. */
       charcoal: z.coerce.number().optional(),
       /** Coin taken from the chest when a new design begins. */

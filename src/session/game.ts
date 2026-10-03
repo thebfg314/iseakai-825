@@ -36,6 +36,7 @@ import { PlayLog } from "./playLog";
 import { fetchProviderBalance } from "../llm/credits";
 import { consumeLastLlmCall, LlmMeterStore } from "../llm/usage";
 import {
+  agreedPlanFollowUp,
   earlierTalkBlock,
   beginFiguresFollowUp,
   npcBooksFollowUp,
@@ -448,7 +449,9 @@ export class GameController {
     ].filter(Boolean);
     const extra = extraBits.length ? extraBits.join("\n\n") : undefined;
     const scrapUser = npcUserPrompt(this.state, npcId, playerText, extra);
-    const order = looksLikeMechanicalOrder(playerText, npcId) || Boolean(discussed) || huntAsk;
+    // Deterministic floor: these always reach the books. The model's hidden
+    // [[books:yes]] tag widens the gate for orders the regex never heard of.
+    const sureOrder = looksLikeMechanicalOrder(playerText, npcId) || Boolean(discussed) || huntAsk;
     try {
       const spoken = await this.callLlm(
         [{ role: "system", content: speechSystem }, { role: "user", content: `${scrapUser}\n\n${SPEECH_PASS_HINT}` }],
@@ -503,10 +506,8 @@ export class GameController {
       }
 
       if (looksLikeSpokenAgree(playerText)) {
-        const prior = this.messages
-          .filter((m) => m.role === "npc" && m.npcId === npcId)
-          .map((m) => m.text)
-          .join("\n");
+        const priorTurns = this.messages.filter((m) => m.role === "npc" && m.npcId === npcId).map((m) => m.text);
+        const prior = priorTurns.join("\n");
         const holdingId = this.state.holdings[0]?.id ?? "fontenay";
         const priced = pricedWorkFromTalk(`${prior}\n${answer.speech}`, holdingId);
         if (priced || claimsBooksWrote(answer.speech)) {
@@ -518,6 +519,30 @@ export class GameController {
           }
           return this.finishTalk();
         }
+        // The lord said yes to a plan spoken in talk that the engine could not price
+        // itself. Let the speaker set that plan down as proposals.
+        const spokenPlan = priorTurns.filter((t) => t.trim() && t.trim() !== HOLD_AT_ONCE_APOLOGY).at(-1)?.trim() ?? "";
+        if (spokenPlan && !discussed && !huntAsk && answer.books !== false) {
+          const agreedFetched = [...new Set<ToolDrawer>([...fetched, ...baselineDrawersFor(npcId)])];
+          const agreedDrawers = collectDrawers(this.state, agreedFetched, npcId);
+          try {
+            const books = await this.callLlm(
+              [
+                { role: "system", content: system },
+                { role: "user", content: npcUserPrompt(this.state, npcId, playerText, extra, agreedDrawers) },
+                { role: "assistant", content: answer.raw },
+                { role: "user", content: agreedPlanFollowUp(playerText, spokenPlan) },
+              ],
+              BOOKS_TOKENS,
+              { requireProposals: false, allowRepair: true, purpose: "books, agreed plan" },
+            );
+            this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
+            this.ingestParsedDialogue(npcId, books, playerText, undefined, undefined, true);
+          } catch (err) {
+            this.keepSpeechAfterBooksFailure(err, npcId, answer);
+          }
+          return this.finishTalk();
+        }
       }
 
       // The books pass sees what the speech pass fetched plus this speaker's baseline
@@ -525,6 +550,16 @@ export class GameController {
       // need no second fetch and no second writing of the same proposals.
       const booksFetched = [...new Set<ToolDrawer>([...fetched, ...baselineDrawersFor(npcId)])];
       const booksDrawers = collectDrawers(this.state, booksFetched, npcId);
+
+      const order = sureOrder || answer.books === true;
+      if (answer.books != null) {
+        this.playLog.note(
+          "Books tag",
+          `The speech pass tagged this turn [[books:${answer.books ? "yes" : "no"}]]. ${
+            sureOrder ? "The engine already counted it an order." : order ? "The books pass runs on the model's word alone." : "No books pass."
+          }`,
+        );
+      }
 
       if (!order) {
         if (!speechDelaysWorkForShortage(answer.speech) && !asksBeginAmount(playerText)) {
@@ -566,7 +601,9 @@ export class GameController {
         ];
         let books = await this.callLlm(booksMessages, BOOKS_TOKENS, {
           purpose: "books",
-          requireProposals: true,
+          // When only the model's tag opened the gate, an empty proposals list
+          // is its own answer; do not spend a repair call forcing one.
+          requireProposals: sureOrder,
           allowRepair: true,
           repairHint:
             "The lord gave an order that must change the ledger. proposals was empty or invalid. Emit at least one proposal (assign_labour, start_project, adjust_sowing, defer_proposal, transfer_resources, add_modifier, set_standing_order, register_npc, start_hunt, or sponsor_feast) with real numbers. If you promise the change after harvest or later, emit defer_proposal wrapping the inner change.",
@@ -613,7 +650,7 @@ export class GameController {
               }
             }
             this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
-            this.ingestParsedDialogue(npcId, books, playerText, difficulty, judged);
+            this.ingestParsedDialogue(npcId, books, playerText, difficulty, judged, order);
             return this.finishTalk();
           }
           if (modelHunt?.type === "start_hunt") {
@@ -632,7 +669,7 @@ export class GameController {
         }
 
         this.speakWithBeginFigures(npcId, answer, books.proposals, playerText);
-        this.ingestParsedDialogue(npcId, books, playerText);
+        this.ingestParsedDialogue(npcId, books, playerText, undefined, undefined, order);
         return this.finishTalk();
       } catch (err) {
         if (this.recoverHuntOffer(npcId, playerText, answer)) return this.finishTalk();
@@ -844,6 +881,8 @@ export class GameController {
     playerText: string,
     huntDifficulty?: HuntDifficulty,
     huntJudged?: number,
+    /** Whether this turn was treated as an order (regex floor or the model's books tag). Defaults to the regex. */
+    order?: boolean,
   ) {
     if (parsed.incomplete) return;
     if (npcId === "steward") this.flushHireRecommendations();
@@ -955,12 +994,15 @@ export class GameController {
       this.ledgerNote("Nothing was written to the books. They remain unchanged.", npcId);
       return;
     }
-    if (looksLikeMechanicalOrder(playerText, npcId)) {
+    const regexOrder = looksLikeMechanicalOrder(playerText, npcId);
+    if (order ?? regexOrder) {
       const why = cannotFulfillReason(this.state, npcId, playerText);
       this.ledgerNote(
         why
           ? `No change was set down. ${why}`
-          : "They answered in speech only. The books are unchanged. Give a clear order — sow, begin a work, give stores, call hands, a blessing, hire a craftsman, or a forthcoming change after harvest — or advance the season.",
+          : regexOrder
+            ? "They answered in speech only. The books are unchanged. Give a clear order — sow, begin a work, give stores, call hands, a blessing, hire a craftsman, or a forthcoming change after harvest — or advance the season."
+            : "They answered in speech only; nothing was set down in the books. Say it again as a plain order — what is to be done, by whom, and when — and it will be written.",
         npcId,
       );
     }
@@ -1751,6 +1793,8 @@ export class GameController {
     raw: string;
     emotion?: AldricEmotion;
     parseErrors: string[];
+    /** Hidden speech-pass tag: the model's own judgement that the ledger should change. */
+    books?: boolean;
   }> {
     const purpose = opts?.purpose ?? "dialogue";
     const first = await this.llmParsedWithRetry(messages, { maxTokens, purpose });
@@ -1791,6 +1835,7 @@ export class GameController {
         raw: raw2,
         emotion: parsed.emotion,
         parseErrors: parsed.parseErrors,
+        books: parsed.books,
       };
     }
     const speech = playerFacingNpcSpeech(raw1, parsed.response.speech);
@@ -1803,6 +1848,7 @@ export class GameController {
       raw: raw1,
       emotion: parsed.emotion,
       parseErrors: parsed.parseErrors,
+      books: parsed.books,
     };
   }
 

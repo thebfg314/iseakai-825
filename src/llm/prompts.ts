@@ -77,7 +77,10 @@ export function sliceStateForSeason(state: WorldState, engineDeltas?: Record<str
 }
 
 /** Speech pass: spoken words only. Proposals belong on the books pass. */
-export const SPEECH_ONLY_CONTRACT = `This is a speech-only reply. Write this speaker's spoken words as the player hears them — plain text, or a tiny JSON object with only "speech" and optionally "emotion". Do not emit proposals, chronicle, or any other JSON keys. Do not wrap the reply in the full output contract.`;
+export const BOOKS_TAG_RULE = `Hidden books tag — the player must never see it. End your spoken words with [[books:yes]] when the lord has given an order, a rule, a plan, a purchase, a hire, or any change the estate must carry out, however strange or new it is (a new craft, a new custom, a new way of working, a thing nobody here has heard of). End with [[books:no]] when the lord is only asking, greeting, musing, or talking, and nothing on the estate should change yet. When in doubt, say yes: the books pass can still write nothing. Never mention the tag in speech.`;
+
+export const SPEECH_ONLY_CONTRACT = `This is a speech-only reply. Write this speaker's spoken words as the player hears them — plain text, or a tiny JSON object with only "speech" and optionally "emotion". Do not emit proposals, chronicle, or any other JSON keys. Do not wrap the reply in the full output contract.
+${BOOKS_TAG_RULE}`;
 
 export const TOOL_PROTOCOL = `Hidden ledger tool — the player must never see this marker. You do not receive the full villa. If you need exact numbers from the live books, emit exactly this form on its own line (comma-separated drawers allowed):
 ${TOOL_MARKER_EXAMPLE}
@@ -91,13 +94,18 @@ export function beginFiguresFollowUp(playerText: string): string {
 }
 
 export const SPEECH_PASS_HINT =
-  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. If you need to carefully recall past dealings with the lord, emit <=-tool: my_deals -=>. Never mention providers, status codes, tools, or JSON in speech.';
+  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. If you need to carefully recall past dealings with the lord, emit <=-tool: my_deals -=>. End with [[books:yes]] if the lord\'s words should change the estate (an order, a rule, a plan, a hire, a purchase, anything new), or [[books:no]] if they are only talk. Never mention providers, status codes, tools, tags, or JSON in speech.';
 
 export function npcBooksFollowUp(playerMessage: string, revising?: string): string {
   const revise = revising
     ? `\nThe lord asked about this pending offer. If they are changing its terms, emit one revised proposal of the same kind (same project, hunt, hire, standing order, or work) — replace, do not stack a second copy. Do not treat it as already Confirmed.\nPENDING OFFER:\n${revising}\n`
     : "";
   return `The lord gave an order that must change the ledger. Reply with a JSON object whose "proposals" array holds the mechanical change(s) (adjust_sowing, defer_proposal, add_modifier, register_resource, set_standing_order, start_project, assign_labour, transfer_resources, register_npc, start_hunt, and the rest). speech may be a short confirmation. If you cannot fulfill, proposals: []. If you promise the change after harvest, next spring, or later, you MUST emit defer_proposal wrapping the inner change — speech-only "I will do it later" with empty proposals is invalid for an order. What was already spoken is not a new change for the books. Set down a change only for the order below.${revise}\n\nORDER:\n${playerMessage}`;
+}
+
+/** The lord said yes to a plan the speaker laid out in talk. Now it must be written. */
+export function agreedPlanFollowUp(playerMessage: string, spokenPlan: string): string {
+  return `The lord agreed to the plan you spoke. Set that plan down as proposals now: reply with a JSON object whose "proposals" array holds every mechanical change the plan needs (start_project with a catalogue key or customCosts, assign_labour, set_standing_order, add_modifier, adjust_sowing, transfer_resources, register_npc, defer_proposal, and the rest), with the same figures you named in talk. speech may be a short confirmation. If the plan truly changes nothing on the estate, proposals: []. Do not invent a different plan.\n\nTHE PLAN YOU SPOKE:\n${spokenPlan}\n\nTHE LORD'S ANSWER:\n${playerMessage}`;
 }
 
 /** Enough of one conversation that a long design and the next question both still fit. */
