@@ -1,7 +1,7 @@
 import type { LabourAssignment, Project, WorldState } from "./schema";
 import { LABOUR_MIDPOINTS, labourKindFor } from "./projectCatalog";
 import { modifiersFor, applyMultiplyAdd } from "./modifiers";
-import { isPersonalSmithProject, releaseVillageFromPersonalSmithing } from "./smithing";
+import { isSoloSmithProject, releaseVillageFromPersonalSmithing } from "./smithing";
 
 export type LabourPool = {
   men: number;
@@ -99,7 +99,8 @@ export function oneSeasonSpareDays(state: WorldState, kind: LabourKind, projectK
 export function isLabourDayProject(project: Project): boolean {
   if (project.status !== "active") return false;
   if (project.tag === "hunt" || project.hunt) return false;
-  if (isPersonalSmithProject(project)) return false;
+  if (isSoloSmithProject(project)) return false;
+  if (project.smithing && project.labourDaysDone >= project.labourDaysRequired) return false;
   return true;
 }
 

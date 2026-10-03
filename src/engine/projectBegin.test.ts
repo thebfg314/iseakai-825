@@ -83,11 +83,22 @@ describe("shortage speech matches the card", () => {
     expect(card).toMatch(/6 cart-loads of charcoal/);
     expect(card).toMatch(/8 lb of iron/);
     expect(card).toMatch(/2 cart-loads of timber/);
-    expect(card).toMatch(/two seasons/i);
+    // A legacy card (no forgeDays) reads its 40 labourDays as his own: well inside one 70-day season.
+    expect(card).toMatch(/40 days at the hearth/);
+    expect(card).toMatch(/own work for this season/i);
     expect(card).toMatch(/village is not called/i);
     expect(card).not.toMatch(/labour days/i);
     expect(card).not.toMatch(/40 days of work/);
     expect(card).not.toMatch(/5 cart-loads of charcoal/);
+
+    const split = plough();
+    if (split.type !== "start_project" || !split.customCosts) throw new Error("expected a start_project");
+    split.customCosts = { ...split.customCosts, forgeDays: 100, labourDays: 30 };
+    const splitCard = proposalBlurb(split, state);
+    expect(splitCard).toMatch(/100 days at the hearth/);
+    expect(splitCard).toMatch(/two seasons/i);
+    expect(splitCard).toMatch(/village gives 30 days beside him/i);
+    expect(splitCard).not.toMatch(/village is not called/i);
     expect(card).not.toMatch(JARGON);
     expect(speech).not.toMatch(/\b6 cart-loads of charcoal\b/);
   });

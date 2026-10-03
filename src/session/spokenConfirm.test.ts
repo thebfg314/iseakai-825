@@ -72,7 +72,8 @@ describe("spoken confirm raises the plough card and does not write the books", (
     const card = cards[0];
     if (card.proposal.type !== "start_project") throw new Error("expected the plough card");
     expect(card.proposal.customCosts).toMatchObject({
-      labourDays: 20,
+      labourDays: 0,
+      forgeDays: 70,
       lumber: 0,
       iron: 24,
       stone: 0,

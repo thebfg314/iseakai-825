@@ -295,6 +295,13 @@ export const ProjectSchema = z.object({
     .object({
       durationSeasons: z.number().int(),
       seasonsElapsed: z.number().int(),
+      /**
+       * Days at the hearth the piece needs, when the card named them. Older
+       * saves and cards without forgeDays leave these out: labourDaysRequired
+       * was his own time then, and the village was never called.
+       */
+      forgeDaysRequired: z.number().optional(),
+      forgeDaysDone: z.number().optional(),
     })
     .optional(),
   /**
@@ -873,7 +880,10 @@ export const StartProjectProposalSchema = ProposalBase.extend({
   name: z.string().optional(),
   customCosts: z
     .object({
+      /** The village's spare days (woodwork, hauling, building). May be 0 on a smith's own piece. */
       labourDays: z.coerce.number(),
+      /** The smith's own days at the hearth. Present on his cards; the books turn it into seasons at 70 a season. */
+      forgeDays: z.coerce.number().optional(),
       /** A new design that needs no timber, iron, or stone may leave those out; they read as 0. */
       lumber: z.coerce.number().default(0),
       iron: z.coerce.number().default(0),

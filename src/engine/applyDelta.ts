@@ -29,11 +29,13 @@ import { stampProjectEnded, stampProjectStart } from "./projectProgress";
 import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
 import { proposalResult, resultPayLine } from "./projectResult";
 import {
-  isPersonalSmithProject,
+  isSoloSmithProject,
   ownWorkBegunPhrase,
   personalSeasonsForStart,
   smithStartRefusal,
+  startForgeDays,
   startIsPersonalSmithing,
+  startIsSoloSmithing,
   villageNotCalledReason,
 } from "./smithing";
 import { IMPROVEMENT_ALREADY, identicalModifierAlready } from "./toolImprovement";
@@ -155,6 +157,14 @@ function smithAllowed(state: WorldState, p: MechanicalProposal): string | null {
       const proj = resolveActiveProject(state, p.projectId, p.summary);
       if (!proj) return "Unknown project.";
       if (smithProjectIsHis(proj.key, proj.tag)) return null;
+      return "npc_not_authorized";
+    }
+    case "assign_labour": {
+      // He may call the village to his own works and workshops; the steward's other work is not his to move.
+      if (p.projectId === "unassigned") return "npc_not_authorized";
+      const proj = resolveActiveProject(state, p.projectId, p.summary);
+      if (!proj) return "Unknown project.";
+      if (smithProjectIsHis(proj.key, proj.tag) || proj.smithing) return null;
       return "npc_not_authorized";
     }
     case "add_modifier": {
@@ -391,7 +401,7 @@ function assignLabour(
   if (!proj || proj.status !== "active") {
     return fail(state, "No such active project.", p.summary);
   }
-  if (isPersonalSmithProject(proj)) {
+  if (isSoloSmithProject(proj)) {
     const reason = villageNotCalledReason(state, proj.name);
     return fail(state, reason, p.summary);
   }
@@ -502,18 +512,26 @@ function startProject(
     ...(result.length ? { result } : {}),
     ...(typeof p.finishesThisSeason === "boolean" ? { finishesThisSeason: p.finishesThisSeason } : {}),
     ...(personal
-      ? { smithing: { durationSeasons: personalSeasonsForStart(p), seasonsElapsed: 0 } }
+      ? {
+          smithing: {
+            durationSeasons: personalSeasonsForStart(p),
+            seasonsElapsed: 0,
+            ...(p.customCosts?.forgeDays != null ? { forgeDaysRequired: startForgeDays(p), forgeDaysDone: 0 } : {}),
+          },
+        }
       : {}),
   });
   stampProjectStart(state, state.projects[state.projects.length - 1]);
   const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
-  const fill = personal ? null : autoAssignLeftoverToProject(state, id);
+  const solo = personal && startIsSoloSmithing(p);
+  const fill = solo ? null : autoAssignLeftoverToProject(state, id);
   const clayNote = clay > 0 ? " The clay for the shaft will be dug with the work." : "";
   const coinNote = denarii > 0 ? ` ${amountWord(denarii)} denarii leave the chest.` : "";
   const gainNote = result.length ? ` ${resultPayLine(result)}` : "";
   const started = `${name} is begun.${storesSetAside(lumber, iron, stone, charcoal)}${coinNote}${clayNote}${gainNote}`;
-  const own = personal ? ` ${ownWorkBegunPhrase(state, personalSeasonsForStart(p))}` : "";
-  return ok(state, fill?.sentence ? `${started} ${fill.sentence}` : `${started}${own}`);
+  const own = personal ? ` ${ownWorkBegunPhrase(state, personalSeasonsForStart(p), startForgeDays(p))}` : "";
+  const filled = fill?.sentence ? ` ${fill.sentence}` : "";
+  return ok(state, `${started}${own}${filled}`);
 }
 
 function amountWord(n: number): string {

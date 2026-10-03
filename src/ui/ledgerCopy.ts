@@ -4,7 +4,14 @@ import { suggestedFeastName } from "../engine/church";
 import { lookupProject } from "../engine/projectCatalog";
 import { beginCostLine, projectStoreBill } from "../engine/projectBegin";
 import { proposalResult, resultPayLine } from "../engine/projectResult";
-import { hiredSmithName, ownWorkCostPhrase, personalSeasonsForStart, startIsPersonalSmithing } from "../engine/smithing";
+import {
+  hiredSmithName,
+  ownWorkCostPhrase,
+  personalSeasonsForStart,
+  startForgeDays,
+  startIsPersonalSmithing,
+  startVillageDays,
+} from "../engine/smithing";
 import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../engine/labour";
 import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
 import { matchHireableSpecialist } from "../engine/specialists";
@@ -443,7 +450,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const holding = state?.holdings.find((h) => h.id === p.holdingId)?.name ?? "the holding";
       const bill = projectStoreBill(p);
       const own = startIsPersonalSmithing(p)
-        ? ownWorkCostPhrase(personalSeasonsForStart(p), hiredSmithName(state))
+        ? ownWorkCostPhrase(personalSeasonsForStart(p), hiredSmithName(state), startForgeDays(p), startVillageDays(p))
         : undefined;
       const cost = beginCostLine(bill, own);
       const pay = resultPayLine(proposalResult(p));

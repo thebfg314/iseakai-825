@@ -1,33 +1,42 @@
 import type { MechanicalProposal, Project, WorldState } from "./schema";
-import { FORGE_PROJECT_KEYS, LABOUR_MIDPOINTS, lookupProject } from "./projectCatalog";
+import { FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
 import { markProjectSeason, stampProjectEnded } from "./projectProgress";
 import { payFinishedProjectResult } from "./projectResult";
 import { round1 } from "./util";
 
 /**
- * How many spare days one man can give in a season, from the labour tables.
- * The fullest of those seasons is one season of the smith. A custom cost is
- * judged against that figure — the same days the forge already names — and
- * not against any one tool.
+ * Working days a full-time craftsman gives in one season: thirteen weeks
+ * less Sundays and feast days. The smith reckons his pieces in these days;
+ * the books turn them into seasons. (The old figure was the villagers' spare
+ * days, about 20, which turned a two-season piece into nine.)
  */
+export const SMITH_SEASON_DAYS = 70;
+
 export function oneSmithSeasonDays(): number {
-  let most = 0;
-  for (const mid of Object.values(LABOUR_MIDPOINTS)) {
-    if (mid.men > most) most = mid.men;
-  }
-  return most;
+  return SMITH_SEASON_DAYS;
 }
 
-/** Seasons of one smith that a custom labour cost already implies. */
-export function seasonsOfOneSmith(labourDays: number): number {
+/** Seasons of one smith that a count of hearth days implies. */
+export function seasonsOfOneSmith(forgeDays: number): number {
   const season = oneSmithSeasonDays();
   if (season <= 0) return 1;
-  const days = Math.max(0, labourDays);
+  const days = Math.max(0, forgeDays);
   if (days <= season) return 1;
   return Math.ceil(days / season);
 }
 
-type MaterialBill = { lumber: number; iron: number; stone: number };
+type MaterialBill = { lumber: number; iron: number; stone: number; forgeDays?: number };
+
+/** Days at the hearth a live project still owes the smith, when the card named them. */
+export function forgeDaysRequired(project: Pick<Project, "smithing" | "labourDaysRequired">): number {
+  if (project.smithing?.forgeDaysRequired != null) return project.smithing.forgeDaysRequired;
+  return project.labourDaysRequired;
+}
+
+/** True when the card named both his hearth days and days for the village. */
+export function villageCalledOnSmithing(project: Pick<Project, "smithing" | "labourDaysRequired">): boolean {
+  return project.smithing?.forgeDaysRequired != null && project.labourDaysRequired > 0;
+}
 
 /**
  * A workshop needs ordinary woodworking: timber and stone together, as the
@@ -41,19 +50,29 @@ export function isWoodworkingBuilding(bill: MaterialBill): boolean {
 }
 
 /**
- * His own hands: a new design that is a tool or a metal piece.
- * A catalogue work is never this — forge buildings keep the village.
+ * His own hands: a new design that is a tool or a metal piece, or any card
+ * that names days at the hearth. A catalogue work is never this — forge
+ * buildings keep the village. A card with forgeDays 0 is village work only.
  */
 export function isPersonalSmithing(key: string, bill: MaterialBill, tag?: string): boolean {
   if (lookupProject(key)) return false;
+  if (bill.forgeDays != null) return bill.forgeDays > 0;
   if (isWoodworkingBuilding(bill)) return false;
   if (bill.iron > 0) return true;
   return bill.lumber <= 0 && bill.stone <= 0 && tag === "forge";
 }
 
+/** The smith's clock runs on this work (alone, or beside the village's days). */
 export function isPersonalSmithProject(project: Pick<Project, "key" | "tag" | "materials" | "smithing">): boolean {
   if (project.smithing) return true;
   return isPersonalSmithing(project.key, project.materials, project.tag);
+}
+
+/** His clock runs and the village is not called: no spare days may be pointed at it. */
+export function isSoloSmithProject(
+  project: Pick<Project, "key" | "tag" | "materials" | "smithing" | "labourDaysRequired">,
+): boolean {
+  return isPersonalSmithProject(project) && !villageCalledOnSmithing(project);
 }
 
 /** Catalogue forge works, and a new workshop of that same kind. Not his solo clock. */
@@ -74,6 +93,7 @@ function startBill(p: StartProject): MaterialBill & { labourDays: number } {
     lumber: custom?.lumber ?? catalog?.lumber ?? 0,
     iron: custom?.iron ?? catalog?.iron ?? 0,
     stone: custom?.stone ?? catalog?.stone ?? 0,
+    forgeDays: custom?.forgeDays,
   };
 }
 
@@ -83,19 +103,38 @@ export function startIsPersonalSmithing(p: StartProject): boolean {
   return isPersonalSmithing(p.projectKey, bill, p.tag);
 }
 
+/** His clock, and no days for the village on the same card. */
+export function startIsSoloSmithing(p: StartProject): boolean {
+  if (!startIsPersonalSmithing(p)) return false;
+  return startVillageDays(p) <= 0;
+}
+
+/** Days the village gives to a card: on his own cards only when forgeDays is named beside them. */
+export function startVillageDays(p: StartProject): number {
+  const bill = startBill(p);
+  if (!startIsPersonalSmithing(p)) return bill.labourDays;
+  return bill.forgeDays != null ? bill.labourDays : 0;
+}
+
+/** Days at the hearth a card asks of him. A legacy card (no forgeDays) read its labourDays as his. */
+export function startForgeDays(p: StartProject): number {
+  const bill = startBill(p);
+  return bill.forgeDays ?? bill.labourDays;
+}
+
 export function startIsVillageForgeBuilding(p: StartProject): boolean {
   return isVillageForgeBuilding(p.projectKey, startBill(p), p.tag);
 }
 
 export function personalSeasonsForStart(p: StartProject): number {
-  return seasonsOfOneSmith(startBill(p).labourDays);
+  return seasonsOfOneSmith(startForgeDays(p));
 }
 
-/** Drop spare-day rows that were pointed at his own piece. Those days go back to the pool. */
+/** Drop spare-day rows that were pointed at his own solo piece. Those days go back to the pool. */
 export function releaseVillageFromPersonalSmithing(state: WorldState): void {
-  const personal = new Set(state.projects.filter((p) => isPersonalSmithProject(p)).map((p) => p.id));
-  if (personal.size === 0) return;
-  state.labour.assigned = state.labour.assigned.filter((a) => !personal.has(a.projectId));
+  const solo = new Set(state.projects.filter((p) => isSoloSmithProject(p)).map((p) => p.id));
+  if (solo.size === 0) return;
+  state.labour.assigned = state.labour.assigned.filter((a) => !solo.has(a.projectId));
 }
 
 export function activePersonalSmithing(state: WorldState): Project | undefined {
@@ -144,29 +183,56 @@ export function villageNotCalledReason(state: WorldState, workName: string): str
   return `${sentenceWork(workName)} is ${who} own work. The village is not called to it.`;
 }
 
-export function ownWorkBegunPhrase(state: WorldState, seasons: number): string {
+function daysWord(n: number): string {
+  const d = round1(n);
+  return `${Number.isInteger(d) ? d : d.toFixed(1)} day${d === 1 ? "" : "s"}`;
+}
+
+export function ownWorkBegunPhrase(state: WorldState, seasons: number, forgeDays?: number): string {
   const name = hiredSmithName(state);
   const who = name ?? "The smith";
-  if (seasons <= 1) return `${who} will see to this himself this season, and then he is free.`;
-  return `${who} will stay at this until it is finished. The next thing waits.`;
+  const hearth = forgeDays != null && forgeDays > 0 ? ` (${daysWord(forgeDays)} at the hearth)` : "";
+  if (seasons <= 1) return `${who} will see to this himself this season${hearth}, and then he is free.`;
+  return `${who} will stay at this until it is finished${hearth}. The next thing waits.`;
 }
 
-export function ownWorkCostPhrase(seasons: number, smithName?: string): string {
+/**
+ * The cost line on a card. villageDays > 0 means the card also calls the
+ * village; otherwise the piece is his alone.
+ */
+export function ownWorkCostPhrase(seasons: number, smithName?: string, forgeDays?: number, villageDays = 0): string {
   const who = smithName?.trim() || "the smith";
-  if (seasons <= 1) return `This is ${who}'s own work for this season. The village is not called.`;
+  const hearth = forgeDays != null && forgeDays > 0 ? `${daysWord(forgeDays)} at the hearth` : "";
+  const village = villageDays > 0 ? `The village gives ${daysWord(villageDays)} beside him.` : "The village is not called.";
+  if (seasons <= 1) {
+    const own = hearth ? `${hearth}: ${who}'s own work for this season.` : `This is ${who}'s own work for this season.`;
+    return `${own} ${village}`;
+  }
   const words = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
   const n = seasons < words.length ? words[seasons] : String(seasons);
-  return `This keeps ${who} ${n} seasons. The next thing waits until it is finished. The village is not called.`;
+  const own = hearth ? `${hearth}: this keeps ${who} ${n} seasons.` : `This keeps ${who} ${n} seasons.`;
+  return `${own} The next thing waits until it is finished. ${village}`;
 }
 
-export function smithProgressLine(elapsed: number, duration: number): string {
+export function smithProgressLine(
+  elapsed: number,
+  duration: number,
+  forge?: { done?: number; required?: number },
+): string {
   const left = Math.max(0, duration - elapsed);
   const words = ["", "one season", "two seasons", "three seasons", "four seasons", "five seasons", "six seasons", "seven seasons", "eight seasons"];
   const count = (n: number) => (n < words.length ? words[n] : `${n} seasons`);
-  if (left <= 0) return "finished";
-  if (elapsed <= 0) return duration <= 1 ? "this season, then he is free" : `${count(duration)} of his own work`;
-  if (left === 1) return "still at it · finished when the season turns";
-  return `still at it · ${count(left)} yet`;
+  const hearth =
+    forge?.required != null && forge.required > 0
+      ? `${daysWord(Math.min(forge.done ?? 0, forge.required))} of ${daysWord(forge.required)} at the hearth`
+      : "";
+  if (left <= 0) return hearth ? `${hearth} · finished` : "finished";
+  if (elapsed <= 0) {
+    const base = duration <= 1 ? "this season, then he is free" : `${count(duration)} of his own work`;
+    return hearth ? `${hearth} · ${base}` : base;
+  }
+  const tail = left === 1 ? "finished when the season turns" : `${count(left)} yet`;
+  return hearth ? `${hearth} · ${tail}` : `still at it · ${tail}`;
 }
 
 /**
@@ -217,12 +283,13 @@ function activeByRef(state: WorldState, ref: string): Project | undefined {
   );
 }
 
+/** Hands pointed at a piece that is his alone (no village days named on the card). */
 function assignIsPersonal(state: WorldState, projectId: string, proposals: MechanicalProposal[]): boolean {
   const live = activeByRef(state, projectId);
-  if (live && isPersonalSmithProject(live)) return true;
+  if (live && isSoloSmithProject(live)) return true;
   for (const p of proposals) {
     if (p.type !== "start_project") continue;
-    if (!startIsPersonalSmithing(p)) continue;
+    if (!startIsSoloSmithing(p)) continue;
     if (refMatches(projectId, p.id) || refMatches(projectId, p.projectKey) || refMatches(projectId, p.name)) return true;
   }
   return false;
@@ -278,15 +345,31 @@ export function resolvePersonalSmithing(state: WorldState): string[] {
       };
     }
     if (!proj.smithing) continue;
-    proj.smithing.seasonsElapsed += 1;
-    proj.labourDaysDone = round1(Math.min(proj.labourDaysRequired, proj.smithing.seasonsElapsed * seasonDays));
+    const village = villageCalledOnSmithing(proj);
+    const hearthDone = proj.smithing.seasonsElapsed >= proj.smithing.durationSeasons;
+    if (!hearthDone) {
+      proj.smithing.seasonsElapsed += 1;
+      if (proj.smithing.forgeDaysRequired != null) {
+        proj.smithing.forgeDaysDone = round1(Math.min(proj.smithing.forgeDaysRequired, proj.smithing.seasonsElapsed * seasonDays));
+      } else {
+        // Legacy card: labourDays were his own days.
+        proj.labourDaysDone = round1(Math.min(proj.labourDaysRequired, proj.smithing.seasonsElapsed * seasonDays));
+      }
+    }
     const left = proj.smithing.durationSeasons - proj.smithing.seasonsElapsed;
     if (left > 0) {
       markProjectSeason(state, proj);
       lines.push(smithStillAtConfirm(state, proj.name));
       continue;
     }
-    proj.labourDaysDone = proj.labourDaysRequired;
+    if (proj.smithing.forgeDaysRequired != null) proj.smithing.forgeDaysDone = proj.smithing.forgeDaysRequired;
+    else proj.labourDaysDone = proj.labourDaysRequired;
+    if (village && proj.labourDaysDone < proj.labourDaysRequired) {
+      // His part is done; the village still owes its days. advanceProjects marks the season.
+      const owed = Math.max(0, round1(proj.labourDaysRequired - proj.labourDaysDone));
+      lines.push(`${hiredSmithName(state) ?? "The smith"} has finished his part of ${theWork(proj.name)}; the village still owes ${owed} days of work.`);
+      continue;
+    }
     proj.status = "completed";
     stampProjectEnded(state, proj);
     lines.push(`${sentenceWork(proj.name)} is finished.`);
@@ -294,4 +377,9 @@ export function resolvePersonalSmithing(state: WorldState): string[] {
     if (gained) lines.push(gained);
   }
   return lines;
+}
+
+/** True when the smith's clock on a work has run out (or the work has no clock). */
+export function smithClockDone(project: Pick<Project, "smithing">): boolean {
+  return !project.smithing || project.smithing.seasonsElapsed >= project.smithing.durationSeasons;
 }

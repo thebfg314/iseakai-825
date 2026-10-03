@@ -7,7 +7,7 @@ import { applyProposal, projectSpeed, resourceOutputBonus } from "./applyDelta";
 import { consumeGrain, HOUSEHOLD_SEASON_GRAIN } from "./grain";
 import { syncTradeFromFeatures } from "./merchant";
 import { resolveHunts } from "./hunts";
-import { isPersonalSmithProject, resolvePersonalSmithing } from "./smithing";
+import { isSoloSmithProject, resolvePersonalSmithing, smithClockDone } from "./smithing";
 import { smeltBloomeries } from "./bloomery";
 import { flagCompletedProjectWantsTalk } from "./wantsTalk";
 import { nextSeason, round0, round1 } from "./util";
@@ -153,7 +153,12 @@ function advanceProjects(state: WorldState): string[] {
   notes.push(...autoFillLeftoverLabour(state));
   for (const proj of state.projects.filter((p) => p.status === "active")) {
     if (proj.tag === "hunt" || proj.hunt) continue;
-    if (isPersonalSmithProject(proj)) continue;
+    if (isSoloSmithProject(proj)) continue;
+    if (proj.smithing && proj.labourDaysDone >= proj.labourDaysRequired) {
+      // The village's part of a smith's work is done; his clock finishes it in resolvePersonalSmithing.
+      markProjectSeason(state, proj);
+      continue;
+    }
     const assign = state.labour.assigned.find((a) => a.projectId === proj.id);
     if (!assign) {
       markProjectSeason(state, proj);
@@ -170,6 +175,10 @@ function advanceProjects(state: WorldState): string[] {
       `${proj.name}: ${round1(days)} days of work done this season; ${owed === 0 ? "the work is finished" : `${owed} days still owed`}.`,
     );
     markProjectSeason(state, proj);
+    if (proj.labourDaysDone >= proj.labourDaysRequired && !smithClockDone(proj)) {
+      notes.push(`${proj.name}: the village's part is done; the smith is still at his.`);
+      continue;
+    }
     if (proj.labourDaysDone >= proj.labourDaysRequired) {
       proj.status = "completed";
       stampProjectEnded(state, proj);

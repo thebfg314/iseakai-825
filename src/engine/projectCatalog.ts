@@ -68,8 +68,11 @@ export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
   { key: "pottery_kiln", name: "Pottery kiln", labourDays: 60, lumber: 3.5, iron: 10, stone: 2, labourKind: "men_women", completesToFeature: "pottery_kiln" },
 ];
 
+/** Works the smith may begin and call the village to: his workshops, his buildings, and the charcoal that feeds them. */
 export const FORGE_PROJECT_KEYS = new Set(
-  PROJECT_CATALOG.filter((p) => p.tag === "forge" || p.key === "forge" || p.key === "bloomery" || p.key === "forge_mill").map((p) => p.key),
+  PROJECT_CATALOG.filter(
+    (p) => p.tag === "forge" || p.key === "forge" || p.key === "bloomery" || p.key === "forge_mill" || p.key === "charcoal_burning",
+  ).map((p) => p.key),
 );
 
 export const FORGE_FEATURES = new Set(["forge", "mill_forge", "bloomery"]);

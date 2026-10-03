@@ -6,7 +6,11 @@ import {
   isPersonalSmithProject,
   ownWorkCostPhrase,
   personalSeasonsForStart,
+  startForgeDays,
   startIsPersonalSmithing,
+  startIsSoloSmithing,
+  startVillageDays,
+  villageCalledOnSmithing,
 } from "./smithing";
 import { theWork } from "./proposalPack";
 import { payFinishedProjectResult, proposalResult, resultSpeechTargets, type ResultSpeechTarget } from "./projectResult";
@@ -73,7 +77,10 @@ export function projectStoreBill(p: StartProject): ProjectStoreBill {
 export function startFinishesThisSeason(state: WorldState, p: StartProject): boolean {
   if (p.finishesThisSeason === true) return true;
   if (p.finishesThisSeason === false) return false;
-  if (startIsPersonalSmithing(p)) return personalSeasonsForStart(p) <= 1;
+  if (startIsPersonalSmithing(p)) {
+    if (personalSeasonsForStart(p) > 1) return false;
+    if (startIsSoloSmithing(p)) return true;
+  }
   const bill = projectStoreBill(p);
   const catalog = lookupProject(p.projectKey);
   const kind = catalog?.labourKind ?? "mostly_men";
@@ -85,7 +92,11 @@ export function startFinishesThisSeason(state: WorldState, p: StartProject): boo
 export function projectFinishesThisSeason(state: WorldState, project: Project): boolean {
   if (project.finishesThisSeason === true) return true;
   if (project.finishesThisSeason === false) return false;
-  if (isPersonalSmithProject(project)) return (project.smithing?.durationSeasons ?? 1) <= 1;
+  if (isPersonalSmithProject(project)) {
+    const seasonsLeft = (project.smithing?.durationSeasons ?? 1) - (project.smithing?.seasonsElapsed ?? 0);
+    if (seasonsLeft > 1) return false;
+    if (!villageCalledOnSmithing(project)) return true;
+  }
   const owed = Math.max(0, project.labourDaysRequired - project.labourDaysDone);
   return owed <= oneSeasonSpareDays(state, labourKindFor(project), project.key) + 1e-9;
 }
@@ -648,7 +659,7 @@ export function withBeginShortfalls(
       .map((offer) => {
         const bill = projectStoreBill(offer);
         const own = startIsPersonalSmithing(offer)
-          ? ownWorkCostPhrase(personalSeasonsForStart(offer), hiredSmithName(state))
+          ? ownWorkCostPhrase(personalSeasonsForStart(offer), hiredSmithName(state), startForgeDays(offer), startVillageDays(offer))
           : undefined;
         const line = beginCostLine(bill, own);
         return line ? `${theWork(workNameOf(offer))} can begin. ${line}` : "";

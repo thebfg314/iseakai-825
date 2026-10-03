@@ -169,7 +169,7 @@ export function pricedWorkFromTalk(text: string, holdingId: string): PricedWork 
   const thisSeason = /\b(season's turn|when the season turns|this season|by the turn of the season)\b/i.test(text);
   const dayMatch = text.match(new RegExp(`\\b(${COUNT})\\s+days\\b`, "i"));
   const namedDays = dayMatch ? parseCount(dayMatch[1] ?? "") : null;
-  const labourDays = namedDays && namedDays > 0 ? namedDays : oneSmithSeasonDays();
+  const forgeDays = namedDays && namedDays > 0 ? namedDays : oneSmithSeasonDays();
 
   let sets = 0;
   if (/\bboth\s+(?:the\s+)?(?:ironwork\s+)?sets\b/i.test(text)) sets = 2;
@@ -188,7 +188,7 @@ export function pricedWorkFromTalk(text: string, holdingId: string): PricedWork 
     name,
     holdingId,
     tag: "forge",
-    customCosts: { labourDays, lumber, iron, stone, charcoal },
+    customCosts: { labourDays: 0, forgeDays, lumber, iron, stone, charcoal },
     ...(sets > 0 ? { result: [{ resource: "ironwork_sets", amount: sets, name: "ironwork sets" }] } : {}),
     ...(thisSeason ? { finishesThisSeason: true } : {}),
   };

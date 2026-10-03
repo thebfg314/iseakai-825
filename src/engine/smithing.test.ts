@@ -6,8 +6,11 @@ import { lookupProject } from "./projectCatalog";
 import { WorldStateSchema, type MechanicalProposal, type WorldState } from "./schema";
 import { resolveAgricultureAndProjects } from "./season";
 import {
+  guardSmithProposals,
   oneSmithSeasonDays,
   seasonsOfOneSmith,
+  SMITH_SEASON_DAYS,
+  smithProgressLine,
   smithSpeechForOrder,
   smithStillAtSpeech,
 } from "./smithing";
@@ -49,12 +52,15 @@ function tool(
 }
 
 describe("Bernard's own smithing", () => {
-  it("judges one season of the smith from the labour tables, not from one tool", () => {
+  it("reckons his season as a craftsman's 70 working days, not the villagers' spare days", () => {
     const season = oneSmithSeasonDays();
-    expect(season).toBeGreaterThanOrEqual(20);
+    expect(season).toBe(SMITH_SEASON_DAYS);
+    expect(season).toBe(70);
     expect(seasonsOfOneSmith(20)).toBe(1);
     expect(seasonsOfOneSmith(season)).toBe(1);
     expect(seasonsOfOneSmith(season + 1)).toBe(2);
+    // The two-plough order from the play log: 180 hearth days is three seasons, not nine.
+    expect(seasonsOfOneSmith(180)).toBe(3);
   });
 
   it("gives a metal-only custom tool no village assignment", () => {
@@ -226,5 +232,134 @@ describe("Bernard's own smithing", () => {
     const bayProj = bayState.projects.find((p) => p.key === "hearth_bay")!;
     expect(bayProj.smithing).toBeUndefined();
     expect(bayState.labour.assigned.find((a) => a.projectId === bayProj.id)?.men ?? 0).toBeGreaterThan(0);
+  });
+});
+
+function split(
+  key: string,
+  name: string,
+  costs: { forgeDays: number; labourDays: number; lumber?: number; iron?: number; charcoal?: number },
+): MechanicalProposal {
+  return {
+    type: "start_project",
+    summary: name,
+    projectKey: key,
+    name,
+    holdingId: "fontenay",
+    tag: "forge",
+    customCosts: {
+      labourDays: costs.labourDays,
+      forgeDays: costs.forgeDays,
+      lumber: costs.lumber ?? 0,
+      iron: costs.iron ?? 0,
+      stone: 0,
+      charcoal: costs.charcoal ?? 0,
+    },
+  };
+}
+
+describe("hearth days beside the village's days", () => {
+  it("keeps his clock in forgeDays and lets the village take the woodwork on the same card", () => {
+    const state = boot();
+    const started = applyProposal(
+      state,
+      split("two_ploughs", "Two heavy ploughs", { forgeDays: 10, labourDays: 30, lumber: 4, iron: 40, charcoal: 2 }),
+      "smith",
+    );
+    expect(started.ok).toBe(true);
+    expect(started.logLine).toMatch(/10 days at the hearth/);
+    expect(started.logLine).not.toMatch(JARGON);
+    const made = state.projects.find((p) => p.key === "two_ploughs")!;
+    expect(made.smithing).toMatchObject({ durationSeasons: 1, seasonsElapsed: 0, forgeDaysRequired: 10, forgeDaysDone: 0 });
+    expect(made.labourDaysRequired).toBe(30);
+    // The village is called: spare hands were pointed at the woodwork on Confirm.
+    expect(state.labour.assigned.find((a) => a.projectId === made.id)?.men ?? 0).toBeGreaterThan(0);
+    expect(smithProgressLine(0, 1, { done: 0, required: 10 })).toMatch(/0 days of 10 days at the hearth/);
+
+    // The steward may still move hands onto it; the guard does not strip them.
+    const assign: MechanicalProposal = { type: "assign_labour", summary: "Hands", projectId: made.id, men: 10, women: 0, youths: 0 };
+    expect(guardSmithProposals(state, [assign]).proposals).toEqual([assign]);
+    const hands = applyProposal(state, assign, "steward");
+    expect(hands.ok).toBe(true);
+
+    const lines = resolveAgricultureAndProjects(state);
+    expect(made.status).toBe("completed");
+    expect(made.smithing?.forgeDaysDone).toBe(10);
+    expect(made.labourDaysDone).toBeGreaterThanOrEqual(30);
+    expect(lines.some((l) => /two heavy ploughs is finished/i.test(l.text))).toBe(true);
+  });
+
+  it("waits for the slower of the two clocks", () => {
+    const state = boot();
+    const started = applyProposal(
+      state,
+      split("great_anvil", "Great anvil", { forgeDays: 100, labourDays: 5, iron: 30 }),
+      "smith",
+    );
+    expect(started.ok).toBe(true);
+    const made = state.projects.find((p) => p.key === "great_anvil")!;
+    expect(made.smithing?.durationSeasons).toBe(2);
+    const first = resolveAgricultureAndProjects(state);
+    expect(made.status).toBe("active");
+    expect(made.labourDaysDone).toBeGreaterThanOrEqual(5);
+    expect(made.smithing?.forgeDaysDone).toBe(70);
+    expect(first.some((l) => /village's part is done/i.test(l.text))).toBe(true);
+    resolveAgricultureAndProjects(state);
+    expect(made.status).toBe("completed");
+    expect(made.smithing?.forgeDaysDone).toBe(100);
+
+    // The other way round: his part is quick, the village's is long and unmanned.
+    const slow = boot();
+    applyProposal(slow, split("mill_irons", "Mill irons", { forgeDays: 5, labourDays: 400, lumber: 3, iron: 20 }), "smith");
+    const irons = slow.projects.find((p) => p.key === "mill_irons")!;
+    slow.labour.assigned = [];
+    const lines = resolveAgricultureAndProjects(slow);
+    expect(irons.status).toBe("active");
+    expect(irons.smithing?.forgeDaysDone).toBe(5);
+    expect(lines.some((l) => /finished his part of the mill irons/i.test(l.text))).toBe(true);
+  });
+
+  it("lets him call the village to his own works and workshops, but not to the steward's", () => {
+    const state = boot();
+    applyProposal(state, split("two_ploughs", "Two heavy ploughs", { forgeDays: 10, labourDays: 30, lumber: 4, iron: 40 }), "smith");
+    const made = state.projects.find((p) => p.key === "two_ploughs")!;
+    state.labour.assigned = [];
+    const own = applyProposal(state, { type: "assign_labour", summary: "Hands", projectId: made.id, men: 8, women: 0, youths: 0 }, "smith");
+    expect(own.ok).toBe(true);
+
+    const charcoal = applyProposal(
+      state,
+      { type: "start_project", summary: "Charcoal", projectKey: "charcoal_burning", holdingId: "fontenay" },
+      "smith",
+    );
+    expect(charcoal.ok).toBe(true);
+    const mound = state.projects.find((p) => p.key === "charcoal_burning")!;
+    const feed = applyProposal(state, { type: "assign_labour", summary: "Hands", projectId: mound.id, men: 4, women: 0, youths: 0 }, "smith");
+    expect(feed.ok).toBe(true);
+
+    applyProposal(state, { type: "start_project", summary: "Scrub", projectKey: "clear_scrub", holdingId: "fontenay" }, "steward");
+    const scrub = state.projects.find((p) => p.key === "clear_scrub")!;
+    const notHis = applyProposal(state, { type: "assign_labour", summary: "Hands", projectId: scrub.id, men: 2, women: 0, youths: 0 }, "smith");
+    expect(notHis.ok).toBe(false);
+    expect(notHis.reason).toBe("npc_not_authorized");
+  });
+
+  it("reads a card with forgeDays 0 as village work with no smith's clock", () => {
+    const state = boot();
+    const started = applyProposal(state, split("hay_rack", "Hay rack", { forgeDays: 0, labourDays: 12, lumber: 1 }), "smith");
+    expect(started.ok).toBe(true);
+    const made = state.projects.find((p) => p.key === "hay_rack")!;
+    expect(made.smithing).toBeUndefined();
+    expect(state.labour.assigned.find((a) => a.projectId === made.id)?.men ?? 0).toBeGreaterThan(0);
+  });
+
+  it("still keeps the village off a piece that names no days for them", () => {
+    const state = boot();
+    applyProposal(state, split("axe_head", "Axe head", { forgeDays: 1, labourDays: 0, iron: 4 }), "smith");
+    const made = state.projects.find((p) => p.key === "axe_head")!;
+    expect(state.labour.assigned.some((a) => a.projectId === made.id)).toBe(false);
+    const assign: MechanicalProposal = { type: "assign_labour", summary: "Hands", projectId: made.id, men: 10, women: 0, youths: 0 };
+    expect(guardSmithProposals(state, [assign]).proposals).toEqual([]);
+    expect(applyProposal(state, assign, "steward").ok).toBe(false);
   });
 });
