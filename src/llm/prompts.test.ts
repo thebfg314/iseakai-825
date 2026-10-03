@@ -122,10 +122,22 @@ describe("signed-off NPC personalities", () => {
     expect(bernard).toMatch(/speak to Aldric/i);
     expect(bernard).toMatch(/do not write the harvest/i);
     expect(bernard).toMatch(/Forging a tool does not change the yield/i);
-    expect(bernard).toMatch(/your own work/i);
+    expect(bernard).toMatch(/your own work|your own pieces/i);
     expect(bernard).toMatch(/village's spare days/i);
     expect(bernard).toMatch(/still at that work/i);
     expect(bernard).toMatch(/next thing waits/i);
+    // He reckons in hearth days against a 70-day season, with anchors, a forgeDays/labourDays split, and a memory rule.
+    expect(bernard).toMatch(/working days at the hearth/i);
+    expect(bernard).toMatch(/about 70 working days/);
+    expect(bernard).toMatch(/4–6 days and 15–25 lb/);
+    expect(bernard).toMatch(/forgeDays/);
+    expect(bernard).toMatch(/labourDays to 0 when the village has no part/);
+    expect(bernard).toMatch(/figure you speak is the figure on the card/i);
+    expect(bernard).toMatch(/my_deals/);
+    expect(bernard).toMatch(/research marker/i);
+    expect(bernard).toMatch(/charcoal_burning/);
+    expect(bernard).not.toMatch(/do not say labour days/i);
+    expect(bernard).not.toMatch(/Do not emit assign_labour/);
     expect(bernard).not.toMatch(/mouldboard|moldboard/i);
     expect(bernard).not.toMatch(/\b1\.2\b/);
     expect(bernard).toMatch(/bloomery/i);
