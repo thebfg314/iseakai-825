@@ -42,7 +42,8 @@ function plough(): MechanicalProposal {
 describe("a new tool is an ordinary modifier", () => {
   it("instructs Aldric on scale, and does not name a plough multiplier", () => {
     expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/around a quarter more/);
-    expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/not a doubling/);
+    expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/a doubling from one change is rare/);
+    expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/may go above or below it when the change truly warrants it/);
     expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/for each change/);
     expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/not a ceiling on all of them together/);
     expect(STEWARD_TOOL_IMPROVEMENT).toMatch(/Do not grant the same improvement twice/);

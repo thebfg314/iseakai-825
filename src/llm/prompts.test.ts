@@ -23,6 +23,7 @@ import {
   stewardSystemPrompt,
   BEGIN_SHORTFALL_RULE,
   SPEECH_ONLY_CONTRACT,
+  SPEECH_PASS_HINT,
   TOOL_PROTOCOL,
 } from "./prompts";
 
@@ -78,7 +79,8 @@ describe("signed-off NPC personalities", () => {
     expect(aldric).toMatch(/shoe a horse/i);
     expect(aldric).toContain(STEWARD_TOOL_IMPROVEMENT);
     expect(aldric).toMatch(/around a quarter more/i);
-    expect(aldric).toMatch(/not a doubling/i);
+    expect(aldric).toMatch(/a doubling from one change is rare/i);
+    expect(aldric).toMatch(/may go above or below it when the change truly warrants it/i);
     expect(aldric).toMatch(/for each change/i);
     expect(aldric).toMatch(/not a ceiling on all of them together/i);
     expect(aldric).toMatch(/do not grant the same improvement twice/i);
@@ -320,6 +322,20 @@ describe("signed-off NPC personalities", () => {
     expect(books).toMatch(/You MUST reply with a single JSON object only/);
     expect(books).toContain("count first and talk second");
     expect(speech).toContain("count first and talk second");
+  });
+
+  it("teaches the hidden books tag on the speech pass and frees the books pass from the catalogue", () => {
+    const speech = npcSystemPrompt("steward", boot(), { speechOnly: true });
+    const books = npcSystemPrompt("steward", boot());
+    expect(speech).toContain("[[books:yes]]");
+    expect(speech).toContain("[[books:no]]");
+    expect(speech).toMatch(/however strange or new it is/);
+    expect(SPEECH_PASS_HINT).toContain("[[books:yes]]");
+    expect(books).toMatch(/New designs and strange orders/);
+    expect(books).toMatch(/The catalogue is not a limit/);
+    expect(books).toMatch(/target "custom" with customNote/);
+    expect(books).toMatch(/the catalogue is not a limit on what the lord may order/);
+    expect(books).not.toMatch(/Known project keys \(use these or customCosts\)/);
   });
 
   it("keeps the mid-season scrap tiny until drawers are requested", () => {
