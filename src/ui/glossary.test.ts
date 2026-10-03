@@ -177,6 +177,22 @@ describe("glossary linker", () => {
     expect(ids(CHECK_RECORDS_LINE)).toEqual([]);
     expect(ids(RECALL_DEALS_LINE)).toEqual([]);
   });
+
+  it("scans a few seasons of talk in a handful of milliseconds and does not link a term inside a longer word", () => {
+    const line =
+      "Two heavy ploughs need 30–40 lb of iron. The cell of Saint-Martin keeps the tithe; the hall waits on the steward, and Gerulf is on the road with a purse for the hunt. The waste and scrub by the mill leat could be cleared, and the hides go to the tannery.";
+    // Word boundaries hold against the whole text, not a slice: "manhunt" and "hallway" link nothing.
+    expect(ids("A manhunt down the hallway.")).toEqual([]);
+    const hits = findGlossaryHits(line);
+    expect(hits.map((h) => h.id)).toEqual(expect.arrayContaining(["cell_saint_martin", "hall", "mill_leat", "hides"]));
+    for (let i = 1; i < hits.length; i++) expect(hits[i].start).toBeGreaterThanOrEqual(hits[i - 1].end);
+    expect(findGlossaryHits(line)).toBe(hits); // cached per line
+
+    const lines = Array.from({ length: 150 }, (_, i) => `${line} (${i})`);
+    const t0 = performance.now();
+    for (const text of lines) findGlossaryHits(text);
+    expect(performance.now() - t0).toBeLessThan(150);
+  });
 });
 
 describe("glossary UI", () => {

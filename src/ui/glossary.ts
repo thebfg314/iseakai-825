@@ -84,6 +84,8 @@ type Pattern = {
   rule: GlossaryRule;
   alias: string;
   re: RegExp;
+  /** The same alias with the global flag, for the one-pass candidate scan. */
+  global: RegExp;
   length: number;
 };
 
@@ -106,6 +108,7 @@ const PATTERNS: Pattern[] = GLOSSARY_ENTRIES.flatMap((entry) =>
     rule: entry.rule,
     alias,
     re: new RegExp(`\\b${aliasPattern(alias)}\\b`, "i"),
+    global: new RegExp(`\\b${aliasPattern(alias)}\\b`, "ig"),
     length: alias.length,
   })),
 ).sort((a, b) => b.length - a.length || a.alias.localeCompare(b.alias));
@@ -216,32 +219,73 @@ function ruleAllows(
   }
 }
 
-export function findGlossaryHits(text: string, ctx?: GlossaryScanContext): GlossaryHit[] {
+type Candidate = { order: number; pat: Pattern; end: number; matched: string };
+
+/**
+ * Every place each alias matches, keyed by start offset. One global pass per
+ * pattern instead of a fresh slice-and-exec at every character, which made the
+ * old scan quadratic in the text and visibly slowed typing once a scene held a
+ * few seasons of talk. After each match the scan resumes one character on, so
+ * overlapping matches of the same alias are still found.
+ */
+function candidatesByStart(text: string): Map<number, Candidate[]> {
+  const byStart = new Map<number, Candidate[]>();
+  PATTERNS.forEach((pat, order) => {
+    const re = pat.global;
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      const list = byStart.get(m.index);
+      const cand = { order, pat, end: m.index + m[0].length, matched: m[0] };
+      if (list) list.push(cand);
+      else byStart.set(m.index, [cand]);
+      re.lastIndex = m.index + 1;
+    }
+  });
+  for (const list of byStart.values()) list.sort((a, b) => a.order - b.order);
+  return byStart;
+}
+
+function scanGlossaryHits(text: string, ctx?: GlossaryScanContext): GlossaryHit[] {
   if (!text) return [];
+  const byStart = candidatesByStart(text);
+  if (byStart.size === 0) return [];
   const omitted = omitRanges(text);
+  const starts = [...byStart.keys()].sort((a, b) => a - b);
   const hits: GlossaryHit[] = [];
-  let i = 0;
-  while (i < text.length) {
-    let best: GlossaryHit | null = null;
-    for (const pat of PATTERNS) {
-      pat.re.lastIndex = 0;
-      const slice = text.slice(i);
-      const m = pat.re.exec(slice);
-      if (!m || m.index !== 0) continue;
-      const start = i;
-      const end = i + m[0].length;
-      if (overlaps(start, end, omitted)) continue;
-      if (!ruleAllows(pat.rule, text, start, end, ctx)) continue;
-      best = { id: pat.id, title: pat.title, start, end, matched: m[0] };
+  let cursor = 0;
+  for (const start of starts) {
+    if (start < cursor) continue;
+    for (const cand of byStart.get(start) ?? []) {
+      if (overlaps(start, cand.end, omitted)) continue;
+      if (!ruleAllows(cand.pat.rule, text, start, cand.end, ctx)) continue;
+      hits.push({ id: cand.pat.id, title: cand.pat.title, start, end: cand.end, matched: cand.matched });
+      cursor = cand.end;
       break;
     }
-    if (best) {
-      hits.push(best);
-      i = best.end;
-    } else {
-      i += 1;
-    }
   }
+  return hits;
+}
+
+const HIT_CACHE_LIMIT = 4000;
+const hitCache = new Map<string, GlossaryHit[]>();
+
+function cacheKey(text: string, ctx?: GlossaryScanContext): string {
+  return `${ctx?.hunt ? "h" : "-"}${ctx?.land ? "l" : "-"}|${text}`;
+}
+
+/** Glossary terms in a line, longest alias first, never overlapping. Results are cached per line. */
+export function findGlossaryHits(text: string, ctx?: GlossaryScanContext): GlossaryHit[] {
+  if (!text) return [];
+  const key = cacheKey(text, ctx);
+  const cached = hitCache.get(key);
+  if (cached) return cached;
+  const hits = scanGlossaryHits(text, ctx);
+  if (hitCache.size >= HIT_CACHE_LIMIT) {
+    const oldest = hitCache.keys().next().value;
+    if (oldest !== undefined) hitCache.delete(oldest);
+  }
+  hitCache.set(key, hits);
   return hits;
 }
 

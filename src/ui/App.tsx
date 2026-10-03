@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { GameView } from "../shared/types";
 import type { ChatMessage, PendingProposal, Season } from "../engine/schema";
 import { isCoreHouseholdId } from "../engine/specialists";
@@ -74,7 +74,6 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [speakWaiting, setSpeakWaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(defaultAppSettings);
   const [models, setModels] = useState<{ id: string }[]>([]);
@@ -362,13 +361,17 @@ export function App() {
     void withBusy(() => window.api.battleFinish(disposition));
   }
 
-  async function send() {
-    if (!view || !draft.trim() || busy || sendLock.current) return;
-    const text = draft.trim();
-    const npcId = view.sceneNpcId;
+  /** Returns false when nothing was sent, so the composer keeps the draft. */
+  function send(draft: string): boolean {
+    if (!view || !draft.trim() || busy || sendLock.current) return false;
+    void deliver(view, draft.trim());
+    return true;
+  }
+
+  async function deliver(current: GameView, text: string) {
+    const npcId = current.sceneNpcId;
     sendLock.current = true;
-    setDraft("");
-    const optimistic = viewWithOptimisticPlayer(view, text);
+    const optimistic = viewWithOptimisticPlayer(current, text);
     setView(optimistic);
     setBusy(true);
     setSpeakWaiting(true);
@@ -701,38 +704,14 @@ export function App() {
             }}
           />
 
-          <form
-            id="talk-composer"
-            className="composer"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send();
-            }}
-          >
-            <textarea
-              ref={composerRef}
-              value={draft}
-              disabled={busy}
-              placeholder={composerPlaceholder(view)}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className={speakWaiting ? "primary speak-submit speak-waiting" : "primary speak-submit"}
-              disabled={busy || sendLock.current || !draft.trim()}
-              aria-label={`Speak to ${npc?.name ?? "them"}`}
-              aria-busy={speakWaiting}
-            >
-              <span className="speak-label">Speak to {npc?.name ?? "them"}</span>
-              <SpeakWaitingReel active={speakWaiting} />
-            </button>
-          </form>
+          <Composer
+            composerRef={composerRef}
+            busy={busy}
+            speakWaiting={speakWaiting}
+            placeholder={composerPlaceholder(view)}
+            npcName={npc?.name ?? "them"}
+            onSend={send}
+          />
         </section>
 
         <BooksPanel
@@ -931,7 +910,68 @@ function SeasonHeaderArt({
   );
 }
 
-function MessageBubble({ m }: { m: ChatMessage }) {
+/**
+ * The draft lives here, not in App, so a keystroke re-renders one textarea and
+ * not every bubble, card, and ledger page on the screen.
+ */
+function Composer({
+  composerRef,
+  busy,
+  speakWaiting,
+  placeholder,
+  npcName,
+  onSend,
+}: {
+  composerRef: RefObject<HTMLTextAreaElement>;
+  busy: boolean;
+  speakWaiting: boolean;
+  placeholder: string;
+  npcName: string;
+  onSend: (text: string) => boolean;
+}) {
+  const [draft, setDraft] = useState("");
+  const submit = () => {
+    if (!draft.trim() || busy) return;
+    if (onSend(draft)) setDraft("");
+  };
+  return (
+    <form
+      id="talk-composer"
+      className="composer"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <textarea
+        ref={composerRef}
+        value={draft}
+        disabled={busy}
+        placeholder={placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <button
+        type="submit"
+        className={speakWaiting ? "primary speak-submit speak-waiting" : "primary speak-submit"}
+        disabled={busy || !draft.trim()}
+        aria-label={`Speak to ${npcName}`}
+        aria-busy={speakWaiting}
+      >
+        <span className="speak-label">Speak to {npcName}</span>
+        <SpeakWaitingReel active={speakWaiting} />
+      </button>
+    </form>
+  );
+}
+
+/** A spoken line never changes once written, so a bubble renders once per message. */
+const MessageBubble = memo(function MessageBubble({ m }: { m: ChatMessage }) {
   const who =
     m.role === "player" ? "You" : m.role === "system" ? (m.aside ? "A pause" : "The books") : m.npcName ?? "Voice";
   const linkSpeech = m.role !== "player";
@@ -947,7 +987,7 @@ function MessageBubble({ m }: { m: ChatMessage }) {
       )}
     </article>
   );
-}
+}, (a, b) => a.m.id === b.m.id && a.m.text === b.m.text && a.m.chronicle === b.m.chronicle && a.m.role === b.m.role);
 
 function SettingsModal({
   settings,
