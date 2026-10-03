@@ -110,16 +110,59 @@ export function parseToolRequest(raw: string): ToolRequest {
 }
 
 export function hasMalformedToolMarker(raw: string): boolean {
-  return parseToolRequest(raw).malformed;
+  return parseToolRequest(raw).malformed || parseResearchRequest(raw).malformed;
 }
 
-/** Strip every complete tool marker. Incomplete leftovers are handled as malformed. */
+/** Strip every complete tool and research marker. Incomplete leftovers are handled as malformed. */
 export function stripToolMarkers(text: string): string {
   return text
     .replace(completeMarkerRe(), "")
+    .replace(completeResearchRe(), "")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Stiff marker for the hidden research tool. One plain-words question per marker. */
+export const RESEARCH_MARKER_EXAMPLE = "<=-research: how much iron is in a medieval heavy plough share and coulter -=>";
+
+/** Engine-authored, in the NPC's mouth, while the game searches. */
+export const RESEARCH_HOLDING_LINE = "Let me think on what I have heard of such things, my lord.";
+
+const RESEARCH_OPEN_TOKEN = "<=-research:";
+
+function completeResearchRe(): RegExp {
+  return /<=-research:\s*([\s\S]*?)\s*-=>/gi;
+}
+
+export type ResearchRequest = {
+  requested: boolean;
+  queries: string[];
+  malformed: boolean;
+};
+
+/**
+ * Complete `<=-research: … -=>` markers. A leftover `<=-research:` without a
+ * close is malformed, like a chopped tool marker. Duplicate questions collapse.
+ */
+export function parseResearchRequest(raw: string): ResearchRequest {
+  const queries: string[] = [];
+  const seen = new Set<string>();
+  const re = completeResearchRe();
+  let any = false;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(raw))) {
+    any = true;
+    const q = match[1].replace(/\s+/g, " ").trim();
+    const key = q.toLowerCase();
+    if (q && !seen.has(key)) {
+      seen.add(key);
+      queries.push(q);
+    }
+  }
+  const leftover = raw.replace(completeResearchRe(), "");
+  const malformed = leftover.toLowerCase().includes(RESEARCH_OPEN_TOKEN);
+  return { requested: any && !malformed && queries.length > 0, queries, malformed };
 }
 
 function pickResources(state: WorldState, keys: readonly string[]): Record<string, number> {

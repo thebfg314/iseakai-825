@@ -9,7 +9,7 @@ import { PROJECT_RESULT_RULE } from "../engine/projectResult";
 import { churchCounselBlock } from "../engine/church";
 import { peopleHappinessHallWord } from "../engine/peopleHappiness";
 import { stewardHirePrompt } from "../engine/specialists";
-import { TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
+import { RESEARCH_MARKER_EXAMPLE, TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
 
 function pickNonzero(values: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = {};
@@ -87,6 +87,10 @@ ${TOOL_MARKER_EXAMPLE}
 If you need to carefully recall past dealings with the lord, emit exactly <=-tool: my_deals -=> (alone, or with ledger drawers if you also need the books).
 Use only these drawer names: ${TOOL_DRAWERS.join(", ")}. Unknown names are ignored. Never mention the marker, drawers, tools, or JSON in spoken words. If you can greet or talk without numbers or a careful recall, do not request tools. After the game fills drawers, answer in spoken words only. Do not emit another marker.`;
 
+export const RESEARCH_PROTOCOL = `Hidden research tool — the player must never see this marker. When you must name a real figure you are not sure of — the iron in a tool, the days a craft takes, how much a mound of charcoal yields, how a thing was built or done in truth — you may ask the game to look it up before you answer. Emit exactly this form on its own line, one plain modern question per marker, at most two in a reply:
+${RESEARCH_MARKER_EXAMPLE}
+The game answers with a research drawer: a short answer and a few passages. Read them, judge them, and speak the figure as your own craft knowledge, in this age's units (pounds, cart-loads, days, denarii). If the drawer says nothing came back, judge for yourself. Never mention searching, sources, writings of the moderns, the internet, or the marker in spoken words. A research marker may share a reply with a ledger tool marker. Do not ask the same question twice in a play; the figure you gave before stands.`;
+
 export const BEGIN_SHORTFALL_RULE = `When you refuse or delay a work because stores, labour, coin, or some other thing on the estate is short, say what is short and how much is still needed before the work can begin. Name each short thing and the amount still wanted, in the units the books already use: pounds (lb) of iron, cart-loads of charcoal, timber, or stone, denarii, days of work. Do not say only "more charcoal." Do not name a thing the estate already has enough of. If the estate already holds some of a short thing, say the amount still wanted, not only the full cost of the finished work. For a known work, those amounts are the catalogue cost minus what is already in store. For a new design with no catalogue cost, you must still name a concrete amount, and you must put that same amount on the proposal (customCosts: labourDays, lumber, iron, stone, and charcoal or denarii when the work needs them) so Confirm takes those figures and no others. Never name a sum the books will not take. In the words the lord hears, do not say customCosts, catalogue, proposal, or JSON.`;
 
 export function beginFiguresFollowUp(playerText: string): string {
@@ -94,7 +98,7 @@ export function beginFiguresFollowUp(playerText: string): string {
 }
 
 export const SPEECH_PASS_HINT =
-  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. If you need to carefully recall past dealings with the lord, emit <=-tool: my_deals -=>. End with [[books:yes]] if the lord\'s words should change the estate (an order, a rule, a plan, a hire, a purchase, anything new), or [[books:no]] if they are only talk. Never mention providers, status codes, tools, tags, or JSON in speech.';
+  'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. If you need to carefully recall past dealings with the lord, emit <=-tool: my_deals -=>. If you must name a real figure you are unsure of, emit one <=-research: plain question -=> line and the game will look it up. End with [[books:yes]] if the lord\'s words should change the estate (an order, a rule, a plan, a hire, a purchase, anything new), or [[books:no]] if they are only talk. Never mention providers, status codes, tools, tags, or JSON in speech.';
 
 export function npcBooksFollowUp(playerMessage: string, revising?: string): string {
   const revise = revising
@@ -342,7 +346,10 @@ export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { spee
             : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
   const withMem = withSpeakerMemories(voice, npcId, state);
   if (!opts?.speechOnly) return withMem;
-  return withMem.replace(OUTPUT_CONTRACT, `${SPEECH_ONLY_CONTRACT}\n${TOOL_PROTOCOL}\n${BEGIN_SHORTFALL_RULE}\n${PROJECT_RESULT_RULE}`);
+  return withMem.replace(
+    OUTPUT_CONTRACT,
+    `${SPEECH_ONLY_CONTRACT}\n${TOOL_PROTOCOL}\n${RESEARCH_PROTOCOL}\n${BEGIN_SHORTFALL_RULE}\n${PROJECT_RESULT_RULE}`,
+  );
 }
 
 export function refereeSystemPrompt(): string {
@@ -382,9 +389,15 @@ export function npcFactsFollowUp(playerMessage: string, drawers: unknown): strin
   const names =
     drawers && typeof drawers === "object" && drawers !== null ? Object.keys(drawers as object) : [];
   const memoryOnly = names.length > 0 && names.every((n) => n === "my_deals");
-  const lead = memoryOnly
-    ? "You asked to recall past dealings. The engine filled these drawers. Answer the lord now in spoken words only. Do not emit another tool marker."
-    : "You asked to check the records. The engine filled these drawers from the live books. Answer the lord now in spoken words only. Do not emit another tool marker.";
+  const researchOnly = names.length > 0 && names.every((n) => n === "research");
+  const hasResearch = names.includes("research");
+  const lead = researchOnly
+    ? "You asked the game to look something up. The research drawer holds what came back. Judge it, then answer the lord now in spoken words only, as your own craft knowledge, in this age's units. Do not emit another tool or research marker."
+    : memoryOnly
+      ? "You asked to recall past dealings. The engine filled these drawers. Answer the lord now in spoken words only. Do not emit another tool marker."
+      : hasResearch
+        ? "You asked to check the records and to look something up. The engine filled these drawers from the live books, and the research drawer holds what came back from outside. Answer the lord now in spoken words only, speaking any finding as your own craft knowledge. Do not emit another tool or research marker."
+        : "You asked to check the records. The engine filled these drawers from the live books. Answer the lord now in spoken words only. Do not emit another tool marker.";
   return `${lead}\n\nRECORD DRAWERS:\n${JSON.stringify(drawers)}\n\nPLAYER SAID:\n${playerMessage}`;
 }
 

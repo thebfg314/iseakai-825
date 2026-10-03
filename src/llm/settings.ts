@@ -2,6 +2,7 @@ import {
   DEFAULT_MODELS,
   LLM_PROVIDERS,
   PROVIDER_META,
+  SEARCH_KEY_ENV,
   emptyProviderMap,
   isLlmProvider,
   type AppSettings,
@@ -20,6 +21,7 @@ export function defaultAppSettings(): AppSettings {
     providers: emptyProviderMap(),
     masterVolume: 1,
     musicVolume: 0.55,
+    searchApiKey: "",
   };
 }
 
@@ -48,7 +50,7 @@ export function applyEnvFallbacks(settings: AppSettings): AppSettings {
       model: current.model || DEFAULT_MODELS[id],
     };
   }
-  return { ...settings, providers };
+  return { ...settings, providers, searchApiKey: settings.searchApiKey || envValue(SEARCH_KEY_ENV) };
 }
 
 /** Accept both the new provider map and legacy `{ apiKey, model }` files. */
@@ -76,6 +78,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     providers,
     masterVolume: clampVolume(o.masterVolume, 1),
     musicVolume: clampVolume(o.musicVolume, 0.55),
+    searchApiKey: typeof o.searchApiKey === "string" ? o.searchApiKey : "",
   });
 }
 
@@ -97,5 +100,6 @@ export function mergeSettings(current: AppSettings, patch: SettingsPatch): AppSe
     providers,
     masterVolume: patch.masterVolume ?? current.masterVolume,
     musicVolume: patch.musicVolume ?? current.musicVolume,
+    searchApiKey: patch.searchApiKey ?? current.searchApiKey ?? "",
   };
 }

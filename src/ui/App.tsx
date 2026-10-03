@@ -978,6 +978,7 @@ function SettingsModal({
   const [providers, setProviders] = useState(settings.providers);
   const [masterVolume, setMasterVolume] = useState(settings.masterVolume);
   const [musicVolume, setMusicVolume] = useState(settings.musicVolume);
+  const [searchApiKey, setSearchApiKey] = useState(settings.searchApiKey ?? "");
   const [catalogProvider, setCatalogProvider] = useState<LlmProvider | null>(null);
   const [listing, setListing] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -1014,7 +1015,7 @@ function SettingsModal({
   }
 
   function snapshot(): AppSettings {
-    return { provider, providers, masterVolume, musicVolume };
+    return { provider, providers, masterVolume, musicVolume, searchApiKey };
   }
 
   return (
@@ -1116,6 +1117,20 @@ function SettingsModal({
           </button>
         </div>
         {listError && <p className="settings-error">{listError}</p>}
+        <label>
+          Research key (Tavily)
+          <input
+            type="password"
+            value={searchApiKey}
+            onChange={(e) => setSearchApiKey(e.target.value)}
+            placeholder="tvly-…"
+          />
+        </label>
+        <p className="settings-help">
+          Optional, any provider. When a speaker is unsure of a real figure — the iron in a plough share, the days to
+          burn a charcoal mound — the game searches the web for them and hands back what it finds. Create a free key at
+          tavily.com. Leave it empty and they judge from their own knowledge.
+        </p>
         {uniqueModels.length > 0 && catalogProvider === provider && (
           <label>
             Catalog

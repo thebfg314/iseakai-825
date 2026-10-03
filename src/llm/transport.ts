@@ -60,6 +60,8 @@ export type RequestOpts = {
   onEvent?: (ev: SseEvent) => void;
   /** Text gathered so far, attached to a timeout error so the caller may keep it. */
   partial?: () => string;
+  /** Swap the global fetch (tests). */
+  fetchImpl?: typeof fetch;
 };
 
 export type RequestResult = {
@@ -113,7 +115,8 @@ export async function requestWithTimeout(url: string, init: RequestInit, opts: R
 
   try {
     armIdle();
-    const res = await fetch(url, { ...init, signal: controller.signal });
+    const doFetch = opts.fetchImpl ?? fetch;
+    const res = await doFetch(url, { ...init, signal: controller.signal });
     const headers = res.headers;
     const contentType = headers.get("content-type") ?? "";
     const streaming = res.ok && Boolean(opts.onEvent) && contentType.includes("text/event-stream") && res.body != null;

@@ -40,6 +40,7 @@ const api = {
     providers?: Record<string, { apiKey?: string; model?: string }>;
     masterVolume?: number;
     musicVolume?: number;
+    searchApiKey?: string;
   }) => ipcRenderer.invoke("settings:set", patch),
   listModels: () => ipcRenderer.invoke("settings:listModels"),
   getLlmMeter: () => ipcRenderer.invoke("llm:getMeter"),

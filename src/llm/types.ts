@@ -63,7 +63,11 @@ export type AppSettings = {
   providers: Record<LlmProvider, ProviderConfig>;
   masterVolume: number;
   musicVolume: number;
+  /** Tavily key for the NPCs' hidden research tool. Empty disables searching; the game still runs. */
+  searchApiKey: string;
 };
+
+export const SEARCH_KEY_ENV = "TAVILY_API_KEY";
 
 /** @deprecated Use AppSettings. Kept so older imports still type-check during the swap. */
 export type RfabSettings = AppSettings;

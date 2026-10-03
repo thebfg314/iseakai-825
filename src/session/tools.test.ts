@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
 import { BOOKS_NOT_TAKEN_LINE, HOLD_AT_ONCE_APOLOGY } from "../llm/providerErrors";
-import { CHECK_RECORDS_LINE, RECALL_DEALS_LINE } from "../llm/toolProtocol";
+import { CHECK_RECORDS_LINE, RECALL_DEALS_LINE, RESEARCH_HOLDING_LINE } from "../llm/toolProtocol";
 import { defaultAppSettings } from "../llm/settings";
 
 const llmChatMock = vi.hoisted(() => vi.fn());
@@ -164,6 +164,57 @@ describe("mid-season hidden ledger tools", () => {
     expect(game.pending[0].proposal).toMatchObject({ type: "transfer_resources", resource: "rye", amount: 2 });
     expect(lastTurn(game).some((m) => /The brothers will have bread/.test(m.text))).toBe(true);
     expect(lastTurn(game).every((m) => m.text !== "")).toBe(true);
+  });
+
+  it("runs the hidden research tool when the speaker asks, and hands the findings to speech and books", async () => {
+    const game = tempGame();
+    game.settings = { ...game.settings, searchApiKey: "tvly-test" };
+    const searchMock = vi.fn(async (q: string) => ({
+      query: q,
+      answer: "Share and coulter together carry about 15 lb of iron.",
+      sources: [{ title: "Ploughs", url: "https://example.org", snippet: "A share of 5 lb, a coulter of 10." }],
+    }));
+    (game as unknown as { research: { lookup: typeof searchMock } }).research = { lookup: searchMock };
+
+    llmChatMock.mockResolvedValueOnce("A turning plough. Let me reckon it.\n<=-research: how much iron in a medieval heavy plough share and coulter -=>");
+    llmChatMock.mockResolvedValueOnce("Fifteen pounds of iron the pair, my lord, and four days at my hearth. [[books:yes]]");
+    llmChatMock.mockResolvedValue(
+      JSON.stringify({
+        speech: "Written.",
+        proposals: [
+          {
+            type: "start_project",
+            summary: "Forge heavy plough ironwork",
+            id: "proj-plough-iron",
+            projectKey: "plough_ironwork",
+            holdingId: "fontenay",
+            customCosts: { labourDays: 0, forgeDays: 4, iron: 15 },
+          },
+        ],
+      }),
+    );
+    await game.sendDialogue("smith", "Make me a heavy turning plough with a coulter.");
+    expect(searchMock).toHaveBeenCalledWith("how much iron in a medieval heavy plough share and coulter");
+    const turn = lastTurn(game);
+    expect(turn.some((m) => m.role === "npc" && m.text === RESEARCH_HOLDING_LINE)).toBe(true);
+    expect(turn.some((m) => m.role === "npc" && /Fifteen pounds of iron/.test(m.text))).toBe(true);
+    expect(turn.every((m) => !/<=-research/.test(m.text) && !/\[\[books/.test(m.text))).toBe(true);
+    // The follow-up speech call and the books call both saw the research drawer.
+    expect(callText(1)).toMatch(/"research"/);
+    expect(callText(1)).toMatch(/about 15 lb of iron/);
+    expect(callText(1)).toMatch(/look something up/);
+    expect(callText(2)).toMatch(/about 15 lb of iron/);
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(1);
+  });
+
+  it("with no research key the drawer says so and the turn still runs", async () => {
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce("Let me think.\n<=-research: weight of a plough coulter -=>");
+    llmChatMock.mockResolvedValueOnce("About ten pounds, I would say. [[books:no]]");
+    await game.sendDialogue("smith", "How heavy is a coulter?");
+    expect(llmChatMock).toHaveBeenCalledTimes(2);
+    expect(callText(1)).toMatch(/No research key is set/);
+    expect(lastTurn(game).some((m) => /About ten pounds/.test(m.text))).toBe(true);
   });
 
   it("hands the books pass the steward's baseline drawers so a land or project proposal needs no second fetch", async () => {

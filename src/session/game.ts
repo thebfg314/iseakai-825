@@ -48,11 +48,15 @@ import {
   seasonUserPrompt,
   SPEECH_PASS_HINT,
 } from "../llm/prompts";
+import { MAX_RESEARCH_QUERIES, ResearchCache, researchDrawer, searchWeb, type ResearchFinding } from "../llm/research";
 import {
   baselineDrawersFor,
   collectDrawers,
+  hasMalformedToolMarker,
   holdingLineForDrawers,
   missingCitedDrawers,
+  parseResearchRequest,
+  RESEARCH_HOLDING_LINE,
   parseToolRequest,
   stripToolMarkers,
   type ToolDrawer,
@@ -183,6 +187,11 @@ export const SPEECH_TOKENS = 2500;
 export const BOOKS_TOKENS = 3500;
 export const SEASON_TOKENS = 4000;
 
+/** Ledger drawers plus whatever the research tool found this turn, so the books pass prices from the same facts. */
+function withResearch(drawers: Record<string, unknown>, research?: Record<string, unknown>): Record<string, unknown> {
+  return research ? { ...drawers, research } : drawers;
+}
+
 export class GameController {
   state: WorldState;
   pending: PendingProposal[] = [];
@@ -208,11 +217,14 @@ export class GameController {
   meter = new LlmMeterStore("rfab");
   /** Hidden machinery for this play. A new controller writes a new file. */
   readonly playLog: PlayLog;
+  /** The NPCs' hidden research tool, remembered per play so a question is bought once. */
+  readonly research: ResearchCache;
 
   constructor(state: WorldState, saveDir: string, settings: AppSettings, opts?: { resetUsage?: boolean }) {
     this.state = state;
     this.saveDir = saveDir;
     this.settings = settings;
+    this.research = new ResearchCache((query) => searchWeb(query, this.settings.searchApiKey ?? ""));
     this.playLog = new PlayLog(
       saveDir,
       {
@@ -222,7 +234,7 @@ export class GameController {
         provider: settings.provider,
         model: settings.providers[settings.provider]?.model ?? "",
       },
-      Object.values(settings.providers).map((p) => p.apiKey),
+      [...Object.values(settings.providers).map((p) => p.apiKey), settings.searchApiKey ?? ""],
     );
     this.meter.setProvider(settings.provider);
     if (opts?.resetUsage) this.meter.reset();
@@ -460,30 +472,39 @@ export class GameController {
       );
 
       const tool = parseToolRequest(spoken.raw);
-      if (tool.malformed) {
+      const research = parseResearchRequest(spoken.raw);
+      if (tool.malformed || research.malformed) {
         throw new Error(INCOMPLETE_MODEL_JSON);
       }
 
       let fetched: ToolDrawer[] = [];
       let drawers: Record<string, unknown> | undefined;
+      let researchPack: Record<string, unknown> | undefined;
       let answer = spoken;
 
-      if (tool.requested) {
-        this.pushHoldingLine(npcId, tool.drawers);
+      if (tool.requested || research.requested) {
+        if (tool.requested) this.pushHoldingLine(npcId, tool.drawers);
+        else this.pushResearchHoldingLine(npcId);
         fetched = tool.drawers;
-        drawers = collectDrawers(this.state, fetched, npcId);
-        this.playLog.note(
-          "Tool call",
-          [
-            `The model asked the game for these drawers: ${fetched.join(", ") || "(none)"}.`,
-            tool.unknown.length ? `Unknown names: ${tool.unknown.join(", ")}.` : "",
-            "",
-            "World-state pack the game handed back:",
-            JSON.stringify(drawers, null, 2),
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        );
+        drawers = tool.requested ? collectDrawers(this.state, fetched, npcId) : {};
+        if (tool.requested) {
+          this.playLog.note(
+            "Tool call",
+            [
+              `The model asked the game for these drawers: ${fetched.join(", ") || "(none)"}.`,
+              tool.unknown.length ? `Unknown names: ${tool.unknown.join(", ")}.` : "",
+              "",
+              "World-state pack the game handed back:",
+              JSON.stringify(drawers, null, 2),
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          );
+        }
+        if (research.requested) {
+          researchPack = await this.runResearch(research.queries);
+          drawers = { ...drawers, research: researchPack };
+        }
         try {
           answer = await this.callLlm(
             [
@@ -493,9 +514,13 @@ export class GameController {
               { role: "user", content: `${npcFactsFollowUp(playerText, drawers)}\n\n${SPEECH_PASS_HINT}` },
             ],
             SPEECH_TOKENS,
-            { requireProposals: false, allowRepair: false, purpose: "speech after a tool call" },
+            {
+              requireProposals: false,
+              allowRepair: false,
+              purpose: tool.requested ? (research.requested ? "speech after a tool call and research" : "speech after a tool call") : "speech after research",
+            },
           );
-          if (parseToolRequest(answer.raw).malformed) {
+          if (hasMalformedToolMarker(answer.raw)) {
             throw new Error(INCOMPLETE_MODEL_JSON);
           }
         } catch (err) {
@@ -524,7 +549,7 @@ export class GameController {
         const spokenPlan = priorTurns.filter((t) => t.trim() && t.trim() !== HOLD_AT_ONCE_APOLOGY).at(-1)?.trim() ?? "";
         if (spokenPlan && !discussed && !huntAsk && answer.books !== false) {
           const agreedFetched = [...new Set<ToolDrawer>([...fetched, ...baselineDrawersFor(npcId)])];
-          const agreedDrawers = collectDrawers(this.state, agreedFetched, npcId);
+          const agreedDrawers = withResearch(collectDrawers(this.state, agreedFetched, npcId), researchPack);
           try {
             const books = await this.callLlm(
               [
@@ -549,7 +574,7 @@ export class GameController {
       // drawers, so proposals citing land, projects, labour, customs, or the chest
       // need no second fetch and no second writing of the same proposals.
       const booksFetched = [...new Set<ToolDrawer>([...fetched, ...baselineDrawersFor(npcId)])];
-      const booksDrawers = collectDrawers(this.state, booksFetched, npcId);
+      const booksDrawers = withResearch(collectDrawers(this.state, booksFetched, npcId), researchPack);
 
       const order = sureOrder || answer.books === true;
       if (answer.books != null) {
@@ -780,16 +805,49 @@ export class GameController {
 
   /** Engine string in the NPC's mouth — never a Books line, never a model call. */
   private pushHoldingLine(npcId: string, drawers: readonly ToolDrawer[]) {
+    this.pushEngineNpcLine(npcId, holdingLineForDrawers(drawers));
+  }
+
+  private pushResearchHoldingLine(npcId: string) {
+    this.pushEngineNpcLine(npcId, RESEARCH_HOLDING_LINE);
+  }
+
+  private pushEngineNpcLine(npcId: string, text: string) {
     if (PORTRAIT_NPCS.has(npcId)) this.npcEmotions[npcId] = "thoughtful";
     this.messages.push({
       id: newId("msg"),
       role: "npc",
       npcId,
       npcName: this.npcName(npcId),
-      text: holdingLineForDrawers(drawers),
+      text,
       emotion: PORTRAIT_NPCS.has(npcId) ? "thoughtful" : undefined,
       at: new Date().toISOString(),
     });
+  }
+
+  /**
+   * The hidden research tool: look up the speaker's questions (at most two)
+   * and build the drawer the model reads. Never throws; a missing key or a
+   * failed search comes back as a drawer that says so.
+   */
+  private async runResearch(queries: string[]): Promise<Record<string, unknown>> {
+    const asked = queries.slice(0, MAX_RESEARCH_QUERIES);
+    const findings: ResearchFinding[] = [];
+    for (const q of asked) findings.push(await this.research.lookup(q));
+    this.playLog.note(
+      "Research",
+      [
+        `The model asked the game to look up: ${asked.map((q) => `"${q}"`).join("; ")}.`,
+        queries.length > asked.length ? `${queries.length - asked.length} further question(s) were dropped (two per reply).` : "",
+        this.settings.searchApiKey ? "" : "No research key is set; the drawer tells the model to judge for itself.",
+        "",
+        "Findings handed back:",
+        JSON.stringify(findings, null, 2),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+    return researchDrawer(findings);
   }
 
   /** Engine string only — never call the model to apologize. */
