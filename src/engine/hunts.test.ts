@@ -53,6 +53,44 @@ describe("Gerulf the negotiator", () => {
     expect(proposals[0].summary).toMatch(/denarii/i);
   });
 
+  it("reads beeswax and honey as the wax and honey, not as hives", () => {
+    const state = boot();
+    expect(state.market.beeswax).toEqual({ min: 3, max: 8 });
+    expect(state.market.honey).toEqual({ min: 2, max: 5 });
+    expect(state.market.bees.max).toBe(30);
+
+    for (const ask of [
+      "Send Gerulf to buy 3 pounds of beeswax.",
+      "Buy me three pounds of bees wax for the candles.",
+      "Fetch 3 pounds of bee's wax.",
+      "Go find 3 pounds of wax.",
+    ]) {
+      expect(looksLikeHuntOrder(ask)).toBe(true);
+      expect(extractHuntRequest(ask)).toMatchObject({ resource: "beeswax", amount: 3 });
+    }
+
+    const wax = inferHuntProposals(state, "Buy me 3 pounds of bees wax.");
+    expect(wax).toHaveLength(1);
+    if (wax[0].type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(wax[0].resource).toBe("beeswax");
+    expect(wax[0].unit).toBe("pound");
+    expect(wax[0].quotedDenarii).toBe(ordinaryHuntPurse(state.market.beeswax.max, 3, "medium"));
+    // Before the fix this brief was read as 3 hives: 3 × 30 × 1.4 = 126 denarii.
+    expect(wax[0].quotedDenarii).toBe(34);
+    expect(wax[0].quotedDenarii).toBeLessThan(ordinaryHuntPurse(state.market.bees.max, 3, "medium"));
+    expect(huntFulfillReason(state, "Buy me 3 pounds of bees wax.")).toBeNull();
+
+    const honey = inferHuntProposals(state, "Fetch 4 pounds of honey.");
+    expect(honey).toHaveLength(1);
+    if (honey[0].type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(honey[0].resource).toBe("honey");
+    expect(honey[0].quotedDenarii).toBe(ordinaryHuntPurse(state.market.honey.max, 4, "medium"));
+
+    expect(extractHuntRequest("Buy two bee hives.")).toMatchObject({ resource: "bees", amount: 2 });
+    expect(extractHuntRequest("Buy two skeps of bees.")).toMatchObject({ resource: "bees", amount: 2 });
+    expect(extractHuntRequest("Find me 2 hives.")).toMatchObject({ resource: "bees", amount: 2 });
+  });
+
   it("Confirm spends the purse and a successful return adds the iron", () => {
     const state = boot();
     const chest = state.resources.denarii;

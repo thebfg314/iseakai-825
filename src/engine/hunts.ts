@@ -367,13 +367,34 @@ export type HuntRequest = {
   difficulty?: HuntDifficulty;
 };
 
+/**
+ * Hall spellings for goods whose canonical id the lord would never say.
+ * "bees wax", "bee's wax", or plain "wax" is beeswax, not hives; "hives" or "skeps" are bees.
+ */
+const RESOURCE_ALIASES: readonly { re: RegExp; id: CanonicalResource }[] = [
+  { re: /\bbees?['’]?\s*-?\s*wax\b/i, id: "beeswax" },
+  { re: /\bwax\b/i, id: "beeswax" },
+  { re: /\b(?:bee[- ]?hives?|hives?|skeps?)\b/i, id: "bees" },
+];
+
+/** Longest names first so "beeswax" is never read as "bees". */
+const CANONICAL_BY_LENGTH: readonly CanonicalResource[] = [...CANONICAL_RESOURCES]
+  .filter((id) => id !== "denarii")
+  .sort((a, b) => b.length - a.length);
+
 function canonicalFromText(text: string): CanonicalResource | undefined {
-  const compactText = compact(text);
-  for (const id of CANONICAL_RESOURCES) {
-    if (id === "denarii") continue;
+  for (const alias of RESOURCE_ALIASES) {
+    if (alias.re.test(text)) return alias.id;
+  }
+  // A whole word wins over a fragment buried inside another word.
+  for (const id of CANONICAL_BY_LENGTH) {
     const name = id.replaceAll("_", " ");
     const re = new RegExp(`\\b${name.replace(" ", "[- ]?")}\\b`, "i");
-    if (re.test(text) || compactText.includes(compact(id))) return id;
+    if (re.test(text)) return id;
+  }
+  const compactText = compact(text);
+  for (const id of CANONICAL_BY_LENGTH) {
+    if (compactText.includes(compact(id))) return id;
   }
   return undefined;
 }
