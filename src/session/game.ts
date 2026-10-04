@@ -1539,6 +1539,16 @@ export class GameController {
     return this.view();
   }
 
+  /** Opening tutorial progress, kept in the save so a load resumes where the lord left off. */
+  setTutorial(patch: Partial<WorldState["tutorial"]>): WorldState["tutorial"] {
+    const current = this.state.tutorial;
+    const status = patch.status ?? current.status;
+    const step = Number.isFinite(patch.step) ? Math.max(0, Math.floor(patch.step as number)) : current.step;
+    this.state.tutorial = { status, step };
+    this.persist();
+    return this.state.tutorial;
+  }
+
   async battleContinue(): Promise<GameView & { error?: string }> {
     const err = await battleContinue(this.state, this.battleDeps());
     await this.refreshCredits();

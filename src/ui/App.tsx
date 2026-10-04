@@ -65,6 +65,8 @@ import { EmptyVillaScreen } from "./emptyVilla";
 import { ShopPanel } from "./ShopPanel";
 import { BattleLab } from "./lab/BattleLab";
 import { BattleScreen } from "./battle/BattleScreen";
+import { TutorialOverlay } from "./TutorialOverlay";
+import type { TutorialState } from "../engine/tutorial";
 
 type Screen = "title" | "game" | "lab";
 
@@ -96,6 +98,25 @@ export function App() {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
   const sendLock = useRef(false);
+  /**
+   * Opening tutorial. The renderer holds the truth for the session so a view
+   * from an in-flight call cannot step it backwards; the save mirrors it.
+   */
+  const [tutorial, setTutorial] = useState<TutorialState | null>(null);
+  const [composerPrefill, setComposerPrefill] = useState<{ text: string; nonce: number } | null>(null);
+
+  function changeTutorial(next: TutorialState) {
+    setTutorial(next);
+    void Promise.resolve()
+      .then(() => window.api.setTutorial?.(next))
+      .catch(() => {
+        /* progress still lives in this session */
+      });
+  }
+
+  function adoptTutorial(next: GameView) {
+    setTutorial(next.state.tutorial ?? { status: "declined", step: 0 });
+  }
 
   const poseCue = view
     ? ([...view.messages].reverse().find((m) => m.role === "npc" && m.npcId === view.sceneNpcId)?.id ?? `${view.sceneNpcId}:${view.sceneEmotion}`)
@@ -267,6 +288,7 @@ export function App() {
     hornSeasonRef.current = null;
     const result = await withBusy(() => window.api.newGame());
     if (result && "state" in result) {
+      adoptTutorial(result);
       setScreen("game");
       considerHallHorn(result);
     }
@@ -279,6 +301,7 @@ export function App() {
       const result = (await window.api.loadGame()) as GameView | null;
       if (result && "state" in result) {
         setView(result);
+        adoptTutorial(result);
         setScreen("game");
         considerHallHorn(result);
       }
@@ -359,6 +382,17 @@ export function App() {
 
   function battleFinish(disposition?: "settle" | "sell") {
     void withBusy(() => window.api.battleFinish(disposition));
+  }
+
+  /** Tutorial: open the right speaker if needed, then put the line in the composer for the lord to send. */
+  async function sayTutorialLine(npcId: string, text: string) {
+    if (!view || busy) return;
+    if (view.sceneNpcId !== npcId) {
+      const result = await withBusy(() => window.api.setScene(npcId));
+      if (!result || !("state" in result) || result.sceneNpcId !== npcId) return;
+    }
+    focusComposer.current = true;
+    setComposerPrefill((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
   }
 
   /** Returns false when nothing was sent, so the composer keeps the draft. */
@@ -549,6 +583,7 @@ export function App() {
           </button>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           <button
+            id="advance-season"
             className="primary"
             onPointerDown={onAdvanceSeasonActivate}
             onClick={onAdvanceSeasonActivate}
@@ -591,6 +626,7 @@ export function App() {
         <section className="dialogue">
           <div className="scene-tabs">
             <SceneTab
+              id="scene-tab-steward"
               active={view.sceneNpcId === "steward"}
               wantsTalk={npcWantsTalk(view, "steward")}
               onClick={() => withBusy(() => window.api.setScene("steward"))}
@@ -598,6 +634,7 @@ export function App() {
               Steward · Aldric
             </SceneTab>
             <SceneTab
+              id="scene-tab-smith"
               active={view.sceneNpcId === "smith"}
               wantsTalk={npcWantsTalk(view, "smith")}
               disabled={!view.smithAvailable}
@@ -607,6 +644,7 @@ export function App() {
               Smith · Bernard
             </SceneTab>
             <SceneTab
+              id="scene-tab-chaplain"
               active={view.sceneNpcId === "chaplain"}
               wantsTalk={npcWantsTalk(view, "chaplain")}
               disabled={!view.chaplainAvailable}
@@ -617,6 +655,7 @@ export function App() {
             </SceneTab>
             {view.state.npcs.some((n) => n.id === "negotiator") && (
               <SceneTab
+                id="scene-tab-negotiator"
                 active={view.sceneNpcId === "negotiator"}
                 wantsTalk={npcWantsTalk(view, "negotiator")}
                 title="Speak with Gerulf"
@@ -710,6 +749,7 @@ export function App() {
             speakWaiting={speakWaiting}
             placeholder={composerPlaceholder(view)}
             npcName={npc?.name ?? "them"}
+            prefill={composerPrefill}
             onSend={send}
           />
         </section>
@@ -749,6 +789,20 @@ export function App() {
     </div>
     </div>
     </div>
+    {tutorial && !inBattle && (
+      <TutorialOverlay
+        tutorial={tutorial}
+        watch={{
+          sceneNpcId: view.sceneNpcId,
+          messages: view.messages,
+          pendingCount: view.pending.length,
+          turn: view.state.meta.turn,
+          busy,
+        }}
+        onChange={changeTutorial}
+        onSay={(npcId, text) => void sayTutorialLine(npcId, text)}
+      />
+    )}
     {settingsModal}
     </GlossaryProvider>
   );
@@ -920,6 +974,7 @@ function Composer({
   speakWaiting,
   placeholder,
   npcName,
+  prefill,
   onSend,
 }: {
   composerRef: RefObject<HTMLTextAreaElement>;
@@ -927,9 +982,17 @@ function Composer({
   speakWaiting: boolean;
   placeholder: string;
   npcName: string;
+  /** Words put in the lord's mouth (tutorial). A new nonce replaces the draft. */
+  prefill?: { text: string; nonce: number } | null;
   onSend: (text: string) => boolean;
 }) {
   const [draft, setDraft] = useState("");
+  useEffect(() => {
+    if (!prefill) return;
+    setDraft(prefill.text);
+    composerRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a new nonce is the signal
+  }, [prefill?.nonce]);
   const submit = () => {
     if (!draft.trim() || busy) return;
     if (onSend(draft)) setDraft("");
@@ -1256,6 +1319,7 @@ function npcWantsTalk(view: GameView, npcId: string): boolean {
 }
 
 function SceneTab({
+  id,
   active,
   wantsTalk,
   disabled,
@@ -1263,6 +1327,7 @@ function SceneTab({
   onClick,
   children,
 }: {
+  id?: string;
   active: boolean;
   wantsTalk: boolean;
   disabled?: boolean;
@@ -1272,6 +1337,7 @@ function SceneTab({
 }) {
   return (
     <button
+      id={id}
       className={active ? "active" : ""}
       disabled={disabled}
       title={wantsTalk && !disabled ? "They have something to say" : title}

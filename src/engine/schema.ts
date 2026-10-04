@@ -775,6 +775,16 @@ export const WorldStateSchema = z.object({
    * Old saves default to a quiet cell.
    */
   church: ChurchStateSchema.default(CHURCH_STATE_DEFAULT),
+  /**
+   * The opening tutorial. A fresh estate is "offered" (starting-estate.json);
+   * a save written before the tutorial existed is mid-game and defaults to "declined".
+   */
+  tutorial: z
+    .object({
+      status: z.enum(["offered", "active", "done", "declined"]).default("declined"),
+      step: z.number().int().nonnegative().default(0),
+    })
+    .default({ status: "declined", step: 0 }),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 

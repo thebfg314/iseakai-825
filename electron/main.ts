@@ -183,6 +183,9 @@ ipcMain.handle("game:addressFile", (_e, unitId: string, amount: number) => requi
 ipcMain.handle("game:beginBattle", async () => requireGame().beginBattle());
 ipcMain.handle("game:dayEnd", async (_e, choice: "hold" | "reposition" | "withdraw", pick?: number) => requireGame().dayEnd(choice, pick));
 ipcMain.handle("game:grantFullCommand", (_e, on: boolean) => requireGame().grantFullCommand(on));
+ipcMain.handle("game:setTutorial", (_e, patch: { status?: "offered" | "active" | "done" | "declined"; step?: number }) =>
+  requireGame().setTutorial(patch),
+);
 ipcMain.handle("game:battleFinish", (_e, disposition?: "settle" | "sell") => requireGame().battleFinish(disposition));
 ipcMain.handle("game:raiseCall", (_e, kind: "summons" | "raid" | "bandits") => requireGame().raiseCall(kind));
 

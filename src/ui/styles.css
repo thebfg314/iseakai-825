@@ -551,6 +551,164 @@ button.glossary-term:focus-visible {
 }
 
 /* ---------------------------------------------------------------------------
+   Opening tutorial: parchment boxes pointing at the hall
+   --------------------------------------------------------------------------- */
+.tutorial-back {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+}
+.tutorial-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+.tutorial-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+/* The one lit place on the screen: everything else is dimmed by the shadow. */
+.tutorial-spot {
+  position: fixed;
+  border-radius: 4px;
+  box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.45), 0 0 0 2px var(--accent), 0 0 18px 4px rgba(196, 163, 90, 0.55);
+  transition: top 0.18s ease, left 0.18s ease, width 0.18s ease, height 0.18s ease;
+}
+.tutorial-box {
+  pointer-events: auto;
+  width: min(27rem, 92vw);
+  background: var(--parchment);
+  color: var(--parchment-ink);
+  border: 1px solid var(--accent);
+  padding: 0.85rem 1.1rem 0.95rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+.tutorial-step {
+  position: fixed;
+  transition: top 0.18s ease, left 0.18s ease;
+}
+/* Header and footer stay put; only the words scroll on a long box. */
+.tutorial-inner {
+  max-height: min(72vh, 36rem);
+  display: flex;
+  flex-direction: column;
+}
+.tutorial-head { flex: 0 0 auto; }
+.tutorial-inner .tutorial-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.tutorial-actions { flex: 0 0 auto; }
+.tutorial-next-hint {
+  font-size: 0.78rem;
+  color: #6b4a22;
+  font-style: italic;
+  text-align: right;
+  max-width: 55%;
+}
+.tutorial-close-choice { display: flex; gap: 0.4rem; }
+.tutorial-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b4a22;
+  margin-bottom: 0.2rem;
+}
+.tutorial-box h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.08rem;
+  letter-spacing: 0.02em;
+  color: #3d2a12;
+}
+.tutorial-body p,
+.tutorial-body li {
+  font-size: 0.93rem;
+  line-height: 1.45;
+}
+.tutorial-body p { margin: 0 0 0.6rem; }
+.tutorial-body ul { margin: 0 0 0.6rem; padding-left: 1.2rem; }
+.tutorial-body li { margin-bottom: 0.2rem; }
+/* The shaded box from the script: what the lord is to say. */
+.tutorial-line {
+  margin: 0 0 0.5rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(61, 42, 18, 0.1);
+  border-left: 3px solid var(--accent);
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.tutorial-body p.tutorial-say-help { font-size: 0.78rem; color: #6b4a22; margin: 0 0 0.5rem; }
+.tutorial-waiting {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.88rem;
+  color: #6b4a22;
+  font-style: italic;
+}
+.tutorial-waiting::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: tutorial-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tutorial-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.tutorial-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px dotted rgba(61, 42, 18, 0.35);
+}
+.tutorial-offer .tutorial-actions { justify-content: flex-end; }
+.tutorial-count { font-size: 0.78rem; color: #6b4a22; letter-spacing: 0.05em; white-space: nowrap; }
+.tutorial-box button {
+  color: var(--parchment-ink);
+  background: rgba(61, 42, 18, 0.08);
+  border: 1px solid rgba(61, 42, 18, 0.45);
+  white-space: nowrap;
+  font-size: 0.88rem;
+  padding: 0.35rem 0.6rem;
+}
+.tutorial-box button.primary {
+  color: var(--parchment);
+  background: #5c3d1e;
+  border-color: #5c3d1e;
+}
+.tutorial-box button:disabled { opacity: 0.45; }
+/* The pointer: a parchment diamond on the edge that faces the anchor. */
+.tutorial-arrow {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--parchment);
+  border: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+.arrow-up .tutorial-arrow { top: -9px; margin-left: -8px; border-right: 0; border-bottom: 0; }
+.arrow-down .tutorial-arrow { bottom: -9px; margin-left: -8px; border-left: 0; border-top: 0; }
+.arrow-left .tutorial-arrow { left: -9px; margin-top: -8px; border-right: 0; border-top: 0; }
+.arrow-right .tutorial-arrow { right: -9px; margin-top: -8px; border-left: 0; border-bottom: 0; }
+
+/* ---------------------------------------------------------------------------
    Stage pan: the hall on the left, the field on the right
    --------------------------------------------------------------------------- */
 .stage-wrap { width: 100%; height: 100%; overflow: hidden; }

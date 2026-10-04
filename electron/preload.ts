@@ -32,6 +32,8 @@ const api = {
   beginBattle: () => ipcRenderer.invoke("game:beginBattle"),
   dayEnd: (choice: "hold" | "reposition" | "withdraw", pick?: number) => ipcRenderer.invoke("game:dayEnd", choice, pick),
   grantFullCommand: (on: boolean) => ipcRenderer.invoke("game:grantFullCommand", on),
+  setTutorial: (patch: { status?: "offered" | "active" | "done" | "declined"; step?: number }) =>
+    ipcRenderer.invoke("game:setTutorial", patch),
   battleFinish: (disposition?: "settle" | "sell") => ipcRenderer.invoke("game:battleFinish", disposition),
   raiseCall: (kind: "summons" | "raid" | "bandits") => ipcRenderer.invoke("game:raiseCall", kind),
   getSettings: () => ipcRenderer.invoke("settings:get"),

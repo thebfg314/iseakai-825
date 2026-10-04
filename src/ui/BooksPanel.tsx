@@ -66,7 +66,7 @@ export function BooksPanel({
         <h2>
           <GlossaryText text={BOOKS_TITLE} />
         </h2>
-        <div className="books-tabs" role="tablist" aria-label={BOOKS_TITLE}>
+        <div className="books-tabs" id="books-tabs" role="tablist" aria-label={BOOKS_TITLE}>
           {BOOKS_TABS.map((id) => (
             <button
               key={id}

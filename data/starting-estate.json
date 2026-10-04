@@ -167,5 +167,6 @@
   "peopleHappiness": 50,
   "peopleHappinessHighStreak": 0,
   "peopleHappinessLowStreak": 0,
-  "estateAbandoned": false
+  "estateAbandoned": false,
+  "tutorial": { "status": "offered", "step": 0 }
 }
