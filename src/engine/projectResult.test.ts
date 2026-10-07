@@ -92,7 +92,7 @@ describe("a finished work pays the result that was named", () => {
     expect(empty.custom_resources).toEqual([]);
   });
 
-  it("still clears an acre and still raises a building, and does not invent a timber yield", () => {
+  it("still clears an acre and still raises a building; the acre's brushwood is paid only when the clearing is done", () => {
     const state = estate();
     state.resources.softwood = 20;
     state.resources.stone = 10;
@@ -106,12 +106,14 @@ describe("a finished work pays the result that was named", () => {
       "steward",
     );
     expect(clearing.ok).toBe(true);
+    expect(wood(state)).toBe(woodBefore);
     const acre = state.projects.find((p) => p.key === "clear_scrub")!;
+    expect(acre.result).toEqual([{ resource: "softwood", amount: 0.5 }]);
     finish(state, acre.id, acre.labourDaysRequired);
     expect(acre.status).toBe("completed");
     expect(state.holdings[0].land.scrub).toBe(scrub - 1);
     expect(state.holdings[0].land.fertile_arable).toBe(arable + 1);
-    expect(wood(state)).toBe(woodBefore);
+    expect(wood(state)).toBe(woodBefore + 0.5);
 
     const bloomery = applyProposal(
       state,
@@ -128,7 +130,35 @@ describe("a finished work pays the result that was named", () => {
     expect(state.custom_resources.some((c) => c.id === "steel" || c.id === "charcoal")).toBe(false);
   });
 
-  it("pays a timber yield on cleared scrub only when one was named", () => {
+  it("clears as many acres as the days cover and pays brushwood for each", () => {
+    const state = estate();
+    const before = state.resources.softwood;
+    const scrub = state.holdings[0].land.scrub;
+    const arable = state.holdings[0].land.fertile_arable;
+    const started = applyProposal(
+      state,
+      {
+        type: "start_project",
+        summary: "Clear five acres of scrub",
+        projectKey: "clear_scrub",
+        name: "Clear five acres of scrub",
+        holdingId: "fontenay",
+        customCosts: { labourDays: 175, lumber: 0, iron: 0, stone: 0 },
+      },
+      "steward",
+    );
+    expect(started.ok).toBe(true);
+    expect(started.logLine).toMatch(/stores gain 2\.5 cart-loads of timber/);
+    const five = state.projects.find((p) => p.key === "clear_scrub")!;
+    expect(five.result).toEqual([{ resource: "softwood", amount: 2.5 }]);
+    finish(state, five.id, five.labourDaysRequired);
+    expect(five.status).toBe("completed");
+    expect(state.holdings[0].land.scrub).toBe(scrub - 5);
+    expect(state.holdings[0].land.fertile_arable).toBe(arable + 5);
+    expect(state.resources.softwood).toBe(before + 2.5);
+  });
+
+  it("lets a named timber yield on cleared scrub stand in for the brushwood", () => {
     const state = estate();
     const before = state.resources.softwood;
     const started = applyProposal(

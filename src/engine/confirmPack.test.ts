@@ -42,9 +42,12 @@ describe("clearing and charcoal store costs", () => {
     );
     expect(clearing.ok).toBe(true);
     expect(clearing.logLine).toMatch(/is begun/);
-    expect(clearing.logLine).not.toMatch(/iron|stone|timber/i);
+    expect(clearing.logLine).not.toMatch(/set aside|iron|stone/i);
+    // The brushwood is a yield paid when the clearing finishes, not a store taken now.
+    expect(clearing.logLine).toMatch(/stores gain 0\.5 cart-loads of timber/);
     expect(state.resources.iron).toBe(iron);
     expect(state.resources.stone).toBe(stone);
+    expect(state.resources.softwood + state.resources.hardwood).toBe(wood);
 
     const charcoal = applyProposal(
       state,

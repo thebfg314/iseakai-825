@@ -26,8 +26,8 @@ import {
   specialistNpc,
 } from "./specialists";
 import { stampProjectEnded, stampProjectStart } from "./projectProgress";
-import { beginStoreRefusal, projectStoreBill } from "./projectBegin";
-import { proposalResult, resultPayLine } from "./projectResult";
+import { beginStoreRefusal, projectStoreBill, startProjectResult } from "./projectBegin";
+import { resultPayLine } from "./projectResult";
 import {
   isSoloSmithProject,
   ownWorkBegunPhrase,
@@ -490,7 +490,7 @@ function startProject(
   if (denarii > 0) state.resources.denarii = round1(state.resources.denarii - denarii);
 
   const id = newId("proj");
-  const result = proposalResult(p);
+  const result = startProjectResult(p);
   state.projects.push({
     id,
     key: catalog?.key ?? p.projectKey,

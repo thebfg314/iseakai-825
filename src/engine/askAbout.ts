@@ -1,7 +1,7 @@
 import type { MechanicalProposal, StartHuntProposal } from "./schema";
 import { lookupProject } from "./projectCatalog";
-import { projectStoreBill } from "./projectBegin";
-import { proposalResult, resultPayLine } from "./projectResult";
+import { projectStoreBill, startProjectResult } from "./projectBegin";
+import { resultPayLine } from "./projectResult";
 
 function compact(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -120,7 +120,7 @@ export function compactOfferLine(proposal: MechanicalProposal): string {
       const bits = [`${bill.labourDays} days`, `${bill.lumber} timber`, `${bill.iron} iron`, `${bill.stone} stone`];
       if (bill.charcoal > 0) bits.push(`${bill.charcoal} charcoal`);
       if (bill.denarii > 0) bits.push(`${bill.denarii} denarii`);
-      const pay = resultPayLine(proposalResult(proposal));
+      const pay = resultPayLine(startProjectResult(proposal));
       const costBit = bits.join(", ");
       const tail = [costBit, pay].filter(Boolean).join(". ");
       return `start_project ${name} (${proposal.projectKey}): ${proposal.summary}${tail ? ` — ${tail}` : ""}`;

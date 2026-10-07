@@ -1,5 +1,5 @@
-import type { MechanicalProposal, Project, WorldState } from "./schema";
-import { labourKindFor, lookupProject } from "./projectCatalog";
+import type { MechanicalProposal, Project, ProjectResultEntry, WorldState } from "./schema";
+import { catalogUnits, labourKindFor, lookupProject } from "./projectCatalog";
 import { labourDaysPhrase, labourRemaining, oneSeasonSpareDays } from "./labour";
 import {
   hiredSmithName,
@@ -71,6 +71,21 @@ export function projectStoreBill(p: StartProject): ProjectStoreBill {
     return { ...bill, iron: 0, stone: 0, charcoal: 0, denarii: 0 };
   }
   return bill;
+}
+
+/**
+ * The goods this work pays when finished: what the card names, or else the catalogue's
+ * own yield for as many units (acres) as the days cover. Cleared scrub gives a little brushwood timber.
+ */
+export function startProjectResult(p: StartProject): ProjectResultEntry[] {
+  const named = proposalResult(p);
+  if (named.length) return named;
+  const catalog = lookupProject(p.projectKey);
+  if (!catalog?.yield?.length) return [];
+  const units = catalogUnits(catalog, projectStoreBill(p).labourDays);
+  return proposalResult({
+    result: catalog.yield.map((row) => ({ resource: row.resource, amount: round1(row.amount * units) })),
+  });
 }
 
 /** The chronicler's mark, or else whether the days fit in one season of spare labour. */
@@ -444,10 +459,10 @@ function groupsFor(state: WorldState, offers: StartProject[], proposals: Mechani
       workName: workNameOf(offer),
       bill,
       gaps,
-      results: proposalResult(offer),
+      results: startProjectResult(offer),
       ...(plan.block ? { waitLine: plan.block } : {}),
     });
-    prior.push({ name: workNameOf(offer), finishes, result: proposalResult(offer) });
+    prior.push({ name: workNameOf(offer), finishes, result: startProjectResult(offer) });
   }
   const leftover = assigns.filter((a) => !used.has(a));
   const hands = labourGap(state, leftover);

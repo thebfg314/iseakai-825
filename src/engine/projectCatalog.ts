@@ -18,7 +18,21 @@ export type ProjectCatalogEntry = {
   specialist?: string;
   /** The work cannot begin unless an NPC of this id/role serves the house (e.g. a stone mason for a stone wall). */
   requiresSpecialist?: string;
+  /**
+   * Stores gained once the work finishes, per catalogue unit (per acre on a land work),
+   * when the card names no result of its own. Scrub gives brushwood and small trees.
+   */
+  yield?: { resource: string; amount: number }[];
 };
+
+/**
+ * How many catalogue units a work covers: acres of a land work, judged from the days
+ * it was set against the days one acre takes. Anything else is one unit.
+ */
+export function catalogUnits(entry: ProjectCatalogEntry, labourDays: number): number {
+  if (!entry.completesToLand || entry.labourDays <= 0 || !Number.isFinite(labourDays)) return 1;
+  return Math.max(1, Math.round(labourDays / entry.labourDays));
+}
 
 /** Midpoints of Constitution §4.5 ranges. */
 export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
@@ -28,7 +42,7 @@ export const PROJECT_CATALOG: ProjectCatalogEntry[] = [
   { key: "water_lifting", name: "Water-lifting system", labourDays: 120, lumber: 6, iron: 35, stone: 2.5, labourKind: "mostly_men" },
   { key: "fish_pond", name: "Fish pond", labourDays: 90, lumber: 3.5, iron: 10, stone: 1.5, labourKind: "mixed", completesToFeature: "fish_pond" },
   { key: "mill_leat", name: "Mill leat / small canal", labourDays: 150, lumber: 2.5, iron: 12, stone: 1, labourKind: "mostly_men" },
-  { key: "clear_scrub", name: "Clear scrub to arable (1 acre)", labourDays: 35, lumber: 0, iron: 0, stone: 0, labourKind: "mixed", completesToLand: { from: "scrub", to: "fertile_arable", acres: 1 } },
+  { key: "clear_scrub", name: "Clear scrub to arable (1 acre)", labourDays: 35, lumber: 0, iron: 0, stone: 0, labourKind: "mixed", completesToLand: { from: "scrub", to: "fertile_arable", acres: 1 }, yield: [{ resource: "softwood", amount: 0.5 }] },
   { key: "drain_swamp", name: "Drain swamp (1 acre)", labourDays: 60, lumber: 2, iron: 6.5, stone: 1, labourKind: "mostly_men", completesToLand: { from: "swamp", to: "fertile_arable", acres: 1 } },
   { key: "improve_waste", name: "Improve waste to meadow (1 acre)", labourDays: 22, lumber: 0.5, iron: 2.5, stone: 0, labourKind: "mixed", completesToLand: { from: "waste", to: "meadow", acres: 1 } },
   { key: "irrigation", name: "Irrigation ditches (100 yards)", labourDays: 30, lumber: 1, iron: 5, stone: 0.5, labourKind: "mostly_men" },

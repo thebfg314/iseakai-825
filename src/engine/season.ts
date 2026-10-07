@@ -1,5 +1,5 @@
 import type { SeasonEffectLine, WorldState } from "./schema";
-import { YIELD_MID, labourKindFor, lookupProject } from "./projectCatalog";
+import { YIELD_MID, catalogUnits, labourKindFor, lookupProject } from "./projectCatalog";
 import { autoFillLeftoverLabour, labourDaysFromAssignment } from "./labour";
 import { modifiersFor, applyMultiplyAdd, tickModifiers, yieldMultiplier } from "./modifiers";
 import { peopleEffortFactor } from "./peopleHappiness";
@@ -188,7 +188,7 @@ function advanceProjects(state: WorldState): string[] {
         holding.features.push(cat.completesToFeature);
         notes.push(`${proj.name} is finished: a ${featureName(cat.completesToFeature)} now stands on ${holding.name}.`);
       } else if (holding && cat?.completesToLand) {
-        const acres = cat.completesToLand.acres ?? 1;
+        const acres = (cat.completesToLand.acres ?? 1) * catalogUnits(cat, proj.labourDaysRequired);
         holding.land[cat.completesToLand.from] = Math.max(0, holding.land[cat.completesToLand.from] - acres);
         holding.land[cat.completesToLand.to] += acres;
         notes.push(

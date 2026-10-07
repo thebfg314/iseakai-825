@@ -7,6 +7,7 @@ import { applyProposal } from "./applyDelta";
 import { withBeginShortfalls } from "./projectBegin";
 import { resolveAgricultureAndProjects } from "./season";
 import { WorldStateSchema, type MechanicalProposal, type WorldState } from "./schema";
+import { parseLlmResponse } from "../llm/parse";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "../session/game";
 
@@ -184,5 +185,43 @@ describe("same-season gather then use", () => {
     expect(ready).not.toMatch(/not done this season/i);
     expect(ready).not.toMatch(/still need/i);
     expect(ready).not.toMatch(JARGON);
+  });
+
+  it("burns the mound on coppice wood when the model sends the coppice as a keyless new design", () => {
+    // Sonnet's reply from a real playthrough: the coppicing had customCosts and a result but no projectKey,
+    // so the books dropped it and the mound was refused for want of 12 cart-loads of timber.
+    const raw = JSON.stringify({
+      speech: "Clear five acres of scrub, cut the coppice, then burn the mound.",
+      proposals: [
+        { type: "start_project", summary: "Clear five acres", id: "clear_scrub_fontenay_1", projectKey: "clear_scrub", holdingId: "fontenay", name: "Clear five acres of scrub", acres: 5, days: 100, customCosts: { labourDays: 100 }, finishesThisSeason: true },
+        { type: "assign_labour", summary: "100 days to clearing", projectId: "clear_scrub_fontenay_1", men: 100, women: 0, youths: 0 },
+        { type: "start_project", summary: "Coppice the woodland", id: "coppice_fontenay_1", name: "Coppice the woodland", holdingId: "fontenay", days: 30, customCosts: { labourDays: 30 }, result: [{ resource: "lumber", amount: 12 }], finishesThisSeason: true },
+        { type: "assign_labour", summary: "30 days to coppicing", projectId: "coppice_fontenay_1", men: 30, women: 0, youths: 0 },
+        { type: "start_project", summary: "Burn a charcoal mound", id: "charcoal_fontenay_1", projectKey: "charcoal_burning", holdingId: "fontenay", name: "Charcoal mound", days: 15, customCosts: { labourDays: 15, lumber: 12 }, result: [{ resource: "charcoal", amount: 4 }], finishesThisSeason: true },
+        { type: "assign_labour", summary: "15 days to the mound", projectId: "charcoal_fontenay_1", men: 15, women: 0, youths: 0 },
+      ],
+    });
+    const parsed = parseLlmResponse(raw);
+    expect(parsed.parseErrors).toEqual([]);
+    expect(parsed.proposals).toHaveLength(6);
+
+    const state = estate();
+    state.resources.softwood = 3;
+    const session = game(state);
+    for (const proposal of parsed.proposals) session.queueProposal("steward", proposal);
+    const result = session.confirmAllProposals();
+    expect(result.error).toBeUndefined();
+    expect(session.pending.map((p) => p.status)).toEqual(Array(6).fill("applied"));
+    const cut = session.state.projects.find((p) => p.key === "coppice_fontenay_1")!;
+    const mound = session.state.projects.find((p) => p.key === "charcoal_burning")!;
+    expect(cut.resultPaid).toBe(true);
+    expect(mound.materials.lumber).toBe(12);
+    // 100 days of clearing covers three acres and their brushwood (1.5 loads); it finishes this season
+    // too, so the pack credits it beside the coppice. 3 + 1.5 + 12 − 12 for the mound.
+    const clearing = session.state.projects.find((p) => p.key === "clear_scrub")!;
+    expect(clearing.result).toEqual([{ resource: "softwood", amount: 1.5 }]);
+    expect(clearing.resultPaid).toBe(true);
+    expect(wood(session.state)).toBe(4.5);
+    expect(mound.labourDaysRequired).toBe(15);
   });
 });
