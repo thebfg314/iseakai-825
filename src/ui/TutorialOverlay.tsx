@@ -191,6 +191,12 @@ function TutorialStepBox({
   const [, bump] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<TutorialBoxPlacement | null>(null);
+  // Once the words are in the lord's mouth, the next thing to press is Speak: point there
+  // even when the step opened on something else (Aldric's tab, say).
+  const [said, setSaid] = useState(false);
+  useEffect(() => setSaid(false), [stepKey]);
+  const anchor = said && step.say ? "talk-composer" : step.anchor;
+  const side = anchor === step.anchor ? step.side : undefined;
 
   // Arrive at the step, then watch the game for the moment that moves it on.
   // A step the game has already satisfied on arrival passes straight through.
@@ -215,12 +221,12 @@ function TutorialStepBox({
   useLayoutEffect(() => {
     let frame = 0;
     const place = () => {
-      const el = step.anchor ? document.getElementById(step.anchor) : null;
+      const el = anchor ? document.getElementById(anchor) : null;
       const rect = el ? el.getBoundingClientRect() : null;
-      const anchor = rect && rect.width > 0 && rect.height > 0 ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height } : null;
+      const rectAnchor = rect && rect.width > 0 && rect.height > 0 ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height } : null;
       const box = boxRef.current;
       const size = { width: box?.offsetWidth ?? 400, height: box?.offsetHeight ?? 240 };
-      const next = placeTutorialBox(anchor, size, { width: window.innerWidth, height: window.innerHeight }, step.side);
+      const next = placeTutorialBox(rectAnchor, size, { width: window.innerWidth, height: window.innerHeight }, side);
       setPlacement((prev) => (samePlacement(prev, next) ? prev : next));
     };
     const schedule = () => {
@@ -231,7 +237,7 @@ function TutorialStepBox({
       });
     };
     place();
-    const el = step.anchor ? document.getElementById(step.anchor) : null;
+    const el = anchor ? document.getElementById(anchor) : null;
     el?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     window.addEventListener("resize", schedule);
     document.addEventListener("scroll", schedule, true);
@@ -246,7 +252,7 @@ function TutorialStepBox({
       window.clearInterval(tick);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [step.anchor, step.side, step.id, watch.pendingCount, watch.sceneNpcId, watch.messages.length]);
+  }, [anchor, side, step.id, watch.pendingCount, watch.sceneNpcId, watch.messages.length]);
 
   const entry = entryRef.current?.key === stepKey ? entryRef.current.entry : tutorialEntryFrom(watch);
   const waitingOn = step.say && tutorialAwaitingReply(step, entry, watch) ? step.say.npcId : step.waitFor && watch.busy ? step.waitFor : null;
@@ -297,7 +303,9 @@ function TutorialStepBox({
             <>
               <blockquote className="tutorial-line">{step.say.text}</blockquote>
               <p className="tutorial-say-help">
-                “Put these words in my mouth” below fills what you will say to {sayName}; press Speak to send it.
+                {said && !waitingOn
+                  ? `The words are in your mouth. Press Speak to say them to ${sayName}.`
+                  : `“Put these words in my mouth” below fills what you will say to ${sayName}; press Speak to send it.`}
               </p>
             </>
           )}
@@ -334,7 +342,11 @@ function TutorialStepBox({
                   type="button"
                   className="primary"
                   disabled={watch.busy}
-                  onClick={() => step.say && onSay(step.say.npcId, step.say.text)}
+                  onClick={() => {
+                    if (!step.say) return;
+                    setSaid(true);
+                    onSay(step.say.npcId, step.say.text);
+                  }}
                 >
                   Put these words in my mouth
                 </button>
