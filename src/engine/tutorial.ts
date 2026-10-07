@@ -23,9 +23,13 @@ export type TutorialAnchor =
   | "scene-tab-chaplain"
   | "scene-tab-negotiator"
   | "books-tabs"
+  | "books-panel"
   | "pending-proposals"
   | "talk-composer"
   | "advance-season";
+
+/** Which side of the anchor the box should try first. */
+export type TutorialSide = "below" | "above" | "right" | "left";
 
 /**
  * What moves a step forward. Only the game does: there is no Next button, so
@@ -50,6 +54,8 @@ export type TutorialStep = {
   /** Section heading shown on the box. */
   section: string;
   anchor?: TutorialAnchor;
+  /** Side of the anchor to try first, when the default (below the anchor) would cover what the step describes. */
+  side?: TutorialSide;
   /** Narrator paragraphs. Bulleted lists are a paragraph starting with "• ". */
   paragraphs: string[];
   /** A line for the lord to send, and to whom. */
@@ -106,7 +112,9 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: "books",
     section: SECTION.books,
-    anchor: "books-tabs",
+    // The whole Books panel is lit so it can be read; the box sits beside it, over the hall, pointing at it.
+    anchor: "books-panel",
+    side: "left",
     waitFor: "steward",
     paragraphs: [
       "While Aldric drafts that, let's look at the books on the right. There are four tabs:",

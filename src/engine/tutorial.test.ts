@@ -201,6 +201,24 @@ describe("tutorial boxes", () => {
     expect(tight.top + box.height).toBeLessThanOrEqual(viewport.height);
   });
 
+  it("tries the step's preferred side first, so the Books box sits beside the panel and leaves it readable", () => {
+    // The Books panel is the right-hand column; the tutorial lights the whole panel and wants the box to its left.
+    const books = { top: 60, left: 900, width: 480, height: 820 };
+    const p = placeTutorialBox(books, box, viewport, "left");
+    expect(p.arrow).toBe("right");
+    expect(p.left + box.width).toBeLessThan(books.left);
+    expect(p.spot).toMatchObject({ left: 894, width: 492 });
+    // Arrow points at the panel's vertical centre (y = 470).
+    expect(p.top + p.arrowOffset).toBe(470);
+
+    // A preferred side that does not fit falls back to the usual order.
+    const tab = { top: 60, left: 100, width: 120, height: 30 };
+    expect(placeTutorialBox(tab, box, viewport, "left").arrow).toBe("up");
+
+    const step = TUTORIAL_STEPS.find((s) => s.id === "books")!;
+    expect(step).toMatchObject({ anchor: "books-panel", side: "left" });
+  });
+
   it("centres when there is nothing to point at", () => {
     const p = placeTutorialBox(null, box, viewport);
     expect(p).toMatchObject({ arrow: "none", spot: null, top: 300, left: 500 });

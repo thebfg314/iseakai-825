@@ -15,6 +15,7 @@ import {
   tutorialStepSatisfied,
   tutorialWaitingNote,
   type TutorialEntry,
+  type TutorialSide,
   type TutorialState,
   type TutorialStep,
   type TutorialWatch,
@@ -41,14 +42,18 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
+const DEFAULT_SIDES: readonly TutorialSide[] = ["below", "above", "right", "left"];
+
 /**
- * Where the box goes next to its anchor: below, above, right, then left, the
- * first that fits. The arrow sits on the edge facing the anchor, at its centre.
+ * Where the box goes next to its anchor: the step's preferred side first, then
+ * below, above, right, left — the first that fits. The arrow sits on the edge
+ * facing the anchor, at its centre.
  */
 export function placeTutorialBox(
   anchor: Rect | null,
   box: { width: number; height: number },
   viewport: { width: number; height: number },
+  prefer?: TutorialSide,
 ): TutorialBoxPlacement {
   const { width: w, height: h } = box;
   if (!anchor) {
@@ -80,10 +85,17 @@ export function placeTutorialBox(
     return { top, left, arrow, arrowOffset: clamp(cy - top, 18, h - 18), spot };
   };
 
-  if (spot.top + spot.height + GAP + h <= viewport.height - EDGE) return horizontal(spot.top + spot.height + GAP, "up");
-  if (spot.top - GAP - h >= EDGE) return horizontal(spot.top - GAP - h, "down");
-  if (spot.left + spot.width + GAP + w <= viewport.width - EDGE) return vertical(spot.left + spot.width + GAP, "left");
-  if (spot.left - GAP - w >= EDGE) return vertical(spot.left - GAP - w, "right");
+  const fits: Record<TutorialSide, () => TutorialBoxPlacement | null> = {
+    below: () => (spot.top + spot.height + GAP + h <= viewport.height - EDGE ? horizontal(spot.top + spot.height + GAP, "up") : null),
+    above: () => (spot.top - GAP - h >= EDGE ? horizontal(spot.top - GAP - h, "down") : null),
+    right: () => (spot.left + spot.width + GAP + w <= viewport.width - EDGE ? vertical(spot.left + spot.width + GAP, "left") : null),
+    left: () => (spot.left - GAP - w >= EDGE ? vertical(spot.left - GAP - w, "right") : null),
+  };
+  const order = prefer ? [prefer, ...DEFAULT_SIDES.filter((s) => s !== prefer)] : DEFAULT_SIDES;
+  for (const side of order) {
+    const placed = fits[side]();
+    if (placed) return placed;
+  }
   return { ...horizontal(clamp(spot.top + spot.height + GAP, EDGE, maxTop), "up") };
 }
 
@@ -208,7 +220,7 @@ function TutorialStepBox({
       const anchor = rect && rect.width > 0 && rect.height > 0 ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height } : null;
       const box = boxRef.current;
       const size = { width: box?.offsetWidth ?? 400, height: box?.offsetHeight ?? 240 };
-      const next = placeTutorialBox(anchor, size, { width: window.innerWidth, height: window.innerHeight });
+      const next = placeTutorialBox(anchor, size, { width: window.innerWidth, height: window.innerHeight }, step.side);
       setPlacement((prev) => (samePlacement(prev, next) ? prev : next));
     };
     const schedule = () => {
@@ -234,7 +246,7 @@ function TutorialStepBox({
       window.clearInterval(tick);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [step.anchor, step.id, watch.pendingCount, watch.sceneNpcId, watch.messages.length]);
+  }, [step.anchor, step.side, step.id, watch.pendingCount, watch.sceneNpcId, watch.messages.length]);
 
   const entry = entryRef.current?.key === stepKey ? entryRef.current.entry : tutorialEntryFrom(watch);
   const waitingOn = step.say && tutorialAwaitingReply(step, entry, watch) ? step.say.npcId : step.waitFor && watch.busy ? step.waitFor : null;

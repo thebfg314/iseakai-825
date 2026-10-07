@@ -61,7 +61,7 @@ export function BooksPanel({
   const customsEmpty = customsEmptyLines(customs);
 
   return (
-    <aside className="ledger">
+    <aside className="ledger" id="books-panel">
       <div className="ledger-head">
         <h2>
           <GlossaryText text={BOOKS_TITLE} />
