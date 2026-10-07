@@ -96,6 +96,37 @@ describe("parseLlmResponse", () => {
     });
   });
 
+  it("keeps a new design that declares customCosts but no projectKey (Sonnet's coppicing)", () => {
+    const parsed = parseProposal({
+      type: "start_project",
+      summary: "Coppice the standing woodland for cutwood to burn",
+      id: "coppice_fontenay_1",
+      name: "Coppice the woodland",
+      holdingId: "fontenay",
+      days: 30,
+      customCosts: { labourDays: 30 },
+      result: [{ resource: "lumber", amount: 12 }],
+      finishesThisSeason: true,
+    });
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.proposal).toMatchObject({
+      type: "start_project",
+      projectKey: "coppice_fontenay_1",
+      customCosts: { labourDays: 30, lumber: 0, iron: 0, stone: 0 },
+      result: [expect.objectContaining({ resource: "lumber", amount: 12 })],
+    });
+    const named = parseProposal({
+      type: "start_project",
+      summary: "A school",
+      name: "School for the children",
+      customCosts: { labourDays: 40, lumber: 4 },
+    });
+    expect(named.proposal).toMatchObject({ projectKey: "school_for_the_children" });
+    // Without costs there is still nothing the books can price, so the drop stands.
+    const bare = parseProposal({ type: "start_project", summary: "Something", name: "Mystery" });
+    expect(bare.error).toMatch(/projectKey/);
+  });
+
   it("coerces start_project without holdingId and fuzzy project key", () => {
     const parsed = parseProposal({
       type: "start_project",

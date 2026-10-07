@@ -229,6 +229,17 @@ function coerceBoolTrue(v: unknown): true | undefined {
   return undefined;
 }
 
+/** A plain key for a new design, made from the id or name the model gave it. No catalogue matching. */
+function newDesignKey(source: unknown): string | undefined {
+  if (typeof source !== "string") return undefined;
+  const key = source
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return key || undefined;
+}
+
 function normalizeProjectKey(key: string): string {
   const compact = key.toLowerCase().trim().replace(/\s+/g, "_");
   const stemmed = compact.replace(/ing_/g, "_");
@@ -310,8 +321,14 @@ export function coerceProposalInput(raw: unknown): unknown {
     if (next.seasonsRemaining == null && next.seasons_remaining != null) next.seasonsRemaining = next.seasons_remaining;
   }
   if (next.type === "start_project") {
-    if (typeof next.projectKey === "string") next.projectKey = normalizeProjectKey(next.projectKey);
-    else if (typeof next.key === "string") next.projectKey = normalizeProjectKey(next.key);
+    if (typeof next.projectKey === "string" && next.projectKey.trim()) next.projectKey = normalizeProjectKey(next.projectKey);
+    else if (typeof next.key === "string" && next.key.trim()) next.projectKey = normalizeProjectKey(next.key);
+    else if (asRecord(next.customCosts)) {
+      // A new design with its costs declared but no key: the prompt allows that, so the books
+      // take its id (or name) as the key rather than dropping the work and everything pointed at it.
+      const derived = newDesignKey(next.id) ?? newDesignKey(next.name);
+      if (derived) next.projectKey = derived;
+    }
     if (next.holdingId == null && typeof next.holding === "string") next.holdingId = next.holding;
     if (next.result == null) {
       next.result = next.yields ?? next.yield ?? next.output ?? next.produces ?? next.reward;
