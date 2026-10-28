@@ -2,9 +2,11 @@ import type { WorldState } from "../engine/schema";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
 import { tickLand } from "./land";
 import { historyContent } from "./load";
+import { tickHungerDebuffs, tickPrices } from "./prices";
 import { tickRealm } from "./realm";
 import { dueEvents, type SeasonAt } from "./scheduler";
 import { runSupplyCheck } from "./supply";
+import { tickWeather } from "./weather";
 
 export type HistoryPassResult = {
   /** Verbatim lines to post on the speakers' tabs, in order. */
@@ -17,6 +19,8 @@ export type HistoryPassResult = {
   suppressOther: boolean;
   /** Catalog id of a forced weather event for the closing season, when a famine table says so. */
   forcedWeatherId: string | null;
+  /** Multiplier on the forced event's crop effect (2 unimproved, toward 1 with improvements). */
+  forcedSeverity: number;
   /** Ids delivered this pass. */
   fired: string[];
 };
@@ -27,7 +31,7 @@ export type HistoryPassResult = {
  * State is mutated (flags, fired, deadlines); the caller posts the beats.
  */
 export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn: number): HistoryPassResult {
-  const out: HistoryPassResult = { beats: [], refereeLines: [], effects: [], suppressOther: false, forcedWeatherId: null, fired: [] };
+  const out: HistoryPassResult = { beats: [], refereeLines: [], effects: [], suppressOther: false, forcedWeatherId: null, forcedSeverity: 1, fired: [] };
   if (state.history.dead) return out;
   const content = historyContent();
 
@@ -46,6 +50,16 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const land = tickLand(state, incoming, turn);
   out.beats.push(...land.beats);
   out.effects.push(...land.lines);
+
+  const priceLine = tickPrices(state, incoming, turn);
+  if (priceLine) out.effects.push(priceLine);
+  const seedLine = tickHungerDebuffs(state);
+  if (seedLine) out.effects.push(seedLine);
+  // The weather roll describes the season now closing (the clock turns after the roll), so the table is read for it.
+  const weather = tickWeather(state, { year: state.meta.year, season: state.meta.season as SeasonAt["season"] });
+  out.forcedWeatherId = weather.forcedWeatherId;
+  out.forcedSeverity = weather.severity;
+  if (weather.forcedWeatherId) out.refereeLines.push(`History: the weather this season is set by the famine calendar (${weather.forcedWeatherId}); its effect is ${weather.severity.toFixed(2)}× the usual.`);
 
   const due = dueEvents(state, incoming, content);
   for (const id of due.dropped) if (!state.history.dropped.includes(id)) state.history.dropped.push(id);

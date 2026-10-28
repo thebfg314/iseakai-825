@@ -176,7 +176,7 @@ function applyOne(state: WorldState, effects: HistoryEffects, seed: string, opts
   }
   if (effects.prices) {
     const p = state.history.prices;
-    p.severity = effects.prices.severity;
+    p.eventSeverity = effects.prices.severity;
     p.untilTurn = effects.prices.seasons ? state.meta.turn + effects.prices.seasons : null;
   }
   if (effects.away) {

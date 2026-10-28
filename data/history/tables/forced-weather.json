@@ -1,0 +1,35 @@
+{
+  "note": "Forced weather events (scripts: 'Forced weather events'). In these seasons the weather is not rolled; the catalog entry replaces it and the crop effect is doubled, reduced toward normal by improvements.",
+  "severityBySeason": {
+    "famine": { "spring": "w-flood", "summer": "w-mould", "autumn": "w-flood", "winter": "win-cold" }
+  },
+  "forced": [
+    { "years": [841, 845], "seasons": { "spring": "w-flood", "winter": "win-cold" } },
+    { "years": [859, 859], "seasons": { "winter": "win-cold" } },
+    { "years": [867, 869], "seasons": { "spring": "w-flood", "summer": "w-silt-bad" } },
+    { "years": [872, 872], "seasons": { "spring": "w-flood", "summer": "w-storm", "autumn": "w-drought", "winter": "win-cold" } },
+    { "years": [873, 873], "seasons": { "spring": "w-drought", "summer": "w-storm", "autumn": "w-mould", "winter": "win-cold" } },
+    { "years": [874, 874], "seasons": { "spring": "w-flood", "summer": "w-drought", "autumn": "w-mould", "winter": "win-cold" } },
+    { "years": [895, 897], "seasons": { "summer": "w-storm", "winter": "win-cold" } }
+  ],
+  "famineYears": {
+    "841": "shortage",
+    "842": "famine",
+    "843": "famine",
+    "844": "shortage",
+    "845": "shortage",
+    "860": "shortage",
+    "867": "shortage",
+    "868": "famine",
+    "869": "famine",
+    "872": "shortage",
+    "873": "famine",
+    "874": "famine",
+    "895": "shortage",
+    "896": "famine",
+    "897": "famine"
+  },
+  "multipliers": { "normal": 1, "shortage": 2.5, "famine": 6, "severe": 20 },
+  "grainSkew": { "oats": 1.3, "barley": 1.2, "rye": 1.1, "wheat": 1.0 },
+  "improvements": ["drainage", "three_field", "barn", "hardy_grains"]
+}

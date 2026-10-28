@@ -5,6 +5,8 @@ export type RolledEvent = CatalogEvent & {
   crop?: string;
   livestock?: string;
   resolvedText: string;
+  /** Set when a famine-year table named this weather; the crop effect is scaled by this (03_HISTORY §11.4). */
+  forcedSeverity?: number;
 };
 
 function pick<T>(arr: T[]): T {
@@ -65,6 +67,8 @@ export type SeasonRollOptions = {
   suppressOther?: boolean;
   /** A famine-year table names the weather; the catalog entry with this id replaces the roll (03_HISTORY §11.4). */
   forcedWeatherId?: string | null;
+  /** Crop-effect multiplier for the forced event: 2 unimproved, toward 1 with drainage, rotation, a barn, hardy grains. */
+  forcedSeverity?: number;
 };
 
 /**
@@ -76,6 +80,7 @@ export function rollSeasonEvents(state: WorldState, opts: SeasonRollOptions = {}
   const forced = opts.forcedWeatherId ? EVENT_CATALOG.find((e) => e.id === opts.forcedWeatherId) : undefined;
   const weatherRaw = forced ?? fromCategory(weatherCat, polarityRoll()) ?? EVENT_CATALOG.find((e) => e.category === weatherCat)!;
   const weather = fillTemplate(state, weatherRaw);
+  if (forced) weather.forcedSeverity = opts.forcedSeverity ?? 2;
   if (opts.suppressOther) return { weather, other: null };
 
   type Weighted = { category: string; weight: number; extra?: (e: CatalogEvent) => boolean };
@@ -124,7 +129,8 @@ export function defaultEventStub(
   ev: RolledEvent,
   state?: WorldState,
 ): { resource?: string; amount?: number; direction?: "gain" | "consume"; moodDelta?: number } {
-  const grain = pickAffordableGrain(state, ev.crop, ev.polarity === "positive" ? 0 : 4);
+  const scale = ev.polarity === "negative" && ev.forcedSeverity && ev.forcedSeverity > 1 ? ev.forcedSeverity : 1;
+  const grain = pickAffordableGrain(state, ev.crop, ev.polarity === "positive" ? 0 : Math.round(4 * scale));
   if (ev.polarity === "negative") {
     if (ev.crop && (ev.category === "weather" || ev.id.startsWith("w-"))) {
       if (grain) return { resource: grain.resource, amount: grain.amount, direction: "consume", moodDelta: -1 };
@@ -132,7 +138,8 @@ export function defaultEventStub(
     }
     if (ev.livestock && ev.text.includes("animal")) {
       const have = state ? Number(state.resources[ev.livestock as CanonicalResource] ?? 0) : 1;
-      if (have >= 1) return { resource: ev.livestock, amount: 1, direction: "consume", moodDelta: -1 };
+      const want = Math.round(scale);
+      if (have >= 1) return { resource: ev.livestock, amount: Math.min(have, want), direction: "consume", moodDelta: -1 };
       return { moodDelta: -1 };
     }
     if (grain) return { moodDelta: -1, resource: grain.resource, amount: grain.amount, direction: "consume" };

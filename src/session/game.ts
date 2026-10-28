@@ -1631,7 +1631,7 @@ export class GameController {
     const history = runHistorySeasonPass(this.state, incoming, this.state.meta.turn + 1);
     for (const line of history.effects) effects.push({ kind: "info", text: line });
     for (const id of history.fired) this.log("engine", "EVENT", `History: ${id} delivered.`);
-    const roll = rollSeasonEvents(this.state, { suppressOther: history.suppressOther, forcedWeatherId: history.forcedWeatherId });
+    const roll = rollSeasonEvents(this.state, { suppressOther: history.suppressOther, forcedWeatherId: history.forcedWeatherId, forcedSeverity: history.forcedSeverity });
     const merchantResult = rollMerchantVisit(this.state, incoming.season);
     const merchantNote = applyMerchantRoll(this.state, merchantResult);
     effects.push({ kind: "info", text: merchantNote });

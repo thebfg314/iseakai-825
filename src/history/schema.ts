@@ -157,7 +157,7 @@ export const VariantSchema = z.object({
 });
 
 export const HistoryEventSchema = z.object({
-  id: z.string().regex(/^[0-9]{3}-[A-Z]?[0-9A-Z]+$|^[A-Z]-[0-9]{3}$|^[a-z0-9_]+$/),
+  id: z.string().regex(/^[0-9]{3}-[A-Z]?[0-9A-Z]+$|^[A-Z]-[0-9]{3}(-[0-9A-Z]+)?$|^[a-z0-9_]+$/),
   title: z.string().min(1),
   arc: z.union([z.number().int().min(1).max(9), z.enum(["church", "economy", "natural", "ending", "realm"])]),
   type: z.enum(EVENT_TYPES),
@@ -289,9 +289,21 @@ export const HistoryStateSchema = z.object({
       severity: z.enum(["normal", "shortage", "famine", "severe"]).default("normal"),
       grainMultiplier: z.number().positive().default(1),
       untilTurn: z.number().int().nullable().default(null),
+      /** Event-set severity (overrides the famine calendar while `untilTurn` holds). */
+      eventSeverity: z.enum(["normal", "shortage", "famine", "severe"]).nullable().default(null),
+      /** The grain bands as they stood before the multiplier, restored when prices return to normal. */
+      base: z.record(z.string(), z.object({ min: z.number(), max: z.number() })).default({}),
+      /** Seasons of hunger in a row; two or more eat next year's seed. */
+      hungrySeasons: z.number().int().nonnegative().default(0),
     })
     .default({}),
-  weather: z.object({ forcedThisSeason: z.string().nullable().default(null) }).default({}),
+  weather: z
+    .object({
+      forcedThisSeason: z.string().nullable().default(null),
+      /** Extra crop loss multiplier applied by the engine to a forced event this season (1 = normal, 2 = doubled). */
+      forcedSeverity: z.number().default(1),
+    })
+    .default({}),
   supply: z
     .object({
       lastRoll: z.object({ turn: z.number().int(), situation: z.string(), lost: z.number() }).nullable().default(null),

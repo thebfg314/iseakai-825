@@ -1,4 +1,575 @@
 ﻿{
   "arc": "natural",
-  "events": []
+  "events": [
+    {
+      "id": "N-841",
+      "title": "The famine years begin",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 841, "season": "spring" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, a word on the fields before anything else. It has rained since Candlemas and the low ground is standing water; the winter wheat is yellow where it is not drowned, and the seed stores are thinner than I like after the winter. The sowing will be late and it will be poor. Autun market is already asking more for rye than it did at Michaelmas. I would hold what grain we have, and I would not sell a modius of it to anyone."
+        }
+      ],
+      "knows": [
+        "Drainage and ridged fields stand against the rain; rotation and legumes keep yields up.",
+        "Hardier grains (oats, barley, rye) do better than wheat in wet years.",
+        "Buy grain early, before prices climb; keep a seed reserve and build a granary.",
+        "The capitularies condemn buying grain cheap to sell it dear; lords are expected to keep their own people from starving."
+      ],
+      "hooks": [
+        {
+          "id": "hold_grain",
+          "trigger": "The lord orders the grain stores held back from sale and a seed reserve set aside.",
+          "effects": { "record": "At the start of the hungry years the lord held his grain back." }
+        },
+        {
+          "id": "buy_early",
+          "trigger": "The lord buys grain in Autun before prices climb.",
+          "requires": "denarii >= 40",
+          "effects": { "cost": { "denarii": 40 }, "gain": { "rye": 15 } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "hookWindow": 4,
+      "notes": "Engine-written from the N-841 season schedule (spring: winter crops, seed stores, sowing outlook)."
+    },
+    {
+      "id": "N-841-S",
+      "title": "Rain and prices",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 841, "season": "summer" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The rain has not let up, my lord. The hay is rotting in the swath and the barley is laid flat in the low fields. Grain in Autun is at twice the old price and the market women say the armies' quartermasters are buying everything that comes in by cart. It will be a thin harvest, and we will not be the only ones to say so."
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "notes": "Engine-written from the N-841 season schedule (summer: rain, crop condition, prices)."
+    },
+    {
+      "id": "N-841-A",
+      "title": "The harvest of 841",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 841, "season": "autumn" },
+      "order": -1,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The harvest is in, my lord, what there is of it. Perhaps two thirds of an ordinary year, and some of that sprouted in the ear before we could get it under cover. The tenants have brought their dues short and asked for time. I have given it; there is nothing to be had by pressing them."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "The tithe barn is half what it was last year, my lord, and there are more at the church door than I have ever seen: women with children from the villages toward Auxerre, where the armies went through. I have given what I can. I would ask whether the hall can give more."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "feed_hungry",
+          "trigger": "The lord orders grain given to the hungry at the church door or to the neighbouring households.",
+          "requires": "rye >= 10 or barley >= 10 or oats >= 10 or wheat >= 10",
+          "effects": { "cost": { "rye": 10 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+1", "favor_church": "+1" }, "renown": "small", "record": "In the hungry autumn of 841 the lord fed the district." }
+        },
+        {
+          "id": "sell_dear",
+          "trigger": "The lord sells grain at famine prices.",
+          "effects": { "flags": { "profiteer": "+1", "favor_church": "-1", "local_loyalty": "-1" }, "gain": { "denarii": 60 }, "cost": { "rye": 10 } }
+        },
+        {
+          "id": "take_in_refugees",
+          "trigger": "The lord takes in hungry families and settles them on the vacant manses.",
+          "requires": "vacant_manses >= 1",
+          "effects": { "settle": { "households": 1 }, "flags": { "sheltered_refugees": "+1" } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "notes": "Engine-written from the N-841 season schedule (autumn: harvest; tithes, alms, the hungry)."
+    },
+    {
+      "id": "N-841-W",
+      "title": "Stores against the winter",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 841, "season": "winter" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The count of the stores, my lord: enough to see the households to Lady Day if nobody eats more than their share, and nothing over for the spring sowing unless we buy. Prices in Autun are three times the old. There were two thefts from the granary this month, both by our own people, and three families from the Chalon road at the gate asking for work and bread. The winter has come in hard and early."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "punish_thieves",
+          "trigger": "The lord punishes the granary thieves harshly.",
+          "effects": { "flags": { "local_loyalty": "-1" } }
+        },
+        {
+          "id": "forgive_thieves",
+          "trigger": "The lord forgives the thieves and opens the granary to measured rations.",
+          "effects": { "flags": { "local_loyalty": "+1" }, "cost": { "rye": 5 } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "notes": "Engine-written from the N-841 season schedule (winter: stores, prices, refugees and thefts)."
+    },
+    {
+      "id": "N-842",
+      "title": "The second wet year",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 842, "season": "autumn" },
+      "order": -1,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Worse than last year, my lord. The rain came again at midsummer and the harvest is barely half. Everything the war did not take, the weather has. Prices in Autun are five and six times the old, and higher for oats and barley than for wheat, because the poor are buying what they can afford and there is no bottom to it."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "They are eating the seed, my lord. I have told them what it means for next year and they know it, and they eat it anyway, because the children are hungry now. There is flux in the villages toward the river. I bury someone most weeks."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "feed_hungry",
+          "trigger": "The lord orders grain given to the hungry at the church door or to the neighbouring households.",
+          "requires": "rye >= 10 or barley >= 10 or oats >= 10 or wheat >= 10",
+          "effects": { "cost": { "rye": 10 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+1", "favor_church": "+1" }, "renown": "small" }
+        },
+        {
+          "id": "sell_dear",
+          "trigger": "The lord sells grain at famine prices.",
+          "effects": { "flags": { "profiteer": "+1", "favor_church": "-1", "local_loyalty": "-1" }, "gain": { "denarii": 90 }, "cost": { "rye": 10 } }
+        },
+        {
+          "id": "buy_ruined_land",
+          "trigger": "The lord buys land from ruined neighbours at famine prices.",
+          "requires": "denarii >= 120",
+          "effects": { "cost": { "denarii": 120 }, "land": { "manses": 1, "visibility": "+5" }, "flags": { "bought_land_famine": true, "local_loyalty": "-1" } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "notes": "Engine-written; the peak of N-841 placed in 842–843 as the scripts suggest."
+    },
+    {
+      "id": "N-843",
+      "title": "The worst of it",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 843, "season": "autumn" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Another half harvest, my lord, the third in a row, and the beasts thin from two hard winters. There is land going begging in the district: men who have buried their oxen and eaten their seed will take a cartload of grain for a manse and think themselves lucky. The kings have made their peace at Verdun, they say. The weather has made none with us."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "feed_hungry",
+          "trigger": "The lord orders grain given to the hungry.",
+          "requires": "rye >= 10 or barley >= 10 or oats >= 10 or wheat >= 10",
+          "effects": { "cost": { "rye": 10 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+1", "favor_church": "+1" }, "renown": "small" }
+        },
+        {
+          "id": "buy_ruined_land",
+          "trigger": "The lord buys land from ruined neighbours at famine prices.",
+          "requires": "denarii >= 120",
+          "effects": { "cost": { "denarii": 120 }, "land": { "manses": 1, "visibility": "+5" }, "flags": { "bought_land_famine": true, "local_loyalty": "-1" } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "notes": "Engine-written."
+    },
+    {
+      "id": "N-845",
+      "title": "The rain lifts",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 845, "season": "autumn" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "A middling harvest, my lord, and after the last four years a middling harvest looks like plenty. The rain held off through August for the first time since the old emperor died. Prices in Autun are coming down, slowly. The district has fewer people in it than it had in 840; I counted the empty houses on the Avallon road and stopped at twenty."
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "record": "The five hungry years ended with a middling harvest in 845.",
+      "notes": "Engine-written closing report for N-841."
+    },
+    {
+      "id": "N-857",
+      "title": "The burning sickness",
+      "arc": "natural",
+      "type": "news",
+      "fires": { "year": 857, "season": "autumn" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "hookWindow": 400,
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Word from the Rhineland, my lord, from around Xanten. A sickness nobody can name. It begins with burning in the hands and feet, as if they were held in a fire, and then the flesh goes black and dies on the living body. Fingers, feet, whole limbs dropping away. Others fall down in fits, or see things that are not there. Hundreds of them. Six hundred miles off, thank God."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "They are calling it a holy fire, my lord, a judgement. I have read of nothing like it."
+        }
+      ],
+      "knows": ["The Rhineland outbreak around Xanten; hundreds afflicted.", "Burgundy grows rye too."],
+      "doesntKnow": ["The cause. Nobody alive knows it is the dark spurs in wet rye."],
+      "hooks": [
+        {
+          "id": "inspect_rye",
+          "trigger": "The lord has the rye inspected for dark spurs in the ears and orders them sorted out before milling, as a standing practice.",
+          "effects": { "flags": { "ergot_aware": true }, "record": "The lord ordered the rye sorted for dark spurs before milling, and kept it so." }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 20 },
+      "notes": "The hook window is open for the rest of the game: the clue can be acted on at any time."
+    },
+    {
+      "id": "N-859",
+      "title": "The hard winter",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 859, "season": "winter" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "A winter like nothing in living memory, my lord. The rivers hard enough to cart over, birds dropping dead out of the air, and the beasts dying in the byres for all we can do. We will be counting what is left of the herd in March, and short of oxen for the ploughing after that."
+        }
+      ],
+      "knows": ["Fodder stored, byres improved, firewood laid in and beasts brought under cover all help."],
+      "onFire": {
+        "prices": { "severity": "shortage", "seasons": 3 },
+        "modifier": { "target": "livestock_yield", "kind": "temporary", "op": "multiply", "value": 0.8, "seasonsRemaining": 4, "source": "the hard winter of 859–860" }
+      },
+      "hooks": [
+        {
+          "id": "bring_beasts_in",
+          "trigger": "The lord orders the beasts brought under cover and fodder and firewood shared out.",
+          "effects": { "cost": { "oats": 5 }, "modifier": { "target": "livestock_yield", "kind": "temporary", "op": "multiply", "value": 1.15, "seasonsRemaining": 4, "source": "beasts brought in through the hard winter" } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 40 }
+    },
+    {
+      "id": "N-867",
+      "title": "Rain since Candlemas",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 867, "season": "spring" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Rain since Candlemas, my lord, and no sign of it stopping. The low fields are under water and the sowing is ruined. The springs are rising where no one has seen them rise, and the mill-race is over its banks."
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 },
+      "notes": "Engine-written around the scripts' season line for spring 867."
+    },
+    {
+      "id": "N-868-S",
+      "title": "A comet over the flood",
+      "arc": "natural",
+      "type": "news",
+      "fires": { "year": 868, "season": "summer" },
+      "order": -1,
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "A comet, my lord, night after night, and the rivers still rising. I do not say it is a sign, my lord. I say only that I have seen one before, and what followed."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "comet_learning",
+          "trigger": "The lord explains the comet calmly as a matter of learning.",
+          "effects": { "flags": { "learned_reputation": "+1" } }
+        },
+        {
+          "id": "comet_prayers",
+          "trigger": "The lord organizes calm prayers and alms.",
+          "effects": { "flags": { "favor_church": "+1" }, "cost": { "denarii": 5 } }
+        },
+        {
+          "id": "comet_prophecy",
+          "trigger": "The lord claims to have foreseen the comet.",
+          "effects": { "flags": { "church_suspicion": "+1", "sorcery_rumor": "+1" }, "renown": "small" }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 100, "fixedPoint": true }
+    },
+    {
+      "id": "N-868-A",
+      "title": "Half a harvest",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 868, "season": "autumn" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The harvest is half what it should be, my lord. Prices in Autun have doubled since Easter and will double again. There is murrain among the cattle on the river meadows, and the mill has been stopped twice by the flood."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "feed_hungry",
+          "trigger": "The lord orders grain given to the hungry.",
+          "requires": "rye >= 10 or barley >= 10 or oats >= 10 or wheat >= 10",
+          "effects": { "cost": { "rye": 10 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+1", "favor_church": "+1" }, "renown": "small" }
+        },
+        {
+          "id": "sell_dear",
+          "trigger": "The lord sells grain at famine prices.",
+          "effects": { "flags": { "profiteer": "+1", "favor_church": "-1", "local_loyalty": "-1" }, "gain": { "denarii": 90 }, "cost": { "rye": 10 } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 }
+    },
+    {
+      "id": "N-868-W",
+      "title": "Dying of nothing",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 868, "season": "winter" },
+      "order": -1,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "They are dying in the villages, my lord. Not of the flux. Of nothing. Of having had nothing since autumn."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "ergot_aware",
+          "text": "And something else, my lord, in the hamlets toward the river where they have been eating the damp rye: the burning in the hands and feet, the black flesh, the fits. The Rhineland sickness, here. Our own people have none of it. You had the rye sorted. I did not understand then why; I understand now."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "not ergot_aware",
+          "text": "And something else, my lord, worse than hunger. In the hamlets toward the river, and in two of our own houses: burning in the hands and feet, the flesh going black, fits. It is the Rhineland sickness, the holy fire. I have anointed three."
+        }
+      ],
+      "onFire": [
+        { "when": "not ergot_aware", "mood": -2, "record": "The burning sickness came to the villa in the wet winter of 868." }
+      ],
+      "outcomes": {
+        "momentum": 20,
+        "canChange": "The sickness is ergot in the damp rye, not contagion. A lord who explains the cause plainly (bad grain) and has the rye sorted saves the neighbours' households and earns enormous local standing; one who frames the cure as God's mercy answering prayer, with the sorting done quietly, earns church favour and a holy name, and the cure spreads more slowly; one who is careless about how he knew invites suspicion. If the lord does nothing, the sickness runs its course in the district.",
+        "windowSeasons": 1,
+        "options": [
+          { "id": "ran_its_course", "label": "The sickness ran its course in the district", "default": true, "effects": { "flags": { "local_loyalty": "-1" } } },
+          {
+            "id": "explained_plainly",
+            "label": "The lord named the bad grain and had the rye sorted across the district",
+            "effects": { "flags": { "ergot_aware": true, "local_loyalty": "+3", "chaplain_trust": "+2" }, "renown": "moderate", "record": "The lord stopped the burning sickness by having the rye sorted." }
+          },
+          {
+            "id": "gods_mercy",
+            "label": "The lord framed it as God's mercy and had the sorting done quietly",
+            "effects": { "flags": { "ergot_aware": true, "holy_reputation": "+1", "favor_church": "+2", "local_loyalty": "+1" }, "renown": "small" }
+          },
+          {
+            "id": "careless",
+            "label": "The lord cured it but was careless about how he knew",
+            "effects": { "flags": { "ergot_aware": true, "church_suspicion": "+2", "sorcery_rumor": "+1", "local_loyalty": "+1" } }
+          }
+        ]
+      },
+      "links": { "arc": "natural", "momentum": 20 },
+      "notes": "The home outbreak the scripts leave optional, placed in the wet winter of 868–869. Ermenald's lines are engine-written around the scripts' winter line."
+    },
+    {
+      "id": "N-872",
+      "title": "Hail through the Auxois",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 872, "season": "summer" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Hail the size of hens' eggs through the Auxois, my lord; the standing corn flattened in an hour. Ours took it on the north fields; the south was spared by the width of the brook. I have never seen stones like them."
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 }
+    },
+    {
+      "id": "N-873-S",
+      "title": "Locusts",
+      "arc": "natural",
+      "type": "news",
+      "fires": { "year": 873, "season": "summer" },
+      "order": -1,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, come and see. Come and see the sky."
+        },
+        {
+          "speaker": "steward",
+          "text": "A swarm out of the east, my lord, like smoke from a burning town, and it is settling on what the hail left. You can hear them eating. The men are out with flails and smoke and it does nothing. By tonight there will not be a green leaf between here and the river."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "Locusts, my lord. The eighth plague of Egypt, in Burgundy. The bishop has ordered the relics carried round the fields and a fast until they go. I will walk with the cross. I do not know what else there is."
+        }
+      ],
+      "onFire": { "modifier": { "target": "grain_yield", "kind": "temporary", "op": "multiply", "value": 0.6, "seasonsRemaining": 2, "source": "the locusts of 873" }, "mood": -2 },
+      "hooks": [
+        {
+          "id": "trenches_and_fire",
+          "trigger": "The lord organizes the whole villa to dig trenches, beat and burn the swarm where it settles, and gather the dead insects for the pigs.",
+          "effects": { "modifier": { "target": "grain_yield", "kind": "temporary", "op": "multiply", "value": 1.15, "seasonsRemaining": 2, "source": "the fight against the locusts" }, "flags": { "local_loyalty": "+1" } }
+        },
+        {
+          "id": "join_procession",
+          "trigger": "The lord walks with the relics round the fields.",
+          "effects": { "flags": { "favor_church": "+1" } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30, "fixedPoint": true },
+      "record": "In the summer of 873 locusts came out of the east and settled on the fields.",
+      "notes": "The scripts give the first line verbatim and ask for a set piece; the rest is engine-written."
+    },
+    {
+      "id": "N-873-A",
+      "title": "Nothing to harvest",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 873, "season": "autumn" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Nothing to harvest in half the district, my lord. Men are eating the seed corn and know it. What we have in the granary is worth more than silver now, and everyone for ten miles knows how much is in it."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "feed_hungry",
+          "trigger": "The lord orders grain given to the hungry.",
+          "requires": "rye >= 10 or barley >= 10 or oats >= 10 or wheat >= 10",
+          "effects": { "cost": { "rye": 10 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+2", "favor_church": "+1" }, "renown": "moderate" }
+        },
+        {
+          "id": "sell_dear",
+          "trigger": "The lord sells grain at famine prices.",
+          "effects": { "flags": { "profiteer": "+1", "favor_church": "-1", "local_loyalty": "-2" }, "gain": { "denarii": 120 }, "cost": { "rye": 10 } }
+        },
+        {
+          "id": "guard_granary",
+          "trigger": "The lord sets an armed watch on the granary.",
+          "effects": { "flags": { "hidden_stores": true } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 }
+    },
+    {
+      "id": "N-873-W",
+      "title": "Land going begging",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 873, "season": "winter" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Deaths, debt, and land going begging, my lord. Those with grain can buy a manse for a cartload. Three men have been to the gate this month offering theirs, and one of them wept while he did it. You have grain, or you have not; either way, this winter is the one that decides what this villa is for the next thirty years."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "buy_ruined_land",
+          "trigger": "The lord buys manses from ruined neighbours for grain.",
+          "requires": "rye >= 20 or wheat >= 20 or barley >= 20",
+          "effects": { "cost": { "rye": 20 }, "land": { "manses": 2, "visibility": "+10" }, "flags": { "bought_land_famine": true, "local_loyalty": "-1" }, "record": "In the winter of 873 the lord bought two manses for grain from ruined neighbours." }
+        },
+        {
+          "id": "feed_instead",
+          "trigger": "The lord feeds the ruined neighbours through the winter and takes no land for it.",
+          "requires": "rye >= 20 or wheat >= 20 or barley >= 20",
+          "effects": { "cost": { "rye": 20 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+3", "favor_church": "+1" }, "renown": "moderate", "record": "In the winter of 873 the lord fed his ruined neighbours and took nothing for it." }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 30 }
+    },
+    {
+      "id": "N-895",
+      "title": "The last famine",
+      "arc": "natural",
+      "type": "background",
+      "fires": { "year": 895, "season": "summer" },
+      "order": -1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, hail again, and a winter to follow it, and two kings too busy with each other to care. We have seen this before, you and I. The difference is that this time we knew it was coming and the granary is full."
+        }
+      ],
+      "variants": [
+        {
+          "when": "not feature(barn)",
+          "replace": 0,
+          "text": "My lord, hail again, and a winter to follow it, and two kings too busy with each other to care. We have seen this before, you and I. I wish I could say the granary was full."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "feed_hungry",
+          "trigger": "The lord orders grain given to the hungry.",
+          "requires": "rye >= 10 or barley >= 10 or oats >= 10 or wheat >= 10",
+          "effects": { "cost": { "rye": 10 }, "flags": { "fed_hungry": "+1", "local_loyalty": "+1", "favor_church": "+1" }, "renown": "small" }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 25 }
+    }
+  ]
 }

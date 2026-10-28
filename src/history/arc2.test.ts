@@ -81,17 +81,17 @@ describe("Arc 2 content", () => {
     const clock = settled830(state);
     clock.to(840, "winter");
     const spring = clock.next();
-    expect(spring.fired).toEqual(["841-01"]);
+    expect(spring.fired).toEqual(["N-841", "841-01"]);
     const summer = clock.next();
     expect(state.history.chosen["841-01"]).toBe("answer");
-    expect(summer.fired).toEqual(["841-02"]);
+    expect(summer.fired).toEqual(["N-841-S", "841-02"]);
     expect(texts(summer).some((x) => x.includes("not yet written in this chronicle"))).toBe(true);
     expect(state.history.away?.reason).toContain("Auxerre");
     expect(state.history.supply.lastRoll?.situation).toBe("foraging");
-    expect(summer.refereeLines[0]).toContain("rode out for 841-02");
+    expect(summer.refereeLines.some((l) => l.includes("rode out for 841-02"))).toBe(true);
     const autumn = clock.next();
     expect(state.history.away).toBeNull();
-    expect(autumn.fired).toEqual(["841-03"]);
+    expect(autumn.fired).toEqual(["N-841-A", "841-03"]);
     expect(texts(autumn).some((x) => x.includes("relief") || x.includes("Count Warin's column are spoken of with pride"))).toBe(true);
     expect(autumn.beats.some((b) => b.npcId === "chaplain" && b.text.startsWith("The bishops have ordered three days"))).toBe(true);
     expect(state.history.supply.lastRoll?.situation).toBe("deserters");
@@ -106,7 +106,7 @@ describe("Arc 2 content", () => {
     expect(home.resources.denarii).toBe(280);
     expect(home.history.flags.heribannum_paid).toBe(1);
     const summer = c1.next();
-    expect(summer.fired).toEqual(["841-H1"]);
+    expect(summer.fired).toEqual(["N-841-S", "841-H1"]);
     expect(home.history.away).toBeNull();
 
     const bern = fresh();
@@ -114,7 +114,7 @@ describe("Arc 2 content", () => {
     c2.to(841, "spring");
     expect(choose(bern, "841-01", "bernard_camp").ok).toBe(true);
     const s2 = c2.next();
-    expect(s2.fired).toEqual(["841-02B"]);
+    expect(s2.fired).toEqual(["N-841-S", "841-02B"]);
     expect(hook(bern, "841-02B", "urge_bernard").ok).toBe(true);
     const a2 = c2.next();
     expect(texts(a2).some((x) => x.includes("it was you who turned him"))).toBe(true);
