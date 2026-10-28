@@ -1,4 +1,222 @@
 ﻿{
   "arc": "church",
-  "events": []
+  "events": [
+    {
+      "id": "C-831",
+      "title": "Agobard of Lyon",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 831, "season": "summer" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "slant": "Ermenald, hedging a bold thought.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, I have been reading the archbishop of Lyon. He has written against the people who believe men can call down hail and sell storms, and against ordeals, trial by water and hot iron, as a way of finding the truth of a case. He says God is not to be summoned as a witness at our convenience, and that a thing is not proved because a man's hand blisters. I confess I find him persuasive and I am not certain I should."
+        }
+      ],
+      "knows": ["Agobard is the lord's own archbishop; he backs Lothair and will be deposed for it in 835."],
+      "hooks": [
+        { "id": "agree_warmly", "trigger": "The lord agrees warmly: argue from evidence, not from blistered hands.", "effects": { "flags": { "chaplain_curious": true, "chaplain_trust": "+1" } } },
+        { "id": "press_miracles", "trigger": "The lord presses too hard against miracles generally.", "effects": { "flags": { "chaplain_suspicious": true } } }
+      ],
+      "hookWindow": 4,
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-836",
+      "title": "Einhard's Life of Charlemagne",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 836, "season": "summer" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "There is a book going round, my lord, written by a man who actually knew the great emperor. His height, his swimming, his bad Latin handwriting, the way he could not bear his daughters to marry. It reads as though you were in the room. Nobody has written about a living man like that since the ancients."
+        }
+      ],
+      "hooks": [
+        { "id": "who_writes", "trigger": "The lord takes an interest in who will write about him, and how to be remembered.", "effects": { "flags": { "chaplain_trust": "+1", "learned_reputation": "+1" } } }
+      ],
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-847",
+      "title": "Lupus of Ferrières",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 847, "season": "spring" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "The abbot of Ferrières is hunting books again, my lord. He writes to everyone, bishops, abbots, the king, asking to borrow old texts so he can have them copied before the last copy rots. Cicero, Livy, Caesar's wars. He says a library is the only wall that keeps the past from being lost. He is not far from here, as these things go."
+        }
+      ],
+      "knows": ["Lupus is the best route for anything the lord wants written down and spread."],
+      "hooks": [
+        { "id": "write_to_lupus", "trigger": "The lord writes to Lupus, lends or borrows a book, or endows a copy.", "effects": { "cost": { "denarii": 10 }, "flags": { "lupus_correspondent": true, "scholar_contact": "+1", "favor_church": "+1" }, "record": "The lord began a correspondence with Lupus of Ferrières." } }
+      ],
+      "hookWindow": 8,
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-844",
+      "title": "Dhuoda's handbook",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 844, "season": "summer" },
+      "order": 1,
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, the lady Dhuoda, Duke Bernard's wife, has written a book for her son William, the boy who was sent to the king's court as a pledge. A mother's instruction, since she cannot speak to him. How to serve his lord, how to pray, how to be a man worth something. She writes that she is writing it because she may never see him again."
+        }
+      ],
+      "hooks": [
+        { "id": "ask_for_copy", "trigger": "The lord asks for a copy of Dhuoda's book, or speaks of it with feeling.", "effects": { "flags": { "chaplain_trust": "+1", "favor_septimania": "+1" } } }
+      ],
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-845",
+      "title": "Nithard's history",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 844, "season": "winter" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "There is an account going round of the war between the brothers, my lord, written by a man who fought in it, Count Nithard, Charlemagne's own grandson by his daughter. He does not spare anyone, not even the king he served. He writes that the men of his generation have made a ruin of what their fathers built."
+        }
+      ],
+      "hooks": [
+        { "id": "send_account", "trigger": "The lord sends Nithard his own account of events, or asks to be named in the history.", "effects": { "flags": { "nithard_account": true, "scholar_contact": "+1" }, "renown": "small", "record": "The lord sent Count Nithard his own account of the war of the brothers." } }
+      ],
+      "hookWindow": 6,
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-856",
+      "title": "The predestination quarrel",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 856, "season": "summer" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, there is a monk called Gottschalk who teaches that God has settled from before the world began who will be saved and who damned, and that nothing a man does will change it. They have condemned him, flogged him and shut him up in a monastery, and still the bishops are writing books at each other about it. Archbishop Hincmar against the church of Lyon, Lyon against Hincmar. I will say this quietly, my lord: the question is not a stupid one."
+        }
+      ],
+      "knows": ["Lyon is the lord's own archbishopric; this is dangerous ground."],
+      "hooks": [
+        { "id": "engage_thoughtfully", "trigger": "The lord engages the question thoughtfully, in private.", "effects": { "flags": { "chaplain_trust": "+2" } } },
+        { "id": "talk_loosely", "trigger": "The lord talks loosely about fate or free will in front of others.", "effects": { "flags": { "church_suspicion": "+1" } } }
+      ],
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-861",
+      "title": "John Scottus Eriugena",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 861, "season": "summer" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "There is an Irishman at the king's court, my lord, who reads Greek. Actual Greek, not a word or two for show. He is translating the Greek fathers and writing philosophy of his own, and half the bishops think it is heresy and cannot follow it well enough to prove it. They say the king keeps him for the pleasure of the argument."
+        }
+      ],
+      "knows": ["Reaching him needs court access: a royal vassal, the Rome journey, or a patron."],
+      "hooks": [
+        {
+          "id": "reach_eriugena",
+          "trigger": "The lord reaches the Irishman through court access and impresses him.",
+          "requires": "royal_vassal or rank >= 3 or scholar_contact >= 2",
+          "effects": { "flags": { "eriugena_met": true, "learned_reputation": "+2", "church_suspicion": "+1" }, "record": "The lord met John Scottus Eriugena and impressed him." }
+        }
+      ],
+      "hookWindow": 60,
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-865",
+      "title": "The king who wanted a divorce",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 865, "season": "spring" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "Twelve years, my lord, and it is still not settled. King Lothair wants rid of his queen so he can marry the woman who has borne him sons, and he has had bishops declare it lawful and the pope declare it unlawful, and councils, and accusations against the poor woman that I will not repeat. Rome has made itself the judge of a king's marriage bed. That is new, and I am not sure where it ends."
+        }
+      ],
+      "knows": ["Directly relevant to any lord contemplating marriage, annulment or an heir by someone other than his wife."],
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "C-871",
+      "title": "The school at Auxerre",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 871, "season": "spring" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "The school at Saint-Germain in Auxerre is becoming something remarkable, my lord. Heiric now, and his pupils after him. They are teaching the old authors properly, grammar and reckoning and the stars. Ninety miles from your gate. If there were a boy in this household worth educating, that is where he should go."
+        }
+      ],
+      "hooks": [
+        { "id": "send_a_boy", "trigger": "The lord sends a son, ward or promising servant to the school at Auxerre.", "effects": { "cost": { "denarii": 24 }, "flags": { "school_auxerre": true, "favor_church": "+1", "scholar_contact": "+1" }, "record": "The lord sent a boy of the household to the school at Saint-Germain of Auxerre." } }
+      ],
+      "hookWindow": 40,
+      "links": { "arc": "church", "momentum": 90 }
+    },
+    {
+      "id": "910-E1",
+      "title": "Cluny",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 910, "season": "autumn" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, Duke William of Aquitaine has founded an abbey at Cluny, in the Mâconnais. Seventy-five miles, no more. And he has done something I have never heard of: he has given it away entirely. Not to a bishop, not to his own heirs, not to the king. The charter says the monks shall elect their own abbot for ever and answer to no one but Rome, and that his own family may never take it back. He is the grandson of Duke Bernard, my lord. The same family whose man you were, all those years ago."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "I do not know what will come of it. But a house that no lord can touch, choosing its own abbots, answering only to the apostle's seat… if that takes root, it will change everything about how the Church sits in the world."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "witness_cluny",
+          "trigger": "The lord asks to stand witness to the charter, or sends a gift as a benefactor.",
+          "requires": "favor_church >= 3 or tournus_friend or favor_septimania >= 2 or oath_kept_lord",
+          "effects": { "cost": { "denarii": 30 }, "flags": { "cluny_witness": true, "favor_church": "+1" }, "renown": "small", "record": "The lord's name went on the foundation of Cluny." }
+        }
+      ],
+      "hookWindow": 4,
+      "links": { "arc": "church", "momentum": 70 },
+      "record": "William of Aquitaine founded Cluny and gave it to no one but Rome."
+    }
+  ]
 }

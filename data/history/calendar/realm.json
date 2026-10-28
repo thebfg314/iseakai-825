@@ -29,7 +29,7 @@
     { "from": 866, "season": "autumn", "name": "Bernard Plantapilosa", "note": "Reconciled to the king." },
     { "from": 872, "season": "spring", "name": "Bernard le Veau", "note": "First of several short-term counts." },
     { "from": 876, "season": "spring", "name": "Bernard of Gothia", "note": "Rebels in 877–878." },
-    { "from": 879, "season": "spring", "name": "Boso", "announcedBy": "879-K2", "note": "Proclaims himself king in autumn 879." },
-    { "from": 880, "season": "summer", "name": "Richard the Justiciar", "announcedBy": "880-K1", "note": "To the end of the game." }
+    { "from": 878, "season": "autumn", "name": "Boso", "announcedBy": "878-K1", "note": "Count of Autun from 878; proclaims himself king in autumn 879." },
+    { "from": 880, "season": "spring", "name": "Richard the Justiciar", "announcedBy": "880-K1", "note": "To the end of the game." }
   ]
 }

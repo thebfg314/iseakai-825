@@ -1,4 +1,231 @@
 ﻿{
   "arc": "8",
-  "events": []
+  "events": [
+    {
+      "id": "882-K2",
+      "title": "Louis III dies",
+      "arc": 8,
+      "type": "news",
+      "fires": { "year": 882, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "And the other king is dead, my lord. Louis, the elder of the two brothers. Not in battle, not of a fever: he was riding at Saint-Denis, chasing after some girl for sport, laughing, and rode at a low doorway without ducking. Struck his head on the lintel. Nineteen years old. So our Carloman has the whole of it now, north and south, and he is eighteen."
+        }
+      ],
+      "links": { "arc": "8", "momentum": 80 },
+      "record": "Louis III died at Saint-Denis; Carloman held the whole kingdom."
+    },
+    {
+      "id": "884-K1",
+      "title": "Carloman dies",
+      "arc": 8,
+      "type": "news",
+      "fires": { "year": 884, "season": "winter" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, our king is dead. Carloman, out hunting boar in the forest near Les Andelys, and the beast had him. Eighteen years old, my lord. Two brothers, two kings, dead in two years, neither of them in a war. There's talk it was no boar at all but a servant's blow that went wrong and the hunt was the story they agreed on. Whichever it was, the boy is dead."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "The bishops have ordered the offices for the dead in every church, my lord. A boy of eighteen. I will say the Mass on Sunday and the people will come, because they always come for a king, even one they never saw."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "And now we count what's left of the old emperor's line in this kingdom. There's a child at Laon, Louis the Stammerer's youngest, born after his father died. Five years old. That is all. Five years old, with Northmen on every river."
+        }
+      ],
+      "knows": ["The child at Laon is the future Charles the Simple.", "A lord who has been collecting royal favour has nobody left to collect it from; the great men now decide."],
+      "links": { "arc": "8", "momentum": 80 },
+      "record": "Carloman died hunting; a child of five was all that was left of the line in the west.",
+      "notes": "Ermenald's block is engine-written ('Ermenald for the funeral')."
+    },
+    {
+      "id": "885-K1",
+      "title": "An emperor sent for",
+      "arc": 8,
+      "type": "news",
+      "fires": { "year": 885, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the great men have sent for Charles the Fat to come and be king over us. The emperor, Louis of Bavaria's son, the one who holds Italy and the east. They would not have a child of five, so they have taken a grown man from another kingdom instead. Do you see what has happened? Charlemagne's whole empire is in one pair of hands again, for the first time in forty years, and nobody fought a battle for it. They simply ran out of kings and sent for one."
+        }
+      ],
+      "links": { "arc": "8", "momentum": 75 },
+      "record": "The great men sent for Charles the Fat; the empire was in one pair of hands again."
+    },
+    {
+      "id": "887-K2",
+      "title": "The emperor deposed",
+      "arc": 8,
+      "type": "news",
+      "fires": { "year": 887, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor is finished. His own nephew Arnulf came against him out of the east, and when it came to it not a man would fight for him. He gave it up without a battle and asked only to be allowed to live somewhere quietly. They say he is sick and failing. A year and a half ago he had everything Charlemagne had, and he bought off the Northmen with our country as the price, and now nobody will draw a sword for him."
+        },
+        {
+          "speaker": "steward",
+          "frame": "weeks later",
+          "text": "He is dead. Six weeks, my lord, from emperor of the whole world to a corpse in a borrowed hall."
+        },
+        {
+          "speaker": "steward",
+          "when": "objected_886",
+          "text": "You said at Paris that paying them would be the end of him, my lord. Men who were there are saying so now, and saying who said it first."
+        },
+        {
+          "speaker": "steward",
+          "when": "rank >= 3 and renown >= 400",
+          "text": "And there is no king, my lord. There is a child at Laon and there is whoever the great men will follow, and your name is one of the names being said. Odo of Paris is another. If ever a crown went by reputation alone, it is this winter."
+        }
+      ],
+      "knows": [
+        "The great men will meet in February; Odo of Paris is the obvious choice, on the fame of the siege.",
+        "What the electors weigh: renown in war, a deed like Paris, rank of count or above, the bishops' backing, a kingmaker's support, and no taint of a sold oath."
+      ],
+      "outcomes": {
+        "momentum": 80,
+        "canChange": "The one moment the crown goes by reputation alone. A count or above with renown near the King threshold, a deed comparable to the defence of Paris (fought there, or objected to the payment), church backing, Richard's support, and no taint (lothair_tainted, perjury_833, bribed_833) can be elected instead of Odo.",
+        "windowSeasons": 1,
+        "options": [
+          { "id": "odo", "label": "Odo of Paris is elected", "default": true, "effects": { "flags": { "king_888": "odo", "odo_king": true } } },
+          {
+            "id": "self",
+            "label": "The lord of Fontenay is elected king",
+            "requires": "rank >= 3 and renown >= 800 and (objected_886 or march_886 == 'commanded') and not lothair_tainted and not perjury_833 and not bribed_833",
+            "effects": { "flags": { "king_888": "self", "candidate_888": true }, "renown": "large", "record": "The great men elected the lord of Fontenay king in February 888." }
+          }
+        ]
+      },
+      "links": { "arc": "8", "momentum": 70 },
+      "record": "Charles the Fat was deposed in November 887 and died within weeks.",
+      "notes": "The last two blocks are engine-written from 'The open throne'. The election is judged here so 888-K2 can tell it; the self option is gated on rank for the promotion pass."
+    },
+    {
+      "id": "888-K2",
+      "title": "A king who is not a Carolingian",
+      "arc": 8,
+      "type": "news",
+      "fires": { "year": 888, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, they have made Odo king. Count Odo of Paris, who held the city against the Northmen while the emperor dithered on the hill. Not a Carolingian. Not a drop of Charlemagne in him. The great men met and chose the man who had actually fought, and the bishops crowned him."
+        },
+        {
+          "speaker": "steward",
+          "text": "And it is not only here. There is a king in the east, a king in Italy, a king in Upper Burgundy, a king in Provence, and every one of them put up by the men of his own country. The empire is gone, my lord. Not divided this time. Gone. What's left is kingdoms, and kingdoms go to whoever the great men will follow."
+        }
+      ],
+      "variants": [
+        {
+          "when": "king_888 == 'self'",
+          "replace": 0,
+          "text": "They have made you king, my lord. The great men met and chose you, and the bishops have crowned you. Odo of Paris is not king; he has gone back to Paris with his brother and his grievance, and he is not a man who forgets. I would not sleep easy, my lord. But I would not trade places with anyone in Francia tonight either."
+        }
+      ],
+      "knows": ["Richard, the lord's own count, was one of the great men whose support decided it."],
+      "links": { "arc": "8", "momentum": 80, "keystone": "K8" },
+      "record": "In February 888 the great men elected Odo king; the empire was gone."
+    },
+    {
+      "id": "893-K1",
+      "title": "A second king crowned",
+      "arc": 8,
+      "type": "choice",
+      "fires": { "year": 893, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "when": "not king_888 == 'self'",
+          "text": "My lord, there are two kings in this kingdom now. A party of the great men have taken Louis the Stammerer's boy, Charles, the one who was five when Carloman died, and had him crowned at Reims. He is fourteen. They say Odo is a usurper and the blood of Charlemagne should rule. Count Richard is in it up to his neck; he was part of the business last year that drew Odo away south so they could do it. So we may be asked to choose between a king who earned his crown and a boy who was born to one."
+        },
+        {
+          "speaker": "steward",
+          "when": "king_888 == 'self'",
+          "text": "My lord, they have crowned the boy against you. The party that would have crowned Charles against Odo has crowned him at Reims against the lord of Fontenay instead, and they say the blood of Charlemagne should rule. Everything now turns on Count Richard: whether he backs the king he helped make, or the boy. That is the question of the rest of your life."
+        },
+        {
+          "speaker": "steward",
+          "when": "richard_vassal and not king_888 == 'self'",
+          "frame": "after",
+          "text": "For us it is simpler than for most, my lord. We are Richard's men, and Richard is for Charles. Campaigning and escort duty rather than great battles, I expect."
+        }
+      ],
+      "choices": {
+        "prompt": "Odo, or the boy Charles?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "charles", "label": "Follow Richard: for Charles the Simple", "default": true, "requires": "not king_888 == 'self'", "effects": { "flags": { "side_893": "charles" } } },
+          { "id": "odo", "label": "Back Odo, against the region", "requires": "rank >= 3 and not king_888 == 'self'", "effects": { "flags": { "side_893": "odo", "count_opinion": "-3" }, "record": "The lord backed King Odo against Charles the Simple and against Richard." } },
+          { "id": "hold_crown", "label": "Hold the crown against the boy's party", "default": true, "requires": "king_888 == 'self'", "effects": { "flags": { "side_893": "self" } } }
+        ]
+      },
+      "links": { "arc": "8", "momentum": 60 },
+      "notes": "The second and third blocks are engine-written from 'For the player'."
+    },
+    {
+      "id": "897-K1",
+      "title": "The kings come to terms",
+      "arc": 8,
+      "type": "live",
+      "fires": { "year": 897, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "stages": [
+        {
+          "id": "terms",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "when": "not king_888 == 'self'",
+              "text": "They have made peace, my lord. Odo has acknowledged the boy as his heir and given him land in the north to hold meanwhile. Five years of two kings and it ends in an agreement between tired men."
+            },
+            {
+              "speaker": "steward",
+              "when": "king_888 == 'self'",
+              "text": "Terms, my lord. The boy's party will have him named your heir, or they will not stop."
+            }
+          ]
+        },
+        {
+          "id": "odo_dead",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "when": "not king_888 == 'self'",
+              "text": "And now Odo is dead, the first of January, and young Charles has the whole of it without another blow struck. He is nineteen. Count Richard has made his peace with him, and the king has let him put all his counties into one march. We shall see what sort of king the boy makes."
+            },
+            {
+              "speaker": "steward",
+              "when": "king_888 == 'self'",
+              "text": "The boy is the only Carolingian left standing, and you are not young. Whatever is settled now is what outlives you."
+            }
+          ],
+          "exitEffects": { "record": "Odo died on 1 January 898; Charles the Simple had the whole kingdom." }
+        }
+      ],
+      "links": { "arc": "8", "momentum": 70 }
+    }
+  ]
 }

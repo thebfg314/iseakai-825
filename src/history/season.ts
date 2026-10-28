@@ -5,6 +5,7 @@ import { historyContent } from "./load";
 import { tickHungerDebuffs, tickPrices } from "./prices";
 import { tickRealm } from "./realm";
 import { tickRelics } from "./relics";
+import { tickRichard } from "./richard";
 import { dueEvents, type SeasonAt } from "./scheduler";
 import { runSupplyCheck } from "./supply";
 import { tickTributes } from "./tributes";
@@ -72,6 +73,9 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   out.beats.push(...vikings.beats);
   out.effects.push(...vikings.lines);
   if (vikings.raid) out.refereeLines.push("History: Northmen are coming for the villa this season; the call to arms is open and the player must answer or refuse it.");
+  const richard = tickRichard(state, incoming);
+  out.beats.push(...richard.beats);
+  out.effects.push(...richard.lines);
 
   const due = dueEvents(state, incoming, content);
   for (const id of due.dropped) if (!state.history.dropped.includes(id)) state.history.dropped.push(id);

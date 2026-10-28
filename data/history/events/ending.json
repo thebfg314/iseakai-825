@@ -1,4 +1,31 @@
 ﻿{
   "arc": "ending",
-  "events": []
+  "events": [
+    {
+      "id": "911-F1",
+      "title": "Chartres",
+      "arc": "ending",
+      "type": "news",
+      "fires": { "year": 911, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the Northmen are beaten at Chartres. Rollo had the city under siege and our lords came down on him, the marquis and the bishop of Auxerre and the men of Neustria and Poitou together, and broke him. And now the king has made terms: Rollo is to have the land about Rouen and be baptised, and hold it of the king like any other lord. After seventy years of it, my lord. They are to be given a country and made Christians, and that is how it ends."
+        }
+      ],
+      "variants": [
+        {
+          "when": "duke_marquis",
+          "replace": 0,
+          "text": "My lord, the Northmen are beaten at Chartres. Rollo had the city under siege and your men came down on him with the bishop of Auxerre and the men of Neustria and Poitou together, and broke him. And now the king has made terms: Rollo is to have the land about Rouen and be baptised, and hold it of the king like any other lord. After seventy years of it, my lord. They are to be given a country and made Christians, and that is how it ends."
+        }
+      ],
+      "links": { "arc": "3", "momentum": 60 },
+      "record": "Rollo was beaten at Chartres in 911 and given the land about Rouen.",
+      "notes": "News, not a finale: the player is about 102 and sends men at most. The variant is engine-written for a player who holds the march."
+    }
+  ]
 }

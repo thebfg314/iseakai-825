@@ -319,6 +319,8 @@ export const HistoryStateSchema = z.object({
     })
     .default({}),
   duties: z.object({ lastRollTurn: z.number().int().nullable().default(null), favour: z.number().int().default(0) }).default({}),
+  /** The Duke track: opportunities Richard has taken because the lord did not (richard.ts). */
+  richard: z.object({ taken: z.array(z.string()).default([]) }).default({}),
   ladder: z
     .object({
       stage: z.enum(["none", "warning", "stripped", "excommunicated", "attempt", "quest"]).default("none"),

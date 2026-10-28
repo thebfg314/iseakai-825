@@ -859,6 +859,18 @@
           "id": "attend_wedding",
           "trigger": "The lord attends Richard's wedding with a fitting gift.",
           "effects": { "cost": { "denarii": 20 }, "flags": { "rudolph_wedding": true, "count_opinion": "+1" }, "land": { "visibility": "+3" } }
+        },
+        {
+          "id": "back_rudolph",
+          "trigger": "Duke track: the lord himself comes out for Rudolph as king of Upper Burgundy.",
+          "requires": "rank >= 4",
+          "effects": { "flags": { "duke_backed_rudolph": true }, "renown": "small", "record": "The lord backed Rudolph as king of Upper Burgundy." }
+        },
+        {
+          "id": "marry_adelaide",
+          "trigger": "Duke track: the lord marries into Rudolph's house (Adelaide, or a daughter to his kin).",
+          "requires": "rank >= 4 and duke_backed_rudolph",
+          "effects": { "cost": { "denarii": 60 }, "flags": { "duke_married_adelaide": true }, "renown": "moderate", "record": "The lord's house was joined to the Welf kings of Upper Burgundy." }
         }
       ],
       "links": { "arc": "3", "momentum": 75 },
@@ -884,6 +896,14 @@
         }
       ],
       "onFire": [{ "when": "boso_sympathy", "flags": { "count_opinion": "+1" } }],
+      "hooks": [
+        {
+          "id": "support_louis",
+          "trigger": "Duke track: the lord stands behind Louis's crowning at Valence with men or silver.",
+          "requires": "rank >= 4",
+          "effects": { "cost": { "denarii": 40 }, "flags": { "duke_louis_provence": true }, "renown": "small", "record": "The lord stood behind Louis of Provence's crowning." }
+        }
+      ],
       "links": { "arc": "3", "momentum": 75 },
       "notes": "Engine-written from the middle-years table (890) and 887-K1's hook."
     },
@@ -907,6 +927,12 @@
           "id": "carry_messages",
           "trigger": "The lord agrees to carry or house the plotters' messages for Richard.",
           "effects": { "flags": { "carried_messages_892": true, "count_opinion": "+2" }, "record": "The lord carried messages for Richard's party in the plot to crown Charles the Simple." }
+        },
+        {
+          "id": "join_plot",
+          "trigger": "Duke track: the lord joins the plot as a principal, lending his name and men to draw Odo south.",
+          "requires": "rank >= 4",
+          "effects": { "flags": { "duke_joined_plot": true, "charles_favor": "+2" }, "record": "The lord was a principal in the plot that crowned Charles the Simple." }
         }
       ],
       "links": { "arc": "3", "momentum": 65 },
@@ -939,6 +965,15 @@
           }
         ]
       },
+      "hooks": [
+        {
+          "id": "shelter_charles",
+          "trigger": "Duke track: the lord takes the young king under his own roof against the East Frankish troops.",
+          "requires": "rank >= 4",
+          "effects": { "flags": { "duke_sheltered_charles": true, "charles_favor": "+3" }, "renown": "moderate", "record": "The lord sheltered Charles the Simple against the East Franks." }
+        }
+      ],
+      "hookWindow": 3,
       "links": { "arc": "3", "momentum": 65 },
       "notes": "Engine-written from the middle-years table (894)."
     },
@@ -974,6 +1009,15 @@
           }
         ]
       },
+      "hooks": [
+        {
+          "id": "take_sens",
+          "trigger": "Duke track: the lord makes the campaign his own and takes Sens for himself.",
+          "requires": "rank >= 4 and men_under_arms >= 20",
+          "effects": { "flags": { "duke_took_sens": true }, "renown": "moderate", "record": "The lord took Sens by force." }
+        }
+      ],
+      "hookWindow": 5,
       "links": { "arc": "3", "momentum": 65 },
       "notes": "Engine-written from the middle-years table (894–895)."
     },
@@ -1011,9 +1055,18 @@
           "text": "My lord, Sens has fallen to Count Richard. Autun, Auxerre, Nevers, Avallon, and now Sens and the road north: there is no one between here and the Seine who does not answer to him one way or another. Our count is becoming something larger than a count, and nobody has a word for it yet."
         }
       ],
+      "hooks": [
+        {
+          "id": "lay_abbacies",
+          "trigger": "Duke track: the lord takes the lay abbacies of Sainte-Colombe at Sens and Saint-Germain at Auxerre.",
+          "requires": "rank >= 4",
+          "effects": { "flags": { "duke_lay_abbacies": true, "favor_church": "-1" }, "renown": "small", "record": "The lord took the lay abbacies of Sainte-Colombe and Saint-Germain." }
+        }
+      ],
+      "hookWindow": 10,
       "links": { "arc": "3", "momentum": 65 },
       "record": "Richard took Sens by force.",
-      "notes": "Engine-written close to the Sens campaign."
+      "notes": "Engine-written close to the Sens campaign. The lay-abbacies hook stands in for the 890s menu item; its window runs to the 897 deadline in duke-track.json."
     },
     {
       "id": "898-V1",

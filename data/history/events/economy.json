@@ -1,4 +1,4 @@
-{
+﻿{
   "arc": "economy",
   "events": [
     {
@@ -148,6 +148,87 @@
       },
       "links": { "arc": "3", "momentum": 80 },
       "notes": "The third block is engine-written to fill the amounts; the loan returns through tributes.ts. The cost of paying the tenants' share is folded into the lord's rent loss (the scripts: 'more out of your purse')."
+    },
+    {
+      "id": "M-874",
+      "title": "New mints",
+      "arc": "economy",
+      "type": "news",
+      "fires": { "year": 874, "season": "autumn" },
+      "order": 2,
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The king has let a dozen new mints open since the recoinage, my lord. They needed the silver turned into pennies faster than ten towns could do it, what with the Northmen to pay."
+        }
+      ],
+      "links": { "arc": "economy", "momentum": 80 },
+      "notes": "Minting note, 870s."
+    },
+    {
+      "id": "M-891",
+      "title": "A moneychanger at Autun",
+      "arc": "economy",
+      "type": "news",
+      "fires": { "year": 891, "season": "summer" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "There's a moneychanger set up at the Autun market now, my lord, weighing coin and taking his cut. Pennies from across the Saône go light here, and ours go light there. Same silver, different names on it."
+        }
+      ],
+      "links": { "arc": "economy", "momentum": 80 },
+      "notes": "Minting note, 890s."
+    },
+    {
+      "id": "M-896",
+      "title": "A mint of your own",
+      "arc": "economy",
+      "type": "news",
+      "fires": { "year": 896, "season": "spring" },
+      "requires": "rank >= 3",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, I'll say what others are thinking. Half the counts between here and the sea are striking their own pennies now, some by the king's leave and some by nobody's. We have the silver passing through, we have the market, and Chalon has had a mint since the old king's edict. It would pay well. And there is no one left in this kingdom with the strength to tell you no."
+        }
+      ],
+      "knows": [
+        "Granted by the king: ask with service or silver behind it; easiest under Odo or Charles the Simple. No risk once granted.",
+        "Taken without permission: a usurpation of a royal right; a strong king or a stronger neighbour (Richard) can use it later.",
+        "Through a bishop or abbey: safe, slower, the church keeps the prestige and shares the profit."
+      ],
+      "hooks": [
+        { "id": "ask_king", "trigger": "The lord petitions the king for the right to strike coin, with service or silver behind the request.", "effects": { "cost": { "denarii": 120 }, "flags": { "mint": "royal" }, "renown": "small", "record": "The king granted the lord the right to strike coin." } },
+        { "id": "strike_coin", "trigger": "The lord simply has coin struck in his own name.", "effects": { "cost": { "denarii": 60 }, "flags": { "mint": "usurped", "richard_standing": "+1" }, "renown": "small", "record": "The lord began striking coin in his own name without the king's leave." } },
+        { "id": "church_route", "trigger": "The lord backs a church house's petition for a mint and shares the profit.", "effects": { "cost": { "denarii": 60 }, "flags": { "mint": "church", "favor_church": "+1" }, "record": "The lord backed a church petition for a mint and shares its profit." } }
+      ],
+      "hookWindow": 40,
+      "links": { "arc": "economy", "momentum": 80 },
+      "notes": "Count-rank only; the mint as a business (its income) belongs to the promotion pass. Costs are engine-chosen placeholders."
+    },
+    {
+      "id": "M-903",
+      "title": "A penny is a penny",
+      "arc": "economy",
+      "type": "news",
+      "fires": { "year": 903, "season": "summer" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Half the pennies in the district have a bishop's name on them now, or a count's. Nobody minds much. A penny is a penny if the weight is right, and a near lord stands behind it better than a far king."
+        }
+      ],
+      "links": { "arc": "economy", "momentum": 80 },
+      "notes": "Minting note, 900s."
     }
   ]
 }

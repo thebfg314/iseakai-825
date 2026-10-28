@@ -157,7 +157,7 @@ describe("Arc 2 content", () => {
     expect(judge(state, "844-F1", "let_slip").ok).toBe(true);
     expect(state.history.flags.bernard_saved).toBe(true);
     const summer844 = clock.next();
-    expect(summer844.fired).toEqual(["844-01S"]);
+    expect(summer844.fired).toEqual(["844-01S", "C-844"]);
     expect(state.history.dropped).toContain("844-01");
 
     const dead = fresh();
@@ -165,7 +165,7 @@ describe("Arc 2 content", () => {
     c2.to(844, "spring");
     const s = c2.next();
     expect(dead.history.outcomes["844-F1"]).toBe("executed");
-    expect(s.fired).toEqual(["844-01"]);
+    expect(s.fired).toEqual(["844-01", "C-844"]);
     expect(texts(s).some((x) => x.startsWith("My lord, Bernard is dead."))).toBe(true);
     expect(texts(s).some((x) => x.includes("Dhuoda"))).toBe(true); // oath_kept_lord
     expect(hook(dead, "844-01", "befriend_dhuoda").ok).toBe(true);

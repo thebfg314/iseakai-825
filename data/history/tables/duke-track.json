@@ -1,0 +1,118 @@
+{
+  "notes": "Scripts: 'The Duke track: the player in Richard's place (879–911)'. The player holds Autun only at Duke rank (promotion pass), so every opportunity is gated rank >= 4 in its event's hook. Anything the player does not take by the deadline, Richard takes: richard.ts raises richard_standing and posts Aldric's line. Compulsory beats are already dated events (880-K1, 880-K2/B1, 888-V1, 898-V1, 911-F1).",
+  "compulsory": [
+    { "years": "879–880", "beat": "Boso's rising forces a choice, then a seizure: hold the county for the king against a rebel who is the region's own great man", "events": ["879-K2", "880-K1"] },
+    { "years": "880–882", "beat": "The royal campaign against Boso: the Saône, Mâcon, Lyon, the siege of Vienne", "events": ["880-K2", "880-B1", "880-K3", "880-B2", "882-K1"] },
+    { "years": "888", "beat": "Vikings sack Bèze and must be met (Saint-Florentin)", "events": ["888-V1", "888-B1"] },
+    { "years": "898", "beat": "Vikings winter between Tonnerre and Montbard and must be driven out (Argenteuil-sur-Armançon)", "events": ["898-V1", "898-B1"] },
+    { "years": "911", "beat": "Rollo's army attacks Auxerre; join the coalition at Chartres", "events": ["911-F1"] }
+  ],
+  "opportunities": [
+    {
+      "id": "back_rudolph",
+      "year": 888,
+      "deadline": { "year": 889, "season": "autumn" },
+      "playerFlag": "duke_backed_rudolph",
+      "label": "Back Rudolph as king of Upper Burgundy",
+      "buys": "A friendly kingdom on the eastern flank",
+      "ifRichard": "Rudolph is Richard's ally, and the Jura frontier is not the player's to call on",
+      "richardLine": "Count Richard has come out for Rudolph as king in Upper Burgundy, my lord. The Jura is his friend's now, not ours."
+    },
+    {
+      "id": "marry_adelaide",
+      "year": 888,
+      "deadline": { "year": 889, "season": "autumn" },
+      "playerFlag": "duke_married_adelaide",
+      "label": "Marry into that house (Adelaide, Rudolph's sister)",
+      "buys": "The alliance made permanent; an heir with royal kin",
+      "ifRichard": "Richard marries her; his house gains the blood and the claim",
+      "richardLine": "Count Richard has married Adelaide, King Rudolph's sister, my lord. The blood of a royal house in his children now; that is a claim his heirs will not forget."
+    },
+    {
+      "id": "louis_provence",
+      "year": 890,
+      "deadline": { "year": 890, "season": "winter" },
+      "playerFlag": "duke_louis_provence",
+      "label": "Support Boso's son Louis as king of Provence",
+      "buys": "Provence as a client; the Bosonid feud closed",
+      "ifRichard": "Richard's nephew owes Richard everything; the whole Rhône becomes his sphere",
+      "richardLine": "It was Richard who carried the boy Louis to his crowning at Valence, my lord. His nephew owes him everything; the whole Rhône is his to speak for now."
+    },
+    {
+      "id": "joined_plot",
+      "year": 892,
+      "deadline": { "year": 892, "season": "winter" },
+      "playerFlag": "duke_joined_plot",
+      "label": "Join the plot to draw King Odo away so Charles the Simple can be crowned",
+      "buys": "A king who owes you his crown",
+      "ifRichard": "The king owes Richard instead, and will rule in his favour for thirty years",
+      "richardLine": "The business that drew Odo south was Richard's, my lord, and when the boy is crowned it is Richard he will owe for it."
+    },
+    {
+      "id": "sheltered_charles",
+      "year": 894,
+      "deadline": { "year": 894, "season": "winter" },
+      "playerFlag": "duke_sheltered_charles",
+      "label": "Shelter Charles the Simple against East Frankish troops",
+      "buys": "Protector of the king: the strongest card in the west",
+      "ifRichard": "Richard is the king's protector",
+      "richardLine": "Count Richard has taken young Charles under his own roof while the Germans are in the land, my lord. Protector of the king. There is no stronger card in the west, and he holds it."
+    },
+    {
+      "id": "took_sens",
+      "year": 895,
+      "deadline": { "year": 895, "season": "winter" },
+      "playerFlag": "duke_took_sens",
+      "label": "Take Sens by force",
+      "buys": "A great city, the road north, and its abbey",
+      "ifRichard": "Richard holds Sens and the northern approaches",
+      "richardLine": "Richard holds Sens, my lord, and with it the road north and the abbey of Sainte-Colombe. The northern approaches are his."
+    },
+    {
+      "id": "lay_abbacies",
+      "year": 896,
+      "deadline": { "year": 897, "season": "winter" },
+      "playerFlag": "duke_lay_abbacies",
+      "label": "Take the lay abbacies (Sainte-Colombe at Sens, Saint-Germain at Auxerre)",
+      "buys": "Church wealth and influence without taking orders",
+      "ifRichard": "Richard's revenues and ecclesiastical weight grow",
+      "richardLine": "Richard has made himself lay abbot of Saint-Germain at Auxerre and Sainte-Colombe both, my lord. The church's wealth without the tonsure. His purse is the deeper for it, and the bishops listen to him."
+    },
+    {
+      "id": "marquis",
+      "year": 898,
+      "deadline": { "year": 898, "season": "winter" },
+      "playerFlag": "duke_marquis",
+      "label": "Have the king merge your counties into one march",
+      "buys": "The title: marquis, and a principality in law",
+      "ifRichard": "Richard becomes marquis; the player remains a count among counts",
+      "richardLine": "The king has let Richard put all his counties into one march, my lord. Marquis, they call him now. A principality in law, and we a county among counties."
+    },
+    {
+      "id": "assembly",
+      "year": 901,
+      "deadline": { "year": 901, "season": "winter" },
+      "playerFlag": "duke_assembly",
+      "label": "Hold your own assembly and judge between other lords",
+      "buys": "Sovereignty in practice: the moment the duchy is born",
+      "ifRichard": "Richard judges, and the region looks to him",
+      "richardLine": "Richard held his own assembly this year and judged between counts as a king would, my lord. Nobody went to the king about it. The region looks to him now."
+    }
+  ],
+  "openThrone": {
+    "notes": "887-K2 outcomes. What the electors weigh.",
+    "factors": [
+      "Renown in war, near the King threshold (800)",
+      "A deed like Paris: commanded the march of 886, or objected to the payment",
+      "Rank of count or above",
+      "The bishops' backing (favor_church)",
+      "A kingmaker's support (Richard, or Richard's allies on the Duke track)",
+      "No taint of a sold oath (lothair_tainted, perjury_833, bribed_833)"
+    ]
+  },
+  "scoring": [
+    { "min": 7, "result": "The first duke of Burgundy, with Richard a defeated or subordinate rival." },
+    { "min": 4, "result": "A great count with a strong house, in a region split between two powers." },
+    { "min": 0, "result": "Autun and nothing more; Richard builds the duchy around the lord." }
+  ]
+}

@@ -6,6 +6,7 @@ import { historyContent } from "./load";
 import { pricesLine } from "./prices";
 import { realmLine } from "./realm";
 import { relicsLine } from "./relics";
+import { richardLine } from "./richard";
 import { activeEvents } from "./scheduler";
 import { vikingLine } from "./vikings";
 import type { HistoryEvent, HistorySpeaker } from "./schema";
@@ -106,6 +107,8 @@ export function historyPromptBlock(state: WorldState, speaker: HistorySpeaker): 
   if (vikings) lines.push(vikings);
   const relics = relicsLine(state);
   if (relics) lines.push(relics);
+  const richard = richardLine(state);
+  if (richard && speaker === "steward") lines.push(richard);
   if (state.history.away) lines.push(`The lord is away: ${state.history.away.reason}. Speak as his clerk at his side.`);
   if (active.length) {
     lines.push("Active events (recent on your channel, or still open):");

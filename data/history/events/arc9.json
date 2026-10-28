@@ -1,4 +1,241 @@
 ﻿{
   "arc": "9",
-  "events": []
+  "events": [
+    {
+      "id": "838-S1",
+      "title": "Raiders out of the sea",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 838, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "One more thing from the south, my lord. Raiders out of the sea have burned around Marseille and Arles again. The Rhône trade suffers; southern goods are dearer this year."
+        }
+      ],
+      "onFire": { "modifier": { "target": "market_price", "op": "multiply", "value": 1.05, "seasonsRemaining": 2, "source": "Saracen raids on the Rhône trade" } },
+      "links": { "arc": "9", "momentum": 90 },
+      "notes": "The scripts' table row (c. 838–842) given Aldric's voice; engine-adapted."
+    },
+    {
+      "id": "846-S1",
+      "title": "Rome sacked",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 846, "season": "autumn" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "emotion": "appalled",
+          "text": "My lord, they have sacked Rome. Not the city within the walls, but the churches outside it, and Saint Peter's among them. They stripped the altar over the apostle's own grave. I have no words for it. The emperor Lothair is building a wall around it now, they say, which is a fine thing to do afterwards."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 90 },
+      "record": "Saracens sacked the churches outside Rome, Saint Peter's among them."
+    },
+    {
+      "id": "869-S1",
+      "title": "The archbishop of Arles",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 869, "season": "winter" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the archbishop of Arles was taken by raiders in the Camargue and died waiting for his ransom to be gathered. A great man of the church, and nobody could reach him in time."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 90 },
+      "notes": "Table row given Aldric's voice; engine-adapted."
+    },
+    {
+      "id": "887-S1",
+      "title": "Fraxinetum",
+      "arc": 9,
+      "type": "hazard",
+      "fires": { "year": 887, "season": "summer" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, a band of Saracens has fortified itself at a place called Fraxinetum, on the coast in Provence, in the hills above the sea. Not a raid this time: a fortress, held and garrisoned. They are already taking travellers on the roads and in the passes. Anyone of ours going south to Lyon, or over the Alps to Rome, had best go in company and armed."
+        }
+      ],
+      "onFire": { "flags": { "fraxinetum": true }, "modifier": { "target": "market_price", "kind": "permanent", "op": "multiply", "value": 1.03, "source": "the Saracens at Fraxinetum on the southern roads" } },
+      "knows": [
+        "Travel to Italy or Rome now risks capture and ransom; escorts cost more.",
+        "Trade down the Saône–Rhône corridor: southern goods dearer; some seasons nothing comes through.",
+        "Ransom demands for pilgrims and churchmen reach Ermenald; the lord may be asked to contribute.",
+        "Fraxinetum will not be cleared in the lord's lifetime."
+      ],
+      "hooks": [
+        {
+          "id": "escort_travellers",
+          "trigger": "The lord sends men to escort merchants or pilgrims through the passes.",
+          "requires": "men_under_arms >= 5",
+          "effects": { "flags": { "escorted_pilgrims": true }, "renown": "small" }
+        },
+        {
+          "id": "ransom_contribution",
+          "trigger": "The lord contributes to a ransom for a captured pilgrim or churchman.",
+          "effects": { "cost": { "denarii": 20 }, "flags": { "favor_church": "+1" } }
+        }
+      ],
+      "hookWindow": 100,
+      "links": { "arc": "9", "momentum": 65 },
+      "notes": "A standing hazard: the hooks stay open for the rest of the game; the price effect is permanent."
+    },
+    {
+      "id": "862-M1",
+      "title": "A strange new name",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 862, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "A strange new name in travellers' tales, my lord: horsemen out of the east, called Hungarians, raiding the eastern Frankish lands. Nobody here knows anything about them."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row given Aldric's voice; engine-adapted."
+    },
+    {
+      "id": "899-M1",
+      "title": "The Hungarians in Italy",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 899, "season": "winter" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The Hungarians have come into Italy in force, my lord, and beaten the Italians badly. They fight all from horseback, with bows, and will not close."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row given Aldric's voice; engine-adapted."
+    },
+    {
+      "id": "907-M1",
+      "title": "Pressburg",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 907, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "A Bavarian army destroyed at a place called Pressburg, my lord: the duke dead, bishops dead, the whole host gone. The Hungarians again."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row given Aldric's voice; engine-adapted."
+    },
+    {
+      "id": "910-M1",
+      "title": "Not never",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 910, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "And now the east Franks beaten too, near Augsburg. They are not going to stop at the Rhine, my lord. Not in your lifetime, perhaps. But not never."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 }
+    },
+    {
+      "id": "863-F1",
+      "title": "Letters for the Slavs",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 863, "season": "summer" },
+      "order": 1,
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, two Greek brothers have gone to preach to the Slavs in their own tongue, and have made letters for a language that never had any. The Germans are furious about it."
+        }
+      ],
+      "hooks": [
+        { "id": "knows_more", "trigger": "The lord shows he knows more about this than the men telling him, and says so with care.", "effects": { "flags": { "learned_reputation": "+1", "chaplain_trust": "+1" } } },
+        { "id": "knows_too_much", "trigger": "The lord claims knowledge of distant things no one here could have, carelessly.", "effects": { "flags": { "chaplain_suspicious": true, "sorcery_rumor": "+1" } } }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row given Ermenald's voice; engine-adapted. The two hooks stand for the whole far-horizons table."
+    },
+    {
+      "id": "865-F1",
+      "title": "Two halves of the Church",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 865, "season": "autumn" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, the pope and the patriarch at Constantinople have excommunicated one another. Two halves of the Church calling each other heretics. I do not know what a parish priest is supposed to do with that, so I shall do what I did last week."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row (858–867) given Ermenald's voice; engine-adapted."
+    },
+    {
+      "id": "878-F1",
+      "title": "A great heathen army",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 878, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "From across the sea, my lord: a great heathen army has conquered most of England. One king left, in the marshes, they were saying; and now word that he has beaten them at a place called Edington and the Danish king has been baptised."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row (865–878) given Aldric's voice; engine-adapted."
+    },
+    {
+      "id": "883-F1",
+      "title": "Silk is dear",
+      "arc": 9,
+      "type": "news",
+      "fires": { "year": 883, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Silk is dear and scarce this year, my lord. The merchants say there is a great rebellion at the far end of the world, where silk comes from, and the roads are shut."
+        }
+      ],
+      "links": { "arc": "9", "momentum": 95 },
+      "notes": "Table row (875–884) given Aldric's voice; engine-adapted."
+    }
+  ]
 }

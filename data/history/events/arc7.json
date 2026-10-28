@@ -1,4 +1,471 @@
-﻿{
+{
   "arc": "7",
-  "events": []
+  "events": [
+    {
+      "id": "878-K1",
+      "title": "The great men rebel",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 878, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the new king can't hold his own great men. Bernard of Gothia, who held Autun these last two years, has rebelled, and the pope himself came up to Troyes and excommunicated him for it. His offices are being parcelled out. Autun goes to Boso, Count Richard's elder brother, the one who was old King Charles's brother-in-law. Another new count, my lord. I've lost count of the counts."
+        }
+      ],
+      "knows": ["Boso is a southern lord, rarely here; his officers govern Autun."],
+      "links": { "arc": "7", "momentum": 70 },
+      "record": "Bernard of Gothia rebelled and was excommunicated; Autun passed to Boso."
+    },
+    {
+      "id": "879-K1",
+      "title": "The king dies, and the boys divide the kingdom",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 879, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the king is dead, eighteen months after his father. He was never well. His two sons are to rule between them: Louis in the north, and Carloman, who has Burgundy and Aquitaine. Carloman is our king now, my lord. He is thirteen years old."
+        }
+      ],
+      "knows": ["Two boy kings and no strong hand; everything that follows in Burgundy follows from that."],
+      "links": { "arc": "7", "momentum": 85 },
+      "record": "Louis the Stammerer died; Carloman, thirteen, became king over Burgundy."
+    },
+    {
+      "id": "879-K2",
+      "title": "A king elected at Mantaille",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 879, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the strangest news in sixty years. The bishops and great men of the Rhône country met at Mantaille and elected Count Boso king. Elected him, my lord. Not a Carolingian, not a son of anybody, just a man they chose. He has Vienne, he has Provence, and his wife is the old emperor of Italy's daughter. The Carolingians will not swallow this. Not one of them will."
+        }
+      ],
+      "links": { "arc": "7", "momentum": 55 },
+      "record": "Boso was elected king at Mantaille."
+    },
+    {
+      "id": "879-K2A",
+      "title": "Boso's approach",
+      "arc": 7,
+      "type": "choice",
+      "fires": { "year": 879, "season": "winter" },
+      "order": 1,
+      "requires": "rank < 3",
+      "channel": ["steward"],
+      "form": "envoy",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "And Boso's officers at Autun have been round the lords of the county, my lord, asking us to recognise their count as king. It is a conversation, not an oath: nobody is bound, and no land is at stake, not yet. They will remember what is said, though. So will the royal party."
+        }
+      ],
+      "knows": ["Warmth is remembered by the Bosonid family, which returns to favour in the 890s, and marked against the lord by the royal party; hostility is noted approvingly by the royal party and coldly by Boso's officers for the few months they last."],
+      "choices": {
+        "prompt": "What does the lord say to Boso's officers?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "noncommittal", "label": "Say nothing that binds", "default": true },
+          { "id": "warm", "label": "Recognise him warmly", "effects": { "flags": { "boso_sympathy": true, "charles_disfavor": "+1" }, "record": "The lord recognised Boso as king when his officers asked." } },
+          { "id": "hostile", "label": "Refuse, and say so", "effects": { "flags": { "boso_refused": true, "charles_favor": "+1" }, "record": "The lord refused to recognise Boso as king." } }
+        ]
+      },
+      "links": { "arc": "7", "momentum": 55 },
+      "notes": "Engine-written from 'Boso's approach'. No approach at count rank or above."
+    },
+    {
+      "id": "880-K1",
+      "title": "Richard takes Autun",
+      "arc": 7,
+      "type": "oath",
+      "fires": { "year": 880, "season": "spring" },
+      "channel": ["steward"],
+      "form": "envoy",
+      "script": [
+        {
+          "speaker": "steward",
+          "when": "rank < 3",
+          "text": "My lord, Count Richard has broken with his brother and taken Autun; the gates were opened by men who preferred him, they say, or there was a short sharp fight at the walls, depending on who tells it. King Carloman has confirmed him. And his envoy is in the hall."
+        },
+        {
+          "speaker": "steward",
+          "when": "rank < 3",
+          "frame": "Richard's envoy, at Fontenay",
+          "text": "Count Richard holds Autun for King Carloman. His brother has set himself up as a king against the king, and the county will not follow him into it. The count asks for your oath, and confirms you in what you hold."
+        },
+        {
+          "speaker": "steward",
+          "when": "rank >= 3",
+          "text": "My lord, Count Richard has broken with his brother and taken Autun for King Carloman, and the king has confirmed him. No oath is asked of you: you and he are both the king's officers now, holding from Carloman. That will stay true for a long time, I think, and then one day it will not."
+        }
+      ],
+      "knows": [
+        "Richard does not kill vassals for keeping faith with his brother; he needs these men to accept him.",
+        "Stalling means Richard waits a season and then declares the benefice forfeit; resisting in arms means a siege of the villa."
+      ],
+      "choices": {
+        "prompt": "The oath to Richard.",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "swear",
+            "label": "Swear readily",
+            "default": true,
+            "requires": "rank < 3",
+            "effects": [
+              { "flags": { "richard_vassal": true }, "record": "The lord swore to Count Richard and was confirmed in the villa." },
+              { "when": "swornTo != 'church'", "realm": { "swornTo": "count" }, "land": { "charter": "count" } }
+            ]
+          },
+          {
+            "id": "royal_officer",
+            "label": "No oath: the lord holds from the king, as Richard does",
+            "default": true,
+            "requires": "rank >= 3"
+          },
+          {
+            "id": "terms",
+            "label": "Swear, but ask terms first: confirmation in writing, your men unharmed, no service outside Burgundy for a year",
+            "requires": "rank < 3 and renown >= 30",
+            "effects": [
+              { "flags": { "richard_vassal": true, "richard_respect": "+1" }, "record": "The lord swore to Richard on terms, and Richard respected it." },
+              { "when": "swornTo != 'church'", "realm": { "swornTo": "count" }, "land": { "charter": "count" } }
+            ]
+          },
+          {
+            "id": "reluctant",
+            "label": "Swear reluctantly, keeping faith with the lord you had until he releases you",
+            "requires": "rank < 3",
+            "effects": [
+              { "flags": { "richard_vassal": true, "richard_respect": "+1", "boso_sympathy": true }, "record": "The lord swore to Richard reluctantly, keeping faith with Boso until released; Richard took it well." },
+              { "when": "swornTo != 'church'", "realm": { "swornTo": "count" } }
+            ]
+          },
+          {
+            "id": "stall",
+            "label": "Stall",
+            "requires": "rank < 3",
+            "effects": { "flags": { "stalled_880": true, "count_opinion": "-2" }, "land": { "tenure": "forfeit_claimed" }, "realm": { "swornTo": "none" }, "record": "The lord stalled Richard's envoy; the benefice was declared forfeit." }
+          },
+          {
+            "id": "resist",
+            "label": "Resist in arms",
+            "requires": "rank < 3 and men_under_arms >= 10",
+            "effects": { "flags": { "resisted_880": true, "stalled_880": true, "count_opinion": "-5" }, "land": { "tenure": "forfeit_claimed" }, "realm": { "swornTo": "none" }, "record": "The lord shut his gates against Richard." }
+          }
+        ]
+      },
+      "links": { "arc": "7", "momentum": 45, "keystone": "K6" },
+      "notes": "Blocks one and three engine-written; the envoy's line is the script. Resisting is a siege of the villa in the battle pass; here it forfeits the benefice and is remembered."
+    },
+    {
+      "id": "880-L1",
+      "title": "Richard's writ",
+      "arc": 7,
+      "type": "choice",
+      "fires": { "year": 880, "season": "summer" },
+      "order": 2,
+      "requires": "stalled_880 and tenure == 'forfeit_claimed'",
+      "channel": ["steward"],
+      "form": "spoken",
+      "hookWindow": 20,
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Richard waited the season he said he would wait, and now the benefice is declared forfeit and promised to a man who will swear. The old three doors are what is left: buy it outright at the recorded price, marry into a family with kin at its back, or put it under the Church through Father Ermenald. Or go to Autun and swear after all; he has not shut that door either, which tells you what kind of man he is."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "swear_late",
+          "trigger": "The lord goes to Autun and swears to Richard after all.",
+          "effects": { "flags": { "richard_vassal": true, "count_opinion": "+1" }, "land": { "tenure": "benefice" }, "realm": { "swornTo": "count" }, "record": "The lord swore to Richard late, and kept the villa." }
+        },
+        {
+          "id": "buy_outright",
+          "trigger": "The lord pays the recorded value to buy the villa outright.",
+          "requires": "denarii >= 6500",
+          "effects": { "cost": { "denarii": 6500 }, "land": { "tenure": "owned" }, "flags": { "villa_owned": true }, "record": "The lord bought the villa outright at the old assessment." }
+        },
+        {
+          "id": "marry_local",
+          "trigger": "The lord agrees to marry into a local family to secure the villa.",
+          "effects": { "cost": { "denarii": 30 }, "land": { "tenure": "benefice", "marriedLocal": true }, "flags": { "married_local": true }, "record": "The lord married into a local family and kept the villa." }
+        },
+        {
+          "id": "church_fixed",
+          "trigger": "The lord puts the villa under the Church as a precaria for a small fixed rent.",
+          "effects": { "land": { "tenure": "precaria", "precariaRent": { "kind": "fixed", "denarii": 36 } }, "realm": { "swornTo": "church" }, "flags": { "precaria_church": true, "favor_church": "+2" }, "record": "The villa passed under the Church and came back to the lord as a precaria." }
+        }
+      ],
+      "links": { "arc": "7", "momentum": 45 },
+      "notes": "Engine-written from the 'Stall' row; the seizure clock is land.ts."
+    },
+    {
+      "id": "880-K2",
+      "title": "The campaign on the Saône",
+      "arc": 7,
+      "type": "summons",
+      "fires": { "year": 880, "season": "summer" },
+      "unless": "stalled_880",
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "when": "rank < 3",
+          "frame": "with Count Richard's messenger",
+          "text": "Count Richard calls his men for the king's war against Boso: the Saône towns first, then Lyon, then Vienne. Muster at Autun armed and provisioned."
+        },
+        {
+          "speaker": "steward",
+          "when": "rank >= 3",
+          "frame": "with the king's messenger",
+          "text": "King Carloman calls his counts to the war against Boso, beside Count Richard: the Saône towns first, then Lyon, then Vienne."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "Men of the same county on both sides of this one, my lord, and officers who served beside each other last year. You are seventy-two. Nobody will ask you to stand in a line; nobody will object if you do."
+        }
+      ],
+      "knows": ["Richard took Mâcon and garrisoned it under Bernard Hairy-foot, then Lyon, and moved on Vienne.", "The lord is about seventy-two; every level is open, with the usual warning."],
+      "choices": {
+        "prompt": "Answer the call against Boso?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "answer", "label": "March with the count", "default": true, "effects": { "flags": { "saone_880": "answered" }, "record": "The lord marched against Boso on the Saône in 880." } },
+          {
+            "id": "pay_fine",
+            "label": "Pay the army fine and stay home",
+            "requires": "denarii >= 720",
+            "effects": { "cost": { "denarii": 720 }, "flags": { "saone_880": "fine", "heribannum_paid": "+1", "count_opinion": "-1" } }
+          },
+          { "id": "refuse", "label": "Stay home and let the fine be owed", "effects": { "flags": { "saone_880": "refused", "count_opinion": "-2" } } }
+        ]
+      },
+      "links": { "arc": "7", "momentum": 50 },
+      "notes": "Engine-written summons text from 'What happens'."
+    },
+    {
+      "id": "880-B1",
+      "title": "Mâcon and Lyon",
+      "arc": 7,
+      "type": "battle",
+      "fires": { "year": 880, "season": "autumn" },
+      "requires": "saone_880 == 'answered'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "with Richard's army on the Saône", "seasons": 1 } },
+      "battle": {
+        "momentum": 50,
+        "historical": "Richard and Boso's forces clashed on the Saône; Richard took Mâcon and Lyon and moved on Vienne.",
+        "participation": ["rank and file (dangerous at this age)", "subcommand", "full command"],
+        "cards": ["a river crossing contested", "a town that opens its gates", "a town that does not", "men of the same county on both sides", "Bosonid officers who will not surrender to a man they served beside last year"],
+        "interimLine": "The skirmishes on the Saône and the two small sieges, Mâcon and Lyon, are not yet written in this chronicle, my lord. You came home when the army turned south for Vienne."
+      },
+      "links": { "arc": "7", "momentum": 50 }
+    },
+    {
+      "id": "880-K3",
+      "title": "The siege of Vienne",
+      "arc": 7,
+      "type": "choice",
+      "fires": { "year": 880, "season": "winter" },
+      "requires": "saone_880 == 'answered'",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Richard has sat down before Vienne, his brother's own city, and the kings Louis and Carloman are coming to join him, and Charles the Fat from the east as well. It will not be quick; the city is strong and the countess Ermengard holds it in Boso's absence. You can go yourself, behind the line, or send a captain and run it by letter from here with a season's delay each way. Engines can be designed at Fontenay as well as in a tent."
+        },
+        {
+          "speaker": "steward",
+          "text": "I will say one thing about engines, my lord, since you have that look. The Franks have the hauled machines that throw light stones. If there is anything in your head that throws heavier, everyone who sees it will copy it, and within ten years the Northmen will have it too, at our own walls."
+        }
+      ],
+      "knows": [
+        "The siege lasts about two years and ends in a negotiated surrender; Boso slips away into Provence; Ermengard arranges terms.",
+        "Better engineering (circumvallation, cutting the water, river blockade) takes months off; a counterweight engine would turn two years into a season, and would spread to every later siege including the defence of the lord's own walls.",
+        "Cannon is not available: no one knows what saltpetre is, and making it is a multi-year project of its own."
+      ],
+      "choices": {
+        "prompt": "How does the lord take part in the siege?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "by_letter", "label": "Send a captain and run it by letter", "default": true, "effects": { "flags": { "vienne_880": "sent_men" } } },
+          { "id": "command", "label": "Go in person, commanding from behind the line", "effects": { "flags": { "vienne_880": "commanded", "count_opinion": "+1" }, "away": { "reason": "in the siege camp before Vienne", "seasons": 2 }, "record": "The lord went in person to the siege of Vienne." } },
+          { "id": "withdraw", "label": "Bring the men home; the siege is young men's work", "effects": { "flags": { "vienne_880": "stayed", "count_opinion": "-1" } } }
+        ]
+      },
+      "links": { "arc": "7", "momentum": 55 },
+      "notes": "Engine-written from 'Running it at seventy-three' and 'Shortening the siege'. The engines are technology diffusion; the siege itself is the battle pass."
+    },
+    {
+      "id": "880-B2",
+      "title": "Before the walls of Vienne",
+      "arc": 7,
+      "type": "battle",
+      "fires": { "year": 881, "season": "spring" },
+      "requires": "vienne_880 == 'sent_men' or vienne_880 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "battle": {
+        "momentum": 55,
+        "historical": "Roughly two years of investment; negotiated surrender in 882; Boso escapes to Provence; Ermengard leads the defence and arranges terms.",
+        "participation": ["subcommand", "full command"],
+        "shortening": { "engineering": "months off, fewer losses", "counterweightTrebuchet": "a breach in a season; everyone copies it", "cannon": "not available" },
+        "cards": ["a two-year line in heat and cold", "sickness in the siege camp", "sorties at the gates", "the river and the supply boats", "engines rising", "a city negotiating its surrender", "kings and an emperor sharing one camp"],
+        "renown": "Large, and larger still for shortening the siege.",
+        "interimLine": "The long lines before Vienne, the engines and the sickness and the kings in one camp, are not yet written in this chronicle, my lord. The siege went on as sieges do."
+      },
+      "links": { "arc": "7", "momentum": 55 }
+    },
+    {
+      "id": "880-B3",
+      "title": "Inside the walls",
+      "arc": 7,
+      "type": "battle",
+      "fires": { "year": 881, "season": "spring" },
+      "requires": "resisted_880 and boso_sympathy",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "battle": {
+        "momentum": 55,
+        "historical": "A lord who followed Boso past 880 may be inside Vienne. There is no winning: capture, flight into Provence, or death.",
+        "participation": ["subcommand", "full command"],
+        "interimLine": "What became of a man of Boso's inside Vienne is not yet written in this chronicle, my lord. The gates were closed and the kings were outside them."
+      },
+      "links": { "arc": "7", "momentum": 55 },
+      "notes": "The rare path from 'Inside the walls'."
+    },
+    {
+      "id": "882-K1",
+      "title": "Vienne falls",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 882, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Vienne has fallen at last. Not stormed: they came to terms. Boso was not even in it; he slipped away south months ago and left his wife to hold the place and make the bargain, and by all accounts she did it better than he would have. His family are taken. They will be held somewhere safe and out of the way. Count Richard has beaten his own brother and made himself the first man in Burgundy doing it."
+        }
+      ],
+      "knows": ["Boso's wife and children are held by others; the lord has no contact with them."],
+      "links": { "arc": "7", "momentum": 55 },
+      "record": "Vienne fell by negotiation in 882; Richard had beaten his own brother."
+    },
+    {
+      "id": "887-K1",
+      "title": "Boso dies",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 887, "season": "spring" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Boso is dead, my lord, down in Provence, still calling himself king over the scraps they left him. Eight years a king, and most of them spent losing. His son is a child. Count Richard says nothing about it that anyone can repeat."
+        }
+      ],
+      "links": { "arc": "7", "momentum": 85 },
+      "record": "Boso died in Provence."
+    },
+    {
+      "id": "898-K1",
+      "title": "Marquis of Burgundy",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 898, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "King Odo is dead and Richard has made his peace with Charles the Simple, and the king has let him join all his counties into one great march. Marquis of Burgundy, they're calling him. Autun, Auxerre, Nevers, Avallon, Sens, and his hand on Troyes, Chalon and Beaune besides."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "merge_counties",
+          "trigger": "The lord, holding Autun, has the king merge his own counties into one march instead.",
+          "requires": "rank >= 4",
+          "effects": { "flags": { "duke_marquis": true, "duke_track": "+1" }, "renown": "large", "record": "The king merged the lord's counties into one march: marquis of Burgundy." }
+        }
+      ],
+      "links": { "arc": "7", "momentum": 70 },
+      "record": "Richard became marquis of Burgundy."
+    },
+    {
+      "id": "898-K1C",
+      "title": "The slow squeeze",
+      "arc": 7,
+      "type": "choice",
+      "fires": { "year": 898, "season": "autumn" },
+      "order": 1,
+      "requires": "rank == 3",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "For twenty years you and he were equals, my lord, both the king's officers. That has quietly stopped being true. There is no battle and no oath demanded; there is a marquis, and there is a count, and everything a count needs now runs through the marquis's hands. Commend yourself to him and have his backing; stay the king's man alone and have your independence and nothing else; or go over his head to Charles the Simple, who owes Richard nothing he can collect, and is far away, where Richard is not."
+        }
+      ],
+      "choices": {
+        "prompt": "Count against marquis.",
+        "deadlineSeasons": 2,
+        "options": [
+          { "id": "kings_man", "label": "Stay the king's man alone", "default": true, "effects": { "flags": { "richard_squeeze": "kings_man" } } },
+          { "id": "commend", "label": "Commend yourself to Richard", "effects": { "flags": { "richard_squeeze": "commended", "richard_vassal": true, "count_opinion": "+2" }, "record": "The lord commended himself to the marquis Richard, giving up twenty years of independence." } },
+          { "id": "appeal", "label": "Play the king against him", "effects": { "flags": { "richard_squeeze": "appealed", "count_opinion": "-2", "charles_favor": "+1" }, "record": "The lord appealed over the marquis's head to Charles the Simple." } }
+        ]
+      },
+      "links": { "arc": "7", "momentum": 70 },
+      "notes": "Engine-written from 'For a count-rank player'; gated on rank for the promotion pass."
+    },
+    {
+      "id": "901-K1",
+      "title": "Courtenot",
+      "arc": 7,
+      "type": "news",
+      "fires": { "year": 901, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "He held an assembly at Courtenot, my lord, and judged a quarrel between the monks of Montiéramey and the count of Bar-sur-Seine. Judged it himself, as a king would. Nobody objected. That tells you where we are."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "own_assembly",
+          "trigger": "The lord, holding Autun, holds his own assembly and judges between other lords.",
+          "requires": "rank >= 4",
+          "effects": { "flags": { "duke_assembly": true, "duke_track": "+1" }, "renown": "large", "record": "The lord held his own assembly and judged between lords: the duchy in practice." }
+        }
+      ],
+      "links": { "arc": "7", "momentum": 70 },
+      "record": "Richard judged between lords at Courtenot as a king would."
+    }
+  ]
 }
