@@ -1,4 +1,472 @@
 ﻿{
   "arc": "6",
-  "events": []
+  "events": [
+    {
+      "id": "855-C1",
+      "title": "The middle kingdom splits",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 855, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor Lothair is dead. He gave up his crown, took the habit at Prüm and died a monk six days later. His middle kingdom is cut three ways between his sons: Louis has Italy and the imperial title, Lothair the north, and the youngest, Charles, gets Provence, with Lyon and Vienne. So we have a new neighbour across the Saône, and he's a boy, and a sickly one by all accounts."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "To lay down an empire and take the habit with six days to live, my lord. Whatever else he was, he ended as a monk. I will say a Mass for him."
+        }
+      ],
+      "knows": ["The far bank of the Saône now belongs to a weak child king; trade, disputes and fugitives across the river are all live."],
+      "links": { "arc": "6", "momentum": 85 },
+      "record": "The emperor Lothair died a monk; the middle kingdom was split and a boy king held Provence across the Saône.",
+      "notes": "Ermenald's block is engine-written ('Ermenald adds the monastic end')."
+    },
+    {
+      "id": "858-C1",
+      "title": "Girart builds at Vézelay",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 858, "season": "summer" },
+      "channel": ["chaplain", "steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "emotion": "enthusiastic",
+          "text": "My lord, Count Girart of Vienne is founding a monastery at Vézelay, up the Cure valley, and another at Pothères. Great houses, richly endowed, with relics brought from Rome."
+        },
+        {
+          "speaker": "steward",
+          "text": "And he rules the Lyonnais for the boy king of Provence, my lord. A man who builds abbeys in our country is putting down roots in it. Good for the masons and the carters. Less good for anyone whose land he wants next."
+        }
+      ],
+      "knows": ["Work and trade for the villa; a new patron to court, or a rival for land; the abbeys will be powerful neighbours."],
+      "hooks": [
+        {
+          "id": "court_girart",
+          "trigger": "The lord courts Count Girart: a gift, a visit, men or carts for the building at Vézelay.",
+          "effects": { "cost": { "denarii": 15 }, "flags": { "favor_girart": "+1" }, "record": "The lord courted Count Girart of Vienne during the building of Vézelay." }
+        },
+        {
+          "id": "sell_to_builders",
+          "trigger": "The lord sells timber, stone or carting to Girart's builders.",
+          "requires": "hardwood >= 5 or stone >= 5",
+          "effects": [
+            { "when": "hardwood >= 5", "cost": { "hardwood": 5 }, "gain": { "denarii": 25 } },
+            { "when": "hardwood < 5 and stone >= 5", "cost": { "stone": 5 }, "gain": { "denarii": 25 } }
+          ]
+        }
+      ],
+      "hookWindow": 6,
+      "links": { "arc": "6", "momentum": 60 }
+    },
+    {
+      "id": "858-C2",
+      "title": "Louis the German invades",
+      "arc": 6,
+      "type": "choice",
+      "fires": { "year": 858, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the king's own men have invited his brother in. Louis of Bavaria is across the border with an army and half the great lords of the west have gone over to him. King Charles is falling back and daren't give battle; he can't tell which of his own men will stand. The bishops are refusing to crown Louis, and that may be all that's holding the kingdom together."
+        }
+      ],
+      "knows": ["The same shape as 830 and 840, with no battle and no rival king afterwards: a test of nerve."],
+      "doesntKnow": ["That Louis will withdraw in January without a battle."],
+      "choices": {
+        "prompt": "Charles, Louis, or wait?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "wait", "label": "Wait and see", "default": true, "effects": { "flags": { "count_opinion": "-1" } } },
+          { "id": "charles", "label": "Stand with King Charles, isolated and exposed", "effects": { "flags": { "loyalist_858": true }, "record": "The lord stood with King Charles when Louis the German invaded." } },
+          { "id": "louis", "label": "Go over to Louis", "effects": { "flags": { "perjury_858": true }, "gain": { "denarii": 40 }, "record": "The lord went over to Louis the German in the winter of 858." } }
+        ]
+      },
+      "links": { "arc": "6", "momentum": 60 }
+    },
+    {
+      "id": "859-C1",
+      "title": "Louis withdraws",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 859, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, it is over, and nobody fought. Louis of Bavaria sat in the kingdom all winter waiting to be crowned and the bishops would not do it. In January he went home. King Charles is gathering his men again and he has a long list of who stood where."
+        },
+        { "speaker": "steward", "when": "loyalist_858", "text": "Your name is on the right side of that list, my lord. He will remember it when the next county falls vacant." },
+        { "speaker": "steward", "when": "perjury_858", "text": "Everything Louis's people promised you went home with Louis, my lord. The king's officers will be slow to help us in any dispute for some years. He remembers." }
+      ],
+      "onFire": [
+        { "when": "loyalist_858", "flags": { "charles_favor": "+2" }, "renown": "small" },
+        { "when": "perjury_858", "flags": { "charles_disfavor": "+2", "count_opinion": "-2" } }
+      ],
+      "links": { "arc": "6", "momentum": 60 },
+      "notes": "Engine-written from the 'By 859–860' column."
+    },
+    {
+      "id": "863-C0",
+      "title": "Pothères",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 863, "season": "summer" },
+      "channel": ["chaplain"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "Count Girart's second house is rising at Pothères, my lord, with relics from Rome like Vézelay. Two great abbeys in our hills in five years. Whatever happens to the count, those stones will outlast him."
+        }
+      ],
+      "links": { "arc": "6", "momentum": 60 },
+      "notes": "Engine-written from 858-C1's 'and again around 863 for Pothères'."
+    },
+    {
+      "id": "863-C1",
+      "title": "The boy king of Provence dies",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 863, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Charles of Provence is dead, my lord, the sickly one; he never did rule for himself. His brothers have carved up what he had. Lyon and Vienne go to the emperor Louis in Italy, and Count Girart governs there for him as he did for the boy. Borders drawn and redrawn, and nobody asks the people who live on them."
+        }
+      ],
+      "links": { "arc": "6", "momentum": 85 }
+    },
+    {
+      "id": "869-C1",
+      "title": "Lothair II dies; the race for his kingdom",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 869, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Lothair the younger is dead in Italy, with no lawful son to follow him. His uncle Charles has not waited: he's gone straight into Lotharingia and the bishops have crowned him at Metz. His other uncle, Louis of Bavaria, is coming the other way with an army, and the emperor in Italy claims it all as well. Three men, one kingdom, and the corpse barely cold."
+        }
+      ],
+      "doesntKnow": ["That the uncles will divide it at Meerssen next summer without a battle."],
+      "links": { "arc": "6", "momentum": 70 }
+    },
+    {
+      "id": "870-C1",
+      "title": "Meerssen",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 870, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "They've agreed to divide it at Meerssen, my lord: Charles takes the western half, Louis the eastern. No battle, for once. Our king has doubled what he holds."
+        }
+      ],
+      "links": { "arc": "6", "momentum": 70 },
+      "record": "Lothair II's kingdom was divided at Meerssen between Charles and Louis."
+    },
+    {
+      "id": "870-C2",
+      "title": "The king goes down the Rhône",
+      "arc": 6,
+      "type": "summons",
+      "fires": { "year": 870, "season": "summer" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with the count's messenger, who reads",
+          "text": "The king goes down the Rhône against Count Girart, who holds Vienne against him for the emperor in Italy. Every man owing service to muster with the count."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "A hundred and fifty miles, my lord, and a siege, and you are sixty-two. Nobody will say you cannot stand in a line; I will say you should not. There is no other lord to follow now. Refusing is the fine and the king's displeasure."
+        }
+      ],
+      "knows": ["Vienne is about 150 km down the Rhône; Burgundian levies are the natural troops for the siege.", "The army fine is 720 denarii.", "The lord is about sixty-two: rank and file is possible but dangerous."],
+      "doesntKnow": ["That the city will hold out until December and fall by negotiation, Girart's wife Bertha arranging the terms."],
+      "choices": {
+        "prompt": "Answer the summons for Vienne?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "answer", "label": "March with the count to Vienne", "default": true, "effects": { "flags": { "vienne_870": "answered" }, "record": "The lord went down the Rhône to the siege of Vienne in 870." } },
+          {
+            "id": "pay_fine",
+            "label": "Pay the army fine and stay home",
+            "requires": "denarii >= 720",
+            "effects": { "cost": { "denarii": 720 }, "flags": { "vienne_870": "fine", "heribannum_paid": "+1", "count_opinion": "-1" } }
+          },
+          { "id": "refuse", "label": "Stay home and let the fine be owed", "effects": { "flags": { "vienne_870": "refused", "count_opinion": "-2", "charles_disfavor": "+1" } } }
+        ]
+      },
+      "links": { "arc": "6", "momentum": 70 },
+      "notes": "The second block is engine-written from 'Why the player is called' and the age note."
+    },
+    {
+      "id": "870-B1",
+      "title": "The siege of Vienne",
+      "arc": 6,
+      "type": "battle",
+      "fires": { "year": 870, "season": "autumn" },
+      "requires": "vienne_870 == 'answered'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "in the siege lines before Vienne", "seasons": 2 } },
+      "battle": {
+        "momentum": 70,
+        "historical": "Charles besieged Vienne for months; it fell in December, by most accounts negotiated, Bertha arranging terms. Girart withdrew to his Burgundian lands.",
+        "participation": ["rank and file (dangerous at this age)", "subcommand", "full command"],
+        "canChange": "Vienne falls either way; a strong performance shortens the siege, spares the city a sack, or earns a share in the terms.",
+        "cards": ["siege lines in the Rhône heat", "river supply and boats", "a city that will not starve quickly", "sorties against the lines", "mining and engines", "the long autumn", "negotiations under truce and the countess's envoys", "keeping order when the gates open"],
+        "interimLine": "The months in the lines before Vienne, the heat and the sorties and the countess's envoys, are not yet written in this chronicle, my lord. You came home after Christmas."
+      },
+      "links": { "arc": "6", "momentum": 70 }
+    },
+    {
+      "id": "870-C3",
+      "title": "Vienne falls to the king",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 870, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Vienne has opened its gates to the king. Not stormed: the countess Bertha arranged the terms while Count Girart was elsewhere, and the city came out of it whole. Girart has lost Vienne and gone back to his lands in our hills; Vézelay and Pothères are still his. He will not hold a city for the emperor again."
+        },
+        {
+          "speaker": "steward",
+          "when": "favor_girart >= 1",
+          "text": "You dealt fairly with him in his building years, my lord. If anyone is to speak for him with the king, it could be you."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "intercede_girart",
+          "trigger": "The lord intercedes with the king for Count Girart's Burgundian lands.",
+          "requires": "favor_girart >= 1",
+          "effects": { "flags": { "favor_girart": "+2", "favor_church": "+1" }, "record": "The lord interceded with the king for Count Girart after Vienne fell." }
+        }
+      ],
+      "links": { "arc": "6", "momentum": 70 },
+      "record": "Vienne fell to King Charles in December 870; Girart withdrew to his Burgundian lands.",
+      "notes": "Engine-written from the background and hooks."
+    },
+    {
+      "id": "875-C1",
+      "title": "The road to Rome",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 875, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor in Italy is dead without a son, and King Charles has gone over the Alps to take the crown before his nephews can. He's taken a chosen company, not a levy: the great men of the south and Burgundy, the brothers Boso and Richard among them. Word is that men of standing hereabouts may ride with them if they wish."
+        },
+        {
+          "speaker": "steward",
+          "when": "rank < 3",
+          "text": "Men of standing, my lord. Counts. It is not meant for us, and I would not ride over the Alps at sixty-seven for a crown that is not mine."
+        }
+      ],
+      "knows": ["Boso and Richard, the brothers who will matter so much in Burgundy, are in the escort."],
+      "doesntKnow": ["That Charles will be crowned emperor in Rome on Christmas Day."],
+      "links": { "arc": "6", "momentum": 65 },
+      "notes": "The invitation itself is 875-C1I, gated on rank for the promotion pass."
+    },
+    {
+      "id": "875-C1I",
+      "title": "Invited to Rome",
+      "arc": 6,
+      "type": "journey",
+      "fires": { "year": 875, "season": "autumn" },
+      "order": 1,
+      "requires": "rank >= 3",
+      "channel": ["steward"],
+      "form": "letter",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "And you are asked, my lord, by name. Invited, not summoned. Autumn to spring over the Alps and back; no fighting, but the passes in bad weather, and sickness, and the villa without you for two seasons. In return the emperor's own notice, and the company of every great man of the south for half a year."
+        }
+      ],
+      "choices": {
+        "prompt": "Ride to Rome with the king?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "decline", "label": "Decline politely", "default": true, "effects": { "flags": { "rome_875": "declined" } } },
+          { "id": "send_men", "label": "Send men in the escort", "requires": "units >= 1", "effects": { "flags": { "rome_875": "sent_men" }, "renown": "small" } },
+          {
+            "id": "go",
+            "label": "Go yourself",
+            "effects": { "flags": { "rome_875": "went", "boso_contact": true, "charles_favor": "+1" }, "away": { "reason": "on the road to Rome with the king's company", "seasons": 2 }, "renown": "moderate", "land": { "visibility": "+10" }, "record": "The lord rode to Rome with King Charles for the imperial crown." }
+          }
+        ]
+      },
+      "links": { "arc": "6", "momentum": 65 },
+      "notes": "Engine-written from 'Going or not'; unreachable until the promotion pass raises rank."
+    },
+    {
+      "id": "876-C0",
+      "title": "An emperor again",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 876, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the king is emperor. The pope crowned him in Rome on Christmas Day, and he has come back over the Alps with the title and a sunburn and the great men of the south at his back. Charles, emperor, who was the boy at Fontenoy. Thirty-five years."
+        },
+        {
+          "speaker": "steward",
+          "when": "rome_875 == 'went'",
+          "text": "And you were there to see it, my lord, and they saw you. Boso and Richard know your face now. That will matter."
+        }
+      ],
+      "links": { "arc": "6", "momentum": 85 },
+      "record": "Charles the Bald was crowned emperor in Rome at Christmas 875.",
+      "notes": "Engine-written: the calendar's emperor change given a voice."
+    },
+    {
+      "id": "876-C1",
+      "title": "The king goes east",
+      "arc": 6,
+      "type": "summons",
+      "fires": { "year": 876, "season": "summer" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Louis of Bavaria is dead, and the emperor did not wait for the grave to settle. He is marching east to take his brother's whole kingdom, and the call has gone out to every man who holds of the count. It is not pressed on a man of sixty-eight. A captain and the men, or your own counsel behind the line, or nothing."
+        }
+      ],
+      "knows": ["Participation is optional at this age: command from behind the lines, or send men under a captain."],
+      "doesntKnow": ["That Louis's son will attack the camp by night in the rain at Andernach and destroy the army."],
+      "choices": {
+        "prompt": "The emperor's eastern campaign.",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "stay", "label": "Stay home", "default": true, "effects": { "flags": { "andernach_876": "stayed" } } },
+          { "id": "send_men", "label": "Send men under a captain", "requires": "units >= 1", "effects": { "flags": { "andernach_876": "sent_men", "count_opinion": "+1" } } },
+          { "id": "command", "label": "Go yourself, commanding from behind the line", "effects": { "flags": { "andernach_876": "commanded", "count_opinion": "+1" }, "record": "The lord went east with the emperor's army in 876." } }
+        ]
+      },
+      "links": { "arc": "6", "momentum": 60 },
+      "notes": "Engine-written from the background and 'Playing it'."
+    },
+    {
+      "id": "876-B1",
+      "title": "Andernach",
+      "arc": 6,
+      "type": "battle",
+      "fires": { "year": 876, "season": "autumn" },
+      "requires": "andernach_876 == 'sent_men' or andernach_876 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": [{ "when": "andernach_876 == 'commanded'", "away": { "reason": "with the emperor's army on the Rhine", "seasons": 1 } }],
+      "battle": {
+        "momentum": 60,
+        "historical": "Louis the Younger feigned negotiation and attacked the camp by night in the rain on 8 October. The army panicked and was destroyed; Charles escaped with a handful.",
+        "participation": ["subcommand", "full command"],
+        "objective": "Survival, as at Ballon: renown comes from getting units out intact.",
+        "ifTurnedAround": "The camp stands to and the night attack breaks on a formed line. Charles takes a wound or falls sick, cannot campaign again, withdraws west; the invasion collapses; he dies in autumn 877 as in history. Large renown; the king's gratitude; a reputation among Boso and Richard.",
+        "cards": ["envoys arriving at dusk", "a camp standing down in the rain", "horns in the dark", "men running without arms", "the river at the camp's back", "holding a knot of men together in the chaos", "the road home without baggage"],
+        "interimLine": "The night on the Rhine at Andernach, the horns in the dark and the road home without baggage, is not yet written in this chronicle, my lord. The men came home. Fewer of them."
+      },
+      "links": { "arc": "6", "momentum": 60 }
+    },
+    {
+      "id": "876-C2",
+      "title": "A disaster, and a shameful one",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 876, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "A disaster, my lord, and a shameful one. The king went east the moment his brother was buried, to take the whole of it. His nephew sent envoys to talk terms, and while they talked he came on the camp at night, in the rain. Our men never formed. They were cut down running or drowned in the river. The king got away with a few riders and lost everything else: the baggage, the treasure, the army. He's been a changed man since, they say."
+        }
+      ],
+      "links": { "arc": "6", "momentum": 60 },
+      "record": "The emperor's army was destroyed by night at Andernach."
+    },
+    {
+      "id": "877-C1",
+      "title": "Quierzy",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 877, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "slant": "Aldric, with more interest than usual.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, this one matters to us. The king is going to Italy again and has made arrangements at Quierzy for his absence. Among them: if a count dies while the king is away, his son is to hold his father's office and lands until the king returns and decides. And the same for lesser men, my lord. For men like us. It isn't law that a son inherits, not yet. But it's the first time the king has written down that a son should hold what his father held. Men will remember that sentence long after the king is dead."
+        }
+      ],
+      "knows": ["Quierzy makes the benefice closer to heritable property; it strengthens every later land claim, and an heir's."],
+      "hooks": [
+        {
+          "id": "quierzy_claim",
+          "trigger": "The lord has the villa's title and succession written up under the Quierzy terms, naming an heir.",
+          "effects": { "cost": { "denarii": 5 }, "flags": { "quierzy_heir": true }, "land": { "charter": "count" }, "record": "The lord had his heir's claim to the villa written up under the capitulary of Quierzy." }
+        }
+      ],
+      "hookWindow": 4,
+      "links": { "arc": "6", "momentum": 85, "keystone": "K5" }
+    },
+    {
+      "id": "877-C2",
+      "title": "The king is dead",
+      "arc": 6,
+      "type": "news",
+      "fires": { "year": 877, "season": "winter" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The king is dead, my lord. He took sick crossing back over the Alps and died in a hut in the mountains, the sixth of October. They tried to carry him home to Saint-Denis and couldn't; they buried him at Nantua and will move him later. Thirty-seven years he reigned over us, since Fontenoy. There'll be another Louis now, and he's not his father."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "An emperor dead in a hut in the mountains, my lord, and his body too far gone to carry home. I have ordered the bell rung and will say the Mass for the dead tomorrow. He was our king for longer than most men here have been alive."
+        }
+      ],
+      "knows": ["Louis the Stammerer is king now; he is not well.", "Within two years Boso will crown himself and Richard will take Autun."],
+      "links": { "arc": "6", "momentum": 80, "keystone": "K5" },
+      "record": "Charles the Bald died crossing the Alps in October 877; Louis the Stammerer followed him.",
+      "notes": "Ermenald's block is engine-written ('Ermenald for the death')."
+    }
+  ]
 }

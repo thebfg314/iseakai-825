@@ -2,6 +2,7 @@ import { CANONICAL_RESOURCES } from "../engine/schema";
 import { referencedNames } from "./conditions";
 import { historyContent, type HistoryContent } from "./load";
 import type { HistoryEffects, HistoryEffectsList, HistoryEvent, HistoryOption } from "./schema";
+import { isSlotName } from "./slots";
 
 /** Names a condition may use that are not flags (flags.ts conditionVars). Every canonical store is readable by id. */
 export const CONDITION_VARS = new Set([
@@ -91,6 +92,15 @@ export function lintHistory(content: HistoryContent = historyContent()): string[
       }
     }
     if (fx.scene?.open && !content.byId.has(fx.scene.open)) problems.push(`${where}: opens unknown scene ${fx.scene.open}`);
+    for (const [id, amount] of [...Object.entries(fx.cost ?? {}), ...Object.entries(fx.gain ?? {})]) {
+      if (typeof amount === "string" && !isSlotName(amount.replace(/^\{|\}$/g, ""))) problems.push(`${where}: ${id} names unknown amount slot ${amount}`);
+    }
+  };
+
+  const checkSlots = (where: string, text: string) => {
+    for (const m of text.matchAll(/\{([a-z0-9_]+)\}/g)) {
+      if (!isSlotName(m[1])) problems.push(`${where}: unknown slot {${m[1]}} in script`);
+    }
   };
 
   const checkOptions = (where: string, options: HistoryOption[], needDefault: boolean) => {
@@ -114,6 +124,7 @@ export function lintHistory(content: HistoryContent = historyContent()): string[
     for (const [i, b] of e.script.entries()) {
       if (!e.channel.includes(b.speaker)) problems.push(`${w}.script[${i}]: speaker ${b.speaker} not in channel`);
       checkCondition(`${w}.script[${i}].when`, b.when);
+      checkSlots(`${w}.script[${i}]`, b.text);
     }
     for (const v of e.variants) {
       checkCondition(`${w}.variants`, v.when);

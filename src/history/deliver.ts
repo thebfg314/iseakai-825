@@ -5,6 +5,7 @@ import { conditionContext } from "./flags";
 import { historyContent } from "./load";
 import { defaultOption, type SeasonAt } from "./scheduler";
 import type { HistoryEvent, HistoryOption, HistorySpeaker, HistoryStage, ScriptBlock } from "./schema";
+import { fillSlots } from "./slots";
 
 /** One verbatim line for an NPC's tab. */
 export type HistoryBeat = {
@@ -41,7 +42,7 @@ export function renderScript(state: WorldState, event: HistoryEvent, blocks: Scr
         break;
       }
     }
-    beats.push({ npcId: block.speaker, text: renderBlock(block, text), emotion: block.emotion, eventId: event.id });
+    beats.push({ npcId: block.speaker, text: renderBlock(block, fillSlots(state, text)), emotion: block.emotion, eventId: event.id });
   });
   return beats;
 }

@@ -63,8 +63,9 @@ export const EffectsSchema = z
     when: z.string().optional(),
     flags: z.record(z.string(), FlagOpSchema).optional(),
     renown: z.union([z.number(), z.enum(RENOWN_BANDS)]).optional(),
-    cost: z.record(z.string(), z.number().nonnegative()).optional(),
-    gain: z.record(z.string(), z.number().nonnegative()).optional(),
+    /** Amounts are numbers or a `{slot}` name resolved from rank and manses (slots.ts). */
+    cost: z.record(z.string(), z.union([z.number().nonnegative(), z.string().regex(/^\{[a-z0-9_]+\}$/)])).optional(),
+    gain: z.record(z.string(), z.union([z.number().nonnegative(), z.string().regex(/^\{[a-z0-9_]+\}$/)])).optional(),
     land: LandEffectSchema.optional(),
     realm: z.object({ swornTo: z.string().optional() }).optional(),
     mood: z.number().optional(),
@@ -221,8 +222,10 @@ export const FlagRegistrySchema = z.object({ flags: z.array(FlagDefSchema) });
 export type FlagDef = z.infer<typeof FlagDefSchema>;
 
 export const RealmCalendarSchema = z.object({
-  emperors: z.array(z.object({ from: z.number().int(), name: z.string().nullable(), announcedBy: z.string().optional() })),
-  kings: z.array(z.object({ from: z.number().int(), name: z.string().nullable(), kingdom: z.string(), announcedBy: z.string().optional() })),
+  emperors: z.array(z.object({ from: z.number().int(), season: z.enum(SEASON_ORDER).default("spring"), name: z.string().nullable(), announcedBy: z.string().optional() })),
+  kings: z.array(
+    z.object({ from: z.number().int(), season: z.enum(SEASON_ORDER).default("spring"), name: z.string().nullable(), kingdom: z.string(), announcedBy: z.string().optional() }),
+  ),
   counts: z.array(
     z.object({
       from: z.number().int(),

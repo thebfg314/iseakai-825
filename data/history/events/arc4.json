@@ -1,4 +1,303 @@
 ﻿{
   "arc": "4",
-  "events": []
+  "events": [
+    {
+      "id": "831-N1",
+      "title": "A Breton to rule the Bretons",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 831, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The emperor has given Brittany to a Breton, my lord: a man named Nominoe, a count of Vannes, to hold the country in his name. Better a native who knows them than another Frankish count they'll only murder, I suppose. We'll see whether he stays the emperor's man."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 85 }
+    },
+    {
+      "id": "845-B1",
+      "title": "The king goes against the Bretons",
+      "arc": 4,
+      "type": "summons",
+      "fires": { "year": 845, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with the count's messenger, who reads",
+          "text": "The king goes against the Bretons, who have broken faith again. Every man owing service to muster and march west before Martinmas."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "Five hundred miles, my lord, in autumn, with the Northmen barely gone from Paris and the harvest what it was. The army fine is sixty solidi for a man who stays home without leave. I only say what it is."
+        }
+      ],
+      "knows": ["Charles is taking about three thousand men into Brittany.", "The army fine is 720 denarii.", "845 is a hungry year; men and food are short everywhere."],
+      "doesntKnow": ["That Nominoe will draw the king into marshland near Redon and beat him."],
+      "choices": {
+        "prompt": "Answer the summons for Brittany?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "answer", "label": "March west with the host", "default": true, "effects": { "flags": { "ballon_845": "answered" }, "record": "The lord marched into Brittany with King Charles in 845." } },
+          {
+            "id": "pay_fine",
+            "label": "Pay the army fine and stay home",
+            "requires": "denarii >= 720",
+            "effects": { "cost": { "denarii": 720 }, "flags": { "ballon_845": "fine", "heribannum_paid": "+1", "count_opinion": "-1" } }
+          },
+          { "id": "refuse", "label": "Stay home and let the fine be owed", "effects": { "flags": { "ballon_845": "refused", "count_opinion": "-2", "charles_disfavor": "+1" } } }
+        ]
+      },
+      "links": { "arc": "4", "momentum": 70 },
+      "notes": "The second block is engine-written from the 845 note."
+    },
+    {
+      "id": "845-B2",
+      "title": "Ballon",
+      "arc": 4,
+      "type": "battle",
+      "fires": { "year": 845, "season": "winter" },
+      "requires": "ballon_845 == 'answered'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "with the king's army in Brittany", "seasons": 1 } },
+      "battle": {
+        "momentum": 70,
+        "historical": "Nominoe drew Charles into marshland at the meeting of the Oust and the Aff near Redon; the Franks were beaten on 22 November.",
+        "participation": ["rank and file", "subcommand", "full command"],
+        "renown": "Earned by how the lord's own men fare, not by the outcome; bringing a unit home intact from a rout is worth as much as a win.",
+        "canChange": "The king's defeat stands; a strong performance turns a rout into an orderly withdrawal and saves lives.",
+        "cards": ["the long march west in autumn rain", "horses foundering in marsh", "Breton light horse appearing and vanishing", "holding formation on soft ground", "a rearguard covering the retreat", "the road home in winter"],
+        "interimLine": "The marsh near Redon, and what the Bretons did to the king's army there, is not yet written in this chronicle, my lord. You came home through the winter with mud to the knee."
+      },
+      "links": { "arc": "4", "momentum": 70 }
+    },
+    {
+      "id": "845-B3",
+      "title": "Beaten in a marsh",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 845, "season": "winter" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Beaten, my lord, in a marsh. The king took three thousand men into Brittany and let himself be drawn into bogs where the horses foundered and the Bretons knew every path. Those who came back are still pulling the mud off. All that way, and for nothing."
+        }
+      ],
+      "knows": ["A truce followed; Nominoe's freedom of action grows."],
+      "links": { "arc": "4", "momentum": 70 },
+      "record": "King Charles was beaten by the Bretons at Ballon."
+    },
+    {
+      "id": "849-N1",
+      "title": "The war begins again",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 849, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The Bretons are at it again, my lord. The king took Nantes back, and now Nominoe and his son have come out of their country burning. They've gone as far as Angers and Le Mans. He's calling himself prince of the Bretons now, and he's thrown out the bishops the king appointed and put his own men in their sees. That's not a rebel any more; that's a man building a kingdom."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 80 }
+    },
+    {
+      "id": "851-N1",
+      "title": "Nominoe dies",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 851, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Nominoe is dead, my lord, in March, on campaign in Frankish country. His son Erispoe has taken his place without so much as asking the king's leave. The king won't swallow that."
+        }
+      ],
+      "doesntKnow": ["That the king will invade in the summer and be beaten at Jengland."],
+      "links": { "arc": "4", "momentum": 80 }
+    },
+    {
+      "id": "851-B1",
+      "title": "Into Brittany before the summer ends",
+      "arc": 4,
+      "type": "summons",
+      "fires": { "year": 851, "season": "summer" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with the count's messenger, who reads",
+          "text": "The old Breton is dead and his son sits in his place without the king's leave. The king calls every man to the host; we go into Brittany before the summer ends."
+        }
+      ],
+      "knows": ["Charles has Saxon troops from his brother this time.", "The army fine is 720 denarii.", "The lord is about forty-three; every level of participation is open to him."],
+      "doesntKnow": ["That the Bretons will refuse to close and bleed the army with javelins for two days."],
+      "choices": {
+        "prompt": "Answer the summons for Brittany?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "answer", "label": "March west with the host", "default": true, "effects": { "flags": { "jengland_851": "answered" }, "record": "The lord marched into Brittany with King Charles in 851." } },
+          {
+            "id": "pay_fine",
+            "label": "Pay the army fine and stay home",
+            "requires": "denarii >= 720",
+            "effects": { "cost": { "denarii": 720 }, "flags": { "jengland_851": "fine", "heribannum_paid": "+1", "count_opinion": "-1" } }
+          },
+          { "id": "refuse", "label": "Stay home and let the fine be owed", "effects": { "flags": { "jengland_851": "refused", "count_opinion": "-2", "charles_disfavor": "+1" } } }
+        ]
+      },
+      "links": { "arc": "4", "momentum": 65 }
+    },
+    {
+      "id": "851-B2",
+      "title": "Jengland",
+      "arc": 4,
+      "type": "battle",
+      "fires": { "year": 851, "season": "autumn" },
+      "requires": "jengland_851 == 'answered'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "with the king's army near the Vilaine", "seasons": 1 } },
+      "battle": {
+        "momentum": 65,
+        "historical": "Erispoe's Bretons, outnumbered perhaps four to one, refused to close and harassed the armoured Franks with javelins from horseback for two days (22 August). Frankish losses in men and horses were catastrophic. Charles withdrew and made terms at Angers.",
+        "participation": ["rank and file", "subcommand", "full command"],
+        "renown": "From the lord's own units' performance. A commander who adapts (dismounting, screening with light horse, refusing to be drawn) comes out with a reputation while the king's army falls apart.",
+        "canChange": "Charles still fails and still makes terms; the lord's performance changes his own losses, his standing, and how many neighbours come home.",
+        "cards": ["heavy horse that cannot catch light horse", "javelins at a distance, hour after hour", "Saxon allies breaking back through the Frankish line", "dying horses and men on foot", "water and heat in August", "the decision to hold or to charge", "the withdrawal in good order"],
+        "interimLine": "Two days near the Vilaine with the Bretons' javelins, and the long road back, are not yet written in this chronicle, my lord. You came home. The horses, fewer of them."
+      },
+      "links": { "arc": "4", "momentum": 65 }
+    },
+    {
+      "id": "851-B3",
+      "title": "A Breton made a king",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 851, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "A second time, my lord, and worse than Ballon. They would not stand and fight. Two days of them riding up, throwing their javelins and wheeling off before our men could close, and all the while our horses dying under us. The king gave it up and went to Angers to make terms. Erispoe is to be called king and keep Rennes and Nantes. We marched five hundred miles to make a Breton a king."
+        }
+      ],
+      "variants": [
+        {
+          "when": "not jengland_851 == 'answered'",
+          "replace": 0,
+          "text": "A second time, my lord, and worse than Ballon. They would not stand and fight. Two days of them riding up, throwing their javelins and wheeling off before the king's men could close, and all the while the horses dying under them. The king gave it up and went to Angers to make terms. Erispoe is to be called king and keep Rennes and Nantes. They marched five hundred miles to make a Breton a king."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 65 },
+      "record": "King Charles was beaten again at Jengland and recognised Erispoe as king of the Bretons."
+    },
+    {
+      "id": "857-N1",
+      "title": "Erispoe murdered",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 857, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Murder in Brittany, my lord. King Erispoe, the one who beat us at Jengland, is dead, killed by his own cousin Salomon, in a church, they say. Salomon has the country now. They're no better at keeping a peace among themselves than we are."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 85 }
+    },
+    {
+      "id": "863-N1",
+      "title": "The king buys peace",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 863, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The king has bought the Bretons off, my lord: more land to Salomon to keep him quiet, and an oath of friendship. Land for peace."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 85 }
+    },
+    {
+      "id": "867-N1",
+      "title": "The Cotentin for Salomon",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 867, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "More land, my lord. Salomon has the Cotentin now, the whole peninsula, and the king calls him friend. We fought two wars over less than that. Every lord in the kingdom is doing the same arithmetic: hold out long enough and the king pays you in counties."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "same_arithmetic",
+          "trigger": "The lord draws the same conclusion about his own standing with the king: holding out pays.",
+          "effects": { "flags": { "reputation_shrewd": "+1" } }
+        }
+      ],
+      "links": { "arc": "4", "momentum": 85 }
+    },
+    {
+      "id": "874-N1",
+      "title": "Salomon murdered",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 874, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Salomon of Brittany is dead, my lord, killed by his own nobles, and blinded first, they say. Thirty years ago we marched five hundred miles to fight that country. Now they do our work for us."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 85 }
+    },
+    {
+      "id": "890-N1",
+      "title": "Alan the Great",
+      "arc": 4,
+      "type": "news",
+      "fires": { "year": 890, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Good news from the far west, my lord, if you can call it ours. A Breton lord named Alan has smashed a great Northman army at Questembert, in his own country. They say it broke them for a generation. Whatever else the Bretons are, they know how to fight Northmen."
+        }
+      ],
+      "links": { "arc": "4", "momentum": 85 }
+    }
+  ]
 }

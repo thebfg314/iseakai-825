@@ -4,8 +4,11 @@ import { tickLand } from "./land";
 import { historyContent } from "./load";
 import { tickHungerDebuffs, tickPrices } from "./prices";
 import { tickRealm } from "./realm";
+import { tickRelics } from "./relics";
 import { dueEvents, type SeasonAt } from "./scheduler";
 import { runSupplyCheck } from "./supply";
+import { tickTributes } from "./tributes";
+import { tickVikings } from "./vikings";
 import { tickWeather } from "./weather";
 
 export type HistoryPassResult = {
@@ -60,6 +63,15 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   out.forcedWeatherId = weather.forcedWeatherId;
   out.forcedSeverity = weather.severity;
   if (weather.forcedWeatherId) out.refereeLines.push(`History: the weather this season is set by the famine calendar (${weather.forcedWeatherId}); its effect is ${weather.severity.toFixed(2)}× the usual.`);
+
+  out.effects.push(...tickRelics(state));
+  const tributes = tickTributes(state, turn);
+  out.beats.push(...tributes.beats);
+  out.effects.push(...tributes.lines);
+  const vikings = tickVikings(state, incoming, turn);
+  out.beats.push(...vikings.beats);
+  out.effects.push(...vikings.lines);
+  if (vikings.raid) out.refereeLines.push("History: Northmen are coming for the villa this season; the call to arms is open and the player must answer or refuse it.");
 
   const due = dueEvents(state, incoming, content);
   for (const id of due.dropped) if (!state.history.dropped.includes(id)) state.history.dropped.push(id);

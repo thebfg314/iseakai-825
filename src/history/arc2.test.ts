@@ -84,7 +84,7 @@ describe("Arc 2 content", () => {
     expect(spring.fired).toEqual(["N-841", "841-01"]);
     const summer = clock.next();
     expect(state.history.chosen["841-01"]).toBe("answer");
-    expect(summer.fired).toEqual(["N-841-S", "841-02"]);
+    expect(summer.fired).toEqual(["N-841-S", "841-02", "841-V1"]);
     expect(texts(summer).some((x) => x.includes("not yet written in this chronicle"))).toBe(true);
     expect(state.history.away?.reason).toContain("Auxerre");
     expect(state.history.supply.lastRoll?.situation).toBe("foraging");
@@ -106,7 +106,7 @@ describe("Arc 2 content", () => {
     expect(home.resources.denarii).toBe(280);
     expect(home.history.flags.heribannum_paid).toBe(1);
     const summer = c1.next();
-    expect(summer.fired).toEqual(["N-841-S", "841-H1"]);
+    expect(summer.fired).toEqual(["N-841-S", "841-H1", "841-V1"]);
     expect(home.history.away).toBeNull();
 
     const bern = fresh();
@@ -114,7 +114,7 @@ describe("Arc 2 content", () => {
     c2.to(841, "spring");
     expect(choose(bern, "841-01", "bernard_camp").ok).toBe(true);
     const s2 = c2.next();
-    expect(s2.fired).toEqual(["N-841-S", "841-02B"]);
+    expect(s2.fired).toEqual(["N-841-S", "841-02B", "841-V1"]);
     expect(hook(bern, "841-02B", "urge_bernard").ok).toBe(true);
     const a2 = c2.next();
     expect(texts(a2).some((x) => x.includes("it was you who turned him"))).toBe(true);

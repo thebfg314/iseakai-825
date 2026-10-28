@@ -1,22 +1,22 @@
 {
   "emperors": [
     { "from": 814, "name": "Louis the Pious" },
-    { "from": 840, "name": "Lothair" },
-    { "from": 855, "name": "Louis II" },
-    { "from": 875, "name": "Charles the Bald" },
-    { "from": 877, "name": null },
-    { "from": 881, "name": "Charles the Fat" },
-    { "from": 888, "name": null }
+    { "from": 840, "season": "autumn", "name": "Lothair", "announcedBy": "840-02" },
+    { "from": 855, "season": "autumn", "name": "Louis II", "announcedBy": "855-C1" },
+    { "from": 875, "season": "winter", "name": "Charles the Bald", "announcedBy": "876-C0" },
+    { "from": 877, "season": "winter", "name": null, "announcedBy": "877-C2" },
+    { "from": 881, "season": "spring", "name": "Charles the Fat" },
+    { "from": 888, "season": "spring", "name": null, "announcedBy": "888-K2" }
   ],
   "kings": [
     { "from": 817, "name": "Pippin of Aquitaine", "kingdom": "Aquitaine" },
-    { "from": 839, "name": "Charles the Bald", "kingdom": "the West Franks" },
-    { "from": 877, "name": "Louis the Stammerer", "kingdom": "the West Franks" },
-    { "from": 879, "name": "Louis III and Carloman", "kingdom": "the West Franks" },
-    { "from": 882, "name": "Carloman", "kingdom": "the West Franks" },
-    { "from": 885, "name": "Charles the Fat", "kingdom": "the West Franks" },
-    { "from": 888, "name": "Odo", "kingdom": "the West Franks" },
-    { "from": 898, "name": "Charles the Simple", "kingdom": "the West Franks" }
+    { "from": 839, "season": "summer", "name": "Charles the Bald", "kingdom": "the West Franks", "announcedBy": "839-01" },
+    { "from": 877, "season": "winter", "name": "Louis the Stammerer", "kingdom": "the West Franks", "announcedBy": "877-C2" },
+    { "from": 879, "season": "summer", "name": "Louis III and Carloman", "kingdom": "the West Franks", "announcedBy": "879-K1" },
+    { "from": 882, "season": "autumn", "name": "Carloman", "kingdom": "the West Franks", "announcedBy": "882-K2" },
+    { "from": 885, "season": "summer", "name": "Charles the Fat", "kingdom": "the West Franks", "announcedBy": "885-K1" },
+    { "from": 888, "season": "spring", "name": "Odo", "kingdom": "the West Franks", "announcedBy": "888-K2" },
+    { "from": 898, "season": "spring", "name": "Charles the Simple", "kingdom": "the West Franks", "announcedBy": "897-K1" }
   ],
   "counts": [
     { "from": 815, "name": "Thierry", "note": "Dies in 826." },

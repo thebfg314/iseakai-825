@@ -1,0 +1,14 @@
+{
+  "_note": "Viking danger in Burgundy (Event Delivery Scripts, 'Viking danger in Burgundy 886–911'). Chance is per season; camp marks the seasons an army winters in the region. If the Duke-rank player had them sent elsewhere in 886 every band drops to spared.",
+  "bands": [
+    { "from": { "year": 886, "season": "winter" }, "to": { "year": 887, "season": "spring" }, "danger": "high", "chance": 0.65, "camp": true, "what": "The army sent from Paris winters in Burgundy, besieges Sens, ravages the Yonne valley" },
+    { "from": { "year": 888, "season": "spring" }, "to": { "year": 888, "season": "winter" }, "danger": "moderate", "chance": 0.3, "camp": false, "what": "A band sacks Bèze abbey near Dijon; beaten near Saint-Florentin" },
+    { "from": { "year": 889, "season": "spring" }, "to": { "year": 897, "season": "winter" }, "danger": "low", "chance": 0.07, "camp": false, "what": "Quiet in Burgundy; raiding continues elsewhere" },
+    { "from": { "year": 898, "season": "winter" }, "to": { "year": 899, "season": "spring" }, "danger": "moderate", "chance": 0.4, "camp": true, "what": "Vikings winter between Tonnerre and Montbard; beaten at Argenteuil-sur-Armançon and Saint-Florentin" },
+    { "from": { "year": 899, "season": "summer" }, "to": { "year": 911, "season": "winter" }, "danger": "low", "chance": 0.05, "camp": false, "what": "Quiet locally; the last campaign is at Chartres in 911" }
+  ],
+  "spared": { "danger": "low", "chance": 0.05 },
+  "relicsHeldExtra": 0.1,
+  "poisonDiscoveryChance": 0.25,
+  "callText": "Smoke on the river road, my lord. A band of Northmen from the camp is coming up the valley, on foot and mounted, and they are not foraging this time: they mean the villa."
+}

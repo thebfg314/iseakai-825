@@ -8,6 +8,7 @@ import { evalCondition } from "./conditions";
 import { applyFlagOp, conditionContext } from "./flags";
 import { historyContent } from "./load";
 import type { HistoryEffects, HistoryEffectsList } from "./schema";
+import { resolveAmount } from "./slots";
 
 /** Renown bands from the scripts: small 5–15, moderate 25–50, large 75–150. */
 export const RENOWN_BAND_RANGES: Record<string, [number, number]> = {
@@ -58,9 +59,10 @@ function addStock(state: WorldState, id: string, delta: number): boolean {
 }
 
 /** Can the stores pay? Returns the first shortfall or null. */
-export function costShortfall(state: WorldState, cost: Record<string, number> | undefined): string | null {
+export function costShortfall(state: WorldState, cost: Record<string, number | string> | undefined): string | null {
   if (!cost) return null;
-  for (const [id, amount] of Object.entries(cost)) {
+  for (const [id, raw] of Object.entries(cost)) {
+    const amount = resolveAmount(state, raw);
     if (amount <= 0) continue;
     const have = stockOf(state, id);
     if (have < amount) return `The stores hold ${have} ${id}; ${amount} are wanted.`;
@@ -94,12 +96,14 @@ function applyOne(state: WorldState, effects: HistoryEffects, seed: string, opts
 
   const registry = historyContent().flags;
   if (effects.cost) {
-    for (const [id, amount] of Object.entries(effects.cost)) {
+    for (const [id, raw] of Object.entries(effects.cost)) {
+      const amount = resolveAmount(state, raw);
       if (amount > 0 && addStock(state, id, -amount)) lines.push(`${amount} ${id} paid out.`);
     }
   }
   if (effects.gain) {
-    for (const [id, amount] of Object.entries(effects.gain)) {
+    for (const [id, raw] of Object.entries(effects.gain)) {
+      const amount = resolveAmount(state, raw);
       if (amount > 0 && addStock(state, id, amount)) lines.push(`${amount} ${id} received.`);
     }
   }

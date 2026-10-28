@@ -1,4 +1,1119 @@
 ﻿{
   "arc": "3",
-  "events": []
+  "events": [
+    {
+      "id": "841-V1",
+      "title": "Rouen burned",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 841, "season": "summer" },
+      "order": 3,
+      "channel": ["steward"],
+      "form": "note",
+      "source": "Travellers' talk among the war news.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "And one more thing, my lord, though it's far from here: Northmen came up the Seine in their ships in May and burned Rouen, and the monasteries along the river. With every lord in the kingdom marching to fight his brothers, there was no one to stop them."
+        }
+      ],
+      "knows": ["Rouen is some 370 km from Fontenay; the Seine and Loire are the Northmen's roads, not the Saône."],
+      "hooks": [
+        {
+          "id": "rivers_undefended",
+          "trigger": "The lord points out that the civil war leaves the rivers undefended and the Northmen will be back.",
+          "effects": { "flags": { "viking_aware": true } }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 85 }
+    },
+    {
+      "id": "843-V1",
+      "title": "Bishop Gunhard killed at Nantes",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 843, "season": "autumn" },
+      "order": 1,
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "source": "The clergy of the diocese; Ermenald raises it himself, shaken.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "emotion": "shaken",
+          "text": "My lord, the clergy are speaking of nothing else. On the feast of Saint John, Northmen sailed up the Loire to Nantes. The town was full of people for the feast; they broke into the cathedral while the bishop was saying Mass, and killed him at the altar, with the clergy and the people who had taken refuge there. Then they carried off the rest as captives. At the altar, my lord. Is nowhere holy to these men?"
+        }
+      ],
+      "knows": ["Churches and monasteries along the rivers are beginning to ask where to send their relics and treasures for safety."],
+      "hooks": [
+        {
+          "id": "relic_refuge_offer",
+          "trigger": "The lord offers Fontenay as a refuge for relics and church treasure from the threatened rivers.",
+          "effects": { "flags": { "relic_refuge_offer": true, "favor_church": "+1" }, "record": "The lord offered Fontenay as a refuge for the relics of the river churches." }
+        }
+      ],
+      "hookWindow": 8,
+      "links": { "arc": "3", "momentum": 85 }
+    },
+    {
+      "id": "845-V1",
+      "title": "Paris taken",
+      "arc": 3,
+      "type": "levy",
+      "fires": { "year": 845, "season": "summer" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the Northmen have taken Paris. A fleet came up the Seine in March, beat the men the king sent against them, and hanged their prisoners where the king's army could see. They were in the city at Easter. King Charles paid them seven thousand pounds of silver to go away, and they went, laden. Seven thousand pounds, my lord. That's a lesson the Northmen won't forget: Frankish kings pay."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "The churches and abbeys about Paris have given up their plate toward it, my lord, and the bishops are not quiet about who failed to defend them. And the count's officer says the kingdom is to find a share of the sum: sixpence from every manse. For us that is {levy_845}."
+        }
+      ],
+      "knows": [
+        "Contemporaries call him King Charles; nobody here calls him 'the Bald'.",
+        "The seven thousand pounds were raised from the king and the people of the land; the church paid a large share, and part was paid in gold."
+      ],
+      "choices": {
+        "prompt": "The levy for the Paris payment: sixpence a manse.",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "pay",
+            "label": "Pay the levy",
+            "default": true,
+            "effects": { "cost": { "denarii": "{levy_845}" }, "flags": { "levy_paid": "+1" } }
+          },
+          {
+            "id": "refuse",
+            "label": "Refuse to pay a penny toward buying off Northmen",
+            "effects": { "flags": { "levy_refused": "+1", "count_opinion": "-1", "viking_aware": true }, "record": "The lord refused to pay toward the Paris ransom of 845." }
+          }
+        ]
+      },
+      "hooks": [
+        {
+          "id": "paying_invites_more",
+          "trigger": "The lord argues that paying the Northmen invites more raids.",
+          "effects": { "flags": { "viking_aware": true } }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 80 },
+      "notes": "The second block and the levy choice are engine-written from the design note (about 6 d per manse, modelled on 866)."
+    },
+    {
+      "id": "853-V1",
+      "title": "Tours sacked; the relics of Saint Martin",
+      "arc": 3,
+      "type": "choice",
+      "fires": { "year": 853, "season": "winter" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the Northmen from the Loire have burned Tours, and the great church of Saint Martin with it. The canons got out in time, they say, and carried the saint's body away with them, inland, to Auxerre."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "My lord, Saint Martin himself, at Auxerre! A day's hard ride from here. And it isn't only Tours: churches all along the rivers are sending their treasures and relics inland, looking for safe hands. I've been asked whether you would take some into your keeping. I said I would ask."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "rank <= 1 and not relic_refuge_offer",
+          "text": "What is offered is modest, my lord: a small reliquary of a lesser saint, with some books and altar plate from a small community on the river. They ask only that it be kept dry and honoured."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "(rank == 2 or rank <= 1) and relic_refuge_offer and rank < 3",
+          "text": "They remembered what you said after Nantes, my lord. What is offered is a church treasury, larger than I expected for a house like ours, and a few monks who come with it to keep the offices. They would eat at your table."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "rank == 2 and not relic_refuge_offer",
+          "text": "What is offered befits your standing, my lord: a church treasury, and a few monks who come with it to keep the offices. They would eat at your table."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "rank >= 3",
+          "text": "My lord, for a man of your standing they speak of a major shrine. Saint Martin himself goes to Auxerre and will stay there; but there are other great relics looking for walls, and yours are strong enough to ask for one."
+        }
+      ],
+      "knows": [
+        "Accepting brings church favour, prestige, pilgrims and their gifts; it also brings monks to feed if a treasury comes, higher visibility, thieves and greedy neighbours, and once the Northmen reach Burgundy a treasure is a target.",
+        "If the treasure were ever lost or stolen the church would not forgive it. When the danger passes the owners will ask for it back."
+      ],
+      "choices": {
+        "prompt": "Take the relics and treasure into the villa's keeping?",
+        "deadlineSeasons": 2,
+        "options": [
+          {
+            "id": "refuse",
+            "label": "Decline, gently",
+            "default": true,
+            "effects": { "flags": { "favor_church": "-1" } }
+          },
+          {
+            "id": "accept",
+            "label": "Accept the relics into the villa's keeping",
+            "effects": [
+              {
+                "flags": { "relics_held": true, "favor_church": "+2", "holy_reputation": "+1" },
+                "land": { "visibility": "+15" },
+                "renown": "small",
+                "record": "The lord took relics and church treasure from the river churches into his keeping."
+              },
+              { "when": "rank >= 2 or relic_refuge_offer", "flags": { "relics_monks": true } }
+            ]
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 75 },
+      "notes": "Blocks three to six are engine-written from 'The request, by rank'. The ongoing costs and gifts are relics.ts; the Viking raid chance from 886 is vikings.ts."
+    },
+    {
+      "id": "885-V2",
+      "title": "The treasure goes home",
+      "arc": 3,
+      "type": "choice",
+      "fires": { "year": 885, "season": "spring" },
+      "requires": "relics_held",
+      "channel": ["chaplain"],
+      "form": "letter",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, a letter from the river. Saint Martin's canons have gone home to Tours, and the churches that sent their treasures inland are asking for them back. The community whose relics we have kept these thirty years asks the same, with thanks, and with a certain carefulness of phrasing, as if they were not sure what the answer would be. They will send men and a cart at Easter if you say yes."
+        }
+      ],
+      "choices": {
+        "prompt": "Return the relics and treasure?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "return",
+            "label": "Return everything promptly, with honour",
+            "default": true,
+            "effects": { "flags": { "relics_held": false, "relics_monks": false, "relics_returned": true, "favor_church": "+2", "bishop_trust": "+1" }, "land": { "visibility": "-10" }, "record": "The lord returned the relics he had kept since 853, promptly and with honour." }
+          },
+          {
+            "id": "refuse",
+            "label": "Keep them; they have been Fontenay's for thirty years",
+            "effects": { "flags": { "church_enemy": true, "favor_church": "-3" }, "record": "The lord refused to return the relics; the church did not forgive it." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 75 },
+      "notes": "Engine-written from 'When the danger passes'."
+    },
+    {
+      "id": "862-V1",
+      "title": "The bridge levy",
+      "arc": 3,
+      "type": "levy",
+      "fires": { "year": 862, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "envoy",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with Count Robert's officer",
+          "text": "My lord, Count Robert's man has been. The king is building great fortified bridges on the Seine and the Loire to stop the Northmen's ships, and every county must send workers and carts. Our share is small, being only ten manses: some days of labor and a cart, or the value of them in timber, stone or coin. The count gathers it all and sends his men north."
+        }
+      ],
+      "knows": [
+        "The king demanded one young labourer from every hundred manses and a cart with two oxen from every thousand, sent to the works at Pîtres.",
+        "Fontenay's share: about ten labour days, two cart days, or about fifteen denarii in coin or materials.",
+        "No bridge will be built here; the local streams are far too small for ships."
+      ],
+      "choices": {
+        "prompt": "How does Fontenay meet the bridge levy?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "labour",
+            "label": "Send the labour and the cart",
+            "default": true,
+            "effects": { "flags": { "levy_paid": "+1" }, "modifier": { "target": "labour_efficiency", "op": "multiply", "value": 0.95, "seasonsRemaining": 1, "source": "men and a cart sent to the bridge works" } }
+          },
+          {
+            "id": "coin",
+            "label": "Pay the value in coin",
+            "effects": { "cost": { "denarii": "{bridge_levy_862}" }, "flags": { "levy_paid": "+1" } }
+          },
+          {
+            "id": "materials",
+            "label": "Send timber and stone of that value",
+            "requires": "hardwood >= 4 and stone >= 4",
+            "effects": { "cost": { "hardwood": 4, "stone": 4 }, "flags": { "levy_paid": "+1" } }
+          },
+          {
+            "id": "drag_feet",
+            "label": "Drag your feet and send nothing this season",
+            "effects": { "flags": { "levy_refused": "+1", "count_opinion": "-1" } }
+          }
+        ]
+      },
+      "hooks": [
+        {
+          "id": "send_engineers",
+          "trigger": "The lord sends skilled men or engineering advice for the bridges: better foundations, pilings, defensive design.",
+          "effects": { "flags": { "bridge_engineer": true, "count_opinion": "+1", "learned_reputation": "+1" }, "renown": "small", "record": "The lord sent skilled men and advice to the king's bridge works." }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 70 }
+    },
+    {
+      "id": "866-V1",
+      "title": "Count Robert goes west",
+      "arc": 3,
+      "type": "summons",
+      "fires": { "year": 866, "season": "summer" },
+      "requires": "swornTo == 'count' or rank >= 3",
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Robert is going west again against the Northmen on the Loire, who have burned Le Mans with the Bretons beside them. He does not command it of us; Anjou is four hundred miles off and he knows what years you carry. But he lets it be known that men who ride with him, or send him men, will be remembered. You are not a young man, my lord. Nobody expects you in the front rank. A captain, and the men, or your own counsel at his side from behind the line: those are the ways."
+        }
+      ],
+      "knows": ["Robert the Strong is the best fighter in the kingdom and the lord's own count since 861.", "The lord is about fifty-eight: command from behind the lines, or send men under a captain."],
+      "choices": {
+        "prompt": "Robert's western campaign.",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "stay", "label": "Stay home; the count asks nothing", "default": true, "effects": { "flags": { "brissarthe_866": "stayed" } } },
+          {
+            "id": "send_men",
+            "label": "Send men under a captain",
+            "requires": "units >= 1",
+            "effects": { "flags": { "brissarthe_866": "sent_men", "count_opinion": "+1" } }
+          },
+          {
+            "id": "command",
+            "label": "Ride with Robert yourself, commanding from behind the line",
+            "effects": { "flags": { "brissarthe_866": "commanded", "count_opinion": "+2" }, "record": "The lord rode west with Count Robert against the Northmen in 866." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 55 },
+      "notes": "Engine-written from 'Who can be there'."
+    },
+    {
+      "id": "866-B1",
+      "title": "Brissarthe",
+      "arc": 3,
+      "type": "battle",
+      "fires": { "year": 866, "season": "autumn" },
+      "requires": "brissarthe_866 == 'sent_men' or brissarthe_866 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": [
+        { "when": "brissarthe_866 == 'commanded'", "away": { "reason": "with Count Robert's army in Anjou", "seasons": 1 } },
+        { "when": "pippin2_fled", "flags": { "pippin2_fled": false, "pippin2_submitted": true }, "record": "Service against the Northmen earned the lord his pardon for the Pippin years." }
+      ],
+      "battle": {
+        "momentum": 55,
+        "historical": "The Vikings shut themselves in a stone church at Brissarthe. Robert took off his helmet and mail in the heat; they burst out and killed him. Ranulf of Poitou was mortally wounded. The Vikings escaped.",
+        "savingRobert": ["A strong damage ratio keeps the Vikings bottled up so the sortie fails or never comes.", "The armour card: urge Robert to keep his helmet and mail on during the siege."],
+        "ifSaved": "robert_saved: Robert lives, stays count of Autun and commander in the west into the 870s; Hugh the Abbot does not take over; Bernard Hairy-foot returns only after Robert's natural death; a strong patron.",
+        "participation": ["subcommand", "full command"],
+        "cards": ["the pursuit from Le Mans", "the stone church", "the heat of the siege", "the armour laid aside", "the sortie", "an arrow for Ranulf"],
+        "interimLine": "What happened in Anjou that summer, at the stone church at Brissarthe, is not yet written in this chronicle, my lord. The men came home. Not everyone who went west did."
+      },
+      "links": { "arc": "3", "momentum": 55 }
+    },
+    {
+      "id": "866-V2",
+      "title": "Robert the Strong is dead",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 866, "season": "autumn" },
+      "order": 1,
+      "unless": "robert_saved",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Robert is dead. He caught the Northmen and the Bretons at Brissarthe, in Anjou, after they'd burned Le Mans, and penned them up in a stone church. It was blazing hot; he took off his helmet and his mail to rest, and they came bursting out. He was cut down before he could arm himself. Count Ranulf of Poitou took an arrow there too and died of it. The best fighter in the kingdom, my lord, killed for want of a helmet. Autun has no count again."
+        }
+      ],
+      "knows": ["Bernard Plantapilosa, Bernard of Septimania's son, is coming back to Autun, reconciled to the king.", "Robert leaves two young sons, Odo and Robert."],
+      "links": { "arc": "3", "momentum": 55 },
+      "record": "Robert the Strong was killed at Brissarthe; Autun had no count again."
+    },
+    {
+      "id": "875-V1",
+      "title": "The monks of Saint-Philibert come to Tournus",
+      "arc": 3,
+      "type": "choice",
+      "fires": { "year": 875, "season": "spring" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the king has given the abbey at Tournus to the monks of Saint-Philibert, the ones who fled the Northmen on the Loire all those years ago. They've been wandering for forty years, they say. Now they'll be our neighbors on the Saône, with the king's protection and whatever lands came with the abbey. A great house, so close; that will change things hereabouts."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "My lord, they will pass near us on the last stage from the Auvergne, carrying the body of Saint Philibert himself. Their abbot has asked the lords along the road for help. It would be a great honor to receive a saint, and the monks would never forget it."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "relic_refuge_offer or relics_held or relics_returned",
+          "text": "And they know your name already, my lord. The house that offered the river churches shelter when nobody else would: that is how their abbot's letter puts it. They are coming to us warmly."
+        }
+      ],
+      "knows": [
+        "Hospitality, carts and guides, and an armed escort each earn the abbey's goodwill; all three together make a lasting friend and patron.",
+        "A few displaced families have drifted east with the monks and could be settled on vacant manses.",
+        "One of the monks, Ermentarius, wrote the history of their wanderings and complains bitterly that lords paid tribute instead of fighting.",
+        "The abbey will be a large landholder and a competitor for land, labour and pilgrims."
+      ],
+      "hooks": [
+        {
+          "id": "hospitality",
+          "trigger": "The lord offers the community food and lodging at Fontenay for a few days.",
+          "requires": "rye >= 6 or wheat >= 6 or barley >= 6",
+          "effects": [
+            { "cost": { "denarii": 10 }, "flags": { "tournus_host": true, "favor_church": "+1" }, "record": "The lord sheltered the monks of Saint-Philibert and the body of their saint at Fontenay." },
+            { "when": "tournus_carts and tournus_escort", "flags": { "tournus_friend": true }, "record": "Fontenay and the abbey of Tournus became fast friends." }
+          ]
+        },
+        {
+          "id": "carts",
+          "trigger": "The lord sends carts, oxen and men to help the monks on the road and at the river crossings.",
+          "effects": [
+            { "cost": { "denarii": 15 }, "flags": { "tournus_carts": true, "favor_church": "+1" }, "modifier": { "target": "labour_efficiency", "op": "multiply", "value": 0.95, "seasonsRemaining": 1, "source": "carts and men lent to the monks of Saint-Philibert" } },
+            { "when": "tournus_host and tournus_escort", "flags": { "tournus_friend": true }, "record": "Fontenay and the abbey of Tournus became fast friends." }
+          ]
+        },
+        {
+          "id": "escort",
+          "trigger": "The lord sends mounted men to escort the saint on the journey.",
+          "requires": "horses >= 2",
+          "effects": [
+            { "flags": { "tournus_escort": true }, "renown": "small", "land": { "visibility": "+5" } },
+            { "when": "tournus_host and tournus_carts", "flags": { "tournus_friend": true }, "record": "Fontenay and the abbey of Tournus became fast friends." }
+          ]
+        },
+        {
+          "id": "settle_refugees",
+          "trigger": "The lord takes in displaced families who came east with the monks and settles them on vacant manses.",
+          "requires": "vacant_manses >= 1",
+          "effects": { "settle": { "households": 1 }, "flags": { "sheltered_refugees": "+1" } }
+        },
+        {
+          "id": "ermentarius",
+          "trigger": "The lord seeks out the monk Ermentarius and talks with him about his history and the lords who pay tribute.",
+          "effects": { "flags": { "scholar_contact": "+1", "learned_reputation": "+1" } }
+        },
+        {
+          "id": "refuse",
+          "trigger": "The lord refuses the abbot's request outright.",
+          "effects": { "flags": { "favor_church": "-1" } }
+        }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "3", "momentum": 70 },
+      "notes": "Help is hooks so the three can combine; the third taken sets tournus_friend. The third script block is engine-written from the relic-refuge payoff. The high-rank long shot (settling the monks on the lord's own land) waits for the promotion pass."
+    },
+    {
+      "id": "881-V1",
+      "title": "Victory at Saucourt",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 881, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, good news for once. Young King Louis, the old emperor Charles's grandson, caught a great band of Northmen at Saucourt, up in the Vimeu near the sea, and slaughtered them. Thousands dead, they say, though you know how they say. The Franks across the Rhine are already singing a song about it. It's proof the Northmen can be beaten in the open field, my lord, when a king will stand and fight."
+        }
+      ],
+      "doesntKnow": ["That the Vikings will be back within the year and that Louis III dies next summer."],
+      "hooks": [
+        {
+          "id": "standing_works",
+          "trigger": "The lord says this proves what he has always said: standing and fighting works, paying does not.",
+          "requires": "viking_aware",
+          "effects": { "mood": 1, "flags": { "local_loyalty": "+1" } }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 70 }
+    },
+    {
+      "id": "885-V1",
+      "title": "Paris besieged",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 885, "season": "winter" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the Northmen have come back to the Seine in strength, hundreds of ships, and they are at Paris. Count Odo holds the city, and Bishop Gozlin with him, on their island between the two bridges. They say the Northmen offered to pass by if the bridges were opened, and Odo refused them. Now they are building engines. Paris cannot hold out forever, and no one is coming: the emperor is in Italy."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "Prayers are being said in every church of the diocese for the city and for Bishop Gozlin, my lord. I have added Fontenay's."
+        }
+      ],
+      "knows": ["No one in Burgundy can reach Paris in time; the winter and spring will pass with news of the siege."],
+      "hooks": [
+        {
+          "id": "kingdom_must_answer",
+          "trigger": "The lord argues that the kingdom will have to answer this or lose the Seine.",
+          "requires": "viking_aware",
+          "effects": { "flags": { "reputation_shrewd": "+1" } }
+        },
+        {
+          "id": "warn_neighbours",
+          "trigger": "The lord warns his neighbours to look to their walls and stores against the Northmen.",
+          "effects": { "flags": { "warned_neighbours_viking": true, "local_loyalty": "+1" } }
+        }
+      ],
+      "hookWindow": 3,
+      "links": { "arc": "3", "momentum": 75 },
+      "notes": "Ermenald's block is engine-written ('Ermenald adds the prayers being said')."
+    },
+    {
+      "id": "886-V1",
+      "title": "The emperor's march",
+      "arc": 3,
+      "type": "summons",
+      "fires": { "year": 886, "season": "summer" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor is coming over the Alps at last, with an army out of Italy, and his road to Paris runs through Burgundy. Those who mean to go will join him as he passes."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "Count Richard will send men, and expects his own to do the same. You are seventy-eight, my lord. Nobody will put you in a line. A captain and the men, or yourself behind the line with the emperor's staff: those are the choices, and staying home is a third."
+        }
+      ],
+      "knows": ["The emperor Charles the Fat gathered the army in Italy; he will reach Paris in October.", "The lord is about seventy-eight: subcommand or full command only."],
+      "choices": {
+        "prompt": "Join the emperor's march to Paris?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "stay", "label": "Stay home", "default": true, "effects": { "flags": { "march_886": "stayed" } } },
+          {
+            "id": "send_men",
+            "label": "Send men under a captain",
+            "requires": "units >= 1",
+            "effects": { "flags": { "march_886": "sent_men", "count_opinion": "+1" } }
+          },
+          {
+            "id": "command",
+            "label": "Go yourself, commanding from behind the line",
+            "effects": { "flags": { "march_886": "commanded", "count_opinion": "+1" }, "record": "The lord marched with the emperor's army to the relief of Paris in 886." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 75 },
+      "notes": "The second block is engine-written from the participation note."
+    },
+    {
+      "id": "886-B1",
+      "title": "The relief of Paris",
+      "arc": 3,
+      "type": "battle",
+      "fires": { "year": 886, "season": "autumn" },
+      "requires": "march_886 == 'sent_men' or march_886 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": [{ "when": "march_886 == 'commanded'", "away": { "reason": "with the emperor's army before Paris", "seasons": 1 } }],
+      "battle": {
+        "momentum": 75,
+        "historical": "The emperor reaches Paris in October, surrounds the Northmen on Montmartre, and does not fight.",
+        "participation": ["subcommand", "full command"],
+        "cards": ["the long march north", "a city starving behind its walls", "the Northmen's camp at Saint-Germain", "skirmishes with foraging parties", "the river chain and the broken bridge"],
+        "interimLine": "The march north with the emperor's host, and what was done and not done before Paris, is not yet written in this chronicle, my lord. The men were back before the snow."
+      },
+      "links": { "arc": "3", "momentum": 75 }
+    },
+    {
+      "id": "886-V2",
+      "title": "The emperor pays",
+      "arc": 3,
+      "type": "live",
+      "fires": { "year": 886, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "scene",
+      "stages": [
+        {
+          "id": "arrival",
+          "title": "The emperor before Paris",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, the emperor has reached Paris. He came up in October with the whole army out of Italy and the Burgundians who joined him on the road, and he has the Northmen penned on Montmartre with the city at their backs. Every man in the camp expects a battle. The city expects one. He has not given it yet."
+            }
+          ],
+          "hooks": [
+            {
+              "id": "argue_against_payment",
+              "trigger": "The lord argues, in the emperor's camp or by letter to those in it, against paying the Northmen.",
+              "requires": "march_886 == 'commanded' or march_886 == 'sent_men' or rank >= 3",
+              "effects": { "flags": { "objected_886": true }, "renown": "moderate", "record": "The lord argued against paying the Northmen before Paris in 886." }
+            }
+          ]
+        },
+        {
+          "id": "payment",
+          "title": "Seven hundred pounds, and the Yonne",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, he paid them. The emperor had the Northmen surrounded on Montmartre with the whole army of Italy and Burgundy at his back, and he did not fight. Seven hundred pounds of silver, and leave to go up the Yonne and winter in Burgundy, which has not been loyal enough to suit him. Paris is disgusted; Count Odo is said to have defied the arrangement to the emperor's face. And we are the country they have been given leave to winter in."
+            },
+            {
+              "speaker": "steward",
+              "when": "objected_886",
+              "text": "You said it in front of the army, my lord, and the men who heard you have not forgotten. Odo's people least of all."
+            },
+            {
+              "speaker": "steward",
+              "when": "rank == 3",
+              "text": "The emperor's answer to you was short, my lord: you are trapped in Burgundy with me. He will send them regardless, but he backs you to contain them: men, coin, authority to raise the region's levies, and a commission. A great chance, and a great risk."
+            },
+            {
+              "speaker": "steward",
+              "when": "rank >= 4",
+              "text": "And to you he leaves the choice, my lord. He will not punish Burgundy at the cost of his best man in it. Spend your favour and he sends them elsewhere; or take them on, with imperial backing."
+            }
+          ],
+          "choices": {
+            "prompt": "Where do the Northmen go? (The payment happens regardless.)",
+            "deadlineSeasons": 1,
+            "options": [
+              { "id": "in_the_way", "label": "Burgundy is punished as a region; the villa is simply in the way", "default": true },
+              {
+                "id": "commission",
+                "label": "Take the emperor's commission to contain them, with his men and coin",
+                "requires": "rank == 3",
+                "effects": { "flags": { "imperial_commission_886": true }, "gain": { "denarii": 240 }, "renown": "moderate", "record": "The lord took the emperor's commission to contain the Northmen in Burgundy." }
+              },
+              {
+                "id": "sent_elsewhere",
+                "label": "Spend favour to have them sent elsewhere; Burgundy is spared",
+                "requires": "rank >= 4",
+                "effects": { "flags": { "vikings_sent_elsewhere": true, "charles_favor": "-2" }, "record": "The lord spent his favour with the emperor to turn the Northmen away from Burgundy." }
+              },
+              {
+                "id": "volunteer",
+                "label": "Volunteer to take them on with imperial backing",
+                "requires": "rank >= 4",
+                "effects": { "flags": { "imperial_commission_886": true }, "gain": { "denarii": 480 }, "renown": "large", "record": "The lord volunteered to take on the Northmen with the emperor's backing." }
+              }
+            ]
+          }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 40, "keystone": "K7" },
+      "notes": "Both stages engine-written from 'What happens' and the standing table; the count and duke rows are gated on rank for the promotion pass."
+    },
+    {
+      "id": "887-V1",
+      "title": "The Northmen in Burgundy",
+      "arc": 3,
+      "type": "hazard",
+      "fires": { "year": 886, "season": "winter" },
+      "unless": "vikings_sent_elsewhere",
+      "channel": ["steward"],
+      "form": "spoken",
+      "supplyCheck": { "situation": "enemy_main", "seasons": 1 },
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, they are coming up the Yonne. The emperor's own safe-conduct in their hands, and they are coming to winter on us. They have sat down before Sens and mean to take it. Everything outside the walls between here and the Yonne is theirs for the taking until spring."
+        }
+      ],
+      "knows": [
+        "The band is the core of the force that besieged Paris: a thousand to three thousand veterans practised at siege work. A field battle against the whole army is suicide.",
+        "What a smaller force can do: hit foraging parties; empty the villages, hide stores, drive livestock into the woods, break bridges and block fords; night raids on the camp; ambushes at crossings; burn the beached ships (very high risk).",
+        "Poisoning the camp's stores needs someone inside; if it becomes known the church condemns it and renown suffers.",
+        "Plague-fouled cloth as 'loot' would do nothing to the enemy and might sicken the household that handled it."
+      ],
+      "hooks": [
+        {
+          "id": "deny_countryside",
+          "trigger": "The lord empties the outlying manses, hides the stores in pits, drives the livestock into the woods, breaks bridges or blocks fords.",
+          "effects": { "flags": { "hidden_stores": true, "irregular_tactics": "+1" }, "modifier": { "target": "labour_efficiency", "op": "multiply", "value": 0.85, "seasonsRemaining": 1, "source": "the countryside denied to the Northmen" }, "record": "The lord denied the countryside to the Northmen in the winter of 886." }
+        },
+        {
+          "id": "harass_foragers",
+          "trigger": "The lord's men hit the Northmen's foraging parties and run.",
+          "requires": "men_under_arms >= 5",
+          "effects": { "flags": { "irregular_tactics": "+1" }, "renown": "small" }
+        },
+        {
+          "id": "ambush_crossing",
+          "trigger": "The lord lays an ambush for a detachment at a river crossing or defile.",
+          "requires": "men_under_arms >= 10",
+          "effects": { "flags": { "irregular_tactics": "+1" }, "renown": "moderate", "record": "The lord ambushed a Viking detachment at a crossing in the winter of 886." }
+        },
+        {
+          "id": "night_raid",
+          "trigger": "The lord sends men to raid the Northmen's camp at night: cut the horse lines, fire tents, kill sentries.",
+          "requires": "men_under_arms >= 10",
+          "effects": { "flags": { "irregular_tactics": "+1" }, "renown": "moderate", "record": "The lord's men raided the Viking camp by night." }
+        },
+        {
+          "id": "poison_camp",
+          "trigger": "The lord has someone slipped into the camp to foul the army's food and drink.",
+          "effects": { "flags": { "poisoned_camp": true }, "record": "The lord had the Northmen's stores poisoned." }
+        },
+        {
+          "id": "disease_blankets",
+          "trigger": "The lord tries to pass plague-fouled cloth or blankets to the Northmen as loot.",
+          "effects": { "flags": { "disease_blankets": true }, "mood": -1, "modifier": { "target": "accident_risk", "op": "multiply", "value": 1.3, "seasonsRemaining": 2, "source": "handling fouled cloth meant for the Northmen" } }
+        }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "3", "momentum": 40 },
+      "notes": "The raids themselves are the raid call from vikings.ts (danger high this season and next). Poison secrecy is rolled each season there; the night raid's cost in men waits for the battle pass."
+    },
+    {
+      "id": "887-V2",
+      "title": "Sens holds; the country does not",
+      "arc": 3,
+      "type": "hazard",
+      "fires": { "year": 887, "season": "spring" },
+      "unless": "vikings_sent_elsewhere",
+      "channel": ["steward"],
+      "form": "spoken",
+      "supplyCheck": { "situation": "enemy_main", "seasons": 1 },
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Sens is still holding. Months before the walls and they have not taken it; walls, it turns out, are the one thing they cannot eat. The open country is another matter. Every village between the Yonne and the Armançon has been stripped, and the bands range further every week as the near ground gives out. They will go back to Paris for their silver when the roads dry. Until then we are still in their larder."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "deny_countryside_spring",
+          "trigger": "The lord keeps the stores hidden and the people inside until the Northmen go.",
+          "effects": { "flags": { "hidden_stores": true, "irregular_tactics": "+1" } }
+        },
+        {
+          "id": "harass_foragers_spring",
+          "trigger": "The lord's men keep hitting the foraging parties.",
+          "requires": "men_under_arms >= 5",
+          "effects": { "flags": { "irregular_tactics": "+1" }, "renown": "small" }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 40 },
+      "notes": "Engine-written: the second season of the army's stay, with its own supply check."
+    },
+    {
+      "id": "887-V3",
+      "title": "The Northmen go back to Paris",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 887, "season": "summer" },
+      "unless": "vikings_sent_elsewhere",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "They've gone, my lord. Back down the Yonne to Paris to collect the emperor's seven hundred pounds, and Sens still standing behind them with its gates shut. The country they leave will take years to come back. But they have gone."
+        },
+        {
+          "speaker": "steward",
+          "when": "irregular_tactics >= 2",
+          "text": "And it is being said along the Yonne that the one district they never got fat on was ours. Men remember who made the winter hard for them."
+        }
+      ],
+      "onFire": [{ "when": "irregular_tactics >= 2", "renown": "small" }],
+      "links": { "arc": "3", "momentum": 40 },
+      "record": "The Northmen wintered in Burgundy in 886–887, besieged Sens and went back to Paris in the spring.",
+      "notes": "Engine-written close to the winter of 886."
+    },
+    {
+      "id": "888-V1",
+      "title": "Bèze sacked; Richard's summons",
+      "arc": 3,
+      "type": "summons",
+      "fires": { "year": 888, "season": "spring" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Northmen in Burgundy again. A band came inland and sacked the abbey at Bèze, up by Dijon; burned it and carried off everything. Count Richard is calling up his men, and Bishop Géran of Auxerre is bringing his."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "He calls every man who can ride, my lord, and he knows you cannot, not in the line. A captain and the men, or your counsel beside him. Or nothing, and he will note it."
+        }
+      ],
+      "knows": [
+        "Richard the Justiciar, count of Autun since 880, born at Vienne in 858, about thirty; his family came from Lotharingia.",
+        "The lord is about seventy-nine: subcommand or full command only."
+      ],
+      "choices": {
+        "prompt": "Answer Count Richard's call against the Northmen?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "stay", "label": "Stay home", "default": true, "effects": { "flags": { "saint_florentin_888": "stayed", "count_opinion": "-1" } } },
+          {
+            "id": "send_men",
+            "label": "Send men under a captain",
+            "requires": "units >= 1",
+            "effects": { "flags": { "saint_florentin_888": "sent_men", "count_opinion": "+1" } }
+          },
+          {
+            "id": "command",
+            "label": "Ride with Richard, commanding from behind the line",
+            "effects": { "flags": { "saint_florentin_888": "commanded", "count_opinion": "+2" }, "record": "The lord rode with Count Richard against the Northmen who sacked Bèze." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 35 },
+      "notes": "Second block engine-written from the participation note. Fires in spring 888 (designer's choice)."
+    },
+    {
+      "id": "888-B1",
+      "title": "Saint-Florentin",
+      "arc": 3,
+      "type": "battle",
+      "fires": { "year": 888, "season": "summer" },
+      "requires": "saint_florentin_888 == 'sent_men' or saint_florentin_888 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": [{ "when": "saint_florentin_888 == 'commanded'", "away": { "reason": "with Count Richard's host near Saint-Florentin", "seasons": 1 } }],
+      "battle": {
+        "momentum": 35,
+        "historical": "Richard and Bishop Géran caught the band in the plain near Saint-Florentin and destroyed it.",
+        "participation": ["subcommand", "full command"],
+        "dukeTrack": "If the player holds Autun he commands in Richard's place, with Bishop Géran as his ally.",
+        "cards": ["scouting the band's line of march", "the abbey's survivors and what they saw", "a bishop's men fighting beside a count's", "plunder-laden Northmen who cannot run", "cutting off the retreat to the river"],
+        "interimLine": "The fight in the plain near Saint-Florentin, where Count Richard and the bishop caught the band that burned Bèze, is not yet written in this chronicle, my lord. The men came home with plunder recovered from the abbey."
+      },
+      "links": { "arc": "3", "momentum": 35 }
+    },
+    {
+      "id": "888-V2",
+      "title": "The band destroyed",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 888, "season": "summer" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Richard and Bishop Géran caught the Northmen who burned Bèze in the open plain near Saint-Florentin and destroyed them. Laden with plunder, they could not run, and the count's riders and the bishop's men cut off the road to the river. What was taken from the abbey is coming back to it, most of it. The first band to come into Burgundy and not leave it."
+        },
+        {
+          "speaker": "steward",
+          "when": "saint_florentin_888 == 'stayed'",
+          "text": "The count noticed who was not there, my lord. He said nothing. He does not need to."
+        }
+      ],
+      "links": { "arc": "3", "momentum": 35 },
+      "record": "Richard and Bishop Géran destroyed the Northmen who sacked Bèze, near Saint-Florentin.",
+      "notes": "Engine-written report of the battle's historical result."
+    },
+    {
+      "id": "889-R1",
+      "title": "Richard and the king of the Jura",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 889, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Richard has taken a side across the Jura. Rudolph, the Welf, has had himself crowned king of Upper Burgundy at Saint-Maurice, and our count backs him, and has married his sister Adelaide to seal it. A wedding, and we are asked to it. Politics rather than war, for once; a count who marries into a king's house is a count with a kingdom at his back."
+        }
+      ],
+      "knows": ["Rudolph I was elected king of Upper Burgundy in 888; Richard's marriage to Adelaide binds the two houses."],
+      "hooks": [
+        {
+          "id": "attend_wedding",
+          "trigger": "The lord attends Richard's wedding with a fitting gift.",
+          "effects": { "cost": { "denarii": 20 }, "flags": { "rudolph_wedding": true, "count_opinion": "+1" }, "land": { "visibility": "+3" } }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 75 },
+      "notes": "Engine-written from the middle-years table (888–890)."
+    },
+    {
+      "id": "890-R1",
+      "title": "A Bosonid king in Provence",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 890, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the family has closed ranks. Boso's boy, Louis, has been made king of Provence at Valence, and Count Richard, who beat the boy's father at Vienne, stood behind it. His nephew owes him everything now. Whatever was between the brothers is buried with Boso."
+        },
+        {
+          "speaker": "steward",
+          "when": "boso_sympathy",
+          "text": "And the Bosonids remember who spoke for Boso when it cost something, my lord. A kind word has come from Valence by way of the count's household."
+        }
+      ],
+      "onFire": [{ "when": "boso_sympathy", "flags": { "count_opinion": "+1" } }],
+      "links": { "arc": "3", "momentum": 75 },
+      "notes": "Engine-written from the middle-years table (890) and 887-K1's hook."
+    },
+    {
+      "id": "892-R1",
+      "title": "The plot against Odo",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 892, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, there is something moving among the great men, and Count Richard is in it. King Odo has been drawn away south into Aquitaine, and the men who drew him there did it for a reason: the boy Charles, Louis the Stammerer's son, is of an age to be crowned, and there are those who mean to do it while Odo's back is turned. Messages are passing. Some of them pass through Autun."
+        }
+      ],
+      "doesntKnow": ["That Charles will be crowned at Reims in January 893."],
+      "hooks": [
+        {
+          "id": "carry_messages",
+          "trigger": "The lord agrees to carry or house the plotters' messages for Richard.",
+          "effects": { "flags": { "carried_messages_892": true, "count_opinion": "+2" }, "record": "The lord carried messages for Richard's party in the plot to crown Charles the Simple." }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 65 },
+      "notes": "Engine-written from the middle-years table (892)."
+    },
+    {
+      "id": "894-R1",
+      "title": "A king to guard",
+      "arc": 3,
+      "type": "summons",
+      "fires": { "year": 894, "season": "summer" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Richard is sheltering the young king, Charles, on his own lands, and there are East Frankish troops looking for him. The count asks for men to guard the fugitive king: not a battle, a watch, with real risk in it and a king's gratitude at the end if it goes well. You cannot stand a watch at eighty-five, my lord, but your men can, and your name would be on it."
+        }
+      ],
+      "choices": {
+        "prompt": "Send men to guard Charles the Simple?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "decline", "label": "Decline", "default": true, "effects": { "flags": { "count_opinion": "-1" } } },
+          {
+            "id": "send_men",
+            "label": "Send men to the king's guard",
+            "requires": "units >= 1",
+            "effects": { "flags": { "guarded_charles_894": true, "count_opinion": "+1" }, "renown": "small", "record": "The lord's men guarded the fugitive king Charles on Richard's lands in 894." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 65 },
+      "notes": "Engine-written from the middle-years table (894)."
+    },
+    {
+      "id": "894-R2",
+      "title": "Richard goes for Sens",
+      "arc": 3,
+      "type": "summons",
+      "fires": { "year": 894, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Richard means to take Sens, by force if its count will not yield it, and he is calling his men for a real campaign: sieges and skirmishes through the winter and into next year. The city that held against the Northmen is to be his. A captain and the men, or your counsel beside him, or nothing."
+        }
+      ],
+      "choices": {
+        "prompt": "Richard's campaign for Sens.",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "stay", "label": "Stay home", "default": true, "effects": { "flags": { "sens_895": "stayed" } } },
+          {
+            "id": "send_men",
+            "label": "Send men under a captain",
+            "requires": "units >= 1",
+            "effects": { "flags": { "sens_895": "sent_men", "count_opinion": "+1" } }
+          },
+          {
+            "id": "command",
+            "label": "Go yourself, commanding from behind the line",
+            "effects": { "flags": { "sens_895": "commanded", "count_opinion": "+2" }, "record": "The lord went with Richard's campaign against Sens." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 65 },
+      "notes": "Engine-written from the middle-years table (894–895)."
+    },
+    {
+      "id": "895-B1",
+      "title": "The campaign for Sens",
+      "arc": 3,
+      "type": "battle",
+      "fires": { "year": 895, "season": "spring" },
+      "requires": "sens_895 == 'sent_men' or sens_895 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": [{ "when": "sens_895 == 'commanded'", "away": { "reason": "with Richard's army before Sens", "seasons": 1 } }],
+      "battle": {
+        "momentum": 65,
+        "historical": "Richard takes the county of Sens by force in 894–895.",
+        "participation": ["subcommand", "full command"],
+        "cards": ["siege lines in the Yonne mud", "a count who will not yield", "skirmishes on the roads north", "the gates opened by agreement"],
+        "interimLine": "The sieges and skirmishes of Richard's campaign for Sens are not yet written in this chronicle, my lord. The city is his, and the men came home."
+      },
+      "links": { "arc": "3", "momentum": 65 }
+    },
+    {
+      "id": "895-R1",
+      "title": "Sens is Richard's",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 895, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Sens has fallen to Count Richard. Autun, Auxerre, Nevers, Avallon, and now Sens and the road north: there is no one between here and the Seine who does not answer to him one way or another. Our count is becoming something larger than a count, and nobody has a word for it yet."
+        }
+      ],
+      "links": { "arc": "3", "momentum": 65 },
+      "record": "Richard took Sens by force.",
+      "notes": "Engine-written close to the Sens campaign."
+    },
+    {
+      "id": "898-V1",
+      "title": "The Northmen winter between Tonnerre and Montbard",
+      "arc": 3,
+      "type": "summons",
+      "fires": { "year": 898, "season": "winter" },
+      "channel": ["steward"],
+      "form": "summons",
+      "supplyCheck": { "situation": "foraging", "seasons": 1 },
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Northmen have come up the rivers and made a winter camp between Tonnerre and Montbard. Not fifty miles from here, sitting on our country for the winter and stripping it bare. Count Richard, marquis now, means to go at them before they're settled. He's calling every man who can ride."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "You are eighty-nine, my lord. He knows that. A captain and the men, or yourself behind the line in a winter camp, which I will say plainly I would rather you did not. Or nothing."
+        }
+      ],
+      "knows": [
+        "Their ships are far off; the camp is on land, not an island; surprise is possible in winter.",
+        "Winter supply costs about double; cold and sickness tell on the attacker.",
+        "The lord is about eighty-nine: subcommand or full command only."
+      ],
+      "choices": {
+        "prompt": "Answer the marquis's call against the winter camp?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "stay", "label": "Stay home", "default": true, "effects": { "flags": { "argenteuil_898": "stayed", "count_opinion": "-1" } } },
+          {
+            "id": "send_men",
+            "label": "Send men under a captain",
+            "requires": "units >= 1",
+            "effects": { "flags": { "argenteuil_898": "sent_men", "count_opinion": "+1" }, "cost": { "denarii": 20 } }
+          },
+          {
+            "id": "command",
+            "label": "Go yourself, commanding from behind the line",
+            "effects": { "flags": { "argenteuil_898": "commanded", "count_opinion": "+2" }, "cost": { "denarii": 20 }, "record": "The lord rode with the marquis against the Northmen's winter camp in 898." }
+          }
+        ]
+      },
+      "hooks": [
+        {
+          "id": "deny_countryside_898",
+          "trigger": "The lord hides the stores and empties the outlying manses while the camp is near.",
+          "effects": { "flags": { "hidden_stores": true, "irregular_tactics": "+1" } }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 30 },
+      "notes": "Second block engine-written from the participation note; the coin is the winter supply."
+    },
+    {
+      "id": "898-B1",
+      "title": "Argenteuil-sur-Armançon",
+      "arc": 3,
+      "type": "battle",
+      "fires": { "year": 899, "season": "spring" },
+      "requires": "argenteuil_898 == 'sent_men' or argenteuil_898 == 'commanded'",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": [{ "when": "argenteuil_898 == 'commanded'", "away": { "reason": "with the marquis's winter host on the Armançon", "seasons": 1 } }],
+      "battle": {
+        "momentum": 30,
+        "historical": "Richard surprised the camp at Argenteuil-sur-Armançon, beat them again at Saint-Florentin, and drove them back to the Seine valley.",
+        "participation": ["subcommand", "full command"],
+        "winterAttack": { "advantages": ["ships far off", "camp on land", "surprise in winter"], "costs": ["double supply", "cold and sickness morale penalty"] },
+        "dukeTrack": "If the player holds Autun he plans and commands both actions; Bishop Géran and the merged counties' levies are his.",
+        "cards": ["a night march in frost", "scouts who know the Armançon crossings", "firing the camp before dawn", "Northmen fighting dismounted among their baggage", "pursuit through the Tonnerrois", "prisoners and plunder recovered from the abbeys"],
+        "reward": "The largest renown of the late game: the man who cleared Burgundy of Northmen.",
+        "interimLine": "The night march in the frost and the fight at the camp on the Armançon are not yet written in this chronicle, my lord. The men came home before Lent."
+      },
+      "links": { "arc": "3", "momentum": 30 }
+    },
+    {
+      "id": "899-V1",
+      "title": "Burgundy cleared",
+      "arc": 3,
+      "type": "news",
+      "fires": { "year": 899, "season": "spring" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the marquis came on the Northmen's camp at Argenteuil on the Armançon before dawn, in December, and broke it. Those who got away he caught again near Saint-Florentin, and the rest are back in the Seine valley with nothing to show for the winter. Burgundy is clear of them. For the first time since the emperor sent them up the Yonne, there is not a Northman camped on our country."
+        },
+        {
+          "speaker": "steward",
+          "when": "argenteuil_898 == 'stayed'",
+          "text": "The marquis has a long memory for who rode and who did not, my lord."
+        }
+      ],
+      "links": { "arc": "3", "momentum": 30 },
+      "record": "Richard destroyed the Northmen's winter camp at Argenteuil-sur-Armançon and cleared Burgundy of them.",
+      "notes": "Engine-written report of the historical result."
+    }
+  ]
 }

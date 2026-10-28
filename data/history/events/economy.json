@@ -1,4 +1,153 @@
-﻿{
+{
   "arc": "economy",
-  "events": []
+  "events": [
+    {
+      "id": "E-866",
+      "title": "The ransom of the kingdom",
+      "arc": "economy",
+      "type": "levy",
+      "fires": { "year": 866, "season": "autumn" },
+      "order": 2,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the king has agreed to pay the Northmen four thousand pounds of silver to leave the kingdom, and the whole realm is to find it. Here is how it falls on us."
+        },
+        {
+          "speaker": "steward",
+          "text": "You yourself are assessed at the army fine, by what you are worth: {tribute_866_personal}. That is the heavy part, and it must be in coin."
+        },
+        {
+          "speaker": "steward",
+          "text": "Then every holding on your land pays: sixpence from each free manse, threepence from the servile, and word is there will be a second round of a penny more from every one of them before they have enough. That is {tribute_866_tenants} from our people altogether."
+        },
+        {
+          "speaker": "steward",
+          "text": "And that is my worry, my lord. Fourpence is a piglet, or a pair of geese; most families can find it in an ordinary year. But they find it by carrying something to market, and this autumn every household between here and Chalon will be carrying the same eggs and cheeses and piglets to the same market in the same fortnight. Prices will be on the floor. Some will sell the breeding sow. Some will sell the seed corn, and we will both regret that in the spring."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "I will say what the bishops are saying, my lord, since you will hear it from them anyway: this is a disgrace. Four thousand pounds to heathens, melted out of altar plate, because the lords of this kingdom would not defend it by arms. I do not say it of you. I say it is being said."
+        },
+        {
+          "speaker": "steward",
+          "when": "viking_aware",
+          "text": "You have been saying for twenty years that paying them invites more, my lord. Here is your evidence, and every man in the county knows you said it first."
+        }
+      ],
+      "knows": [
+        "The levy is assessed per recorded manse; an improved villa pays no more than a poor one, but it can produce coin on short notice.",
+        "Merchants pay a tenth of their goods; priests according to their means; each great lord collects from his own lands.",
+        "A count or royal vassal collects for his whole jurisdiction: honestly, harshly and keep the difference, or make up the shortfall himself."
+      ],
+      "choices": {
+        "prompt": "How does the villa raise the 866 tribute?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "strict",
+            "label": "Collect strictly in coin, on time",
+            "default": true,
+            "effects": { "cost": { "denarii": "{tribute_866_personal}" }, "flags": { "tribute_866": "paid", "levy_paid": "+1", "local_loyalty": "-1" }, "mood": -1 }
+          },
+          {
+            "id": "in_kind",
+            "label": "Accept payment in kind at a fair valuation and convert it yourself",
+            "effects": { "cost": { "denarii": "{tribute_866_total}" }, "gain": { "pigs": 3, "poultry": 6, "cheese": 4 }, "flags": { "tribute_866": "paid", "levy_paid": "+1", "local_loyalty": "+1" } }
+          },
+          {
+            "id": "pay_for_tenants",
+            "label": "Pay the tenants' share yourself and collect it back in kind later",
+            "effects": { "cost": { "denarii": "{tribute_866_total}" }, "flags": { "tribute_866": "paid", "levy_paid": "+1", "local_loyalty": "+2" }, "mood": 2, "record": "The lord paid his tenants' share of the 866 tribute out of his own purse." }
+          },
+          {
+            "id": "loan",
+            "label": "Advance the tenants' share as a loan, returned with increase",
+            "effects": { "cost": { "denarii": "{tribute_866_total}" }, "flags": { "tribute_866": "paid", "levy_paid": "+1", "favor_church": "-1" }, "record": "The lord advanced the 866 tribute to his tenants and neighbours as a loan at interest." }
+          },
+          {
+            "id": "buy_up",
+            "label": "Pay, and buy up what desperate neighbours are selling",
+            "requires": "denarii >= 400",
+            "effects": { "cost": { "denarii": 400 }, "flags": { "tribute_866": "paid", "levy_paid": "+1", "bought_land_tribute": true, "local_loyalty": "-1" }, "land": { "manses": 1, "visibility": "+5" }, "gain": { "cattle": 2 }, "record": "The lord bought land and livestock cheap from neighbours ruined by the 866 tribute." }
+          },
+          {
+            "id": "refuse",
+            "label": "Refuse to pay a penny toward it",
+            "effects": { "flags": { "tribute_866": "refused", "levy_refused": "+1", "count_opinion": "-3", "charles_disfavor": "+2" }, "record": "The lord refused the 866 tribute." }
+          }
+        ]
+      },
+      "hooks": [
+        {
+          "id": "public_position_fight",
+          "trigger": "The lord takes a public position with the churchmen: the kingdom should fight, not pay.",
+          "effects": { "flags": { "favor_church": "+1", "viking_aware": true }, "renown": "small" }
+        },
+        {
+          "id": "public_position_pay",
+          "trigger": "The lord publicly defends the payment as the only sane course.",
+          "effects": { "flags": { "count_opinion": "+1", "favor_church": "-1" } }
+        }
+      ],
+      "links": { "arc": "3", "momentum": 80 },
+      "notes": "Blocks five and six are engine-written from 'The argument'. The buy-up option's 400 d covers the lord's own share and the purchases. The loan comes back through tributes.ts after four seasons. The collector options for a count wait for the promotion pass."
+    },
+    {
+      "id": "E-877",
+      "title": "The second ransom",
+      "arc": "economy",
+      "type": "levy",
+      "fires": { "year": 877, "season": "winter" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Again, my lord. Five thousand pounds this time, and only Francia and Burgundy are to find it; the Neustrians are paying off their own Northmen on the Loire and Lothair's old country is let off entirely. They have learned something since last time, though. The small people pay less: fourpence from a free holding, twopence from a servile. The rest comes from the rent, which is to say from us. A shilling from your own farm besides, and the priests are assessed as well."
+        },
+        {
+          "speaker": "steward",
+          "text": "Less grief in the villages this time, my lord. More out of your purse."
+        },
+        {
+          "speaker": "steward",
+          "text": "The count of it: {tribute_877_demesne} from the demesne, {tribute_877_rent} lost out of the rents, and the tenants find {tribute_877_tenants} between them."
+        }
+      ],
+      "knows": ["The 877 structure deliberately shifted the burden from tenants to lords; a lord who complains is complaining about a fairer tax."],
+      "choices": {
+        "prompt": "How does the villa meet the 877 levy?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "strict",
+            "label": "Pay your share and collect the tenants' strictly",
+            "default": true,
+            "effects": { "cost": { "denarii": "{tribute_877_personal}" }, "flags": { "tribute_877": "paid", "levy_paid": "+1" } }
+          },
+          {
+            "id": "pay_for_tenants",
+            "label": "Pay the tenants' share as well",
+            "effects": { "cost": { "denarii": "{tribute_877_total}" }, "flags": { "tribute_877": "paid", "levy_paid": "+1", "local_loyalty": "+1" }, "mood": 1 }
+          },
+          {
+            "id": "loan",
+            "label": "Advance the tenants' share as a loan at interest",
+            "effects": { "cost": { "denarii": "{tribute_877_total}" }, "flags": { "tribute_877": "paid", "levy_paid": "+1", "favor_church": "-1" } }
+          },
+          {
+            "id": "refuse",
+            "label": "Refuse",
+            "effects": { "flags": { "tribute_877": "refused", "levy_refused": "+1", "count_opinion": "-3" }, "record": "The lord refused the 877 tribute." }
+          }
+        ]
+      },
+      "links": { "arc": "3", "momentum": 80 },
+      "notes": "The third block is engine-written to fill the amounts; the loan returns through tributes.ts. The cost of paying the tenants' share is folded into the lord's rent loss (the scripts: 'more out of your purse')."
+    }
+  ]
 }

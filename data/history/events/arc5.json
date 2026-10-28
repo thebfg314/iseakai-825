@@ -1,4 +1,378 @@
 ﻿{
   "arc": "5",
-  "events": []
+  "events": [
+    {
+      "id": "845-A1",
+      "title": "Pippin II recognised as king",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 845, "season": "summer" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, King Charles has come to terms with his nephew at last. Young Pippin is to be king of Aquitaine, most of it, holding it of Charles as his man. After five years of war, the boy has what his father had. Those who stood by him all this while will be remembered at his court this summer."
+        }
+      ],
+      "knows": ["Pippin cannot raise a man above his own standing; a king of part of Aquitaine holding of Charles will not create a rival.", "Lands held from Pippin are forfeit if he falls; the villa at Fontenay is not."],
+      "doesntKnow": ["That the Aquitanians will throw Pippin over within three years."],
+      "links": { "arc": "5", "momentum": 70 }
+    },
+    {
+      "id": "845-P1",
+      "title": "Pippin's court",
+      "arc": 5,
+      "type": "promotion",
+      "fires": { "year": 845, "season": "summer" },
+      "order": 2,
+      "requires": "(fontenoy_pippin2 or toulouse_bernard or pippin2_839 or pippin2_840) and not pippin2_submitted",
+      "carry": true,
+      "carryMax": 1,
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "promotion",
+      "promotion": {
+        "patron": "Pippin II, king of Aquitaine",
+        "cap": "No promotion to Duke or above from Pippin.",
+        "rewards": [
+          { "when": "renown >= 200", "grant": "rank_up", "note": "Promotion at Pippin's court and a benefice in Aquitaine, or confirmation of the villa; the Aquitaine benefice is lost when Pippin falls." },
+          { "when": "renown < 200", "grant": "gifts", "note": "A horse, arms, a cloak." }
+        ]
+      },
+      "links": { "arc": "5", "momentum": 70 }
+    },
+    {
+      "id": "848-A1",
+      "title": "Aquitaine turns",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 848, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the Aquitanians have thrown Pippin over. His own lords have gone to King Charles and asked him to rule them, and Charles has been crowned and anointed at Orléans as their king. Three years he's been king down there and they've tired of him already. Pippin's still loose with a few men, but he's a king of nothing now."
+        }
+      ],
+      "links": { "arc": "5", "momentum": 65 }
+    },
+    {
+      "id": "848-A1P",
+      "title": "Pippin's men choose",
+      "arc": 5,
+      "type": "choice",
+      "fires": { "year": 848, "season": "summer" },
+      "order": 1,
+      "requires": "(fontenoy_pippin2 or toulouse_bernard or pippin2_839 or pippin2_840) and not pippin2_submitted",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Which leaves us, my lord. Anything held from Pippin is at risk now, and the king's officers know who rode where in 841. Submit to Charles and be pardoned, and distrusted for a while; or hold out with a cause that is shrinking by the month."
+        }
+      ],
+      "choices": {
+        "prompt": "Submit to Charles, or hold out with Pippin?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "submit",
+            "label": "Submit to King Charles",
+            "default": true,
+            "effects": { "flags": { "pippin2_submitted": true, "charles_disfavor": "+1" }, "record": "The lord submitted to King Charles after Aquitaine threw Pippin over." }
+          },
+          { "id": "hold_out", "label": "Hold out with Pippin's cause", "effects": { "flags": { "holdout_848": true, "charles_disfavor": "+1" } } }
+        ]
+      },
+      "links": { "arc": "5", "momentum": 65 },
+      "notes": "Engine-written from 'For Pippin's men'."
+    },
+    {
+      "id": "852-A1",
+      "title": "Pippin shut away",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 852, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Pippin is finished, my lord. The Gascons he'd fled to handed him over to his uncle, bound. They've shaved his head and put him in the monastery of Saint-Médard at Soissons, the same house where they kept the old emperor after they deposed him. A tonsured monk can't be a king."
+        }
+      ],
+      "doesntKnow": ["That Pippin will get out of Soissons in two years."],
+      "links": { "arc": "5", "momentum": 60 }
+    },
+    {
+      "id": "854-A1",
+      "title": "And out again",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 854, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, you'll laugh: Pippin has got out of Soissons. Walked out, slipped out, bribed his way out, nobody will say. He's back in Aquitaine and there are men flocking to him again. That family does not stay buried."
+        }
+      ],
+      "links": { "arc": "5", "momentum": 60 }
+    },
+    {
+      "id": "855-A1",
+      "title": "A rotating door of kings",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 855, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Aquitaine has outdone itself. They threw Pippin over for Charles, then tired of Charles, and now they've sent to Louis of Bavaria asking for one of his sons to come and be their king instead. Pippin's still at large down there with men of his own. Three claimants and no king, and the Northmen on the Loire sitting watching it all."
+        },
+        {
+          "speaker": "steward",
+          "when": "pippin2_submitted",
+          "text": "And somebody has been asking after you, my lord, quietly, in the way Pippin's friends ask. He is still free and still has friends. I would not answer. But it was asked."
+        }
+      ],
+      "knows": ["Aquitaine's disorder is part of why the Loire Northmen raid so freely."],
+      "hooks": [
+        {
+          "id": "dabble",
+          "trigger": "The lord sends a friendly word back to Pippin's people.",
+          "requires": "pippin2_submitted",
+          "effects": { "flags": { "pippin2_dabbled": true, "charles_disfavor": "+1" }, "record": "The lord dabbled with Pippin's friends again in 855." }
+        }
+      ],
+      "links": { "arc": "5", "momentum": 65 },
+      "notes": "The second block is engine-written from the hooks."
+    },
+    {
+      "id": "855-A2",
+      "title": "A child king for Aquitaine",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 855, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The king's answer, my lord: he's made his own boy king of Aquitaine, another Charles, a child. So now they have a child king, a prisoner who got loose, and a Bavarian waiting in the wings. I'd not want to be a lord in Aquitaine. I'd not want to be a peasant there either."
+        }
+      ],
+      "links": { "arc": "5", "momentum": 65 }
+    },
+    {
+      "id": "864-V1",
+      "title": "Pippin II rides with the Northmen",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 864, "season": "spring" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the Northmen have come further inland than ever: a band rode all the way to Clermont in the Auvergne, barely a week's ride from here. And another came up the Garonne and laid siege to Toulouse, and who do you think was riding with them? Pippin, the old king's son. He's hired them, or joined them; either way, he's leading Northmen against Christian towns."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "They say he has given up the faith altogether, my lord, that he lives as they live and worships their gods. A grandson of the emperor Louis."
+        }
+      ],
+      "links": { "arc": "5", "momentum": 60 }
+    },
+    {
+      "id": "864-V1P",
+      "title": "A message from the Aquitanian lords",
+      "arc": 5,
+      "type": "choice",
+      "fires": { "year": 864, "season": "spring" },
+      "order": 1,
+      "requires": "((fontenoy_pippin2 or toulouse_bernard or pippin2_839 or pippin2_840 or holdout_848) and not pippin2_submitted or pippin2_dabbled) and not pippin2_fled",
+      "channel": ["steward"],
+      "form": "letter",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "And a message for you, my lord, by a rider who would not stay. Some of the Aquitanian lords mean to take Pippin by a trick and hand him to Charles, and they ask for your help, or at least your silence. They know whose man you were. That is why they ask, and that is why they are careful."
+        }
+      ],
+      "knows": ["The lord stays at Fontenay; he does not ride with Pippin and the Northmen."],
+      "doesntKnow": ["That Pippin will be taken in May whatever is done."],
+      "choices": {
+        "prompt": "Help them, warn Pippin, or do nothing?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "nothing", "label": "Do nothing", "default": true },
+          {
+            "id": "help",
+            "label": "Help them take Pippin",
+            "effects": { "flags": { "betrayed_pippin2": true, "pardoned_864": true, "pippin2_submitted": true }, "record": "The lord helped the Aquitanian lords take Pippin II, and was pardoned for it." }
+          },
+          {
+            "id": "warn",
+            "label": "Send a messenger to warn Pippin",
+            "effects": [
+              { "flags": { "warned_pippin2": true }, "record": "The lord sent a warning to Pippin II. The messenger was never heard from again." },
+              { "when": "horses >= 1", "cost": { "horses": 1 } }
+            ]
+          }
+        ]
+      },
+      "links": { "arc": "5", "momentum": 60, "fixedPoint": true },
+      "notes": "Engine-written from 'For Pippin II's former men'. The warning never arrives; the messenger (and a horse) is lost."
+    },
+    {
+      "id": "864-V2",
+      "title": "Pippin taken; the assembly at Pîtres",
+      "arc": 5,
+      "type": "live",
+      "fires": { "year": 864, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "stages": [
+        {
+          "id": "taken",
+          "title": "Pippin taken",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, Pippin has been taken. His own Aquitanian lords seized him by a trick and handed him over to King Charles. The king is holding a great assembly at Pîtres this summer; they'll judge him there."
+            },
+            {
+              "speaker": "steward",
+              "when": "warned_pippin2",
+              "text": "Your man never reached him, my lord. Nobody has seen him since he rode out. An accident on the road, or something worse; we will not learn which."
+            }
+          ]
+        },
+        {
+          "id": "pitres",
+          "title": "The Edict of Pîtres",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "It's done, my lord. At Pîtres the great men condemned Pippin as a traitor and an apostate. He's been shut away in a monastery at Senlis, and I doubt he'll ever come out. And the king has made new laws there: a new coin, struck only at a handful of mints, Chalon among them; fortified bridges on the rivers; and death for any man who sells horses or arms to the Northmen."
+            }
+          ],
+          "exitEffects": { "record": "Pippin II was condemned at Pîtres and shut away at Senlis; the king's edict made a new coin and forbade selling horses or arms to the Northmen." }
+        }
+      ],
+      "knows": ["The Edict of Pîtres: a new denarius from a handful of mints (Chalon among them), fortified bridges, death for selling horses or arms to the Northmen."],
+      "links": { "arc": "5", "momentum": 65, "fixedPoint": true }
+    },
+    {
+      "id": "864-V2P",
+      "title": "Submit or flee",
+      "arc": 5,
+      "type": "choice",
+      "fires": { "year": 864, "season": "summer" },
+      "order": 1,
+      "requires": "(fontenoy_pippin2 or toulouse_bernard or pippin2_839 or pippin2_840 or holdout_848 or pippin2_dabbled) and not pippin2_submitted and not pippin2_fled",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Which brings it to our door, my lord. You were Pippin's man, and Pippin rode with Northmen against Christian towns. Submit to Charles now and you will be pardoned and trusted little, with that stain on you; fighting the Northmen is the only thing that washes it off. Or run, and the villa is forfeit, and the way back is a pardon or the old three doors."
+        }
+      ],
+      "choices": {
+        "prompt": "Submit to Charles, or flee?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "submit",
+            "label": "Submit to King Charles",
+            "default": true,
+            "effects": { "flags": { "pippin2_submitted": true, "charles_disfavor": "+1" }, "record": "The lord submitted to King Charles after Pippin's capture." }
+          },
+          {
+            "id": "flee",
+            "label": "Flee",
+            "effects": { "flags": { "pippin2_fled": true }, "land": { "tenure": "forfeit_claimed" }, "realm": { "swornTo": "none" }, "record": "The lord fled rather than submit; the villa was declared forfeit." }
+          }
+        ]
+      },
+      "links": { "arc": "5", "momentum": 60 },
+      "notes": "Engine-written from 'The submit-or-flee choice'."
+    },
+    {
+      "id": "864-L1",
+      "title": "A fugitive's villa",
+      "arc": 5,
+      "type": "choice",
+      "fires": { "year": 864, "season": "autumn" },
+      "order": 2,
+      "requires": "pippin2_fled and tenure == 'forfeit_claimed'",
+      "channel": ["steward"],
+      "form": "spoken",
+      "hookWindow": 20,
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the count's officers have the villa written down as forfeit and they will come for it within the year. The same three doors are open as they were in 830: buy it outright at the recorded price, marry into a family with kin at its back, or put it under the Church through Father Ermenald. Or earn a pardon by service against the Northmen, if the chance comes before the writ does."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "buy_outright",
+          "trigger": "The lord pays the recorded value to buy the villa outright.",
+          "requires": "denarii >= 6500",
+          "effects": { "cost": { "denarii": 6500 }, "land": { "tenure": "owned" }, "flags": { "villa_owned": true }, "record": "The lord bought the villa outright at the old assessment." }
+        },
+        {
+          "id": "marry_local",
+          "trigger": "The lord agrees to marry into a local family to secure the villa.",
+          "effects": { "cost": { "denarii": 30 }, "land": { "tenure": "benefice", "marriedLocal": true }, "flags": { "married_local": true }, "record": "The lord married into a local family and kept the villa." }
+        },
+        {
+          "id": "church_fixed",
+          "trigger": "The lord puts the villa under the Church as a precaria for a small fixed rent.",
+          "effects": { "land": { "tenure": "precaria", "precariaRent": { "kind": "fixed", "denarii": 36 } }, "realm": { "swornTo": "church" }, "flags": { "precaria_church": true, "favor_church": "+2" }, "record": "The villa passed under the Church and came back to the lord as a precaria." }
+        },
+        {
+          "id": "church_nona",
+          "trigger": "The lord puts the villa under the Church as a precaria for the nona, a ninth of the produce.",
+          "effects": { "land": { "tenure": "precaria", "precariaRent": { "kind": "nona" } }, "realm": { "swornTo": "church" }, "flags": { "precaria_church": true, "favor_church": "+2" }, "record": "The villa passed under the Church and came back to the lord as a precaria for the nona." }
+        }
+      ],
+      "links": { "arc": "5", "momentum": 50 },
+      "notes": "Engine-written from the submit-or-flee table; the outs are 830-02's. The seizure clock is land.ts (four seasons)."
+    },
+    {
+      "id": "868-A1",
+      "title": "Pippin dies at Senlis",
+      "arc": 5,
+      "type": "news",
+      "fires": { "year": 868, "season": "summer" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "One thing more, my lord, in passing. Pippin is dead, they say, in the monastery at Senlis, as quietly as they could manage it. Nobody is saying when. The last of King Pippin's line that anyone will follow."
+        },
+        {
+          "speaker": "steward",
+          "when": "fontenoy_pippin2 or pippin2_840 or pippin2_839 or toulouse_bernard",
+          "text": "You knew him when he was a boy with a claim and a few hundred men, my lord. I thought you would want to hear it from me rather than from the market."
+        }
+      ],
+      "links": { "arc": "5", "momentum": 85 },
+      "notes": "Engine-written from 'Later: Pippin dies in captivity at Senlis, date unknown'."
+    }
+  ]
 }

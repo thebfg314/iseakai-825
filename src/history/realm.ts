@@ -16,11 +16,11 @@ export type RealmNow = {
 export function realmAt(at: SeasonAt, calendar: RealmCalendar = historyContent().realm): RealmNow {
   const now = seasonOrdinal(at.year, at.season);
   let emperor: string | null = null;
-  for (const e of calendar.emperors) if (e.from <= at.year) emperor = e.name;
+  for (const e of calendar.emperors) if (seasonOrdinal(e.from, e.season) <= now) emperor = e.name;
   let king: string | null = null;
   let kingdom = "Aquitaine";
   for (const k of calendar.kings) {
-    if (k.from <= at.year) {
+    if (seasonOrdinal(k.from, k.season) <= now) {
       king = k.name;
       kingdom = k.kingdom;
     }
@@ -64,7 +64,7 @@ export function tickRealm(state: WorldState, at: SeasonAt): RealmTick {
   }
   if (kingChanged && realm.king !== null) {
     const previous = realm.king;
-    const entry = [...calendar.kings].reverse().find((k) => k.from <= at.year);
+    const entry = [...calendar.kings].reverse().find((k) => seasonOrdinal(k.from, k.season) <= seasonOrdinal(at.year, at.season));
     const announced = entry?.announcedBy && historyContent().byId.has(entry.announcedBy);
     const text = now.king
       ? `My lord, the household should know how to speak of it: our king is ${now.king} now, not ${previous}. The kingdom is called ${now.kingdom}.`
