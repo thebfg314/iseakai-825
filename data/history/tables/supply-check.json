@@ -1,0 +1,17 @@
+{
+  "note": "Appendix: Army supply and looting. Chance per season and share of stores lost.",
+  "situations": {
+    "enemy_main": { "label": "Enemy main army camps within a day's march", "chance": 0.8, "lost": [0.5, 1.0], "militiaFights": false },
+    "friendly_main": { "label": "Friendly main army camps within a day's march", "chance": 0.6, "lost": [0.25, 0.5], "militiaFights": false },
+    "foraging": { "label": "Foraging parties from armies one to three days away", "chance": 0.3, "lost": [0.1, 0.3], "militiaFights": true },
+    "deserters": { "label": "Deserters and bandits after a nearby battle", "chance": 0.5, "lost": [0.2, 0.5], "militiaFights": true, "takesCoin": true }
+  },
+  "prosperousBonus": 0.15,
+  "countermeasures": {
+    "hidden_stores": { "halvesLoss": true, "features": ["storage_pits", "caches", "hidden_stores"] },
+    "letter_of_protection": { "friendlyChance": 0.2, "flag": "letter_of_protection" },
+    "paid_off": { "flatLoss": 0.1, "flag": "paid_foragers" },
+    "militia": { "minMenUnderArms": 10 }
+  },
+  "stores": ["wheat", "rye", "barley", "oats", "cattle", "sheep", "pigs", "poultry", "wine", "cheese", "honey", "salt"]
+}

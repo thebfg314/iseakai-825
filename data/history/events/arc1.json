@@ -1,0 +1,1797 @@
+﻿{
+  "arc": "1",
+  "events": [
+    {
+      "id": "826-01",
+      "title": "A new count at Autun",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 826, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "The count's household at Autun.",
+      "slant": "Mourning for the old count, excitement about the new one. No rival version.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Count Thierry of Autun is dead, God rest him. The county goes to his brother, our own patron, Lord Bernard. And it never rains but it pours for that family: this same year the emperor made Bernard count of Barcelona and Girona as well, on the Spanish frontier. So the man who gave you this villa now rules the county you live in. That's a fine thing for us, my lord. Though I doubt we'll see much of him; Barcelona is a long way off, and he'll leave Autun to his officers."
+        }
+      ],
+      "knows": [
+        "Thierry and Bernard are sons of the famous Count William of Toulouse, Charlemagne's cousin, who fought the Saracens and ended his days as a monk at the abbey he founded, Gellone.",
+        "Bernard is young, ambitious, and now holds counties at both ends of the empire.",
+        "Autun will be run day to day by Bernard's deputy, a viscount from his household."
+      ],
+      "doesntKnow": [
+        "The revolt that is already stirring in the Spanish March.",
+        "How high Bernard will rise, or how far he will fall."
+      ],
+      "hooks": [
+        {
+          "id": "charter",
+          "trigger": "The lord says he will ride to Autun to congratulate the new count's officers and ask for the villa grant to be written down in a charter.",
+          "effects": { "flags": { "benefice_charter": true }, "land": { "charter": "count" }, "cost": { "denarii": 5 } }
+        },
+        {
+          "id": "gift",
+          "trigger": "The lord sends a gift to the new count.",
+          "effects": { "flags": { "favor_septimania": "+1", "count_gift_826": true }, "cost": { "denarii": 10 } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 90 },
+      "record": "Count Thierry died; his brother Bernard, the lord's patron, took Autun."
+    },
+    {
+      "id": "827-01",
+      "title": "Saracens at Barcelona",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 827, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Messengers and travelers on the Rhône–Saône road, and men of Bernard of Septimania's kin near Autun.",
+      "slant": "Alarmed and incomplete: nobody yet knows how it will end.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, bad tidings from the south. You may have heard there's been trouble in the Spanish March since last year: a Goth named Aizo rose against our own Count Bernard, who was given Barcelona the same year he inherited Autun. Now Aizo has called in the Saracens. An army from Córdoba has come over the mountains and is burning the country around Barcelona. The emperor has ordered our King Pippin and the counts Hugh of Tours and Matfrid of Orléans to raise an army and go to Bernard's aid. The king is calling up the southern counties nearer the March; ours isn't called this time, thank God, and the count is fighting with his southern men. But his household at Autun is anxious, and they'll remember who showed concern."
+        }
+      ],
+      "knows": [
+        "Aizo's revolt began in 826; he was once a hostage at the emperor's court.",
+        "Bernard became count of Barcelona in 826, and count of Autun the same year after his brother Thierry died. He is young, ambitious, from a famous fighting family, and rarely in Autun; his officers govern for him.",
+        "The Saracen army reached the Barcelona area this summer.",
+        "The relief army is still gathering in Aquitaine."
+      ],
+      "doesntKnow": [
+        "Whether Barcelona will hold, or the later attack on Girona.",
+        "That the relief army will arrive too late, or that anyone will be punished for it."
+      ],
+      "onFire": { "flags": { "heard_spanish_march": true } },
+      "hooks": [
+        {
+          "id": "support_kin",
+          "trigger": "The lord sends a message of support, or a gift, to Bernard's kin.",
+          "effects": { "flags": { "favor_septimania": "+1" }, "cost": { "denarii": 5 } }
+        },
+        {
+          "id": "predict_late",
+          "trigger": "The lord predicts that the relief army will arrive too late.",
+          "effects": { "flags": { "prediction_spain": true } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 85 }
+    },
+    {
+      "id": "828-01",
+      "title": "Barcelona and the disgraced counts",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 828, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Men of Bernard of Septimania's household passing through Autun, and the count's people. A second version from travelers out of the Loire country.",
+      "slant": "Pro-Bernard, with the Loire version given fairly.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, there is news from the assembly at Aachen, and it is not good news for everyone. You'll remember the troubles in the Spanish March I told you of: Aizo's revolt against Count Bernard, and the Saracens of Córdoba he called in. Last summer their army burned the country around Barcelona, then went on to Girona. The emperor ordered our King Pippin and the counts Hugh of Tours and Matfrid of Orléans to raise an army and relieve him. They came so slowly that the Saracens had already gone home with their plunder."
+        },
+        {
+          "speaker": "steward",
+          "text": "Count Bernard held Barcelona all the same, and the emperor has not forgotten it. At Aachen, Hugh and Matfrid were stripped of their counties and offices for their slowness. Bernard's men passing through Autun say he alone did his duty while great lords dawdled. I'll grant they are hardly impartial. Travelers from the Loire tell it differently: that Hugh and Matfrid were made to pay for a defeat that was everyone's fault, our own king's included. Either way, my lord, Count Bernard's star is rising, and two of the greatest men in the empire are now out of favor."
+        }
+      ],
+      "variants": [
+        {
+          "when": "not heard_spanish_march",
+          "replace": 0,
+          "text": "My lord, there is news from the assembly at Aachen, and it is not good news for everyone. There's been fighting in the Spanish March this past year: a Goth named Aizo rose against Count Bernard, who was given Barcelona the same year he inherited Autun, and Aizo called in the Saracens of Córdoba. Last summer their army burned the country around Barcelona, then went on to Girona. The emperor ordered our King Pippin and the counts Hugh of Tours and Matfrid of Orléans to raise an army and relieve him. They came so slowly that the Saracens had already gone home with their plunder."
+        }
+      ],
+      "knows": [
+        "Aizo's revolt began in 826; he was once a hostage at the emperor's court.",
+        "The Saracen army came from Córdoba under the emir's general, raided around Barcelona in summer 827 and attacked Girona that autumn. The district of Ausona (Vic) was laid waste.",
+        "Bernard is a son of the famous Count William of Toulouse, who fought the Saracens under Charlemagne. His brother Gaucelm holds counties in the south.",
+        "Hugh of Tours is Lothair's father-in-law; the co-emperor will not be pleased.",
+        "There were strange red lights in the night sky before the defeat; people called it an omen.",
+        "There was trouble on the eastern frontier too, with the Bulgars."
+      ],
+      "doesntKnow": [
+        "That Bernard will become chamberlain in 829, or the rumors about him and Empress Judith.",
+        "That Hugh and Matfrid will help lead a revolt in 830.",
+        "Exact numbers of troops or dead; precise dates beyond the season.",
+        "What was said privately at court."
+      ],
+      "onFire": [{ "when": "prediction_spain", "flags": { "reputation_shrewd": "+1" } }],
+      "hooks": [
+        {
+          "id": "opinion_favourable",
+          "trigger": "The lord states that he thinks well of Bernard, or asks how to win the Septimanian family's favor and means to pursue it.",
+          "effects": { "flags": { "opinion_bernard": "favourable" } }
+        },
+        {
+          "id": "opinion_wary",
+          "trigger": "The lord states that Bernard is a man to be careful of.",
+          "effects": { "flags": { "opinion_bernard": "wary" } }
+        },
+        {
+          "id": "opinion_hostile",
+          "trigger": "The lord states that he dislikes or distrusts Bernard.",
+          "effects": { "flags": { "opinion_bernard": "hostile" } }
+        },
+        {
+          "id": "predict_trouble",
+          "trigger": "The lord remarks that Lothair's anger, or the disgrace of Hugh and Matfrid, will lead to trouble or revolt.",
+          "effects": { "flags": { "prediction_830": true } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 85 }
+    },
+    {
+      "id": "829-01",
+      "title": "The reform councils",
+      "arc": "church",
+      "type": "news",
+      "fires": { "year": 829, "season": "autumn" },
+      "order": 1,
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "source": "Clergy at Autun under Bishop Modoin, and a copy of the Paris council's decisions.",
+      "slant": "Reform-minded and pro-bishop: Ermenald approves of the decrees and gently applies them to his own lord.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "frame": "after Sunday Mass, reading from notes copied for the clergy of the diocese",
+          "text": "My lord, you asked what came of the bishops' gatherings. The emperor called them because God is plainly displeased with us: the defeat in Spain, the Bulgars in the east, the lights in the sky. Four councils met this summer. Our own bishop went to Lyon, but the copies we have are from Paris, where Bishop Jonas of Orléans and his brothers wrote at length."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "Their judgment is that the troubles come from sin, high and low. The emperor rules as God's minister, and must answer for every unjust count and every bribed judge in his name. Bishops are rebuked too: for worldliness, for neglecting their flocks, for treating the Church's goods as their own family's wealth."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "And they speak to men like you, my lord. Keep the Lord's Day holy: no markets, no court cases, no field work on Sunday; they are asking the emperor to forbid it by law. Pay the tithe in full. Do not take the Church's lands or treat its priests as your servants. Marry lawfully, keep no concubines, and do not wed within the forbidden degrees of kinship. Judge the poor fairly; God hears their complaints. I will say, as your chaplain, that our church here could stand to be better honored. But I do not say it as a rebuke."
+        }
+      ],
+      "knows": [
+        "Why the councils were called: the disasters of 827–828 seen as signs of God's anger, with fasting ordered beforehand.",
+        "The four meeting places (Mainz, Paris, Lyon, Toulouse), and that Paris covered the provinces of Reims, Sens, Tours and Rouen.",
+        "Bishop Jonas of Orléans was the leading mind at Paris; he also wrote a book of advice on Christian living for laymen, addressed to Count Matfrid, now disgraced.",
+        "The broad themes: king as God's minister; bishops' duties; Sunday rest and the request to ban Sunday markets and lawsuits; Church property; marriage rules; justice for the poor.",
+        "Bishop Modoin of Autun is a learned man, once a poet at Charlemagne's court, who signs his verse \"Naso\" after Ovid."
+      ],
+      "doesntKnow": [
+        "What was decided at Lyon or Toulouse.",
+        "That the emperor will be forced into public penance by bishops in 833.",
+        "Court politics behind the councils, or that some bishops are quietly unhappy with Empress Judith's circle."
+      ],
+      "hooks": [
+        {
+          "id": "honor_church",
+          "trigger": "The lord undertakes to honor the villa church: repairs, gifts, or a fair tithe.",
+          "effects": { "flags": { "favor_church": "+1" }, "cost": { "denarii": 10 } }
+        },
+        {
+          "id": "sunday_work",
+          "trigger": "The lord says he will keep Sunday markets or Sunday work going regardless.",
+          "effects": { "flags": { "favor_church": "-1" } }
+        },
+        {
+          "id": "meet_modoin",
+          "trigger": "The lord asks to meet Bishop Modoin.",
+          "effects": { "flags": { "met_modoin": true } }
+        },
+        {
+          "id": "practical_cause_tactful",
+          "trigger": "The lord proposes a practical cause for the disasters (weather, bad leadership) rather than sin, and does it tactfully.",
+          "effects": { "flags": { "chaplain_curious": true } }
+        },
+        {
+          "id": "practical_cause_blunt",
+          "trigger": "The lord dismisses sin as a cause outright, or mocks the bishops' judgment.",
+          "effects": { "flags": { "chaplain_suspicious": true } }
+        }
+      ],
+      "links": { "arc": "church", "momentum": 80 }
+    },
+    {
+      "id": "829-02",
+      "title": "The assembly at Worms",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 829, "season": "autumn" },
+      "order": 2,
+      "requires": "fired(828-01)",
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Bernard's kin and clients around Autun, who are jubilant. A darker whisper from people sympathetic to Lothair and his adviser Wala.",
+      "slant": "Aldric repeats the whisper reluctantly and quietly.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor has done something that will set tongues wagging for years. At Worms he has given young Charles, the empress's boy, only six years old, a kingdom of his own: Alemannia, Alsace, Rhaetia and a part of Burgundy. That land was meant for his elder brothers, and King Lothair has been sent off to Italy. And our own count, Bernard, the defender of Barcelona, is made chamberlain. He's the second man in the empire now, keeper of the palace and the emperor's ear."
+        },
+        {
+          "speaker": "steward",
+          "text": "His people hereabouts are ringing bells. But I'd be a poor steward if I didn't tell you the rest. There's ugly talk on the roads, from men who favor Lothair: that Bernard has bewitched the emperor, and worse, that he is too close to the empress herself. I don't repeat it as truth, my lord. I repeat it because others are repeating it, and that sort of talk ends in swords."
+        }
+      ],
+      "knows": [
+        "The lands granted to Charles; Lothair sent to Italy; Bernard made chamberlain.",
+        "The emperor's elder sons were promised their shares in 817; this breaks that arrangement.",
+        "Hugh and Matfrid, disgraced last year, are Lothair's men; Wala of Corbie is Lothair's mentor and a stern critic of the court.",
+        "The rumor of Bernard and Judith, and that it is coming from Lothair's side."
+      ],
+      "doesntKnow": [
+        "Which part of Burgundy is meant; Aldric thinks it is the lands toward the Jura, not Autun, but isn't sure.",
+        "That the elder sons will rise next spring.",
+        "Whether the rumor is true."
+      ],
+      "hooks": [
+        {
+          "id": "congratulate",
+          "trigger": "The lord sends congratulations to Bernard's kin.",
+          "effects": { "flags": { "favor_septimania": "+1", "marked_septimanian": true } }
+        },
+        {
+          "id": "repeat_rumor",
+          "trigger": "The lord repeats the rumor about Bernard and the empress to others, or tells Aldric to spread it.",
+          "effects": { "flags": { "favor_septimania": "-2" } }
+        },
+        {
+          "id": "predict_revolt",
+          "trigger": "The lord predicts that the emperor's elder sons will rebel.",
+          "effects": { "flags": { "prediction_830": true } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 80 }
+    },
+    {
+      "id": "830-01",
+      "title": "The summons to Brittany",
+      "arc": 1,
+      "type": "summons",
+      "fires": { "year": 829, "season": "winter" },
+      "requires": "fired(829-02)",
+      "channel": ["steward"],
+      "form": "summons",
+      "source": "Official summons, plus Aldric's own read of the mood.",
+      "slant": "No faction slant; Aldric is simply worried.",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "bringing the count's messenger in, who reads",
+          "text": "By order of the emperor, through Count Bernard's officers at Autun: every man bound to serve is to join the host against the Bretons, and present himself at the muster in the west after Easter, with horse, shield, lance and arms, food for three months and clothing for six."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after the messenger has gone",
+          "text": "A campaign in Lent, my lord, with the roads still deep in mud, and against the Bretons, who have beaten better armies in their bogs. Men are grumbling already. Half the grumbling is about the season; the other half is about who they'll be marching for. Count Bernard's enemies say this war is his idea, to keep the great men busy while he rules the palace. And we are his men, my lord. Every eye in that camp will know it. I'd go, my lord, refusing the emperor is no small thing. But I'd go with eyes open, and I'd keep our men close."
+        }
+      ],
+      "knows": [
+        "The service owed: the lord in person with a small mounted following, armed, with supplies.",
+        "Lent is a holy season; campaigning in it offends many.",
+        "Bretons have defied the emperor before, and the last campaign there, in 824, was hard.",
+        "The talk that Bernard is behind the war."
+      ],
+      "doesntKnow": ["That the muster will turn into a mutiny.", "Where the other great men will stand."],
+      "choices": {
+        "prompt": "Will the lord answer the summons?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "go", "label": "Go to the muster", "default": true, "effects": { "flags": { "attended_830": true } } },
+          {
+            "id": "avoid",
+            "label": "Avoid service (illness, payment, excuse)",
+            "note": "The count notes it; the lord hears of the muster from Aldric afterward.",
+            "effects": { "flags": { "count_opinion": "-1", "refused_830": true }, "cost": { "denarii": 20 } }
+          }
+        ]
+      },
+      "hooks": [
+        {
+          "id": "prepare_well",
+          "trigger": "The lord orders thorough preparation: spare horses, good supplies, disciplined men.",
+          "requires": "horses >= 2",
+          "effects": { "flags": { "well_equipped": true }, "cost": { "denarii": 15 } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 80 },
+      "record": "The summons to the Breton muster came; the lord chose to {choice}."
+    },
+    {
+      "id": "830-B1",
+      "title": "Deserters in the Morvan",
+      "arc": 1,
+      "type": "battle",
+      "fires": { "year": 830, "season": "spring" },
+      "order": 2,
+      "requires": "chose(830-01, go)",
+      "channel": ["steward"],
+      "form": "report",
+      "deferred": "battle",
+      "battle": {
+        "kind": "tutorial",
+        "momentum": 15,
+        "setting": "On the road home through the Morvan, the column finds deserters from the broken host plundering a village. The deputy and the lord attack.",
+        "renown": "moderate",
+        "interimLine": "On the road home through the Morvan we came on deserters from the broken host at their work in a village, my lord, and the viscount's column went in. How that fight went is not yet written in this chronicle; we came home."
+      },
+      "links": { "arc": "1", "momentum": 15 },
+      "notes": "Step 3 of 830-02. Fires as an interim line until the battle pass."
+    },
+    {
+      "id": "830-02",
+      "title": "The mutiny and the reckoning",
+      "arc": 1,
+      "type": "live",
+      "fires": { "year": 830, "season": "spring" },
+      "requires": "chose(830-01, go)",
+      "channel": ["steward"],
+      "form": "scene",
+      "source": "The lord's own eyes, with Aldric at his side as clerk; then the envoys of the new regime.",
+      "slant": "The Autun men are Bernard's creatures to the rebels, and Bernard's deserters to his deputy.",
+      "onFire": { "away": { "reason": "at the Breton muster with the Autun contingent", "seasons": 1 } },
+      "stages": [
+        {
+          "id": "muster",
+          "title": "The muster in the west",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "frame": "in camp near Rennes",
+              "text": "My lord, this host will not march. The rumors about Lord Bernard and the empress have run through every fire in the camp, and the great men are turning their faces toward Paris, where King Pippin is. We are Bernard's men to all of them. Our men have been jeered and threatened since we came, and the viscount is shut out of the councils. He means to lead us home to hold Autun for the count. I would keep our men close tonight, my lord; others are slipping away by the dozen."
+            }
+          ],
+          "hooks": [
+            {
+              "id": "keep_men_together",
+              "trigger": "The lord takes pains to keep his own men together and disciplined while the host dissolves.",
+              "effects": { "flags": { "kept_men_together_830": true }, "renown": "small" }
+            }
+          ]
+        },
+        {
+          "id": "reckoning",
+          "title": "The envoys and the choice",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, the news from Compiègne is worse than anything we feared. The emperor is taken; he is in his sons' hands. The empress is shut in a convent at Poitiers. Lord Bernard has fled to Barcelona; his brother Herbert has been blinded, and his cousin Odo stripped of Orléans. Autun is declared forfeit, and a new count, Adalard, holds it for the new men."
+            },
+            {
+              "speaker": "steward",
+              "text": "And now the envoys are in our hall. They want every man who held of Lord Bernard to renounce him and swear to Count Adalard. They say the law allows it: a lord who flees and leaves his men exposed has failed them, and a vassal may lawfully leave him. If you swear, the villa is confirmed to you as the new count's man, and Bernard's kin will call it desertion. If you refuse, you keep your oath to a man in Barcelona, and the count will claim this villa as Bernard's forfeited property. They are waiting, my lord."
+            }
+          ],
+          "choices": {
+            "prompt": "Swear to the new count, or keep faith with Bernard?",
+            "deadlineSeasons": 1,
+            "options": [
+              {
+                "id": "serve_new_count",
+                "label": "Renounce Bernard and swear to Count Adalard",
+                "note": "The villa is confirmed; Bernard's kin call it desertion.",
+                "effects": {
+                  "flags": { "side_830": "rebel", "rebel_830": true, "enemy_septimania": true },
+                  "realm": { "swornTo": "count" },
+                  "record": "The lord renounced Bernard and swore to Count Adalard."
+                }
+              },
+              {
+                "id": "stay_loyal",
+                "label": "Keep the oath to Bernard",
+                "default": true,
+                "note": "High honor; the count claims the villa as forfeit.",
+                "effects": {
+                  "flags": { "side_830": "bernard", "oath_kept_lord": true },
+                  "land": { "tenure": "forfeit_claimed" },
+                  "realm": { "swornTo": "none" },
+                  "record": "The lord kept his oath to Bernard; Count Adalard claimed the villa as forfeit."
+                }
+              }
+            ]
+          },
+          "hooks": [
+            {
+              "id": "escort_kin",
+              "trigger": "The lord escorts Bernard's family or followers to safety in the south.",
+              "effects": { "flags": { "escorted_kin_830": true, "favor_septimania": "+2" }, "renown": "moderate", "cost": { "denarii": 10 } }
+            }
+          ]
+        },
+        {
+          "id": "nijmegen",
+          "title": "Nijmegen",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, the wheel has turned. At Nijmegen the emperor's eastern supporters came to the assembly armed, and he has taken back his authority. Lothair is sent back to Italy and the leaders of the revolt are condemned. But mark this: Lord Bernard is not restored, not to court and not to Autun. Count Adalard keeps the county. Men who stood by the emperor are riding to Nijmegen to be seen; men who did not are keeping quiet."
+            }
+          ],
+          "hooks": [
+            {
+              "id": "ride_to_nijmegen",
+              "trigger": "The lord rides armed to Nijmegen to stand with the emperor.",
+              "requires": "side_830 == 'bernard'",
+              "effects": { "flags": { "loyalist_830": true }, "renown": "large", "cost": { "denarii": 15 } }
+            },
+            {
+              "id": "carry_messages",
+              "trigger": "The lord carries messages for the loyalists.",
+              "effects": { "flags": { "carried_messages_830": true }, "renown": "small" }
+            },
+            {
+              "id": "defend_land_grab",
+              "trigger": "The lord defends Fontenay or a neighbor against a land grab by a man backed by the new count.",
+              "requires": "side_830 == 'bernard'",
+              "effects": { "flags": { "defended_land_830": true }, "renown": "moderate" }
+            }
+          ],
+          "exitEffects": [{ "when": "prediction_830", "flags": { "reputation_shrewd": "+1" } }]
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75, "keystone": "K1" },
+      "notes": "Stage lines are engine-written from the sequence table; the source has no verbatim speech for the muster, the envoys or Nijmegen."
+    },
+    {
+      "id": "830-03",
+      "title": "The mutiny, told afterward",
+      "arc": 1,
+      "type": "live",
+      "fires": { "year": 830, "season": "summer" },
+      "requires": "chose(830-01, avoid)",
+      "channel": ["steward"],
+      "form": "scene",
+      "stages": [
+        {
+          "id": "reckoning",
+          "title": "The envoys and the choice",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, you were well out of that muster. The host never marched. The rumors about Lord Bernard and the empress ran through the camp, the great men went over to King Pippin at Paris, and the Autun men were jeered home as Bernard's creatures. Then the news from Compiègne: the emperor is taken, in his sons' hands; the empress shut in a convent at Poitiers; Lord Bernard fled to Barcelona, his brother Herbert blinded, his cousin Odo stripped of Orléans. Autun is declared forfeit, and a new count, Adalard, holds it for the new men."
+            },
+            {
+              "speaker": "steward",
+              "text": "And now the envoys are in our hall. They want every man who held of Lord Bernard to renounce him and swear to Count Adalard. They say the law allows it: a lord who flees and leaves his men exposed has failed them, and a vassal may lawfully leave him. If you swear, the villa is confirmed to you as the new count's man, and Bernard's kin will call it desertion. If you refuse, you keep your oath to a man in Barcelona, and the count will claim this villa as Bernard's forfeited property. They are waiting, my lord."
+            }
+          ],
+          "choices": {
+            "prompt": "Swear to the new count, or keep faith with Bernard?",
+            "deadlineSeasons": 1,
+            "options": [
+              {
+                "id": "serve_new_count",
+                "label": "Renounce Bernard and swear to Count Adalard",
+                "effects": {
+                  "flags": { "side_830": "rebel", "rebel_830": true, "enemy_septimania": true },
+                  "realm": { "swornTo": "count" },
+                  "record": "The lord renounced Bernard and swore to Count Adalard."
+                }
+              },
+              {
+                "id": "stay_loyal",
+                "label": "Keep the oath to Bernard",
+                "default": true,
+                "effects": {
+                  "flags": { "side_830": "bernard", "oath_kept_lord": true },
+                  "land": { "tenure": "forfeit_claimed" },
+                  "realm": { "swornTo": "none" },
+                  "record": "The lord kept his oath to Bernard; Count Adalard claimed the villa as forfeit."
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "nijmegen",
+          "title": "Nijmegen",
+          "advanceOn": "season",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, the wheel has turned. At Nijmegen the emperor's eastern supporters came to the assembly armed, and he has taken back his authority. Lothair is sent back to Italy and the leaders of the revolt are condemned. But mark this: Lord Bernard is not restored, not to court and not to Autun. Count Adalard keeps the county. Men who stood by the emperor are riding to Nijmegen to be seen; men who did not are keeping quiet."
+            }
+          ],
+          "hooks": [
+            {
+              "id": "ride_to_nijmegen",
+              "trigger": "The lord rides armed to Nijmegen to stand with the emperor.",
+              "requires": "side_830 == 'bernard'",
+              "effects": { "flags": { "loyalist_830": true }, "renown": "large", "cost": { "denarii": 15 } }
+            },
+            {
+              "id": "carry_messages",
+              "trigger": "The lord carries messages for the loyalists.",
+              "effects": { "flags": { "carried_messages_830": true }, "renown": "small" }
+            }
+          ],
+          "exitEffects": [{ "when": "prediction_830", "flags": { "reputation_shrewd": "+1" } }]
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75, "keystone": "K1" },
+      "notes": "Engine-written; the source says only that a player who avoided service hears it from Aldric afterward."
+    },
+    {
+      "id": "830-L1",
+      "title": "The count claims the villa",
+      "arc": 1,
+      "type": "choice",
+      "fires": { "year": 830, "season": "autumn" },
+      "order": 2,
+      "requires": "tenure == 'forfeit_claimed'",
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "hookWindow": 3,
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, we must speak of the villa itself. Count Adalard's officers hold that it was Lord Bernard's to give and is forfeit with him, and they have the old assessment of 825 in their hands: six thousand five hundred denarii. The emperor's assembly at Aachen in February is the end of it; after that a writ comes and they take what the record says. I see three ways out, and none of them is cheap. We can buy the villa outright at the recorded price, which turns the benefice into your own land; a royal charter would make it secure. Or you can marry into one of the families hereabouts: a wife brings her own allods, and a count thinks twice before seizing land from a man with kin at his back. Or Father Ermenald has a third way."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "The bishop, or an abbey near us, can petition to take the villa under the Church's protection and grant it back to you as a precaria, my lord: yours for life, perhaps for your heirs, for a yearly rent. A small fixed rent in coin, or the nona, a ninth of the produce over the tithe, as the king's law asks of laymen on church land. You would ride in the bishop's contingent when the army is called, and serve the Church rather than a lay lord. You stay a layman; no vows. I can carry the petition myself."
+        }
+      ],
+      "knows": [
+        "Forfeited land is in the hands of the new count and, above him, the crown; a sale needs the count's agreement and is safer with a royal confirmation.",
+        "The 829 church rules on marriage within the forbidden degrees apply to any match.",
+        "Churches are usually, not always, spared when armies pass."
+      ],
+      "hooks": [
+        {
+          "id": "buy_outright",
+          "trigger": "The lord pays the recorded value to buy the villa outright.",
+          "requires": "denarii >= 6500",
+          "effects": {
+            "cost": { "denarii": 6500 },
+            "land": { "tenure": "owned" },
+            "flags": { "villa_owned": true, "paid_fine_830": true },
+            "record": "The lord bought the villa outright at the old assessment."
+          }
+        },
+        {
+          "id": "marry_local",
+          "trigger": "The lord agrees to marry into a local family to secure the villa.",
+          "effects": {
+            "cost": { "denarii": 30 },
+            "land": { "tenure": "benefice", "marriedLocal": true },
+            "flags": { "married_local": true },
+            "record": "The lord married into a local family and kept the villa."
+          }
+        },
+        {
+          "id": "church_fixed",
+          "trigger": "The lord puts the villa under the Church as a precaria for a small fixed rent.",
+          "effects": {
+            "land": { "tenure": "precaria", "precariaRent": { "kind": "fixed", "denarii": 36 } },
+            "realm": { "swornTo": "church" },
+            "flags": { "precaria_church": true, "sought_church_830": true, "favor_church": "+2" },
+            "record": "The villa passed under the Church and came back to the lord as a precaria."
+          }
+        },
+        {
+          "id": "church_nona",
+          "trigger": "The lord puts the villa under the Church as a precaria for the nona, a ninth of the produce.",
+          "effects": {
+            "land": { "tenure": "precaria", "precariaRent": { "kind": "nona" } },
+            "realm": { "swornTo": "church" },
+            "flags": { "precaria_church": true, "sought_church_830": true, "favor_church": "+2" },
+            "record": "The villa passed under the Church and came back to the lord as a precaria for the nona."
+          }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 50 },
+      "notes": "Engine-written from the three outs in 830-02. Type choice for the ledger; the outs are hooks because any or none may be taken before the engine's deadline (spring 831)."
+    },
+    {
+      "id": "831-01",
+      "title": "Bernard at Thionville",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 831, "season": "winter" },
+      "order": 1,
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "On the Bernard path, Bernard's remaining people; on the rebel path, the new count's household.",
+      "slant": "Sympathetic to Bernard if the lord kept faith; cool toward him otherwise.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, news from Thionville. Lord Bernard came before the emperor in person to clear his name of all those charges, and he spoke with him face to face. But he was not given back his place at court, nor Autun. The empress and young Charles keep their distance from him now. They say he left in a black mood."
+        },
+        {
+          "speaker": "steward",
+          "text": "And there's more trouble brewing. Our King Pippin has quarreled with his father the emperor again; he was ill received at court and rode home without leave. A son who leaves his father's court without permission is halfway to rebellion, my lord."
+        }
+      ],
+      "knows": [
+        "At the February 831 assembly the empress cleared herself by oath and returned to court; the emperor made a new plan to divide the empire among his sons.",
+        "Bernard spoke to the emperor at Thionville but was not restored.",
+        "Pippin feels cheated and slighted; there is talk that Bernard is in touch with him."
+      ],
+      "doesntKnow": ["That Bernard is actively urging Pippin to revolt.", "What the emperor will do about Pippin."],
+      "hooks": [
+        {
+          "id": "warn_emperor",
+          "trigger": "The lord warns the emperor's men that Bernard may turn against the emperor.",
+          "effects": { "flags": { "warned_832": true } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75 }
+    },
+    {
+      "id": "832-01",
+      "title": "A letter from Bernard",
+      "arc": 1,
+      "type": "choice",
+      "fires": { "year": 831, "season": "winter" },
+      "order": 2,
+      "requires": "side_830 == 'bernard'",
+      "channel": ["chaplain", "steward"],
+      "form": "letter",
+      "source": "Bernard himself.",
+      "slant": "Bitter, persuasive, and self-serving.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "frame": "reads the sealed letter aloud",
+          "text": "Bernard, by God's grace duke, to his faithful man at Fontenay, greeting. You kept faith with me when others ran to the new men. I do not forget it. The emperor is ruled by those who hate me and who lied about me, and they have cheated King Pippin of his rights as they cheated me. Pippin will not bear it, and he is right. I ask you, as my man: send what horses and men you can to our king in Aquitaine, or at least hold yourself ready. When right is restored, Autun will remember who stood with us, and so will I."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "My lord, this is a dangerous letter. Lord Bernard is asking you to take up arms for our king against his father. In plain words, against the emperor. If it goes badly, a letter like that can hang a man. You owe him faith, but you also swore to the emperor. Whatever you decide, I'd decide it quickly, and I'd think hard about what to do with that parchment."
+        }
+      ],
+      "knows": [
+        "Bernard is in the south, among his own people in Septimania.",
+        "Pippin has gone back to Aquitaine in defiance of his father.",
+        "Both Aldric and Ermenald feel the pull of the lord's oath to Bernard and his oath to the emperor."
+      ],
+      "doesntKnow": [
+        "That the emperor will move against Pippin with force in 832, or that Bernard's lands in the south are already being attacked by Berengar of Toulouse, a loyalist.",
+        "How the revolt will end."
+      ],
+      "choices": {
+        "prompt": "What answer goes back to Bernard?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "send_men",
+            "label": "Send men and horses to Pippin",
+            "requires": "horses >= 2",
+            "effects": { "flags": { "rebel_832": true, "favor_septimania": "+2" }, "cost": { "horses": 2 } }
+          },
+          { "id": "hedge", "label": "Reply warmly but send nothing", "default": true, "effects": { "flags": { "hedge_832": true } } },
+          {
+            "id": "refuse",
+            "label": "Refuse politely, citing the oath to the emperor",
+            "effects": { "flags": { "oath_kept_emperor": true, "favor_septimania": "-1" } }
+          },
+          {
+            "id": "inform",
+            "label": "Hand the letter to the emperor's men",
+            "effects": { "flags": { "informer_832": true, "enemy_septimania": true } }
+          }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 70 },
+      "record": "Bernard's letter asked for men for Pippin; the lord chose to {choice}."
+    },
+    {
+      "id": "832-03",
+      "title": "The count's summons",
+      "arc": 1,
+      "type": "summons",
+      "fires": { "year": 832, "season": "summer" },
+      "channel": ["steward"],
+      "form": "summons",
+      "source": "Official. On the Bernard path, the summons is deliberate: the count knows exactly whose man the lord was.",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with the count's messenger, who reads",
+          "text": "The emperor marches into Aquitaine to bring our King Pippin to obedience. By order of the count of Autun, you will join his contingent at the muster, armed and provisioned, before the feast of Saint John."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "when": "side_830 == 'bernard'",
+          "text": "He's testing you, my lord. He knows you kept faith with Lord Bernard, and now he wants to see whether you'll ride with the emperor against Bernard's friends. If you go, Bernard will hear of it. If you don't, the count will call it treason, and he'll have the law on his side."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "when": "side_830 != 'bernard'",
+          "text": "Ordinary service, my lord, with our own count and the royal host. There's no test in it this time, only the road to Aquitaine and whatever Pippin's partisans put in our way."
+        }
+      ],
+      "choices": {
+        "prompt": "Answer the count's summons?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "obey",
+            "label": "Ride with the count's contingent",
+            "requires": "not rebel_832",
+            "default": true,
+            "effects": [
+              { "flags": { "served_832": true }, "away": { "reason": "with the royal host in Aquitaine", "seasons": 1 } },
+              { "when": "hedge_832", "flags": { "chose_emperor_832": true } },
+              { "when": "not (oath_kept_emperor or informer_832)", "renown": "small" },
+              { "when": "oath_kept_emperor or informer_832", "flags": { "count_trust": "+1" }, "renown": "moderate" }
+            ]
+          },
+          {
+            "id": "already_south",
+            "label": "Ignore it; the lord is already with Bernard's men in the south",
+            "requires": "rebel_832",
+            "default": true,
+            "note": "Makes the lord an outlaw at home until Warin takes Autun.",
+            "effects": {
+              "flags": { "outlaw_832": true, "favor_septimania": "+1", "count_opinion": "-2" },
+              "land": { "tenure": "forfeit_claimed" },
+              "away": { "reason": "with Bernard's men against Berengar's loyalists in the Roussillon", "seasons": 1 },
+              "record": "The lord ignored Count Adalard's summons and rode with Bernard's men; he was outlawed at home."
+            }
+          },
+          {
+            "id": "refuse",
+            "label": "Refuse the summons",
+            "effects": { "flags": { "traitor_832": true, "count_opinion": "-2" } }
+          }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 70 },
+      "notes": "The rebel-path 'after' line is engine-written; the source gives only the Bernard-path line."
+    },
+    {
+      "id": "832-B1",
+      "title": "Skirmishes in Aquitaine",
+      "arc": 1,
+      "type": "battle",
+      "fires": { "year": 832, "season": "autumn" },
+      "requires": "served_832 or outlaw_832",
+      "channel": ["steward"],
+      "form": "report",
+      "deferred": "battle",
+      "battle": {
+        "momentum": 20,
+        "branches": {
+          "served_832": "A skirmish with Pippin's partisans holding a fortified estate; renown small to moderate.",
+          "outlaw_832": "Raids and skirmishes with Bernard's men against Berengar of Toulouse's loyalists in the Roussillon; renown moderate, risk of capture."
+        },
+        "interimLine": "The fighting in Aquitaine this summer is not yet written in this chronicle, my lord. You came home with the men you took, and the muster is behind us."
+      },
+      "links": { "arc": "1", "momentum": 20 }
+    },
+    {
+      "id": "832-L1",
+      "title": "An outlaw's villa",
+      "arc": 1,
+      "type": "choice",
+      "fires": { "year": 832, "season": "autumn" },
+      "order": 2,
+      "requires": "outlaw_832 and tenure == 'forfeit_claimed'",
+      "channel": ["steward"],
+      "form": "spoken",
+      "hookWindow": 20,
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, while you were south, Count Adalard's officers were here with the old assessment in their hands. You refused a summons given in the emperor's name, and the count holds the villa forfeit for it. He has not sent the writ yet; he is in no hurry, and he knows it. But this villa is not safe under him, and it will not be while he holds Autun. The same three doors are open as in 830: buy it outright at the recorded price, marry into a family with kin at its back, or put it under the Church through Father Ermenald. I would walk through one of them before the count finds the leisure to shut them."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "buy_outright",
+          "trigger": "The lord pays the recorded value to buy the villa outright.",
+          "requires": "denarii >= 6500",
+          "effects": {
+            "cost": { "denarii": 6500 },
+            "land": { "tenure": "owned" },
+            "flags": { "villa_owned": true },
+            "record": "The lord bought the villa outright at the old assessment."
+          }
+        },
+        {
+          "id": "marry_local",
+          "trigger": "The lord agrees to marry into a local family to secure the villa.",
+          "effects": {
+            "cost": { "denarii": 30 },
+            "land": { "tenure": "benefice", "marriedLocal": true },
+            "flags": { "married_local": true },
+            "record": "The lord married into a local family and kept the villa."
+          }
+        },
+        {
+          "id": "church_fixed",
+          "trigger": "The lord puts the villa under the Church as a precaria for a small fixed rent.",
+          "effects": {
+            "land": { "tenure": "precaria", "precariaRent": { "kind": "fixed", "denarii": 36 } },
+            "realm": { "swornTo": "church" },
+            "flags": { "precaria_church": true, "favor_church": "+2" },
+            "record": "The villa passed under the Church and came back to the lord as a precaria."
+          }
+        },
+        {
+          "id": "church_nona",
+          "trigger": "The lord puts the villa under the Church as a precaria for the nona, a ninth of the produce.",
+          "effects": {
+            "land": { "tenure": "precaria", "precariaRent": { "kind": "nona" } },
+            "realm": { "swornTo": "church" },
+            "flags": { "precaria_church": true, "favor_church": "+2" },
+            "record": "The villa passed under the Church and came back to the lord as a precaria for the nona."
+          }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 50 },
+      "notes": "Engine-written from the outlaw recovery gap (path review). The claim lapses when Warin takes Autun (837-03)."
+    },
+    {
+      "id": "832-02",
+      "title": "Pippin's fall",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 832, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Travelers and the new count's household.",
+      "slant": "Mostly factual; worried if the lord sent men to Pippin, relieved otherwise.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, it's over in Aquitaine. In the spring Louis of Bavaria rose against his father too, but the emperor marched east and brought him to heel quickly. Then he turned on Aquitaine. By autumn King Pippin and Lord Bernard were both made to come before him. The emperor took Aquitaine from our King Pippin and gave it to young Charles, so the boy is our king now, and sent Pippin off as a prisoner to Trier, though they say he slipped his guards on the road and is loose again. As for Lord Bernard: he is accused of breaking faith and stripped of everything, Barcelona, Septimania, all of it. Count Berengar of Toulouse has his lands now."
+        },
+        {
+          "speaker": "steward",
+          "when": "rebel_832",
+          "text": "And my lord, the count's men are asking who in this county helped Pippin. If Lord Bernard's letter still exists, I would not want it found in this house."
+        }
+      ],
+      "knows": [
+        "Louis the German's brief revolt in spring 832, put down without a great battle.",
+        "Charles, now nine, is king of Aquitaine in name.",
+        "Pippin escaped on the way to Trier; Aquitaine is restless.",
+        "Bernard has lost all his offices and lands; Berengar of Toulouse, a loyalist, benefits."
+      ],
+      "doesntKnow": ["That the three elder sons will unite and depose the emperor next summer.", "Where Bernard is now."],
+      "onFire": [{ "when": "warned_832", "flags": { "reputation_shrewd": "+1" } }],
+      "hooks": [
+        {
+          "id": "ask_charter",
+          "trigger": "The lord asks the loyalists for a royal charter for the villa.",
+          "requires": "informer_832 or oath_kept_emperor",
+          "effects": { "land": { "charter": "royal" }, "flags": { "benefice_charter": true, "sought_king_830": true } }
+        },
+        {
+          "id": "burn_letter",
+          "trigger": "The lord burns Bernard's letter.",
+          "requires": "rebel_832",
+          "effects": { "record": "The lord burned Bernard's letter." }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75 },
+      "notes": "The second block is engine-written from the rebel_832 hook."
+    },
+    {
+      "id": "833-S1",
+      "title": "Two summons",
+      "arc": 1,
+      "type": "summons",
+      "fires": { "year": 833, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, two riders in one week, and they want you in two places. The first is from Count Adalard in the emperor's name: the emperor's sons, Lothair, Pippin and Louis, have joined against their father and are bringing an army, and every faithful man is to come to the emperor's host. The second is from our King Pippin's people, calling his own men to stand with him and his brothers. Your king and your emperor are on opposite sides of the same field, and nobody can tell me yet where it will be fought."
+        }
+      ],
+      "knows": [
+        "The three elder sons have united; the emperor is gathering his army to meet them.",
+        "Pippin is still the king of Aquitaine in the eyes of the Aquitanians, whatever the emperor decreed last autumn."
+      ],
+      "doesntKnow": ["That the pope is travelling with the sons.", "That there will be no battle."],
+      "choices": {
+        "prompt": "Which summons does the lord answer?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "emperor", "label": "Ride to the emperor's host", "default": true },
+          { "id": "pippin", "label": "Ride to King Pippin's camp", "note": "Likely for a man who already sent men to Pippin." },
+          { "id": "stay", "label": "Stay home", "effects": { "flags": { "count_opinion": "-1" } } }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 75 },
+      "notes": "Engine-written; the source names the two summons but gives no text."
+    },
+    {
+      "id": "833-01",
+      "title": "The Field of Lies",
+      "arc": 1,
+      "type": "live",
+      "fires": { "year": 833, "season": "summer" },
+      "requires": "chose(833-S1, emperor)",
+      "channel": ["steward"],
+      "form": "scene",
+      "source": "The lord's own eyes, with Aldric at his side as clerk.",
+      "slant": "The pressure comes from all sides.",
+      "onFire": { "away": { "reason": "in the emperor's camp on the Rotfeld, in Alsace", "seasons": 1 } },
+      "stages": [
+        {
+          "id": "pope",
+          "title": "The pope's visit",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "frame": "in camp on the Rotfeld near Colmar",
+              "text": "My lord, the pope himself has crossed the field to our camp: Gregory, whom the sons brought with them as a peacemaker. The whole camp is awed and frightened. A rumor is running from fire to fire that he will excommunicate the emperor and every bishop who stands with him if we resist. Our bishops answer that if he came to excommunicate, he will go home excommunicated himself. I cannot tell you yet whether there is anything behind the rumor."
+            }
+          ],
+          "hooks": [
+            {
+              "id": "investigate",
+              "trigger": "The lord asks the right people (a bishop's clerk, Ermenald by letter) whether the pope has actually threatened anyone.",
+              "effects": { "flags": { "learned_rumor_empty": true } }
+            }
+          ]
+        },
+        {
+          "id": "bribe",
+          "title": "The bribe",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "frame": "at night",
+              "text": "A man came to our fire tonight who did not give his name, my lord, with a purse of silver in his hand. It is yours, he says, if we cross to the sons' camp before dawn. He will be back within the hour for your answer."
+            }
+          ],
+          "choices": {
+            "prompt": "Take the silver and cross tonight?",
+            "options": [
+              {
+                "id": "take",
+                "label": "Take the bribe and cross over",
+                "ends": true,
+                "effects": {
+                  "flags": { "bribed_833": true, "perjury_833": true, "lothair_tainted": true },
+                  "renown": "-moderate",
+                  "gain": { "denarii": 60 },
+                  "record": "On the Field of Lies the lord took Lothair's silver and crossed over."
+                }
+              },
+              { "id": "stay", "label": "Send him away", "default": true }
+            ]
+          }
+        },
+        {
+          "id": "threat",
+          "title": "The threat",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "frame": "the next night",
+              "text": "Another visitor, my lord, and no silver this time. A vassal from the sons' camp, who says he speaks as a friend: those who stay with the emperor will lose their lands when this is over, and perhaps their eyes, as Lord Bernard's brother did in 830. He did not wait for an answer."
+            }
+          ],
+          "choices": {
+            "prompt": "Cross out of fear?",
+            "options": [
+              {
+                "id": "cross_in_fear",
+                "label": "Cross to the sons tonight",
+                "ends": true,
+                "effects": { "flags": { "perjury_833": true }, "renown": "-small", "record": "On the Field of Lies the lord crossed to the sons under threat." }
+              },
+              { "id": "stay", "label": "Stay", "default": true }
+            ]
+          }
+        },
+        {
+          "id": "count_crosses",
+          "title": "The count goes over",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "frame": "by day",
+              "text": "My lord, the count has gone over. Adalard rode across to the sons this morning with most of his men behind him, and he has sent word back for you to follow. Your lord points one way now, and your emperor the other."
+            }
+          ],
+          "choices": {
+            "prompt": "Follow the count?",
+            "options": [
+              {
+                "id": "follow",
+                "label": "Follow your lord across",
+                "ends": true,
+                "effects": { "flags": { "followed_count_833": true }, "record": "On the Field of Lies the lord followed Count Adalard across to the sons." }
+              },
+              { "id": "stay", "label": "Stay with the emperor", "default": true }
+            ]
+          }
+        },
+        {
+          "id": "released",
+          "title": "The emperor releases you",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "It is over, my lord. The emperor stood this morning with a handful of us left around him and told us to go to his sons; he said it would be a pity if any man lost life or limb for his sake. Then he walked across the field himself. They are calling this place the Field of Lies already, for the oaths broken on it. We kept ours to the end, and he released us from it with his own mouth."
+            }
+          ],
+          "exitEffects": {
+            "flags": { "stood_to_the_end": true },
+            "renown": 90,
+            "record": "On the Field of Lies the lord stood with the emperor to the end and was released by him."
+          }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75 },
+      "notes": "Stage lines are engine-written from the stages table; the only verbatim words in the source are the emperor's 'Go to my sons'. Renown for stage 5 pays now but the sons' party watches the lord until 834."
+    },
+    {
+      "id": "833-P1",
+      "title": "Pippin's camp at the Field of Lies",
+      "arc": 1,
+      "type": "live",
+      "fires": { "year": 833, "season": "summer" },
+      "requires": "chose(833-S1, pippin)",
+      "channel": ["steward"],
+      "form": "scene",
+      "onFire": {
+        "flags": { "pippin_833": true },
+        "renown": "small",
+        "away": { "reason": "in King Pippin's camp on the Rotfeld, in Alsace", "seasons": 1 },
+        "record": "The lord followed King Pippin to the Field of Lies and watched the emperor's host melt away."
+      },
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "in King Pippin's camp on the Rotfeld",
+          "text": "My lord, we have watched a thing I never thought to see. The pope rode across to the emperor's camp and back. Then, night after night, torches came over the field as the emperor's men came to us: a few at first, then whole companies, then counts with their banners. Everyone here expected a battle, and not one man stood to fight for the emperor. On the last day the emperor himself walked across the field to his sons with a handful of companions. Some of our camp cheered. Many were quiet. An old soldier beside me said he never thought to see an emperor abandoned, and one of the priests called it a day of shame for every man who ever swore an oath. We followed our own king, my lord; no one can call that perjury. But I do not think anyone will be rewarded much for it either."
+        }
+      ],
+      "knows": [
+        "Following one's own king is defensible, like following one's count; no perjury.",
+        "Pippin's rewards go mainly to the great men who brought him troops."
+      ],
+      "links": { "arc": "1", "momentum": 75 },
+      "notes": "Engine-written from 'The other side: Pippin's camp'."
+    },
+    {
+      "id": "833-N1",
+      "title": "The Field of Lies, told at home",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 833, "season": "autumn" },
+      "requires": "not fired(833-01) and not fired(833-P1)",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, it is done, and without a blow struck. The emperor's three sons met him near Colmar in Alsace at the end of June, with Pope Gregory in their train. The pope crossed to the emperor's camp to make peace, and over the days that followed, with bribes and threats and promises, nearly every man sworn to the emperor slipped across to the sons, our own Count Adalard among them. When the emperor was almost alone he told his last followers to go to his sons, saying it would be a pity if any man lost life or limb for his sake, and he gave himself up. They are calling the place the Field of Lies, for the oaths broken there. Lothair holds his father now."
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75 },
+      "notes": "Engine-written from 'What happened'."
+    },
+    {
+      "id": "833-02",
+      "title": "The emperor's penance",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 833, "season": "winter" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "source": "Clergy who were at Soissons, passed on through the bishop's household.",
+      "slant": "Ermenald respects the bishops, but this frightens him.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "frame": "privately, after Vespers",
+          "text": "My lord, I have news from Soissons, and I hardly know how to tell it. The bishops, led by the archbishop of Reims, have made the emperor do public penance. They gave him a written list of his sins: that he broke the oaths everyone swore to the old division of the empire; that he made his people swear contradictory oaths; that he called the army out in Lent; that he punished men without judgment; and the death of his nephew Bernard of Italy, years ago, who died after being blinded on his order. He read it out before the altar, in tears they say, then laid his sword belt on the altar and put on the penitent's robe."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "A penitent cannot carry arms or rule, my lord. They mean it to be the end of him. The bishops say they acted for the good of his soul and the realm. Perhaps. But I was taught that the Lord's anointed is not ours to cast down, and I cannot shake the thought that half the men who wrote that list had sworn to him only a year before. Pray for him. And forgive me: I would rather not speak of it again tonight."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "stood_to_the_end",
+          "text": "One thing more, and then I will hold my peace. The emperor's last loyal men, the few who stood on that field to the end, are spoken of with respect. Quietly, even now. Your name is among them."
+        }
+      ],
+      "knows": [
+        "Archbishop Ebbo of Reims led the bishops; Lothair's party supports it.",
+        "The main charges on the list.",
+        "What public penance means: no arms, no rule, a life of atonement.",
+        "The emperor is held at Saint-Médard; the empress is in Italy; young Charles is held at the abbey of Prüm."
+      ],
+      "doesntKnow": [
+        "That the emperor's other sons will free him in a few months and he will be restored.",
+        "That Ebbo will be forced to retract and be deposed."
+      ],
+      "hooks": [
+        {
+          "id": "unjust",
+          "trigger": "The lord says the penance is unjust.",
+          "effects": { "flags": { "chaplain_trust": "+1" } }
+        },
+        {
+          "id": "justified",
+          "trigger": "The lord argues the penance was justified.",
+          "effects": { "flags": { "chaplain_trust": "-1" } }
+        },
+        {
+          "id": "predict_restoration",
+          "trigger": "The lord predicts the emperor will be restored.",
+          "effects": { "flags": { "prediction_834": true } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 75 },
+      "notes": "The third block is engine-written from the stood_to_the_end hook."
+    },
+    {
+      "id": "834-01",
+      "title": "The emperor restored",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 834, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Travelers and Adalard's household.",
+      "slant": "Relief, and some nervousness among those who sided with Lothair.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the wheel has turned again. Lothair treated his father so shamefully, dragging him about, trying to make a monk of him, that the emperor's other sons, our King Pippin and Louis of Bavaria, have turned against their brother. Our king has his kingdom back, too. Lothair fled south toward Burgundy, and on the first of March the emperor was restored at Saint-Denis and girded with his sword again. The empress is coming back from Italy, and young Charles is freed. Count Adalard says nothing, but I hear his household is busy writing letters of congratulation."
+        },
+        {
+          "speaker": "steward",
+          "when": "stood_to_the_end or loyalist_830",
+          "text": "And my lord, if I may: men who stood by the emperor are being sought out and thanked. I would ride to him while the gratitude is fresh. It will not keep."
+        },
+        {
+          "speaker": "steward",
+          "when": "bribed_833",
+          "text": "I will say one thing more, my lord, and say it only once. Those who sold their oaths on that field are being remembered too."
+        }
+      ],
+      "knows": [
+        "Lothair has fled toward Vienne and Burgundy with his army and supporters, including Count Matfrid and Lambert of Nantes in the west.",
+        "Men who stood by the emperor in 833 are being sought out and thanked.",
+        "Lothair is not finished."
+      ],
+      "doesntKnow": ["That Lothair's war will reach Chalon this summer."],
+      "onFire": [{ "when": "prediction_834", "flags": { "reputation_shrewd": "+1" } }],
+      "hooks": [
+        {
+          "id": "ride_to_court",
+          "trigger": "The lord rides to the restored emperor's court.",
+          "effects": { "flags": { "rode_to_court_834": true }, "cost": { "denarii": 15 } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 80 },
+      "notes": "The conditional blocks are engine-written from the hooks."
+    },
+    {
+      "id": "834-02",
+      "title": "The emperor's gratitude",
+      "arc": 1,
+      "type": "promotion",
+      "fires": { "year": 834, "season": "summer" },
+      "requires": "rode_to_court_834",
+      "carry": true,
+      "carryMax": 1,
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "promotion",
+      "promotion": {
+        "rewards": [
+          { "when": "stood_to_the_end and renown >= 50", "grant": "royal_vassal", "flags": ["royal_vassal"], "land": "villa_owned or second_villa" },
+          { "when": "stood_to_the_end", "grant": "charter", "flags": ["villa_confirmed"] },
+          { "when": "followed_count_833", "grant": "thanks" },
+          { "when": "bribed_833 or perjury_833", "grant": "cold", "flags": ["distrusted_834"] }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 60 }
+    },
+    {
+      "id": "834-03",
+      "title": "Lothair's war comes to Burgundy",
+      "arc": 1,
+      "type": "live",
+      "fires": { "year": 834, "season": "summer" },
+      "order": 2,
+      "channel": ["steward"],
+      "form": "scene",
+      "source": "Refugees, merchants on the Saône road.",
+      "supplyCheck": { "situation": "foraging", "seasons": 1 },
+      "stages": [
+        {
+          "id": "warning",
+          "title": "Aldric's warning",
+          "advanceOn": "season",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, bad news from the west and worse from the east. Lothair's men, Count Matfrid and Lambert of Nantes, met the emperor's army near the Breton border and cut it to pieces. Count Odo, who was Lord Bernard's cousin, is dead, with his brother the count of Blois, the count of Maine, and even the abbot of Saint-Martin at Tours. And Lothair himself is in the Saône valley with his army, living off the land. Count Adalard has shut himself up in Autun and says it is not our quarrel. I'd look to our own walls, my lord."
+            }
+          ],
+          "hooks": [
+            {
+              "id": "hide_stores",
+              "trigger": "The lord orders the stores hidden and dispersed across the manses, or moved into the church's keeping.",
+              "effects": { "flags": { "hidden_stores": true } }
+            },
+            {
+              "id": "pay_foragers",
+              "trigger": "The lord decides to pay foragers off with a portion rather than fight.",
+              "effects": { "flags": { "paid_foragers": true } }
+            },
+            {
+              "id": "warn_neighbours",
+              "trigger": "The lord sends warning to the neighbouring villas and organizes a watch.",
+              "effects": { "flags": { "local_loyalty": "+1" } }
+            }
+          ]
+        },
+        {
+          "id": "chalon_falls",
+          "title": "Chalon falls",
+          "fallthrough": true,
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, there has been smoke on the horizon to the east for two days, and now we know what it was. Chalon is taken and burned. Count Warin held it for the emperor a few days and then gave it up to save his life. Gaucelm, Lord Bernard's brother, was beheaded in the town, and his sister Gerberga, a nun, was drowned in the Saône as a witch. The road is full of people carrying what they could."
+            }
+          ]
+        },
+        {
+          "id": "refugees",
+          "title": "Refugees",
+          "script": [
+            {
+              "speaker": "steward",
+              "text": "My lord, there are families from the Chalon district at the gate: farmers mostly, a smith among them, with carts and children and nothing much else. We have manses standing empty. Every family you take in can be settled on one and will owe us the manse dues from next year; it is the best bargain this war will offer. Or we can send them on down the road."
+            }
+          ],
+          "choices": {
+            "prompt": "Take the refugees in?",
+            "options": [
+              {
+                "id": "take_in",
+                "label": "Settle them on the vacant manses",
+                "requires": "vacant_manses >= 1",
+                "effects": {
+                  "settle": { "households": 2 },
+                  "flags": { "sheltered_refugees": "+2", "local_loyalty": "+1" },
+                  "record": "Families fleeing the sack of Chalon were settled on the empty manses."
+                }
+              },
+              { "id": "turn_away", "label": "Send them on", "default": true }
+            ]
+          },
+          "exitEffects": [{ "when": "not chalon_834", "flags": { "chalon_834": "stayed_home" } }]
+        }
+      ],
+      "links": { "arc": "1", "momentum": 45 },
+      "notes": "Branch A. Aldric's warning is verbatim; the Chalon and refugee lines are engine-written from the beat table. The foragers' fights are a supply check until the battle pass."
+    },
+    {
+      "id": "834-B1",
+      "title": "Warin's letter: the siege of Chalon",
+      "arc": 1,
+      "type": "battle",
+      "fires": { "year": 834, "season": "summer" },
+      "order": 3,
+      "requires": "royal_vassal",
+      "channel": ["steward"],
+      "form": "letter",
+      "deferred": "battle",
+      "battle": {
+        "momentum": 45,
+        "letter": "Warin, count, to the emperor's faithful man at Fontenay, greeting. Lothair marches on Chalon with all his strength. I hold the city for our lord the emperor, with Gaucelm, son of the great Count William, and his kin. You are the emperor's man as I am. Come with every man and horse you can, and come quickly.",
+        "beats": ["Arrival: days before Lothair; strengthen walls, stock water and food.", "The siege: several days of assault.", "The fall: Warin surrenders; Gaucelm beheaded; Gerberga drowned."],
+        "outcomes": ["chalon_834 = defended | saved_city | fell", "saved_gaucelm", "saved_gerberga", "oath_under_duress_834"],
+        "interimLine": "Count Warin's letter came, my lord, and you rode for Chalon as the emperor's man. What passed on those walls is not yet written in this chronicle."
+      },
+      "links": { "arc": "1", "momentum": 45 }
+    },
+    {
+      "id": "834-04",
+      "title": "Lothair submits",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 834, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "General relief; Adalard's household congratulates itself on staying out of it.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, it's finished. After Chalon, Lothair turned west, but the emperor came against him with a great army, and they met on the Loire near Blois. Lothair didn't dare fight. He came before his father, bowed, and was sent back over the mountains to Italy, to stay there. His great men go with him, Count Matfrid among them. Count Adalard is all smiles now, and talks as if he'd been the emperor's man all along."
+        },
+        {
+          "speaker": "steward",
+          "when": "saved_gaucelm or saved_gerberga",
+          "text": "And there was a rider from the south this week, my lord, from Lord Bernard's family. They know what you did at Chalon for their own blood. They do not forget such things."
+        },
+        {
+          "speaker": "steward",
+          "when": "sheltered_refugees > 0",
+          "text": "The Chalon families have their first harvest in, such as it is. The manses they took were empty three seasons ago; they are paying dues now."
+        }
+      ],
+      "knows": [
+        "Lothair is confined to Italy; his supporters north of the Alps have lost their offices.",
+        "The empress and young Charles are back at court.",
+        "The great men who died fighting Lothair (Odo, William of Blois, Guy of Maine), and the dead of Chalon."
+      ],
+      "doesntKnow": [
+        "That a fever will sweep through Lothair's followers in Italy and kill several of them, Matfrid and Wala among them.",
+        "That the emperor will be formally re-crowned at Metz in February 835."
+      ],
+      "links": { "arc": "1", "momentum": 85 },
+      "notes": "The conditional blocks are engine-written from the hooks."
+    },
+    {
+      "id": "835-01",
+      "title": "The reckoning at Thionville and Metz",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 835, "season": "spring" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "source": "Official news from the assemblies; satisfaction among loyalists.",
+      "hookWindow": 8,
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor has settled accounts. At Thionville in February, before forty-odd bishops, Archbishop Ebbo of Reims, the man who forced the emperor's penance at Soissons, had to stand up and admit the emperor never committed the crimes he was charged with. Then they deposed him. And at Metz, at the end of the month, the emperor was crowned again in the cathedral, before everyone."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "And my lord, it touches us directly. Archbishop Agobard of Lyon, our own bishop's superior, has been deposed too, along with the bishops of Vienne and Narbonne, for siding with Lothair. Agobard has fled to Italy. I never thought to see the day."
+        }
+      ],
+      "knows": [
+        "Ebbo's public confession and deposition; the Metz re-crowning (28 February 835).",
+        "Agobard of Lyon, Bernard of Vienne and Bartholomew of Narbonne are deposed; Lothair's churchmen are out.",
+        "Lothair is sick in Italy; several of his great men are dying of fever there."
+      ],
+      "hooks": [
+        {
+          "id": "predict_comet",
+          "trigger": "The lord predicts that a great comet will appear in the spring of 837.",
+          "effects": { "flags": { "predicted_comet": true } }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 85 },
+      "notes": "The comet prediction hook stays open two years so a prediction made early counts in 837-01."
+    },
+    {
+      "id": "835-02",
+      "title": "The assembly at Crémieu",
+      "arc": 1,
+      "type": "promotion",
+      "fires": { "year": 835, "season": "summer" },
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "promotion",
+      "promotion": {
+        "rule": [
+          { "when": "fired(834-02)", "result": "no second promotion; goodwill continues" },
+          { "when": "renown at or above the next rank's threshold", "result": "promotion, plus a charter if not already secured" },
+          { "when": "distrusted_834", "result": "promotion possible at a higher threshold" },
+          { "when": "below threshold", "result": "thanks and a small gift" }
+        ],
+        "meets": "Bernard, restored to Septimania and Barcelona and given Toulouse; Berengar died on the road."
+      },
+      "links": { "arc": "1", "momentum": 70 }
+    },
+    {
+      "id": "837-01",
+      "title": "The comet",
+      "arc": "natural",
+      "type": "news",
+      "fires": { "year": 837, "season": "spring" },
+      "channel": ["chaplain", "steward"],
+      "form": "spoken",
+      "source": "What everyone can see, plus reports from court.",
+      "slant": "Ermenald is frightened.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "frame": "at night, pointing at the sky",
+          "text": "My lord, come and see. A great comet, crossing the sky night after night, brighter than any I have known. Signs like this come before the deaths of kings and the fall of kingdoms. We should pray."
+        },
+        {
+          "speaker": "steward",
+          "frame": "the next day",
+          "text": "They say the emperor himself was badly shaken. He asked his learned men what it meant, prayed through the night, gave alms and had masses said all over the empire."
+        }
+      ],
+      "knows": ["It is the most spectacular comet in living memory.", "The emperor's fear and his acts of penance."],
+      "onFire": [{ "when": "predicted_comet", "renown": "large", "flags": { "learned_reputation": "+1", "church_suspicion": "+1", "sorcery_rumor": "+1" } }],
+      "hooks": [
+        {
+          "id": "explain_natural_tactful",
+          "trigger": "The lord explains the comet as a natural, returning body, and does it tactfully.",
+          "effects": { "flags": { "chaplain_curious": true } }
+        },
+        {
+          "id": "explain_natural_blunt",
+          "trigger": "The lord dismisses the fear bluntly or mocks the idea of an omen.",
+          "effects": { "flags": { "chaplain_suspicious": true } }
+        },
+        {
+          "id": "organize_prayers",
+          "trigger": "The lord calmly organizes prayers and alms.",
+          "effects": { "flags": { "favor_church": "+1" }, "cost": { "denarii": 5 } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 100, "fixedPoint": true }
+    },
+    {
+      "id": "837-02",
+      "title": "The count is ill",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 837, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Market talk in Autun and a servant from the count's household.",
+      "slant": "The household itself is saying nothing: a sick count invites trouble.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, a word you may want to hear. Count Adalard has taken the flux. His people are keeping it quiet, but one of his grooms told our man at the market that he's been abed four days, passing blood, and that the physicians have bled him twice. These things can drag on for weeks. It's going around the town too; two of the canons have it. God keep him, my lord. A strong man can come through it. Or not."
+        }
+      ],
+      "knows": [
+        "Adalard's own vassals are admitted; an outlaw is turned away at the gate unless Ermenald gets him in through the bishop's household.",
+        "The household physician and the monks who tend him will object to a layman overruling them.",
+        "Acting early in the season gives the best chance; by late summer he is too far gone."
+      ],
+      "outcomes": {
+        "momentum": 40,
+        "canChange": "A lord who reaches the count early, stops the bleeding, has him given boiled water with salt and honey or sweetened wine, keeps the sickroom clean, and persuades the household to allow it may save him (about 60% if all of that is done early; less the later or the less complete). If the lord sat at the bedside and the count died anyway, a rumour that the stranger poisoned him may spread unless the lord stands well with the household or the church.",
+        "windowSeasons": 1,
+        "options": [
+          {
+            "id": "saved",
+            "label": "The count lives, weakened",
+            "effects": { "flags": { "saved_adalard": true, "count_trust": "+2" }, "renown": "small", "record": "The lord nursed Count Adalard through the flux." }
+          },
+          { "id": "died", "label": "The count dies at the end of the summer", "default": true },
+          {
+            "id": "poison_rumor",
+            "label": "The count dies and a rumour names the lord",
+            "effects": { "flags": { "poison_rumor": true, "sorcery_rumor": "+1" } }
+          }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 40 }
+    },
+    {
+      "id": "837-03",
+      "title": "A new count at Autun",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 837, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Autun has a new master. The emperor has given the county to Count Warin, the same Warin who held Chalon against Lothair, and who already has Mâcon and Chalon. He'll be the greatest lord between the Loire and the Saône. You'll have heard Count Adalard took the flux at the end of the summer. He lingered most of the summer, they say, better one week and worse the next, until it took him at the end. God rest him. His people are packing. Everyone who stood with the emperor in the bad years will be remembered now, I think."
+        }
+      ],
+      "variants": [
+        {
+          "when": "saved_adalard",
+          "replace": 0,
+          "text": "My lord, Autun has a new master. The emperor has given the county to Count Warin, the same Warin who held Chalon against Lothair, and who already has Mâcon and Chalon. He'll be the greatest lord between the Loire and the Saône. Count Adalard has given up the county. He lived, thanks to you, my lord, but he can barely sit a horse, and a count who can't ride to war or to court is no count at all. He's going home to his family's lands, and he asked me to tell you his door is always open to you. He has no son to follow him, so the emperor chose for himself. Everyone who stood with the emperor in the bad years will be remembered now, I think."
+        }
+      ],
+      "knows": [
+        "Warin's record: defended Chalon in 834, surrendered to save his life, and returned to the emperor's side.",
+        "Warin also holds Mâcon and Chalon; he is the region's great man.",
+        "At an assembly at Aachen this year, the emperor gave young Charles a great stretch of land between Frisia and the Seine; Louis of Bavaria is angry about it."
+      ],
+      "onFire": [
+        { "when": "outlaw_832 and tenure == 'forfeit_claimed'", "land": { "tenure": "benefice" } },
+        { "when": "outlaw_832", "flags": { "outlaw_832": false }, "record": "With Warin at Autun the old outlawry lapsed." }
+      ],
+      "hooks": [
+        {
+          "id": "reswear_warin",
+          "trigger": "The lord goes to Autun to swear to Count Warin and have the benefice confirmed.",
+          "requires": "swornTo != 'church'",
+          "effects": { "flags": { "count_trust": "+1" }, "land": { "charter": "count" }, "realm": { "swornTo": "count" }, "record": "The lord swore to Count Warin and had the villa confirmed." }
+        }
+      ],
+      "links": { "arc": "1", "momentum": 60 },
+      "record": "Count Adalard was gone; Warin of Mâcon and Chalon took Autun."
+    },
+    {
+      "id": "838-01",
+      "title": "Charles comes of age",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 838, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Warin's household.",
+      "slant": "Approving of young Charles.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, at Quierzy the emperor girded young Charles with a sword. He's fifteen, a man now, and the emperor gave him Maine and the lands between the Seine and the Loire. Louis of Bavaria, meanwhile, has been stripped of everything but Bavaria for complaining too loudly. He won't take that quietly. And there's talk about Lord Bernard too: men from his southern counties came to Quierzy with ten complaints against him. He's never short of enemies, that one."
+        }
+      ],
+      "knows": ["Charles's coming of age and new lands; Louis the German's losses and anger.", "Complaints against Bernard from the Goths of his southern counties."],
+      "doesntKnow": ["Louis the German's revolt, which breaks out within months."],
+      "links": { "arc": "1", "momentum": 80 }
+    },
+    {
+      "id": "838-02",
+      "title": "King Pippin is dead",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 839, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Travelers from Aquitaine and Warin's household.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, our King Pippin is dead, at Poitiers, before Christmas. The emperor has already declared that Aquitaine, and our county with it, goes to young Charles. But the Aquitanian lords don't want a boy from the north; they've proclaimed Pippin's own son, another Pippin, as their king. So there'll be war in Aquitaine again, and the emperor isn't young anymore."
+        },
+        {
+          "speaker": "steward",
+          "when": "rebel_832 or pippin_833",
+          "text": "And my lord, a man came through last week who remembered you from the old king's side. The young Pippin's people are counting his father's friends. He left no message, only that he would come back."
+        }
+      ],
+      "knows": [
+        "Pippin's death; the emperor's grant of Aquitaine to Charles; the Aquitanians backing Pippin II.",
+        "Louis the German is in revolt in the east."
+      ],
+      "doesntKnow": ["The emperor's campaigns of 839–840, his death in 840, or the war between the brothers that follows."],
+      "links": { "arc": "1", "momentum": 80 },
+      "record": "King Pippin of Aquitaine died; the emperor gave Aquitaine to Charles and the Aquitanians raised Pippin's son.",
+      "notes": "The second block is engine-written from the rebel_832 hook."
+    },
+    {
+      "id": "839-01",
+      "title": "The last division",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 839, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Warin's household.",
+      "slant": "Approving.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor has made peace with Lothair at last, and divided everything between him and young Charles. Lothair gets the east, Charles the west, and Charles's share runs from the Breton march all the way to Provence, Lyon and Geneva. So our county is Charles's, in the end. Louis of Bavaria is left with Bavaria and nothing else, and he's furious. And in Aquitaine, the Gascons have risen for young Pippin, our late king's son, and pushed all the way up to the Loire."
+        }
+      ],
+      "knows": ["The Worms division; Autun falls in Charles's share.", "Louis the German's anger; Pippin II's supporters advancing to the Loire."],
+      "links": { "arc": "1", "momentum": 80 }
+    },
+    {
+      "id": "839-02",
+      "title": "The Aquitaine campaign",
+      "arc": 1,
+      "type": "summons",
+      "fires": { "year": 839, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "summons",
+      "source": "Official.",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with Count Warin's messenger, who reads",
+          "text": "The emperor marches into Aquitaine with King Charles to bring the rebels of that country to obedience. By order of Warin, count, every man who holds of him is to join his contingent at the muster, armed and provisioned."
+        },
+        {
+          "speaker": "steward",
+          "when": "pippin_833 or rebel_832",
+          "frame": "after",
+          "text": "And the other man came back, my lord, the one from young Pippin's people. He asks whether the old king's friends will stand with the son. If you go with Count Warin, that is a clean break and nobody will hold the past against you. If you slip away to Pippin, you are a rebel again, and this time against a king who will live to remember it."
+        }
+      ],
+      "choices": {
+        "prompt": "How does the lord answer the summons?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "serve",
+            "label": "Ride with Count Warin",
+            "default": true,
+            "effects": { "flags": { "served_839": true }, "renown": "small", "away": { "reason": "on the emperor's campaign in Aquitaine", "seasons": 1 } }
+          },
+          {
+            "id": "serve_as_pippins_man",
+            "label": "Ride with Warin and serve Charles: a clean break with Pippin's cause",
+            "requires": "pippin_833",
+            "effects": { "flags": { "chose_charles_839": true, "served_839": true }, "renown": "small", "away": { "reason": "on the emperor's campaign in Aquitaine", "seasons": 1 } }
+          },
+          {
+            "id": "join_pippin2",
+            "label": "Slip away to Pippin II",
+            "requires": "pippin_833 or rebel_832",
+            "effects": { "flags": { "pippin2_839": true, "count_opinion": "-2" }, "away": { "reason": "with Pippin II's men in Aquitaine", "seasons": 1 } }
+          },
+          { "id": "pay_off", "label": "Pay to avoid service", "effects": { "flags": { "count_opinion": "-1" }, "cost": { "denarii": 20 } } }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 70 },
+      "notes": "Summons text is engine-written; the source gives branches only."
+    },
+    {
+      "id": "839-B1",
+      "title": "Sieges in Aquitaine",
+      "arc": 1,
+      "type": "battle",
+      "fires": { "year": 839, "season": "winter" },
+      "requires": "served_839",
+      "channel": ["steward"],
+      "form": "report",
+      "deferred": "battle",
+      "battle": {
+        "momentum": 20,
+        "setting": "The emperor holds an assembly where Aquitanian lords swear to Charles; sieges of castles held by Pippin II's men.",
+        "renown": "small to moderate",
+        "interimLine": "The sieges in Aquitaine are not yet written in this chronicle, my lord. The Aquitanian lords swore to young Charles at the assembly, and you came home with the men you took."
+      },
+      "links": { "arc": "1", "momentum": 20 }
+    },
+    {
+      "id": "840-P1",
+      "title": "The Rogation days",
+      "arc": "natural",
+      "type": "news",
+      "fires": { "year": 840, "season": "spring" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, the Rogation days fall at the start of May this year, the three days of Litanies before the Ascension. The whole parish walks behind the cross through the fields, and the bishop has asked that the lords walk with their people. I would have you with us, if your affairs allow it."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "predict_prophecy",
+          "trigger": "The lord declares that he has foreseen the sun going dark during the Litanies, as a prophecy.",
+          "effects": { "flags": { "predicted_eclipse": true, "eclipse_framing": "prophecy" } }
+        },
+        {
+          "id": "predict_revelation",
+          "trigger": "The lord says God showed him in prayer that the sun will go dark during the Litanies.",
+          "effects": { "flags": { "predicted_eclipse": true, "eclipse_framing": "revelation" } }
+        },
+        {
+          "id": "predict_learning",
+          "trigger": "The lord says he has calculated from the order of the heavens that the sun will be darkened on the fifth of May.",
+          "effects": { "flags": { "predicted_eclipse": true, "eclipse_framing": "learning" } }
+        },
+        {
+          "id": "predict_quiet",
+          "trigger": "The lord warns Ermenald or the bishop privately that the sun will go dark during the Litanies, and asks them to prepare calm prayers.",
+          "effects": { "flags": { "predicted_eclipse": true, "eclipse_framing": "quiet" } }
+        }
+      ],
+      "links": { "arc": "natural", "momentum": 100 },
+      "notes": "Engine-written prediction window; the source says only that Ermenald mentions the coming Rogation processions."
+    },
+    {
+      "id": "840-01",
+      "title": "The sun goes dark",
+      "arc": "natural",
+      "type": "news",
+      "fires": { "year": 840, "season": "summer" },
+      "channel": ["chaplain"],
+      "form": "spoken",
+      "slant": "Ermenald is terrified.",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "frame": "after",
+          "text": "My lord, the sun was taken from the sky at midday and the stars came out. In the middle of the Litanies, with the whole parish walking behind the cross. I have never been so afraid. God is showing us something, and I fear it is the death of someone great."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "eclipse_framing == 'quiet'",
+          "text": "The bishop had the clergy ready, as you asked. When the light went they began the psalms at once and the people held together; nobody ran. He is taking the credit, and he knows whose warning it was."
+        },
+        {
+          "speaker": "chaplain",
+          "when": "eclipse_framing == 'prophecy'",
+          "text": "And my lord, everyone remembers what you said. They are saying it in the lanes and they will be saying it at Autun. I beg you to be careful; the councils have hard words for soothsayers."
+        }
+      ],
+      "onFire": [
+        { "when": "eclipse_framing == 'prophecy'", "renown": "moderate", "flags": { "church_suspicion": "+2", "sorcery_rumor": "+1" } },
+        { "when": "eclipse_framing == 'revelation'", "renown": "small", "flags": { "holy_reputation": "+1", "church_suspicion": "+1" } },
+        { "when": "eclipse_framing == 'learning'", "renown": "small", "flags": { "learned_reputation": "+1", "scholar_contact": "+1" } },
+        { "when": "eclipse_framing == 'quiet'", "renown": "small", "flags": { "bishop_trust": "+2", "chaplain_trust": "+1" } }
+      ],
+      "links": { "arc": "natural", "momentum": 100, "fixedPoint": true },
+      "record": "The sun went dark at midday during the Litanies.",
+      "notes": "The conditional blocks are engine-written from the 'Exploiting the event' table."
+    },
+    {
+      "id": "840-02",
+      "title": "The emperor is dead",
+      "arc": 1,
+      "type": "news",
+      "fires": { "year": 840, "season": "autumn" },
+      "order": 1,
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "source": "Official news through Warin.",
+      "slant": "Real grief, and real fear.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor is dead. He went east in the spring to drive Louis of Bavaria back, and did it, but he was already sick, worn out from fasting all Lent, and the darkening of the sun shook him badly. He died on an island in the Rhine near Ingelheim, on the twentieth of June, with bishops around him. Before he died he sent his crown and sword to Lothair, on condition that he protect the empress and young Charles and keep to the division made at Worms. Whether Lothair keeps that promise... well. Every lord in the empire will be asked to swear to someone before long, my lord. We had best decide to whom."
+        },
+        {
+          "speaker": "chaplain",
+          "frame": "at the memorial Mass",
+          "text": "We sang the Mass for the emperor's soul this morning, my lord, as every church in the empire is doing. Whatever was done to him and whatever he did, he was the Lord's anointed for six and twenty years. Pray for him."
+        }
+      ],
+      "knows": [
+        "The illness, the campaign against Louis the German, the place and date of death.",
+        "The crown and sword sent to Lothair, with conditions.",
+        "The Worms division of 839 and Charles's claim to the west."
+      ],
+      "doesntKnow": ["That Lothair will ignore the division and claim the whole empire.", "The war between the brothers and Fontenoy."],
+      "links": { "arc": "1", "momentum": 95, "keystone": "K2" },
+      "record": "The Emperor Louis died on an island in the Rhine.",
+      "notes": "Ermenald's line is engine-written; the source says only that he speaks at a memorial Mass."
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { BattlefieldSchema, BattleStateSchema, COMMAND_TIERS } from "../combat/battleTypes";
 import { TagDefSchema, UnitSheetSchema, WoundSchema } from "../combat/schema";
 import { PLAYER_PERSONAL_BASELINE } from "../combat/constants";
+import { HISTORY_STATE_DEFAULT, HistoryStateSchema } from "../history/schema";
 
 export const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 export type Season = (typeof SEASONS)[number];
@@ -152,6 +153,14 @@ export const HoldingSchema = z.object({
   }),
   households: z.number().int().nonnegative(),
   features: z.array(z.string()),
+  /** Manses on the polyptych (03_HISTORY §4). Tributes and levies read free + servile. */
+  manses: z
+    .object({
+      free: z.number().int().nonnegative().default(6),
+      servile: z.number().int().nonnegative().default(4),
+      vacant: z.number().int().nonnegative().default(4),
+    })
+    .default({ free: 6, servile: 4, vacant: 4 }),
 });
 export type Holding = z.infer<typeof HoldingSchema>;
 
@@ -650,6 +659,8 @@ export const WorldStateSchema = z.object({
     maimed: z.boolean().default(false),
     /** Taken in battle and the ransom could not be met: he stays in his captors' hands. The game is over. */
     captive: z.boolean().default(false),
+    /** Body age in 825. The lord is a modern man set down in this year; no birth year is shown (03_HISTORY §4). */
+    ageAt825: z.number().int().min(10).max(60).default(17),
   }),
   /** Units the estate owns between battles, men under drill, and campaign-invented sheets (Phase 4). */
   military: z
@@ -785,6 +796,8 @@ export const WorldStateSchema = z.object({
       step: z.number().int().nonnegative().default(0),
     })
     .default({ status: "declined", step: 0 }),
+  /** The dated historical calendar and its background systems (03_HISTORY.md). Old saves load as "nothing has fired". */
+  history: HistoryStateSchema.default(HISTORY_STATE_DEFAULT),
 });
 export type WorldState = z.infer<typeof WorldStateSchema>;
 
@@ -810,6 +823,12 @@ export const PROPOSAL_TYPES = [
   "register_unit_sheet",
   "free_mancipia",
   "sponsor_feast",
+  "history_choice",
+  "history_hook",
+  "history_outcome",
+  "history_scene",
+  "innovation_register",
+  "innovation_expose",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -1085,6 +1104,56 @@ export const FreeMancipiaProposalSchema = ProposalBase.extend({
   count: z.coerce.number().int().positive(),
 });
 
+/** History layer (03_HISTORY §6.3): the lord has decided a declared choice on a dated event. */
+export const HistoryChoiceProposalSchema = ProposalBase.extend({
+  type: z.literal("history_choice"),
+  eventId: z.string(),
+  optionId: z.string(),
+});
+
+/** History layer: the lord's words plainly did what a declared hook describes. */
+export const HistoryHookProposalSchema = ProposalBase.extend({
+  type: z.literal("history_hook"),
+  eventId: z.string(),
+  hookId: z.string(),
+});
+
+/** History layer: the household's judgement of a momentum outcome, from the closed list. */
+export const HistoryOutcomeProposalSchema = ProposalBase.extend({
+  type: z.literal("history_outcome"),
+  eventId: z.string(),
+  outcomeId: z.string(),
+  reasoning: z.string().optional(),
+});
+
+/** History layer: a live scene moves on, optionally with the stage's choice. */
+export const HistorySceneProposalSchema = ProposalBase.extend({
+  type: z.literal("history_scene"),
+  eventId: z.string(),
+  advance: z.boolean().default(true),
+  choiceId: z.string().optional(),
+});
+
+/** Technology diffusion (03_HISTORY §12): a new thing the lord has introduced is on the record. */
+export const InnovationRegisterProposalSchema = ProposalBase.extend({
+  type: z.literal("innovation_register"),
+  innovationId: z.string(),
+  name: z.string(),
+  legibility: z.enum(["obvious", "puzzling", "opaque"]),
+  reproduction: z.enum(["trivial", "craftsman", "capital", "programme"]),
+  proof: z.enum(["self", "season", "cycles", "generation"]),
+  writtenDown: z.boolean().default(false),
+});
+
+export const INNOVATION_EXPOSURES = ["taught", "sold", "public_use", "battle_allies", "monks_copied", "shown_king", "espionage"] as const;
+
+/** Technology diffusion: an innovation was shown to the world in one of the declared ways. */
+export const InnovationExposeProposalSchema = ProposalBase.extend({
+  type: z.literal("innovation_expose"),
+  innovationId: z.string(),
+  how: z.enum(INNOVATION_EXPOSURES),
+});
+
 export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   FreeMancipiaProposalSchema,
   RaiseUnitProposalSchema,
@@ -1106,6 +1175,12 @@ export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   StartHuntProposalSchema,
   SettleHouseholdsProposalSchema,
   SponsorFeastProposalSchema,
+  HistoryChoiceProposalSchema,
+  HistoryHookProposalSchema,
+  HistoryOutcomeProposalSchema,
+  HistorySceneProposalSchema,
+  InnovationRegisterProposalSchema,
+  InnovationExposeProposalSchema,
 ]);
 
 export const DeferProposalSchema = ProposalBase.extend({
@@ -1148,6 +1223,12 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   StartHuntProposalSchema,
   SettleHouseholdsProposalSchema,
   SponsorFeastProposalSchema,
+  HistoryChoiceProposalSchema,
+  HistoryHookProposalSchema,
+  HistoryOutcomeProposalSchema,
+  HistorySceneProposalSchema,
+  InnovationRegisterProposalSchema,
+  InnovationExposeProposalSchema,
   DeferProposalSchema,
 ]);
 
@@ -1173,9 +1254,21 @@ export type DisbandUnitProposal = z.infer<typeof DisbandUnitProposalSchema>;
 export type CallToArmsProposal = z.infer<typeof CallToArmsProposalSchema>;
 export type RegisterUnitSheetProposal = z.infer<typeof RegisterUnitSheetProposalSchema>;
 export type FreeMancipiaProposal = z.infer<typeof FreeMancipiaProposalSchema>;
+export type HistoryChoiceProposal = z.infer<typeof HistoryChoiceProposalSchema>;
+export type HistoryHookProposal = z.infer<typeof HistoryHookProposalSchema>;
+export type HistoryOutcomeProposal = z.infer<typeof HistoryOutcomeProposalSchema>;
+export type HistorySceneProposal = z.infer<typeof HistorySceneProposalSchema>;
+export type InnovationRegisterProposal = z.infer<typeof InnovationRegisterProposalSchema>;
+export type InnovationExposeProposal = z.infer<typeof InnovationExposeProposalSchema>;
 
 export type MechanicalProposal =
   | FreeMancipiaProposal
+  | HistoryChoiceProposal
+  | HistoryHookProposal
+  | HistoryOutcomeProposal
+  | HistorySceneProposal
+  | InnovationRegisterProposal
+  | InnovationExposeProposal
   | RaiseUnitProposal
   | DisbandUnitProposal
   | CallToArmsProposal

@@ -42,6 +42,7 @@ import { IMPROVEMENT_ALREADY, identicalModifierAlready } from "./toolImprovement
 import { newId, round1 } from "./util";
 import { parseProposal } from "../llm/parse";
 import { parkForthcomingOrder, innerProposalOfDefer } from "./forthcoming";
+import { applyHistoryProposal, isHistoryProposal } from "../history/hooks";
 import { applyDisbandUnit, applyRaiseUnit, applyRegisterUnitSheet, CALL_TEXT, raiseCallDirect } from "./military";
 import { applyFreeMancipia, isMancipia, MANUMISSION_HAPPINESS_CAP, MANUMISSION_HAPPINESS_PER_HEAD, mancipiaCount, setMancipia } from "./mancipia";
 import { ensureAgriculture, fieldRotation, sownCapacity, springFieldAcres } from "./agriculture";
@@ -283,6 +284,8 @@ export function applyProposal(
 ): ApplyResult {
   const authProposal =
     proposal.type === "defer_proposal" ? innerProposalOfDefer(proposal) ?? proposal : proposal;
+  // The dated calendar's own cards (03_HISTORY §6.3) carry their own actor rules.
+  if (isHistoryProposal(proposal)) return applyHistoryProposal(state, proposal, actor);
   if (actor === "smith") {
     const blocked = smithAllowed(state, authProposal);
     if (blocked) return fail(state, blocked, blocked);

@@ -11,6 +11,7 @@ import { churchCounselBlock } from "../engine/church";
 import { peopleHappinessHallWord } from "../engine/peopleHappiness";
 import { stewardHirePrompt } from "../engine/specialists";
 import { RESEARCH_MARKER_EXAMPLE, TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
+import { historyPromptBlock } from "../history/promptBlocks";
 
 function pickNonzero(values: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = {};
@@ -156,7 +157,9 @@ const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markd
   "proposals": [ ... ]
 }
 Proposal objects MUST include "type", "summary", and the fields for that type.
-Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal, sponsor_feast, raise_unit, disband_unit, call_to_arms, register_unit_sheet, free_mancipia.
+Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal, sponsor_feast, raise_unit, disband_unit, call_to_arms, register_unit_sheet, free_mancipia, history_choice, history_hook, history_outcome, history_scene, innovation_register, innovation_expose.
+- History (Aldric and Ermenald only; the HISTORY block in your prompt lists what is open): history_choice { eventId, optionId } when the lord decides an OPEN CHOICE; history_hook { eventId, hookId } when his words plainly do what a listed hook describes; history_outcome { eventId, outcomeId, reasoning } when asked to judge an OUTCOME; history_scene { eventId, advance: true, choiceId? } when a scene's stage is settled by his words. Use only ids the block lists. Costs and rewards are written by the engine from the declared effects; do not pair them with transfer_resources. If nothing is listed, these types are not available.
+- Innovations: innovation_register { innovationId, name, legibility obvious|puzzling|opaque, reproduction trivial|craftsman|capital|programme, proof self|season|cycles|generation, writtenDown? } once, when a confirmed work, technique, or new good is plainly a thing this age does not have; innovation_expose { innovationId, how taught|sold|public_use|battle_allies|monks_copied|shown_king|espionage } when the lord lets it be seen or learned abroad.
 - Arms: raise_unit { sheetId, men, name? } raises the villa's levy (Aldric or the captain of the guard) or hires and drills paid men (the captain only); disband_unit { unitId }; call_to_arms { kind } and register_unit_sheet { sheet, newTags, rationale } are the captain's (Bernard may also register_unit_sheet for a weapon born at his forge; a sheet may list requirements — goods the district lacks, each with a supplier smith|hunt|merchant). Costs come from the arms drawer, never from memory. The engine refuses what the chest, the iron store, the stables, the villa's men, or the "wanting" goods cannot cover.
 Rules:
 - Never silently invent geography, named people, or goods. Use register_* with isNew: true.
@@ -351,7 +354,8 @@ export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { spee
           : npcId === "negotiator"
             ? negotiatorSystemPrompt()
             : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
-  const withMem = withSpeakerMemories(voice, npcId, state);
+  const history = state && (npcId === "steward" || npcId === "chaplain") ? historyPromptBlock(state, npcId) : "";
+  const withMem = withSpeakerMemories(history ? `${voice}\n\n${history}` : voice, npcId, state);
   if (!opts?.speechOnly) return withMem;
   return withMem.replace(
     OUTPUT_CONTRACT,
@@ -369,6 +373,7 @@ A merchant visit is rolled separately from weather and other events. If the engi
 You receive events that already rolled. You MUST attach event_effect proposals so the ledger changes (grain, livestock, mood modifiers, project delays, prices). Flavour without a proposal is not a mechanical effect. If you cannot judge amounts, still emit moodDelta or a small resource swing — the engine will stub any event you skip.
 event_effect fields: eventId, summary, optional resource+amount+direction, optional moodDelta, optional nested mechanical proposals.
 Do not invent new geography. Do not skip costs.
+If the engine notes name a History event told this season start, you may refer to it in Aldric's voice but never retell it, and you do NOT emit history_* or innovation_* proposals; those belong to mid-season talk.
 ${OUTPUT_CONTRACT}`;
 }
 

@@ -1,0 +1,666 @@
+﻿{
+  "arc": "2",
+  "events": [
+    {
+      "id": "840-03",
+      "title": "Lothair demands oaths",
+      "arc": 2,
+      "type": "choice",
+      "fires": { "year": 840, "season": "autumn" },
+      "order": 2,
+      "channel": ["steward"],
+      "form": "envoy",
+      "source": "Three voices: Lothair's envoy is smooth and menacing; Warin's messenger is firm; Aldric is worried.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Lothair has come over the Alps and claims everything, the whole empire, as if his father's division at Worms had never been made. His men are riding from county to county demanding oaths. And there's one waiting in the hall now, asking for you."
+        },
+        {
+          "speaker": "steward",
+          "frame": "Lothair's envoy, in the hall",
+          "text": "The emperor Lothair greets the lord of Fontenay. He is the eldest son and the anointed emperor, and he asks only what is his due: your oath. Swear, and you keep your villa and everything you hold, confirmed by his hand. Refuse, and you will have chosen to stand against your emperor. He will remember that when the boy Charles has gone back to his mother."
+        },
+        {
+          "speaker": "steward",
+          "frame": "Warin's messenger, arriving the same week",
+          "text": "Count Warin stands with King Charles, as the late emperor commanded. He asks his men to swear nothing to Lothair's envoys, and to be ready to ride in the spring."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after they've gone",
+          "text": "Lothair's armies are moving west toward Charles, my lord. Whatever happens between them, we'll hear of it by winter."
+        },
+        {
+          "speaker": "steward",
+          "when": "pippin_833 or pippin2_839",
+          "text": "And a third voice, my lord, quieter than the other two. Young Pippin's people have been to the gate again. With the old king and the old emperor both dead, they say your bonds have lapsed, and they ask which way a man of Pippin's would turn now: to the son, or to Count Warin and King Charles. Either answer is honest. Only one of them is safe."
+        }
+      ],
+      "knows": [
+        "Lothair holds the crown and sword their father sent him; he claims that makes him emperor over all.",
+        "Charles holds the west under the Worms division of 839; Warin and Judith support him.",
+        "Louis the German has been pushed back to Bavaria by Lothair.",
+        "Pippin II is still fighting Charles in Aquitaine, and Lothair has asked Charles to go easy on him: a sign they are drawing together."
+      ],
+      "doesntKnow": ["That the truce will collapse, and that the brothers' armies will meet at Fontenoy in June."],
+      "choices": {
+        "prompt": "What answer does Lothair's envoy carry away?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "refuse",
+            "label": "Refuse the envoy; stand with Warin and Charles",
+            "default": true,
+            "effects": { "flags": { "oath_charles_840": true }, "record": "The lord refused Lothair's envoy and stood with Warin and King Charles." }
+          },
+          { "id": "vague", "label": "Answer vaguely and send him away", "effects": { "flags": { "hedge_840": true, "count_opinion": "-1" } } },
+          {
+            "id": "swear_lothair",
+            "label": "Swear to Lothair",
+            "effects": { "flags": { "lothair_tainted": true, "enemy_warin": true, "count_opinion": "-3" }, "record": "The lord swore to Lothair." }
+          },
+          {
+            "id": "pippin2",
+            "label": "Turn to Pippin II's people instead",
+            "requires": "pippin_833 or pippin2_839",
+            "effects": { "flags": { "pippin2_840": true, "count_opinion": "-2" }, "record": "The lord turned to the younger Pippin's party." }
+          }
+        ]
+      },
+      "links": { "arc": "2", "momentum": 80, "keystone": "K2" },
+      "notes": "The fifth block is engine-written from the Pippin row of the choice table."
+    },
+    {
+      "id": "840-04",
+      "title": "The truce of Orléans",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 840, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Warin's household.",
+      "slant": "Wary.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Lothair and King Charles met near Orléans in November, with their armies close enough to see each other's fires. They didn't fight. They made a truce instead: Charles keeps Aquitaine, Septimania, Provence and ten counties between the Loire and the Seine, and they're to meet again at Attigny on the eighth of May to settle the rest. The truce says nothing plain about Burgundy, mind you, and that's the kind of thing men go to war over. Count Warin says to keep our horses fed through the winter."
+        }
+      ],
+      "knows": ["The truce terms and the May meeting at Attigny.", "Lothair is courting Pippin II; Louis the German is gathering strength in the east."],
+      "doesntKnow": ["That the truce will break down and the meeting at Attigny will not settle anything."],
+      "hooks": [
+        {
+          "id": "set_aside_fine",
+          "trigger": "The lord says he will set aside the army fine, meaning to sit the war out.",
+          "effects": { "record": "The lord began setting coin aside against the army fine." }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 80 }
+    },
+    {
+      "id": "841-01",
+      "title": "Warin's summons",
+      "arc": 2,
+      "type": "summons",
+      "fires": { "year": 841, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "source": "Official. Warin needs every man.",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with Count Warin's messenger, who reads",
+          "text": "Count Warin to his men, greeting. The truce with Lothair is a dead letter; he has sent his men into King Charles's lands and courts the king's enemies in Aquitaine. King Charles calls his faithful men to him, and so do I. Muster at Autun before the end of April, armed and provisioned for three months, to march with the count."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "This is the one, my lord. Lothair, Charles, and Louis of Bavaria too, they say, all moving at once. If it comes to a battle, it'll be the biggest any of us has seen."
+        }
+      ],
+      "knows": [
+        "The army fine for a free man who ignores the call-up is sixty solidi, seven hundred and twenty denarii.",
+        "Both armies will cross the region; staying home is not staying safe."
+      ],
+      "choices": {
+        "prompt": "Answer the count's summons?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "answer",
+            "label": "Answer the summons and march with Warin",
+            "default": true,
+            "effects": { "flags": { "fontenoy_charles": true }, "record": "The lord answered Warin's summons for the war against Lothair." }
+          },
+          {
+            "id": "pay_fine",
+            "label": "Pay the army fine and stay home",
+            "requires": "denarii >= 720",
+            "effects": { "cost": { "denarii": 720 }, "flags": { "sat_out_841": true, "heribannum_paid": "+1", "count_opinion": "-1" }, "record": "The lord paid the army fine and stayed home in 841." }
+          },
+          {
+            "id": "join_pippin2",
+            "label": "March with Pippin II's men to Lothair's side",
+            "requires": "pippin2_840 or pippin2_839",
+            "effects": { "flags": { "fontenoy_pippin2": true, "enemy_warin": true }, "record": "The lord marched with Pippin II's men against Warin and King Charles." }
+          },
+          {
+            "id": "bernard_camp",
+            "label": "Ride to Bernard's camp instead",
+            "requires": "oath_kept_lord and not enemy_septimania",
+            "note": "Bernard is gathering his own troops and has not said which side he will join."
+          }
+        ]
+      },
+      "links": { "arc": "2", "momentum": 70, "keystone": "K3" }
+    },
+    {
+      "id": "841-02",
+      "title": "The battle of Fontenoy",
+      "arc": 2,
+      "type": "battle",
+      "fires": { "year": 841, "season": "summer" },
+      "requires": "fontenoy_charles or fontenoy_pippin2",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "supplyCheck": { "situation": "foraging", "seasons": 1 },
+      "onFire": { "away": { "reason": "with the army near Auxerre", "seasons": 1 } },
+      "battle": {
+        "momentum": 55,
+        "fixedPoint": "Charles and Louis win; Lothair flees. The lord's performance decides only his own fate.",
+        "positions": {
+          "fontenoy_charles": "In Warin's relief army, arriving late: the column that turns the battle. Royal vassals and counts stand with Charles's main army instead.",
+          "fontenoy_pippin2": "With Pippin II's contingent beside Lothair; on the losing side, the escape matters as much as the fight."
+        },
+        "participation": ["rank and file: always open", "subcommand: full units", "full command: all but unreachable by 841"],
+        "cards": ["the dawn ultimatum", "crossing the stream under arrows", "whose men are those?", "a brother or neighbor in the enemy ranks", "the late arrival of Warin's column", "holding a broken line", "routing enemies to pursue or spare", "plundering Lothair's camp", "the wounded after the battle", "burying the dead on Sunday"],
+        "interimLine": "We marched with the host in June, my lord, and what happened on the field near Fontenoy, south of Auxerre, is not yet written in this chronicle. You came home. Not everyone did."
+      },
+      "links": { "arc": "2", "momentum": 55, "keystone": "K3", "fixedPoint": true }
+    },
+    {
+      "id": "841-02B",
+      "title": "Bernard's camp",
+      "arc": 2,
+      "type": "live",
+      "fires": { "year": 841, "season": "summer" },
+      "requires": "chose(841-01, bernard_camp)",
+      "channel": ["steward"],
+      "form": "scene",
+      "onFire": { "away": { "reason": "in Duke Bernard's camp a few miles from Fontenoy", "seasons": 1 } },
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "in Bernard's camp",
+          "text": "My lord, we can hear it from here. The armies are fighting at Fontenoy, a few miles off, and Duke Bernard sits in this camp with every man he brought and does not move. He is waiting to see who wins. His captains are divided; some want to ride for King Charles now, while it would count for something. If anyone can turn him, it is a man he trusts, and he trusts few enough."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "urge_bernard",
+          "trigger": "The lord urges Bernard to commit his troops to Charles's side now.",
+          "effects": { "flags": { "bernard_fontenoy": true, "favor_septimania": "+1" }, "renown": "moderate", "record": "The lord persuaded Bernard to commit to Charles at Fontenoy." }
+        },
+        {
+          "id": "counsel_wait",
+          "trigger": "The lord counsels Bernard to stay out of it.",
+          "effects": { "flags": { "favor_septimania": "+1" } }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 55 },
+      "notes": "Engine-written from the 'Still Bernard's man' row."
+    },
+    {
+      "id": "841-H1",
+      "title": "Foragers before the battle",
+      "arc": 2,
+      "type": "hazard",
+      "fires": { "year": 841, "season": "summer" },
+      "order": 2,
+      "requires": "not fontenoy_charles and not fontenoy_pippin2 and not chose(841-01, bernard_camp)",
+      "channel": ["steward"],
+      "form": "spoken",
+      "supplyCheck": { "situation": "foraging", "seasons": 1 },
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the armies are near Auxerre, all of them, and their foraging parties range a long way out. Carts have been seen on the Avallon road, with armed men walking beside them and no banner anyone recognizes. If they come this way they will want grain and horses, and they will not ask twice."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "hide_stores",
+          "trigger": "The lord orders the stores hidden and dispersed, or moved into the church's keeping.",
+          "effects": { "flags": { "hidden_stores": true } }
+        },
+        {
+          "id": "pay_foragers",
+          "trigger": "The lord decides to pay foragers off with a portion rather than fight.",
+          "effects": { "flags": { "paid_foragers": true } }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 20 },
+      "notes": "Engine-written from 'Home defense'. The foragers' fights are a supply check until the battle pass."
+    },
+    {
+      "id": "841-03",
+      "title": "After Fontenoy",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 841, "season": "autumn" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "source": "Warin's men coming home.",
+      "slant": "Victory, and grief.",
+      "supplyCheck": { "situation": "deserters", "seasons": 1 },
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, it's done, and God help us, what a day it was. King Charles and King Louis beat Lothair near Fontenoy, south of Auxerre. Lothair had them hard pressed until Count Warin came up with the southern army and broke his line. Lothair has fled north. But the dead, my lord. They say no one living has seen so many killed in one day, Franks killing Franks. Duke Bernard sat it out a few miles off, waiting to see who'd win, and he's sent his son William to King Charles to make his peace."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "The bishops have ordered three days of fasting, for the dead of both sides. Brother against brother, my lord. I pray we never see the like again."
+        },
+        {
+          "speaker": "steward",
+          "when": "fontenoy_charles",
+          "text": "The men who came up with Count Warin's column are spoken of with pride in Autun, my lord, and you were among them. It will be remembered."
+        },
+        {
+          "speaker": "steward",
+          "when": "fontenoy_pippin2",
+          "text": "We were on the wrong side of that field, my lord, and everyone in the county knows it. Count Warin has not sent for you yet. He will."
+        },
+        {
+          "speaker": "steward",
+          "text": "There are houses in this valley with no man coming home: widows, heirs not yet grown, manses that will stand empty. Hard as it is to say, my lord, there are openings in that, for a marriage, for land, for a patron's hand."
+        }
+      ],
+      "variants": [
+        {
+          "when": "bernard_fontenoy",
+          "replace": 0,
+          "text": "My lord, it's done, and God help us, what a day it was. King Charles and King Louis beat Lothair near Fontenoy, south of Auxerre. Lothair had them hard pressed until Count Warin came up with the southern army and broke his line. Lothair has fled north. But the dead, my lord. They say no one living has seen so many killed in one day, Franks killing Franks. And Duke Bernard came in for Charles at the end, with his own men, when it counted; they say it was you who turned him. The king will not forget either of you."
+        }
+      ],
+      "knows": [
+        "The victory, Warin's decisive arrival, Lothair's flight.",
+        "The scale of the losses; the bishops' fast.",
+        "Bernard's absence from the battle, and his son William sent to Charles's court as a pledge."
+      ],
+      "doesntKnow": ["That Charles and Louis will swear a formal alliance at Strasbourg in February."],
+      "hooks": [
+        {
+          "id": "patron_widows",
+          "trigger": "The lord takes a dead neighbour's household under his protection, or stands patron to an orphaned heir.",
+          "effects": { "flags": { "local_loyalty": "+1" }, "cost": { "denarii": 20 } }
+        },
+        {
+          "id": "buy_empty_manses",
+          "trigger": "The lord buys land or manses left empty by the dead.",
+          "requires": "denarii >= 200",
+          "effects": { "cost": { "denarii": 200 }, "land": { "manses": 1, "visibility": "+5" }, "record": "The lord bought a dead neighbour's manse after Fontenoy." }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 55, "keystone": "K3" },
+      "record": "Charles and Louis beat Lothair at Fontenoy; Warin's column turned the day.",
+      "notes": "Blocks three to five are engine-written from the hooks; the deserters afterward are a supply check until the battle pass."
+    },
+    {
+      "id": "842-01",
+      "title": "The comet and the oaths of Strasbourg",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 842, "season": "spring" },
+      "channel": ["chaplain", "steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, you'll have seen the comet this winter, night after night. The king's own men watched it closely, they say. After Fontenoy, I don't know whether to read it as a warning or a judgment."
+        },
+        {
+          "speaker": "steward",
+          "text": "King Charles and King Louis met at Strasbourg in February and swore an alliance before both their armies: each king in the other's tongue, so every man could understand, and then the soldiers swore too. They mean to finish Lothair together."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "comet_learning",
+          "trigger": "The lord explains the comet as a natural thing, calmly and as a matter of learning.",
+          "effects": { "flags": { "learned_reputation": "+1" } }
+        },
+        {
+          "id": "comet_blunt",
+          "trigger": "The lord mocks the fear of the comet.",
+          "effects": { "flags": { "chaplain_suspicious": true } }
+        },
+        {
+          "id": "oath_language",
+          "trigger": "The lord remarks that the Strasbourg oath, sworn in the soldiers' tongue, is a rare thing written down in the common speech.",
+          "effects": { "flags": { "learned_reputation": "+1", "scholar_contact": "+1" } }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 90 }
+    },
+    {
+      "id": "842-02",
+      "title": "Lothair abandons Aachen; peace talks near Mâcon",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 842, "season": "summer" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Lothair is finished in the north. Charles and Louis marched on Aachen in March; Lothair's men were meant to hold the Moselle crossings, and they scattered when the armies came up. He's fled south toward the Rhône without a fight, and the bishops at Aachen have declared him unfit to rule. Now he's asking for peace, and here's the strange part: the three brothers are to meet this very season on an island in the Saône, near Mâcon. Barely a day's ride from here."
+        }
+      ],
+      "knows": [
+        "The kings' camps will need grain and horses; in a hungry year that trade is very profitable, and very visible.",
+        "Charles is taking Toulouse from Bernard this year."
+      ],
+      "hooks": [
+        {
+          "id": "supply_camps",
+          "trigger": "The lord sells grain or horses to the kings' camps at the talks.",
+          "requires": "wheat >= 20 or rye >= 20",
+          "effects": { "flags": { "supplied_camps_842": true }, "gain": { "denarii": 80 }, "land": { "visibility": "+10" }, "record": "The lord supplied the kings' camps at the Saône talks." }
+        },
+        {
+          "id": "host_envoys",
+          "trigger": "The lord offers hospitality to envoys travelling to the talks.",
+          "effects": { "flags": { "hosted_envoys_842": true }, "cost": { "denarii": 15 }, "renown": "small" }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 80 }
+    },
+    {
+      "id": "842-03",
+      "title": "A truce, a poor harvest, and a royal wedding",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 842, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the kings' men have been meeting all autumn to divide the empire, and they still can't agree, so the truce is extended. Truth is, nobody can afford a war this year: the harvest has been poor everywhere, and all three kings know it. And King Charles is to be married this month, to the lady Ermentrude, a niece of Count Adalard the seneschal. Not our late count, my lord, a different Adalard."
+        }
+      ],
+      "links": { "arc": "2", "momentum": 80 }
+    },
+    {
+      "id": "843-01",
+      "title": "The war for Toulouse",
+      "arc": 2,
+      "type": "summons",
+      "fires": { "year": 843, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "source": "Warin's household calls Bernard a traitor; Bernard's people call Charles ungrateful.",
+      "script": [
+        {
+          "speaker": "steward",
+          "frame": "with Count Warin's messenger, who reads",
+          "text": "Count Warin to his men. Bernard, once duke, has refused the king's judgment on Toulouse, joined himself to Pippin the rebel, and driven the king's count out of the city by force. King Charles sends the count south against him. Every man who holds of the count is to muster at Autun armed and provisioned for the campaign in Gothia."
+        },
+        {
+          "speaker": "steward",
+          "when": "oath_kept_lord or favor_septimania >= 2",
+          "frame": "after",
+          "text": "And there was another rider before the count's, my lord, one of Lord Bernard's, who would not come into the hall. The duke asks the men who kept faith with him before to come south and stand with him now. He calls the king ungrateful; the count calls him a traitor. You cannot ride with both."
+        }
+      ],
+      "knows": [
+        "In 842 Charles took Toulouse from Bernard and gave it to another count; Bernard would not accept it.",
+        "Pippin II holds much of Aquitaine and Bernard has allied with him."
+      ],
+      "doesntKnow": ["That Bernard will end in Charles's hands.", "That the siege of Toulouse next spring will fail."],
+      "choices": {
+        "prompt": "South with Warin, south to Bernard, or stay?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "warin",
+            "label": "March south with Warin against Bernard",
+            "default": true,
+            "effects": { "flags": { "toulouse_warin": true }, "record": "The lord marched south with Warin against Bernard." }
+          },
+          {
+            "id": "bernard",
+            "label": "Join Bernard in Gothia",
+            "requires": "oath_kept_lord or favor_septimania >= 2",
+            "effects": { "flags": { "toulouse_bernard": true, "enemy_warin": true, "favor_septimania": "+2" }, "record": "The lord went south to stand with Bernard against the king." }
+          },
+          {
+            "id": "pay_fine",
+            "label": "Pay the army fine and stay home",
+            "requires": "denarii >= 720",
+            "effects": { "cost": { "denarii": 720 }, "flags": { "sat_out_843": true, "heribannum_paid": "+1", "count_opinion": "-1" } }
+          },
+          {
+            "id": "decline",
+            "label": "Decline Bernard's rider politely and stay home",
+            "requires": "oath_kept_lord or favor_septimania >= 2",
+            "effects": { "flags": { "sat_out_843": true, "favor_septimania": "-1" } }
+          }
+        ]
+      },
+      "links": { "arc": "2", "momentum": 60 },
+      "notes": "Summons text engine-written from the branches table."
+    },
+    {
+      "id": "843-B1",
+      "title": "Castles and skirmishes in Gothia",
+      "arc": 2,
+      "type": "battle",
+      "fires": { "year": 843, "season": "summer" },
+      "requires": "toulouse_warin or toulouse_bernard",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "on campaign in Gothia", "seasons": 1 } },
+      "battle": {
+        "momentum": 60,
+        "cards": ["ambushes in the hills of Gothia", "Gascon skirmishers", "parleys under truce", "summer heat and thirst"],
+        "interimLine": "The summer in Gothia, the castle sieges and the skirmishes in the hills, is not yet written in this chronicle, my lord. You came home before the autumn rains."
+      },
+      "links": { "arc": "2", "momentum": 60 }
+    },
+    {
+      "id": "843-02",
+      "title": "The Treaty of Verdun",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 843, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, it's settled, at Verdun. The empire is cut in three. Louis takes the east, Charles the west, and Lothair keeps the title of emperor and a long middle kingdom from Frisia down through Lyon and Provence to Italy. We're King Charles's, for good. But mark this: the far bank of the Saône, and Lyon with it, belongs to Lothair now. We live on a border, my lord."
+        }
+      ],
+      "knows": [
+        "Trade across the Saône is now trade with another kingdom; Lothair's men are a river away.",
+        "Good grounds for building defenses and for border diplomacy."
+      ],
+      "hooks": [
+        {
+          "id": "border_watch",
+          "trigger": "The lord sets a watch on the Saône crossings or begins to strengthen the villa's defenses against the border.",
+          "effects": { "flags": { "border_watch": true } }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 85, "keystone": "K4", "fixedPoint": true },
+      "record": "At Verdun the empire was cut in three; the Saône became a border."
+    },
+    {
+      "id": "843-03",
+      "title": "The pact of Coulaines",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 843, "season": "winter" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "slant": "Aldric, with some satisfaction.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, King Charles held an assembly at Coulaines, near Le Mans, and made a pact with his bishops and great men. He promised to rule with their counsel, and not to take a man's lands or offices from him without just cause and a fair judgment. That's worth more to us than you might think, my lord: a benefice is safer under a king who has sworn that."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "record_claim",
+          "trigger": "The lord has the villa's title and the count's confirmation written up and witnessed under the king's new promise.",
+          "effects": { "flags": { "coulaines_claim": true }, "cost": { "denarii": 5 } }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 80 }
+    },
+    {
+      "id": "844-B1",
+      "title": "The siege of Toulouse",
+      "arc": 2,
+      "type": "battle",
+      "fires": { "year": 844, "season": "spring" },
+      "requires": "toulouse_warin or toulouse_bernard",
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "at the siege of Toulouse", "seasons": 1 } },
+      "battle": {
+        "momentum": 60,
+        "historical": "Pippin II's garrison holds Toulouse; Charles's siege fails.",
+        "cards": ["scaling ladders and sorties at Toulouse", "crossing the Garonne under fire", "sickness in the siege camp", "burning siege engines"],
+        "interimLine": "The siege of Toulouse, with you before the walls or behind them, is not yet written in this chronicle, my lord. The city held, as it happens, and you came home."
+      },
+      "links": { "arc": "2", "momentum": 60 }
+    },
+    {
+      "id": "844-F1",
+      "title": "Bernard's fate",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 844, "season": "spring" },
+      "order": 2,
+      "requires": "toulouse_warin or toulouse_bernard or renown >= 40",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Lord Bernard's luck has run out. He is to be brought before King Charles this spring, by safe-conduct they say, and nobody who knows the king believes the safe-conduct will hold. Count Warin wants him dead; the king wants Toulouse out of that family for good. If anything is to be done for him, it must be done in these weeks, and it will cost whoever does it."
+        }
+      ],
+      "outcomes": {
+        "momentum": 60,
+        "canChange": "Bernard is not a keystone. A man of Bernard's who warns him not to trust the safe-conduct, escorts him to Septimania, or beats the force sent to seize him may save him (high risk; the lord becomes Charles's enemy). A man of Warin's present at the capture may let him slip away (enemy_warin if discovered). A man with high renown may intercede with Charles for mercy (moderate chance; costs royal favor). If none of that is done, or it fails, Bernard is executed in May.",
+        "windowSeasons": 1,
+        "options": [
+          { "id": "executed", "label": "Bernard is executed in May", "default": true },
+          {
+            "id": "escaped",
+            "label": "Bernard gets away to Septimania with the lord's help",
+            "requires": "toulouse_bernard or oath_kept_lord",
+            "effects": { "flags": { "bernard_saved": true, "charles_enemy": true, "favor_septimania": "+3" }, "renown": "moderate", "record": "The lord got Bernard away to Septimania." }
+          },
+          {
+            "id": "let_slip",
+            "label": "The lord lets him slip away from Warin's men",
+            "requires": "toulouse_warin",
+            "effects": { "flags": { "bernard_saved": true, "enemy_warin": true, "favor_septimania": "+2" }, "record": "Bernard slipped away from Warin's men; the lord looked the other way." }
+          },
+          {
+            "id": "interceded",
+            "label": "The lord intercedes with Charles and wins him mercy",
+            "requires": "renown >= 40",
+            "effects": { "flags": { "bernard_saved": true, "charles_disfavor": true, "favor_septimania": "+2" }, "record": "The lord interceded with King Charles for Bernard's life." }
+          }
+        ]
+      },
+      "links": { "arc": "2", "momentum": 60 },
+      "notes": "Engine-written from 'Bernard's fate'."
+    },
+    {
+      "id": "844-01",
+      "title": "Bernard is dead",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 844, "season": "summer" },
+      "unless": "bernard_saved",
+      "channel": ["steward"],
+      "form": "spoken",
+      "source": "Warin's household is satisfied; Bernard's old followers are grieving and afraid.",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Bernard is dead. Duke Bernard, who gave you Fontenay. He was brought before King Charles in the spring, and the king had him put to death as a traitor. Whatever you think of him, my lord, and he was never short of enemies, he was the man who took a chance on you. His sons are alive: the elder, William, is at the king's court, and the little one is still with his mother. They say the king means to keep Toulouse out of that family for good."
+        },
+        {
+          "speaker": "steward",
+          "when": "oath_kept_lord or favor_septimania >= 2 or saved_gaucelm or saved_gerberga or toulouse_bernard",
+          "text": "There is a letter, my lord, from the lady Dhuoda, his widow, at Uzès. She writes to the men who kept faith with her husband. She has the younger boy with her and nothing else that is safe; William is a hostage in all but name. She asks for nothing in words. She asks for a great deal between them."
+        }
+      ],
+      "hooks": [
+        {
+          "id": "befriend_dhuoda",
+          "trigger": "The lord writes to Dhuoda, or sends her help, or offers her sons protection.",
+          "requires": "oath_kept_lord or favor_septimania >= 2 or saved_gaucelm or saved_gerberga or toulouse_bernard",
+          "effects": { "flags": { "dhuoda_friend": true, "favor_septimania": "+1" }, "cost": { "denarii": 10 }, "record": "The lord befriended Bernard's widow and sons." }
+        }
+      ],
+      "links": { "arc": "2", "momentum": 60 },
+      "record": "Bernard, who gave the lord Fontenay, was put to death by King Charles.",
+      "notes": "The second block is the short cutscene the source asks for, engine-written."
+    },
+    {
+      "id": "844-01S",
+      "title": "Bernard lives",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 844, "season": "summer" },
+      "requires": "bernard_saved",
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Lord Bernard is alive and in Septimania, under Pippin's protection, and everybody between here and Toulouse knows whose doing that was. He has lost Toulouse and he will not get it back; he is near fifty and sidelined. But he lives, and his sons have a father. Count Warin's people are saying your name in a certain tone of voice. So, I am told, is the king's household."
+        }
+      ],
+      "links": { "arc": "2", "momentum": 60 },
+      "record": "Bernard lived, sidelined in Septimania, with the lord's name on it.",
+      "notes": "Engine-written from 'If saved'."
+    },
+    {
+      "id": "844-02",
+      "title": "Ambush in the Angoumois",
+      "arc": 2,
+      "type": "news",
+      "fires": { "year": 844, "season": "autumn" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, terrible news from Aquitaine. While King Charles sat before Toulouse, he sent for reinforcements from the north. Pippin's men caught them on the march in the Angoumois and cut them to pieces. Abbot Hugh, the king's own uncle, is dead, and others with him; great lords taken for ransom. The king has given up the siege. Pippin is stronger than ever."
+        },
+        {
+          "speaker": "steward",
+          "when": "fontenoy_pippin2 or toulouse_bernard",
+          "text": "Your side is winning in the south, my lord, for now. They are saying the king will have to recognise Pippin in Aquitaine before long."
+        }
+      ],
+      "links": { "arc": "2", "momentum": 55 }
+    }
+  ]
+}

@@ -1,0 +1,567 @@
+# 03_HISTORY
+**Carolingian Minor Noble – Historical Events Layer**
+**Version 0.1 – Design document for implementation**
+
+This document turns three design sources into a build plan for the game as it stands in this repo:
+
+| Source | What it holds | Where it lives |
+| --- | --- | --- |
+| *Isekai 825: Event Delivery Scripts* (Oct 7, 2026) | Every dated event 825–911 with its script, Knows / Doesn't know, hooks and flags; the background systems (natural events, land and value, supply check, royal vassal duties, tributes, minting, escalation ladder, king quest, the ending) | Author's copy; to be added to the repo (see §15) |
+| *Isekai 825: Historical Event Arcs, 825–910* (Sep 24, 2026) | Momentum scale, rank tiers, the six crises, eight keystones and their dependent events, exposure by rank, per-arc timelines, quick-reference timeline | Same |
+| *Isekai 825: Technology Diffusion Rules* (Oct 23, 2026) | How player-introduced knowledge escapes his lands; legibility / reproduction / proof; accelerators, brakes, espionage; what spread means in play and at the ending | Same |
+
+Where the three disagree, the Delivery Scripts win (they say so themselves about momentum). Where this document disagrees with any of them, this document is wrong unless §2 records the decision.
+
+Battles and rank promotions are **not** in this pass. The user will add the forced battles and the "what happens when the player gains a rank" flow later. This document leaves named hooks for both (§9, §10).
+
+---
+
+## 1. What the layer does
+
+Every season start, the engine checks a dated calendar of historical events. Those that are due and whose requirements hold are **delivered verbatim** through Aldric (political) or Ermenald (religious), posted into their chat tabs with the wants-talk badge, exactly as engine-authored intros and project-completion beats are posted today. The LLM never rewrites a script. It only answers follow-ups, fed that event's Knows and Doesn't-know lists, and it detects when the lord's words amount to one of the event's declared hooks or choices, which it puts on the table as a Confirm card. The engine owns every flag, every coin, every renown point.
+
+Underneath run background systems the scripts describe: forced weather and famine prices, army supply checks, the land and value system, royal vassal duties, Viking danger and tributes, the realm chain (emperor → king → count of Autun), the player's age, the escalation ladder and king quest, technology diffusion, and the closing summary.
+
+---
+
+## 2. Decisions taken (Oct 27, 2026)
+
+These were put to the author before design began. They are binding for this pass.
+
+| Question | Decision |
+| --- | --- |
+| Scope | **Every event** in the Delivery Scripts is integrated, all nine arcs plus the background systems. Delivery is phased (§14) but nothing is cut. |
+| Delivery of the opening script | **Verbatim.** The engine posts the script word-for-word at season start. No LLM call for delivery. |
+| Player choices and hooks | **All conversational.** The player speaks; the NPC's LLM judges whether a declared hook or choice was taken and emits a proposal; the engine shows a Confirm card; the flag is written only on Confirm. No choice buttons. |
+| Letters, envoys, messengers, the deputy, the count | **Aldric and Ermenald relay everything.** No new speaker, no new portraits. A letter is read by Ermenald; an envoy's words are reported by Aldric ("He said, word for word, …"). Live scenes are narrated by Aldric or Ermenald as the lord's companion on the spot. |
+| Battle events and promotion windows | **Skipped until their own passes.** Events that *are* a battle (the live fight) or *are* a promotion window do not fire. Events that lead to them (a summons with a choice) do fire, because later events read their flags. See §9 and §10 for the exact interim behaviour. |
+| Land and value system | **Full.** Recorded value, true value, visibility, tenure, and the three outs of 830 with their real costs. |
+| Seasons when the lord is away | **Narrative only.** The hall plays as normal; the text says he is away. |
+| Momentum | **LLM-judged.** The entry's momentum and its "what the player can change" notes go to the LLM; the LLM proposes an outcome from a closed list the entry declares; the engine applies it. Fixed points carry no alternative outcomes. |
+| Random events on a historical season | **Suppressed.** When a dated event fires, the season's random "other" roll is skipped. Forced weather replaces the weather roll in famine years. |
+| Content format | **JSON** under `data/history/`, validated by zod at boot like `data/combat/`. |
+| Player age | The character is a modern person moved to 825 by an unexplained device (the isekai premise). The game tracks **body age**, 17 in spring 825 by default (`player.ageAt825`, tunable). Death of old age follows the scripts (around 910–911). No birth year is shown to the player. |
+
+---
+
+## 3. Architecture
+
+```
+data/history/
+  events/arc1.json … arc9.json, church.json, economy.json, natural.json, ending.json
+  calendar/realm.json          counts of Autun, kings, emperors by year
+  tables/forced-weather.json   famine years → forced event + multipliers
+  tables/supply-check.json     the army supply appendix
+  tables/royal-duties.json     royal vassal duties roll table
+  tables/viking-danger.json    raid chance by year band
+  tables/tributes.json         866 / 877 rates by rank and manse
+  tables/duke-track.json       the opportunity menu
+  tables/king-quest.json       nine motives, ladder rungs, absolution routes
+  history.schema.json          generated from the zod schema, for editors
+
+src/history/
+  schema.ts        zod schemas for every JSON file above + the state block
+  load.ts          loads and validates data at boot; builds the id index
+  conditions.ts    the requires/unless expression evaluator
+  scheduler.ts     which events are due this season start
+  deliver.ts       turns a fired event into chat messages + wantsTalk
+  hooks.ts         applies a confirmed hook/choice/outcome: flags, renown, coin, land, realm
+  flags.ts         the flag store API (get/set/add, typed per registry)
+  realm.ts         emperor / king / count of Autun by date; oath beats
+  age.ts           body age, participation band, death of old age
+  land.ts          recorded value, true value, visibility, tenure, the three outs
+  prices.ts        famine multipliers on state.market
+  weather.ts       forced weather overrides
+  supply.ts        army supply checks and countermeasures
+  duties.ts        royal vassal duties roll
+  vikings.ts       danger bands, winter camps, irregular tactics bookkeeping
+  tributes.ts      E-866 / E-877 amounts from manses and rank
+  ladder.ts        the king's escalation ladder state machine
+  quest.ts         the king quest (support gathering, election); battle stub
+  diffusion.ts     innovations register and spread timers
+  ending.ts        the life record and the closing summary prompt
+  promptBlocks.ts  what the NPC and referee prompts receive
+  lint.ts          cross-checks: every read flag has a setter; every requires parses; ids unique
+```
+
+Integration points in existing code:
+
+| Where | Change |
+| --- | --- |
+| `src/engine/schema.ts` | Add `history` block to `WorldState` (§4), `ageAt825` on `player`, `manses` on `Holding`. New proposal types (§6). |
+| `src/session/game.ts#advanceSeason` | Insert the history pass (§5). Suppress the random other-event when a dated event fired. Pass history lines to the referee prompt. |
+| `src/engine/events.ts#rollSeasonEvents` | Accept a forced weather override and a `suppressOther` flag. |
+| `src/llm/prompts.ts` | `stewardSystemPrompt` and `chaplainSystemPrompt` gain a **History block** (§7). The output contract lists the new proposal types with their rules. The referee prompt gets the season's fired events as engine lines. |
+| `src/engine/applyDelta.ts` | Route the new proposal types to `src/history/hooks.ts`. |
+| `src/engine/wantsTalk.ts` | A fired event badges its speaker. Existing clear rules apply. |
+| `src/ui` | Minimal: the header shows the year's realm line ("Emperor Louis · King Pippin · Count Bernard of Autun"); the ledger shows history lines. No new panels in this pass. |
+| `data/starting-estate.json` | `player.ageAt825: 17`; `holdings[0].manses: { free: 6, servile: 4, vacant: 4 }`; `history` defaults. |
+
+---
+
+## 4. State
+
+Added to `WorldState` as `history`, with zod defaults so old saves load as "nothing has fired yet".
+
+```ts
+history: {
+  /** Narrative flags. Booleans or small signed integers. Unset = false/0. */
+  flags: Record<string, boolean | number>,
+  /** Events delivered, with when. An event fires at most once unless `repeat`. */
+  fired: Record<string, { year: number; season: Season; turn: number }>,
+  /** Events whose season passed while `requires` failed; dropped unless `carry`. */
+  dropped: string[],
+  /** Open choices awaiting the lord's word, with their deadline. */
+  openChoices: { eventId: string; opensTurn: number; deadlineTurn: number }[],
+  /** Live scenes in progress: stage index and the turn it opened. */
+  scenes: Record<string, { stage: number; openedTurn: number }>,
+  realm: {
+    emperor: string | null; king: string | null; kingdom: string;
+    countOfAutun: string; countSince: number;
+    /** The lord the player has sworn to: "count" | "church" | "king" | "none". */
+    swornTo: string;
+  },
+  land: {
+    recordedValue: number;          // 6500 at start
+    trueValue: number;              // 12 × yearly income, recomputed each spring
+    yearlyIncome: number;           // last four closed seasons, valued at market mid
+    visibility: number;             // 0–100
+    tenure: "benefice" | "owned" | "precaria" | "forfeit_claimed";
+    precariaRent?: { kind: "fixed" | "nona"; denarii?: number };
+    charter: "none" | "count" | "royal";
+    marriedLocal: boolean;
+    secondVilla: boolean;
+  },
+  prices: { severity: "normal" | "shortage" | "famine" | "severe"; grainMultiplier: number; untilTurn: number | null },
+  weather: { forcedThisSeason: string | null },
+  supply: { lastRoll: { turn: number; situation: string; lost: number } | null },
+  vikings: { danger: "none" | "low" | "moderate" | "high"; campNear: boolean; awareSince: number | null },
+  duties: { lastRollTurn: number | null; favour: number },
+  ladder: { stage: "none" | "warning" | "stripped" | "excommunicated" | "attempt" | "quest"; since: number | null },
+  quest: {
+    active: boolean; attempt: number;
+    nobles: { motive: string; name: string; status: "unknown" | "won" | "refused" | "hedging" | "betrayer" }[];
+    phase: "gathering" | "battle" | "election" | "crowned" | "submitted" | "failed";
+  },
+  diffusion: {
+    innovations: {
+      id: string; name: string; introducedTurn: number;
+      legibility: "obvious" | "puzzling" | "opaque";
+      reproduction: "trivial" | "craftsman" | "capital" | "programme";
+      proof: "self" | "season" | "cycles" | "generation";
+      exposure: ("taught" | "sold" | "public_use" | "battle_allies" | "monks_copied" | "shown_king" | "espionage")[];
+      spread: "own_lands" | "region" | "kingdom"; spreadTurn?: number;
+      writtenDown: boolean; creditedToPlayer: boolean;
+    }[]
+  },
+  /** The life record for the closing summary: short dated entries the engine writes on notable flags. */
+  record: { year: number; season: Season; text: string; thread: string }[],
+  away: { reason: string; untilTurn: number } | null,
+  dead: { cause: "old_age" | "battle" | "illness" | "wound"; year: number } | null,
+}
+```
+
+Also:
+
+- `player.ageAt825: number` (default 17). `age(state) = ageAt825 + (year − 825)` with a half-year step at autumn.
+- `Holding.manses: { free: number; servile: number; vacant: number }` (default 6 / 4 / 4 for Fontenay). Tributes and levies read `free + servile`; refugees settled reduce `vacant`.
+- `flags.regional_famine` (already in state) is now set by the natural-events system.
+
+### 4.1 Flag registry
+
+Flags are a closed vocabulary. `data/history/flags.json` lists every flag with type (`bool` | `int`), who sets it, who reads it, and a one-line meaning, taken from the scripts' Flag registry and completed by `lint.ts` (every `requires` reference and every hook effect must name a registered flag; every registered flag must have at least one setter). The LLM never names a flag directly; it names a **hook id** or **choice id** declared on an event, and the engine writes the flags that hook declares.
+
+---
+
+## 5. The season pass
+
+Inserted into `advanceSeason` after agriculture, projects and the clock-independent engine work, before the random roll. The clock has not yet turned at this point (`meta.year/season` is the closing season), so the pass computes `next = nextSeason(...)` and asks what fires at the start of `next`.
+
+```
+1. age.tick(next)                     body age; if death of old age → ending (§13); stop
+2. realm.tick(next)                   count/king/emperor changes due this season → oath beat events
+3. weather.forcedFor(next)            → override for rollSeasonEvents
+4. prices.tick(next)                  famine severity by year table + event effects → state.market grain bands
+5. scheduler.due(next)                events whose fires ≤ next, not fired, not dropped, requires true, unless false
+   - drop events whose season has passed and are not `carry`
+   - open choices past deadline → apply the `default` choice, write its flags
+   - scenes: advance stage if the stage's `advanceOn` is "season"
+6. deliver(events)                    one chat message per script block, in order, to its speaker; wantsTalk
+7. supply.check(next)                 if any fired or active event is tagged [Supply check] → roll, apply losses
+8. duties.roll(next)                  if royal_vassal and no political event fired → roll the table, post Aldric's line
+9. vikings.tick(next)                 danger band; raid chance → may raise `battle_call` kind "raid" (existing path)
+10. ladder.tick / quest.tick          thresholds and stage moves
+11. diffusion.tick                    spread timers
+12. rollSeasonEvents(state, { forcedWeather, suppressOther: events.length > 0 })
+13. referee season prompt gets engine lines: "History: <id> delivered by Aldric: <one-line summary>"
+```
+
+Multiple events in one season (829-01 and 829-02; 841-02 and 841-V1) all fire, in the order they appear in the data file (`order` field breaks ties). Each event's script blocks are posted as separate messages so the Ermenald part lands in his tab and the Aldric part in his.
+
+**Fires but no requires met in time.** The scripts say when an event fires. If its `requires` is false at that season, the event is dropped (recorded in `history.dropped`) unless `carry: true`, in which case it waits and fires the first season its requirements hold, up to `carryMax` seasons. Example: 832-01 requires `side_830 = bernard`; it does not carry. 834-02 requires the player to have ridden to court (a hook on 834-01); it carries one season.
+
+**Keystone fallbacks.** The Arcs doc's rule (momentum 80+ happens anyway; 40–79 re-check requires; under 40 drop or replace) is encoded per event: `requires` holds the dependency, `fallback` names an alternative event id or `null` for "drop". Nothing in this pass can break a keystone yet (battles are deferred), but the data is shaped for it.
+
+---
+
+## 6. Event data model
+
+One JSON object per event. The zod schema is the contract; this is the shape.
+
+```jsonc
+{
+  "id": "832-01",
+  "title": "A letter from Bernard",
+  "arc": 1,                              // 1–9, "church", "economy", "natural", "ending"
+  "type": "choice",                      // news | choice | summons | live | promotion | battle | levy | journey | hazard | background
+  "fires": { "year": 831, "season": "winter" },   // the season START it is delivered
+  "order": 2,                            // tie-break within a season
+  "requires": "side_830 == 'bernard'",   // §6.1 grammar; omit = always
+  "unless": null,
+  "carry": false, "carryMax": 0,
+  "fallback": null,
+  "channel": ["chaplain", "steward"],    // speakers used, in order
+  "form": "letter",                      // spoken | note | letter | envoy | summons | scene
+  "source": "Bernard himself.",
+  "slant": "Bitter, persuasive, and self-serving.",
+  "script": [
+    { "speaker": "chaplain", "frame": "reads the letter aloud", "text": "Bernard, by God's grace duke, …" },
+    { "speaker": "steward",  "frame": "after", "text": "My lord, this is a dangerous letter. …" }
+  ],
+  "variants": [                          // optional script substitutions by condition
+    { "when": "saved_adalard", "replace": 0, "text": "Count Adalard has given up the county. …" }
+  ],
+  "knows": ["Bernard is in the south, among his own people in Septimania.", "…"],
+  "doesntKnow": ["That the emperor will move against Pippin with force in 832 …", "…"],
+  "choices": {                           // "The choice" tables. Exactly one is taken.
+    "deadlineSeasons": 1,
+    "options": [
+      { "id": "send_men",   "label": "Send men and horses to Pippin", "effects": { "flags": { "rebel_832": true, "favor_septimania": "+2" } }, "note": "Bernard's gratitude; serious danger when the revolt fails in autumn 832" },
+      { "id": "hedge",      "label": "Reply warmly but send nothing", "effects": { "flags": { "hedge_832": true } }, "default": true },
+      { "id": "refuse",     "label": "Refuse politely, citing the oath to the emperor", "effects": { "flags": { "oath_kept_emperor": true, "favor_septimania": "-1" } } },
+      { "id": "inform",     "label": "Hand the letter to the emperor's men", "effects": { "flags": { "informer_832": true, "enemy_septimania": true } } }
+    ]
+  },
+  "hooks": [                             // soft hooks; any number may be taken, each once
+    { "id": "gift_to_kin", "trigger": "Player sends a message of support or a gift to Bernard's kin", "effects": { "flags": { "favor_septimania": "+1" }, "cost": { "denarii": 20 } } },
+    { "id": "predict_late", "trigger": "Player predicts the relief army will be late", "effects": { "flags": { "prediction_spain": true } } }
+  ],
+  "outcomes": {                          // §8 — LLM-judged momentum results, closed list
+    "momentum": 40,
+    "canChange": "Stop the bleeding; boiled water with salt and honey; early in the season …",
+    "options": [
+      { "id": "saved",  "effects": { "flags": { "saved_adalard": true } }, "record": "Saved Count Adalard from the flux." },
+      { "id": "died",   "effects": {}, "default": true },
+      { "id": "rumour", "effects": { "flags": { "poison_rumor": true } } }
+    ]
+  },
+  "stages": [ /* §8.2 live scenes */ ],
+  "supplyCheck": false,
+  "deferred": null,                      // "battle" | "promotion" → §9/§10 interim behaviour
+  "links": { "arc": 1, "momentum": 70, "keystone": "K1", "fixedPoint": false },
+  "record": "Received Bernard's letter and {choice}."   // template for the life record
+}
+```
+
+### 6.1 Condition grammar
+
+Small, deterministic, no code evaluation:
+
+```
+expr   := term (("and" | "or") term)*
+term   := "not" term | "(" expr ")" | atom
+atom   := flag                       → truthy
+        | flag op value              → ==, !=, >=, <=, >, <   (numbers, quoted strings, true/false)
+        | "fired(" id ")"            → event delivered
+        | "chose(" id "," option ")" → that choice taken
+        | "rank >=" n | "renown >=" n | "age >=" n | "year >=" n
+        | "tenure ==" word | "swornTo ==" word | "royal_vassal"
+        | "feature(" name ")"        → any holding has the feature
+        | "units >=" n               → owned units (militia present)
+```
+
+Flags with string values (`side_830 = 'bernard'`, `chalon_834 = 'defended'`) are stored as strings; the registry types them as `enum` with the allowed words.
+
+### 6.2 Effects vocabulary
+
+Everything a hook, choice, outcome or stage may do. The engine applies these; the LLM only names the id.
+
+| Key | Meaning |
+| --- | --- |
+| `flags` | `{ name: true \| false \| "+n" \| "-n" \| "word" }` |
+| `renown` | `"small" \| "moderate" \| "large" \| number` or `"-small"` etc. Bands: small 5–15, moderate 25–50, large 75–150, rolled uniformly with the event seed. Fixed values are numbers (833-01 stage 5 = 90). |
+| `cost` | `{ denarii?, horses?, grain?, … }` taken from stores; refused (card stays pending) if the stores cannot pay |
+| `gain` | the same shape, added |
+| `land` | `{ tenure?, charter?, visibility?: "+n", recordedValue?, marriedLocal?, secondVilla?, precariaRent? }` |
+| `realm` | `{ swornTo? }` |
+| `mood` | people's happiness delta (existing meter) |
+| `modifier` | an `add_modifier` payload (famine debuffs, blessing) |
+| `settle` | `{ households, skilled?: "smith" \| "mason" \| "vintner" }` → the existing settle-households path; refugees |
+| `unit` | `{ raise?: { sheetId, men } }` (only where the scripts hand the player men) |
+| `away` | `{ reason, seasons }` → narrative flag |
+| `scene` | `{ open: id }` or `{ advance: true }` |
+| `record` | a line for the life record |
+| `innovation` | `{ register: {…} }` or `{ expose: id, how }` (§12) |
+
+### 6.3 New proposal types
+
+Added to `PROPOSAL_TYPES` and the discriminated union. All go through the normal Confirm card.
+
+| Type | Fields | Who may emit | Engine check |
+| --- | --- | --- | --- |
+| `history_choice` | `eventId`, `optionId`, `summary` | Aldric, Ermenald | event fired, choice open, option exists, not already chosen |
+| `history_hook` | `eventId`, `hookId`, `summary` | Aldric, Ermenald | event fired within its hook window (default: until the next dated event on the same channel, min 2 seasons), hook not yet taken |
+| `history_outcome` | `eventId`, `outcomeId`, `summary`, `reasoning` | Aldric, Ermenald | event has outcomes, window open, not resolved; fixed points have one option |
+| `history_scene` | `eventId`, `advance: true`, optional `choiceId` | Aldric, Ermenald | scene open; the stage allows advance by speech |
+| `innovation_register` | the innovation fields minus timers | any portrait NPC | id unique; the three factors present |
+| `innovation_expose` | `innovationId`, `how` | any | innovation exists |
+
+The existing `transfer_resources`, `add_modifier`, `settle_households`, `raise_unit` remain the way costs and gains reach the books; the engine emits them itself when applying `effects`, so the LLM does not have to pair them.
+
+---
+
+## 7. What the LLM sees
+
+### 7.1 The History block (Aldric and Ermenald system prompts)
+
+Appended by `promptBlocks.ts`, scoped to keep tokens down:
+
+```
+HISTORY (engine truth; you may expand only from Knows, and must plead ignorance on Doesn't know)
+Today: spring 832. Emperor Louis; our king Pippin of Aquitaine; Count Adalard of Autun (since 830). The lord swore to Adalard in 830. Body age 24.
+Active events (last 3 seasons on your channel, or still open):
+- 832-01 A letter from Bernard (winter 831). Source: Bernard himself, self-serving.
+  Knows: … | Doesn't know: …
+  OPEN CHOICE (deadline: end of this season): send_men | hedge | refuse | inform — when the lord decides, emit history_choice.
+  Hooks: gift_to_kin ("sends a gift to Bernard's kin"), predict_late ("predicts the relief army will be late") — emit history_hook when his words plainly do this.
+- 831-01 Bernard at Thionville (winter 831). Knows: … | Doesn't know: …
+Standing facts the household knows: side_830 = bernard; benefice_charter; favor_septimania 2.
+Rules: The scripts you were given were spoken already; do not repeat them. Never reveal a Doesn't-know item, even if the lord guesses right — you may say you have heard nothing of it. Never invent a flag, a reward, or a rank. If the lord's words fit no declared hook, it is talk: [[books:no]].
+```
+
+Only the events on that NPC's channel are expanded; the other channel's events appear as one line each so Aldric knows what Ermenald told the lord. Background systems add a line when relevant (prices, supply losses, a duty rolled, the ladder stage).
+
+### 7.2 Momentum judging
+
+For events with `outcomes`, the block adds:
+
+```
+OUTCOME TO JUDGE (momentum 40 — contingent; a well-placed noble could tip it): Count Adalard's flux.
+What could change it: … (the entry's canChange text)
+When the season's efforts are spoken and done, emit history_outcome with one of: saved | died | rumour, and a one-line reasoning.
+Weigh what the lord actually did and paid for, his renown (N), his standing (…), and the momentum. Higher momentum means the historical result unless the effort was real and well-aimed. Fixed points cannot be judged; they are not offered.
+```
+
+The engine resolves unresolved outcomes at the window's end with the `default` option.
+
+### 7.3 Referee (season report)
+
+The referee prompt receives one engine line per fired event so Aldric's seasonal speech can refer to it without re-telling it, plus prices and supply lines. The referee may not emit history proposals.
+
+### 7.4 Speech-only pass
+
+The hidden `[[books:yes|no]]` tag already decides whether a books pass runs. A history hook or choice is "books:yes". The books pass then emits the history proposal. No change to that machinery.
+
+---
+
+## 8. Event shapes
+
+### 8.1 News
+
+Script posted; Knows/Doesn't-know active for follow-ups for the hook window; optional hooks. Most of the calendar.
+
+### 8.2 Live scenes without combat
+
+830-02 (the mutiny and the reckoning), 833-01 (the Field of Lies), 834-02 (audience), 834-03 branch A (foragers, refugees), 880-K1 (Richard takes Autun), 886-V2, the open throne. A scene is an event with `stages[]`:
+
+```jsonc
+"stages": [
+  { "id": "pope",   "script": [{ "speaker": "steward", "text": "…" }], "advanceOn": "speech|season|both", "hooks": [...], "choices": {...} },
+  { "id": "bribe",  "script": [...], "advanceOn": "speech", "choices": { "options": [ { "id": "take", "effects": { "flags": {"bribed_833": true, "perjury_833": true}, "renown": "-moderate", "gain": {"denarii": 60} }, "ends": true }, { "id": "stay", "default": true } ] } },
+  …
+]
+```
+
+Stage scripts are spoken by Aldric (the lord's steward rides with him as his clerk when the scene is away from home) or Ermenald where the scripts give him the line. A stage advances when the lord's words settle it (`history_scene`), or at the next season start if `advanceOn` allows, applying defaults. A scene may span seasons (830-02 runs spring → autumn 830; 880-K3 runs two years). `ends: true` on an option closes the scene early with that stage's flags. The scene's `exit` lists the flags set when it closes (e.g. `side_830`, `oath_kept_lord`).
+
+Since the hall plays normally while the lord is "away", the scene's stage messages arrive at season starts like news, with speech-driven stages able to advance mid-season. That is the cost of the "narrative only" decision and it is acceptable: a scene is a sequence of beats, not a lock.
+
+### 8.3 Choices
+
+"The choice" tables. One option, a deadline (`deadlineSeasons`, default 1), a `default`. The engine applies the default at the deadline and posts a one-line Aldric note ("The matter settled itself: …").
+
+### 8.4 Summons
+
+A summons is a choice (go / stay / other side). Its "go" option would open a battle; see §9.
+
+### 8.5 Promotion windows
+
+834-02, 835-02, 845-A1, and the rank effects inside later entries. See §10.
+
+### 8.6 Background systems
+
+Not dated events; engine systems with their own data tables (§11). Where the scripts give Aldric a line (famine season reports, duty results, minting notes), those lines live in the tables and are posted verbatim.
+
+---
+
+## 9. Battles: interim behaviour (deferred pass)
+
+Events tagged `deferred: "battle"` (841-02 Fontenoy, 845-B1 Ballon, 851-B1 Jengland, 866-V1 Brissarthe, 870-C2 and 880-K3 Vienne, 876-C1 Andernach, 880-K2, 886-V1, 887-V1 raids, 888-V1 Saint-Florentin, 898-V1 Argenteuil, the 830-02 tutorial battle, the 832-03 and 839-02 skirmishes, the 834-03 branch B siege, the king-quest battle) **do not fire** in this pass.
+
+What still happens, because later entries read it:
+
+- The summons or choice that leads to the battle fires and records the player's side (`fontenoy_charles`, `sat_out_841`, `toulouse_warin`, …), including the army fine where the scripts give one (`heribannum` 720 d).
+- If the player chose to go, the engine posts one neutral Aldric line at the battle's season: *"The lord rode with Count Warin. What happened in the field is not yet written in this chronicle."* No renown, no losses, no outcome flags that depend on fighting (`robert_saved`, `bernard_saved`, `chalon_834 = defended`). The historical result is assumed for the aftermath news (841-03 fires as written).
+- `[Supply check]` still rolls for stay-at-home players (foragers, deserters) through the existing raid/bandit encounter path, because that is already in the game.
+- The data for every battle event is **written now** (script, participation levels, card themes, fixed-point flag, "what the player can change"), so the battle pass plugs in without touching content: it reads `event.battle` and replaces the neutral line with the live scene.
+
+Hook for the battle pass: `src/history/battles.ts` exporting `openHistoricalBattle(state, event)`; the scheduler calls it when `features.historicalBattles` is true.
+
+## 10. Promotions: interim behaviour (deferred pass)
+
+Events tagged `deferred: "promotion"` (834-02, 835-02, 845-A1's window, the rank steps inside 880-K1, 898-K1, the open throne, the king quest's election) **do not fire**. Consequences for this pass, stated plainly:
+
+- `royal_vassal`, `villa_owned`, `villa_confirmed`, `second_villa`, `distrusted_834` cannot be set, so 834-03 always takes branch A, royal vassal duties never roll, and 870-C2's royal-vassal line is not reachable. The land crisis (§11.3) is still resolvable through the three outs and through the charter hook on 832-02.
+- Rank stays wherever `combat/renown.ts` puts it from battles (none in this pass), so the player is a villa lord for the whole calendar. Entries with rank branches (853-V1, E-866, the Duke track, 880-K1's "below count rank" oath) take their lowest-rank branch.
+- The data for promotion events is written now; `event.promotion` carries the rewards table by standing. The promotion pass reads it.
+
+Hook for the promotion pass: `src/history/promotion.ts` exporting `openPromotionWindow(state, event)`; `features.promotions`.
+
+---
+
+## 11. Background systems
+
+### 11.1 Realm and oaths (`realm.ts`, `calendar/realm.json`)
+
+The game line from the scripts: emperors (Louis → Lothair as emperor 840–855 → Louis II → Charles the Bald 875–877 → Charles the Fat 881–887 → none), "our king" (Pippin of Aquitaine → Charles 832/840 → … → Odo 888 → Charles the Simple 898), counts of Autun (Bernard 826–830, Adalard 830–837, Warin 837–853, Isembard 853–858, Bernard Plantapilosa 858–861, Robert the Strong 861–866, Plantapilosa 866–872, short-term counts 872–879, Boso 879–880, Richard 880–921). A change of count fires an **oath beat**: an Aldric line (often already the event's script, e.g. 826-01, 837-03, 880-K1) and the default `swornTo = count`. Refusing is a hook where the scripts make it one (880-K1). `saved_adalard` changes 837-03's text via `variants`.
+
+### 11.2 Age (`age.ts`)
+
+`age = ageAt825 + (year − 825)`. Participation band (all / 50–65 / 65+) is exposed to the prompt and reserved for the battle pass. Death of old age: from the start of 910, roll each season with rising chance so death lands in 910–911 (the scripts: "around 910–911, aged about 102"); 911-F1 Chartres fires in autumn 911 if he is alive, and he dies by winter 911 at the latest. Then §13.
+
+### 11.3 Land and value (`land.ts`)
+
+- `recordedValue` 6,500 d, fixed unless a reassessment event changes it.
+- `yearlyIncome` each spring: value the last four closed seasons' positive production deltas (grain after seed, wine, wool, livestock increase, trade goods, orchard, cell surplus) at market mid price; exclude purchases and sales. `trueValue = 12 × yearlyIncome`. The scripts' calibration (525 d / year unimproved) is a test target: a stub-LLM run of an unimproved villa should land within ±15%.
+- `visibility` 0–100: +points for new features (mill +10, stone hall +15, palisade/wall +8, vines/orchard acres, horses above 4, hosting lavishly, relics held, gifts to court); −2 a year decay toward a floor set by features. When `visibility ≥ 60` and `trueValue ≥ 1.5 × recordedValue`, visibility events become eligible as that season's "other" event: the missus asks questions (hospitality cost + a note), a neighbour sues (a dispute with a cost or a flag), the count covets the villa (sets `count_covets`, which feeds the land crisis if tenure is still a benefice). Buying at the recorded price is only offered while `count_covets` is false.
+- `tenure`: starts `benefice`. The 830 crisis sets `forfeit_claimed` on the Bernard path. The three outs are a choice on 830-02's crisis stage, each priced:
+  - **Buy outright:** `recordedValue` in coin or valued goods (horses, weapons, cloth at market mid); needs the count's agreement (easier with `benefice_charter`, `loyalist_830`) and sets `tenure = owned`, `charter = royal` if a royal confirmation is bought (extra fee, flavour).
+  - **Marry into a local family:** sets `marriedLocal`, a one-time dowry gain (allodial acres added as a second small holding or extra arable), and the protection flag. The 829 kinship rules are text for the LLM.
+  - **Put the villa under the Church:** `tenure = precaria`, `precariaRent` fixed (a few solidi a year) or `nona` (a ninth of produce on top of tithe, applied in `season.ts` beside the tithe), `favor_church +2`, `swornTo = church`. Ermenald brokers it.
+  - Deadline: Aachen, February 831 (start of spring 831). If nothing is done, the count seizes the villa: the game continues on a reduced holding (vacant manses are what is lost first; the hall stays). This is the hard consequence the scripts imply and it should be stated to the player by Aldric at the deadline's approach.
+- `outlaw_832` re-opens the same three outs until 837-03.
+- Refugee families (834-03, 841 aftermath, famine years) fill `manses.vacant` through `settle_households` and raise income.
+
+### 11.4 Natural events and prices (`weather.ts`, `prices.ts`, `tables/forced-weather.json`)
+
+- Forced weather by year and season per the scripts' table (841–845 spring/winter heavy rain and hard winter; 859–860 winter; 867–869 spring/summer rain and flooding; 872–874 all seasons varying, locusts summer 873; 895–897 summer hail, winter hard). The forced event replaces the weather roll, and the engine doubles the crop effect in `defaultEventStub` for forced events, reduced toward normal by improvements present (drainage acres, three-field rotation, a barn/granary, hardy-grain share ≥ 0.6): each present improvement removes a quarter of the extra.
+- Famine severity by year (N-841 shortage/famine with the peak in 842–843; N-859 shortage; N-867, N-872 famine; N-895 famine) sets `grainMultiplier` applied to `state.market` grain bands (cheap grains rise most: oats ×1.3 of the multiplier, barley ×1.2, rye ×1.1, wheat ×1.0 at the famine tier, per the Sens figures). `flags.regional_famine = severity ≥ famine`, which already shuts the cell's barn.
+- Season reports: the scripts' season schedule lines for famine years are data; Aldric and Ermenald post them verbatim.
+- Debuffs: labour loss when men are away (reserved for the battle pass), seed eaten when hunger persists two seasons (next year's sown acres cut), disease after hunger (population loss modifier), trade disruption (merchant chance −10 points in Viking years on the rivers). Each is a tagged modifier so it shows in the books.
+- N-857 ergot: a news event with hooks (`ergot_aware`, standing practice as a `set_standing_order` the engine recognises by tag `ergot_sorting`); the home outbreak in a later wet year is a conditional event with the three framings as outcomes.
+- Sky events 837-01 and 840-01: framings are outcomes judged by the LLM from how the lord spoke beforehand (a hook `predicted_comet` / `predicted_eclipse` recorded in the prediction window makes the framing options available).
+- Profiteering: selling grain to a merchant at ≥ 2× normal during `famine` sets `profiteer +1` and `favor_church −1`; feeding the hungry (consume grain with reason alms during famine) sets loyalty and `fed_the_hungry +1`, both via existing proposals the engine inspects.
+
+### 11.5 Army supply and looting (`supply.ts`, `tables/supply-check.json`)
+
+Rolls once per season for events tagged `supplyCheck`, with the situation from the event (enemy main army within a day's march 80% / friendly 60% / foraging parties 30% / deserters after a battle 50%), +15 if `visibility ≥ 60`. Stores lost are the table's band, halved by hidden/dispersed stores (feature `storage_pits`, a new small project), protected for grain moved to the church (a hook), 20% friendly chance with a letter of protection (flag), 10% flat loss when paying foragers off (hook). A trained militia (any owned non-levy unit or a veteran levy) turns foraging parties and deserters into the existing raid/bandit `battle_call` instead of a loss roll; it does nothing against a main army.
+
+### 11.6 Royal vassal duties (`duties.ts`, `tables/royal-duties.json`)
+
+Only when `royal_vassal` (promotion pass) and no political event fired that season. Roll 1–10 per the table; each result is an Aldric line plus effects (hospitality cost, horses sold at a loss, a season "away", small renown, `royal_favour ±`). Result 7 (hosting the court) is a choice with three options (meanly / adequately / lavishly) with cost and renown; lavishly opens a hook `petition_the_king`. Written now so the promotion pass only has to set the flag.
+
+### 11.7 Vikings (`vikings.ts`, `tables/viking-danger.json`)
+
+- `viking_aware` from 841-V1 / 845-V1 hooks.
+- Danger band by year (886–887 high; 888 moderate; 889–897 low; 898 moderate-high; 899–911 low). The band is a per-season raid chance that uses the existing `raid` `battle_call` and encounter (a Viking band is a raid with a Viking roster; add the sheet to `data/combat/units.json` in the battle pass; until then the existing raid roster stands in).
+- Irregular tactics are hooks on the raid-year events (deny the countryside halves supply losses and costs a season of labour modifier; poisoning the camp is an outcome with a secrecy roll each season; disease-blankets is a character moment with a household-sickness risk and no effect).
+- Relics (843-V1, 853-V1): accept/refuse choice with rank branches; `relics_held` raises visibility and, from 886, raid chance by one band; feeding the monks is an ongoing grain cost; the return request in the 880s is a conditional event.
+- Winter camps and "who can attack" are reserved for the battle pass; the data lines live in the table.
+
+### 11.8 Tributes, levies, minting (`tributes.ts`, `tables/tributes.json`)
+
+- E-866 and E-877 compute the player's share from rank and the manse split, fill the `[amount]` slots in Aldric's script, and offer the five options as a choice with costs; "pay the tenants' share yourself" costs the per-manse total; "advance as a loan" returns with increase over four seasons; "buy up what neighbours sell" is a land hook gated by stored coin.
+- 862-V1 bridge levy: labour / cartage / coin, ~15 d; a hook for sending skilled men.
+- Minting notes are flavour lines by decade; the mint as a business is gated by rank (promotion pass) and written as a project key `mint` in data for then.
+
+### 11.9 Escalation ladder and king quest (`ladder.ts`, `quest.ts`, `tables/king-quest.json`)
+
+Fully specified by the scripts; in this pass, the ladder cannot trigger because it needs renown and holdings past a threshold that only battles and promotions provide. The threshold is data: `renown ≥ 800 and (rank ≥ 3 or manses ≥ 40)`. The state machine, the nine nobles with motives, the envoy mapping (Ermenald to bishops, Aldric to stewards, the player in person for marriage/respect), the submission exits, the absolution routes, and the second-attempt rules are implemented and unit-tested against a seeded state so the later passes only flip the switch. The quest's battle is a `deferred: "battle"` event; the election is a `deferred: "promotion"` event.
+
+### 11.10 The Duke track and the open throne
+
+Data now (`tables/duke-track.json`: compulsory beats, the opportunity menu with "if Richard takes it instead" consequences; the open throne's elector factors). Both gated by rank → promotion pass. Richard-as-rival logic (anything not taken by the player is taken by Richard, raising `richard_standing`) is implemented as a yearly tick so it is ready.
+
+---
+
+## 12. Technology diffusion (`diffusion.ts`)
+
+The Rules doc is for the LLM to judge; the engine keeps the ledger.
+
+- When an NPC confirms a new technique, custom resource with tag `innovation`, or a project the LLM marks as anachronistic, the books pass may emit `innovation_register` with the three factors. The engine stores it with `spread = own_lands`.
+- `innovation_expose { how }` is emitted when the lord teaches, sells, demonstrates publicly, uses it in a battle with allies (battle pass), lets monks copy it (a hook on the Church entries), or shows it at court. Each `how` sets a timer from the Rules' defaults (taught/sold 1 year; public use 5 years; monks copied: immediate region, kingdom in 1 year, `writtenDown = true`; opaque + programme: no timer without espionage). "Viking-only" exposure sets nothing.
+- Espionage: after any public demonstration of an opaque innovation, a yearly roll (base 10%, +10 per rival with a motive) can post an Aldric line (a craftsman bought) and cut the timer to 3–5 years; the defence is the specialists' standing (hired, paid, married into the household — read from NPC notes/flags).
+- The timer's end moves `spread` to `region` then `kingdom` and posts a short Aldric note. Spread is read by: the ending summary; the king-quest battle (both sides have it); prices (a yield-raising method that reaches the kingdom lowers grain bands 10%).
+- The LLM's rules text (legibility / reproduction / proof, the worked examples) is a prompt block attached only when the books pass is about to register or expose an innovation, to save tokens.
+
+---
+
+## 13. The ending (`ending.ts`)
+
+On death of old age (or an earlier death the battle pass may deliver), the game stops advancing and shows one screen: the death, then the summary, **written by the LLM from the record**, not from a template. The prompt receives `history.record` (dated lines the engine wrote on every notable flag, outcome, battle, promotion, famine survived, refugee settled, innovation registered and spread), the final estate (manses vs 10, tenure, features), `battle_history`, rank and renown, the realm at the end, and the Rules doc's "what became of it" questions. Target length: one short paragraph of death, three or four of summary. No numbers on screen. The voice is whoever is left (Ermenald's successor, a grandson, an old captain). The existing game-over path (`finishPlay`) carries the screen; `estateAbandoned` and `player.dead` remain earlier endings and reuse the same summary with the death adjusted.
+
+---
+
+## 14. Delivery plan
+
+Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded.
+
+| Step | Builds | Done when |
+| --- | --- | --- |
+| A | Schema (`history` block, manses, age), flag registry, condition grammar, scheduler, verbatim delivery, wantsTalk, random suppression, History prompt block, the four `history_*` proposals, lint, dev jump hook (`history.jumpTo(year, season)` and `history.setFlags`) | Unit tests green; a stub-LLM run 825→911 with an empty calendar changes nothing. |
+| B | Arc 1 and Arc 2 content (826-01 … 844-02), the land and value system, realm and oath beats, the 830 crisis with the three outs, supply checks for 834 and 841, deferred-battle and deferred-promotion interim lines | Every Arc 1–2 flag in the registry has a setter; a scripted playthrough of each of the six paths in the path review reaches 840 with the stated flags. |
+| C | Natural events: forced weather, famine prices and reports, debuffs, N-857 ergot, sky events with framings; profiteering and alms detection | Stub run shows doubled crop effects in famine years, prices at the right multipliers, `regional_famine` set and cleared. |
+| D | Arcs 3–6 content (841-V1 … 877-C1), relics, bridge levy, Viking danger bands, tributes E-866/E-877, Pippin II's men chain (839-02 → 840-03 → 864-V2) | All flags with setters; 864-V1 fixed point has a single outcome. |
+| E | Arcs 7–9 content (878-K1 … 911-F1), Richard-as-rival tick, Duke track and open throne data, minting notes, Saracen/Magyar/far-horizon news, Church and scholars entries, 910-E1 Cluny | Calendar complete: every id in the scripts' Event index exists in data. |
+| F | Royal vassal duties, escalation ladder, king quest (gathering, submission, absolution, second attempt), diffusion ledger and timers | State machines unit-tested with seeded states; gated by `features` until the later passes. |
+| G | Age and death, the life record, the closing summary screen | A stub run ends in 910–911 with a record of the fired events; the summary prompt renders. |
+| H | Docs: update `02_EVENTS.md` (random events now yield to the calendar), add the History block to `01_RULES.md`, keep `03_HISTORY.md` current | — |
+
+Feature switches in `data/history/features.json`: `historicalBattles: false`, `promotions: false`, `ladder: false`, `quest: false`, `diffusion: true`.
+
+---
+
+## 15. Testing
+
+- **Scheduler:** fires exactly once; respects `requires`, `unless`, `carry`; drops and records; multiple events in one season keep order; a save mid-season does not re-fire.
+- **Grammar:** every `requires` in data parses; evaluation table-tested.
+- **Lint as a test:** unique ids; every read flag has a setter; every setter flag is registered; every `fallback` and `scene.open` id exists; every `channel` speaker exists in the starting household; every script block has a speaker and text.
+- **Full-calendar stub run:** advance 825 → 911 with a stub LLM that answers "books:no" and defaults every choice. Assert: every event without `requires` fires in its season; the count of Autun matches the game line each year; prices follow the famine table; nothing throws; the ending fires.
+- **Path runs:** six scripted flag sequences from the scripts' path review, driven by `history.setFlags` and `history_choice` proposals, asserting the 840 standing table.
+- **Land:** the 825 villa values within ±15% of 525 d / year under the stub run; visibility event eligibility thresholds.
+- **Supply:** seeded rolls hit the table bands; countermeasures apply.
+- **Prompt budget:** the History block for the busiest season (autumn 840: 840-02, 840-03, oath beat) stays under 1,800 tokens.
+- Temporary scripts live in `/tmp`; the repo gets only `*.test.ts` beside the modules, as the codebase does today.
+
+---
+
+## 16. Source documents in the repo
+
+The three design sources are checked in so later sessions can read them without the author re-attaching them: `design/history/Event_Delivery_Scripts.md`, `design/history/Historical_Event_Arcs.md` (converted from .docx; table cells flattened), `design/history/Technology_Diffusion_Rules.md`. The combat design doc and the rank-and-file vignettes already sit at the repo root.
+
+---
+
+## 17. Assumptions
+
+Confirmed by the author on Oct 27, 2026: the interim battle and promotion behaviour of §9–§10, and the source documents in §16. The rest stand as written unless the author says otherwise.
+
+1. **Summons choices still fire** even though their battles do not (§9). Confirmed.
+2. **Deadline default for the 830 land crisis:** the count seizes the villa's vacant manses first, the hall stays, play continues. The scripts imply a seizure but do not say what the player is left with.
+3. **Live scenes are voiced by Aldric as the lord's clerk-in-camp**, Ermenald where the scripts give him the line. Follows from "household only"; if Aldric must stay home in some scenes, those stages become his letters, which the scripts also allow.
+4. **Body age 17 in 825.** Changes nothing until the battle pass (participation bands) and the ending.
+5. **Manse split 6 free / 4 servile, 4 vacant.** Tributes and the land system read it. The scripts suggest 4 of 10 vacant and the 6/4 split for the tribute example.
+6. **Hook window:** a hook may be taken until the next dated event on the same channel, minimum two seasons. Some hooks are naturally longer (ergot sorting, predicting the eclipse); those declare `window` explicitly.
+7. **Visibility thresholds** (60 and 1.5×) and the income valuation formula are tunables with the stated test targets, not canon.
+8. **Random "other" suppression** applies to the whole season when any dated event fires, including Ermenald-only events. Weather still rolls (or is forced).
+
+**End of 03_HISTORY**

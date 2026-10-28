@@ -1,0 +1,35 @@
+{
+  "emperors": [
+    { "from": 814, "name": "Louis the Pious" },
+    { "from": 840, "name": "Lothair" },
+    { "from": 855, "name": "Louis II" },
+    { "from": 875, "name": "Charles the Bald" },
+    { "from": 877, "name": null },
+    { "from": 881, "name": "Charles the Fat" },
+    { "from": 888, "name": null }
+  ],
+  "kings": [
+    { "from": 817, "name": "Pippin of Aquitaine", "kingdom": "Aquitaine" },
+    { "from": 839, "name": "Charles the Bald", "kingdom": "the West Franks" },
+    { "from": 877, "name": "Louis the Stammerer", "kingdom": "the West Franks" },
+    { "from": 879, "name": "Louis III and Carloman", "kingdom": "the West Franks" },
+    { "from": 882, "name": "Carloman", "kingdom": "the West Franks" },
+    { "from": 885, "name": "Charles the Fat", "kingdom": "the West Franks" },
+    { "from": 888, "name": "Odo", "kingdom": "the West Franks" },
+    { "from": 898, "name": "Charles the Simple", "kingdom": "the West Franks" }
+  ],
+  "counts": [
+    { "from": 815, "name": "Thierry", "note": "Dies in 826." },
+    { "from": 826, "season": "summer", "name": "Bernard of Septimania", "announcedBy": "826-01", "note": "Stripped of Autun in the 830 revolt." },
+    { "from": 830, "season": "summer", "name": "Adalard", "announcedBy": "830-02", "note": "Invented; dies of the flux in 837 unless saved." },
+    { "from": 837, "season": "autumn", "name": "Warin", "announcedBy": "837-03", "note": "Defender of Chalon." },
+    { "from": 853, "season": "spring", "name": "Isembard", "note": "Warin's son." },
+    { "from": 858, "season": "autumn", "name": "Bernard Plantapilosa", "note": "Bernard of Septimania's son, about seventeen." },
+    { "from": 861, "season": "spring", "name": "Robert the Strong", "note": "Killed at Brissarthe in 866 unless saved." },
+    { "from": 866, "season": "autumn", "name": "Bernard Plantapilosa", "note": "Reconciled to the king." },
+    { "from": 872, "season": "spring", "name": "Bernard le Veau", "note": "First of several short-term counts." },
+    { "from": 876, "season": "spring", "name": "Bernard of Gothia", "note": "Rebels in 877–878." },
+    { "from": 879, "season": "spring", "name": "Boso", "announcedBy": "879-K2", "note": "Proclaims himself king in autumn 879." },
+    { "from": 880, "season": "summer", "name": "Richard the Justiciar", "announcedBy": "880-K1", "note": "To the end of the game." }
+  ]
+}

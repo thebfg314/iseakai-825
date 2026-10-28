@@ -60,14 +60,23 @@ export type SeasonRoll = {
   other: RolledEvent | null;
 };
 
+export type SeasonRollOptions = {
+  /** A dated history event fired this season: no random "other" event competes with it (03_HISTORY §2). */
+  suppressOther?: boolean;
+  /** A famine-year table names the weather; the catalog entry with this id replaces the roll (03_HISTORY §11.4). */
+  forcedWeatherId?: string | null;
+};
+
 /**
- * `flags.regional_famine` is not rolled yet. A later famine event may set it.
+ * `flags.regional_famine` is set by the history layer's natural-events system.
  * While it stays false, hunger is this villa's own.
  */
-export function rollSeasonEvents(state: WorldState): SeasonRoll {
+export function rollSeasonEvents(state: WorldState, opts: SeasonRollOptions = {}): SeasonRoll {
   const weatherCat = state.meta.season === "winter" ? "winter_weather" : "weather";
-  const weatherRaw = fromCategory(weatherCat, polarityRoll()) ?? EVENT_CATALOG.find((e) => e.category === weatherCat)!;
+  const forced = opts.forcedWeatherId ? EVENT_CATALOG.find((e) => e.id === opts.forcedWeatherId) : undefined;
+  const weatherRaw = forced ?? fromCategory(weatherCat, polarityRoll()) ?? EVENT_CATALOG.find((e) => e.category === weatherCat)!;
   const weather = fillTemplate(state, weatherRaw);
+  if (opts.suppressOther) return { weather, other: null };
 
   type Weighted = { category: string; weight: number; extra?: (e: CatalogEvent) => boolean };
   const weighted: Weighted[] = [

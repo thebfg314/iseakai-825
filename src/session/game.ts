@@ -17,6 +17,10 @@ import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
+import { runHistorySeasonPass } from "../history/season";
+import type { HistoryBeat } from "../history/deliver";
+import type { HistoryApplyResult } from "../history/hooks";
+import { applyFlagOp } from "../history/flags";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
 import {
   labourPool,
@@ -1379,6 +1383,9 @@ export class GameController {
         : `It cannot be made so. ${playerFacingReason(result.reason ?? logLine)}`,
       item.npcId,
     );
+    // A scene that moved on with the lord's words speaks its next stage at once.
+    const beats = (result as HistoryApplyResult).beats;
+    if (result.ok && beats?.length) this.postHistoryBeats(beats);
     if (this.askedAboutId === item.id) this.askedAboutId = null;
     if (result.ok) {
       recordConfirmedTransaction(this.state, item.npcId, item.proposal, logLine);
@@ -1619,8 +1626,12 @@ export class GameController {
     this.speakCompletedProjects(beforeSeason);
     this.speakHuntReturns();
     syncTradeFromFeatures(this.state);
-    const roll = rollSeasonEvents(this.state);
     const incoming = nextSeason(this.state.meta.year, this.state.meta.season);
+    // The dated calendar (03_HISTORY §5): what fires at the start of the incoming season.
+    const history = runHistorySeasonPass(this.state, incoming, this.state.meta.turn + 1);
+    for (const line of history.effects) effects.push({ kind: "info", text: line });
+    for (const id of history.fired) this.log("engine", "EVENT", `History: ${id} delivered.`);
+    const roll = rollSeasonEvents(this.state, { suppressOther: history.suppressOther, forcedWeatherId: history.forcedWeatherId });
     const merchantResult = rollMerchantVisit(this.state, incoming.season);
     const merchantNote = applyMerchantRoll(this.state, merchantResult);
     effects.push({ kind: "info", text: merchantNote });
@@ -1636,7 +1647,7 @@ export class GameController {
       this.log("engine", "EVENT", `Call to arms raised (${call.kind}).`);
     }
 
-    const engineLines = effects.map((e) => e.text);
+    const engineLines = [...effects.map((e) => e.text), ...history.refereeLines];
     const hireNote = hireRecommendationNote(newlyUnlockedHires(beforeSeason, this.state));
     try {
       const parsed = await this.callLlm(
@@ -1690,6 +1701,7 @@ export class GameController {
       this.pushSeasonLedger(effects, parsed.parseErrors);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
+      this.postHistoryBeats(history.beats);
       await this.refreshCredits();
       return { ...this.view(), effects };
     } catch (err) {
@@ -1719,9 +1731,45 @@ export class GameController {
       this.pushSeasonLedger(effects);
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
+      this.postHistoryBeats(history.beats);
       await this.refreshCredits();
       return { ...this.view(), effects };
     }
+  }
+
+  /** Verbatim calendar lines land on their speaker's tab; the tab badge says there is news. */
+  postHistoryBeats(beats: HistoryBeat[]) {
+    for (const beat of beats) {
+      if (!this.state.npcs.some((n) => n.id === beat.npcId)) continue;
+      this.messages.push({
+        id: newId("msg"),
+        role: "npc",
+        npcId: beat.npcId,
+        npcName: this.npcName(beat.npcId),
+        text: beat.text,
+        emotion: beat.emotion ?? this.npcEmotions[beat.npcId] ?? "neutral",
+        at: new Date().toISOString(),
+      });
+      if (beat.npcId !== this.sceneNpcId) setNpcWantsTalk(this.state, beat.npcId, true);
+      this.log(beat.npcId, "EVENT", `${beat.eventId}: ${beat.text.slice(0, 120)}`);
+    }
+  }
+
+  /** Dev and tests: run the calendar forward to a season without playing it. Events on the way are dropped, not delivered. */
+  historyJumpTo(year: number, season: WorldState["meta"]["season"]): GameView {
+    this.state.meta.year = year;
+    this.state.meta.season = season;
+    this.state.meta.turn = Math.max(1, (year - 825) * 4 + ["spring", "summer", "autumn", "winter"].indexOf(season) + 1);
+    return this.view();
+  }
+
+  /** Dev and tests: write registered flags directly. */
+  historySetFlags(flags: Record<string, boolean | number | string>): GameView {
+    for (const [id, value] of Object.entries(flags)) {
+      const err = applyFlagOp(this.state, id, value);
+      if (err) throw new Error(err);
+    }
+    return this.view();
   }
 
   private noteFeastCooling(effects: SeasonEffectLine[]) {

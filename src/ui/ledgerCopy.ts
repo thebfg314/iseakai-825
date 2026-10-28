@@ -16,6 +16,7 @@ import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../e
 import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
 import { matchHireableSpecialist } from "../engine/specialists";
 import { quoteRaise } from "../engine/military";
+import { historyContent } from "../history/load";
 
 export const BOOKS_TITLE = "The books";
 
@@ -169,6 +170,12 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   register_unit_sheet: "A new kind of soldier",
   free_mancipia: "Manumission",
   sponsor_feast: "A feast at the cell",
+  history_choice: "The lord's decision",
+  history_hook: "A deed in the matter",
+  history_outcome: "How it fell out",
+  history_scene: "The next turn of events",
+  innovation_register: "A new thing of this house",
+  innovation_expose: "A thing shown abroad",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -571,6 +578,36 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
         ? p.summary
         : "Write a forthcoming order in the books, to be kept later.";
     }
+    case "history_choice":
+    case "history_hook":
+    case "history_outcome":
+    case "history_scene":
+      return historyCardBlurb(p);
+    case "innovation_register":
+      return `Note ${p.name} as a new thing of this house, so the chronicle may follow where it spreads.`;
+    case "innovation_expose":
+      return `It has been ${p.how === "public_use" ? "used in plain sight" : p.how.replace(/_/g, " ")}; word of it will travel.`;
+  }
+}
+
+/** The Confirm card for a calendar decision names the matter and the course in the hall's words. */
+function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" }>): string {
+  const event = historyContent().byId.get(p.eventId);
+  const title = event?.title ?? "the matter before the hall";
+  const stageOptions = event?.stages.flatMap((s) => [...(s.choices?.options ?? []), ...(s.outcomes?.options ?? [])]) ?? [];
+  const all = [...(event?.choices?.options ?? []), ...(event?.outcomes?.options ?? []), ...stageOptions];
+  const labelOf = (id: string) => all.find((o) => o.id === id)?.label ?? humanizeKey(id);
+  switch (p.type) {
+    case "history_choice":
+      return `On ${title}: ${labelOf(p.optionId)}.`;
+    case "history_hook": {
+      const hook = [...(event?.hooks ?? []), ...(event?.stages.flatMap((s) => s.hooks) ?? [])].find((h) => h.id === p.hookId);
+      return `On ${title}: ${hook?.trigger ?? humanizeKey(p.hookId)}.`;
+    }
+    case "history_outcome":
+      return `How ${title} fell out: ${labelOf(p.outcomeId)}.${p.reasoning ? ` ${p.reasoning}` : ""}`;
+    case "history_scene":
+      return p.choiceId ? `${title}: ${labelOf(p.choiceId)}; and so it moves on.` : `${title} moves on.`;
   }
 }
 

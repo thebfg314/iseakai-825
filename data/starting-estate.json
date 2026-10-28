@@ -8,7 +8,8 @@
   },
   "player": {
     "name": "the lord of Fontenay",
-    "rank": "minor_noble"
+    "rank": "minor_noble",
+    "ageAt825": 17
   },
   "holdings": [
     {
@@ -31,7 +32,8 @@
         "oats": 0
       },
       "households": 10,
-      "features": ["manor_hall", "barn", "forge", "chapel", "monastery"]
+      "features": ["manor_hall", "barn", "forge", "chapel", "monastery"],
+      "manses": { "free": 6, "servile": 4, "vacant": 4 }
     }
   ],
   "resources": {
