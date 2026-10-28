@@ -24,7 +24,8 @@ When the player advances the season the engine MUST execute these steps in order
 1. **Standing orders** — convert standing orders into this season’s labour assignments and queued transfers where the text maps to a known action. Unparsed orders are passed to the LLM as intent only; they do not silently invent resources.
 2. **Agriculture and stores** — resolve sowing, harvest, and livestock according to §3.
 3. **Projects** — spend assigned callable labour-days on active projects; add progress; complete if labour and materials are satisfied.
-4. **Events** — roll events according to §4. The LLM then receives the rolled event ids and may return `event_effect` proposals. Validated event effects are applied without a second player confirm (the player already chose to advance).
+3a. **History** — run the dated calendar for the incoming season (§11): oath beats, the land and price systems, due events delivered verbatim, duties, the ladder, diffusion timers, the age roll. If the lord dies here the closing page is written and the season report is the last.
+4. **Events** — roll events according to §4, with the calendar's forced weather and with the "other" event suppressed when a dated event fired. The LLM then receives the rolled event ids and may return `event_effect` proposals. Validated event effects are applied without a second player confirm (the player already chose to advance).
 5. **Modifiers** — tick temporary modifiers (`seasons_remaining -= 1`; remove at 0). Permanent modifiers stay.
 6. **Market** — if any event or harvest marked the market dirty, the LLM may propose updated price ranges; otherwise the engine nudges grain prices from harvest quality and leaves the rest.
 7. **Seasonal report** — the steward LLM produces `speech` plus optional `chronicle`. The UI shows narrative, applied mechanical effects, and any rejected proposals with reasons.
@@ -157,6 +158,8 @@ Pick uniformly inside the chosen category’s polarity: 50% negative, 30% positi
 
 After the roll, the LLM must return `event_effect` proposals that change numbers. Flavour text alone is not a mechanical effect. If the LLM returns nothing valid, the engine applies the category’s default numeric stub (small resource or mood swing).
 
+**The calendar overrides two of these rolls** (§11): in a season where a dated historical event fires, step 2 (the "other" category) is skipped; in the scripts' famine years the weather roll is replaced by the forced event from `data/history/tables/forced-weather.json`. The merchant roll is untouched.
+
 ---
 
 ## 5. Projects
@@ -215,6 +218,8 @@ Proposal `type` values:
 | `register_feature` | steward; smith (forge-class); chaplain (chapel, monastery) | must set `isNew: true` |
 | `register_npc` | steward; chaplain (monk/priest/novice/bishop) | must set `isNew: true`; player confirm required |
 | `event_effect` | season referee only | auto-applied after Advance season |
+| `history_choice` / `history_hook` / `history_outcome` / `history_scene` | steward, chaplain | names an option, hook, outcome or scene advance declared on a fired historical event (§11); the engine writes the flags and takes the costs on Confirm |
+| `innovation_register` / `innovation_expose` | any portrait NPC | the diffusion ledger (`03_HISTORY` §12): legibility, reproduction, proof; how the thing was shown |
 
 Mid-season proposals wait for explicit player Confirm or Deny. Each change may be confirmed or denied on its own; Confirm all writes every change still waiting. Denying a work also sets aside the hands and other changes proposed for that same work. If a work cannot be begun, those dependent changes are skipped with one explanation.  
 Rejected proposals are logged and not applied.
@@ -297,6 +302,20 @@ Prompt packs send a slice of state, not the full Constitution, every call.
 Append-only UTF-8 text. Each line:
 
 `ISO-8601 | turn | season | year | actor | APPLY|REJECT|EVENT|CHAT | summary`
+
+---
+
+## 11. History: the dated calendar of 825–911
+
+Design and full detail: `03_HISTORY.md`. The rules the rest of this document depends on:
+
+- **Source and delivery.** About a hundred dated events (`data/history/events/`) from the author's scripts are delivered **verbatim** by the engine at the start of their season, as chat messages from Aldric (`steward`) and Ermenald (`chaplain`) only, after the season report. The LLM never rewrites them; it talks about them afterwards from a **History block** in those two prompts (what the household knows, what it does not, the open choice, the hooks still live).
+- **Choices and hooks are conversational.** The lord speaks; Aldric or Ermenald judges and proposes `history_choice`, `history_hook`, `history_outcome` or `history_scene`; the flag is written **on Confirm only**. An unanswered choice takes its `default` option when its deadline passes. Costs are taken from stores at Confirm; if the stores cannot pay, the card stays pending.
+- **State.** `state.history`: a closed flag vocabulary (`data/history/flags.json`), what has fired, the realm line (emperor, king, count of Autun, whom the lord is sworn to), the land block (recorded value 6,500 d, true value, visibility, tenure and charter), famine prices, Vikings, duties, the ladder and quest, the diffusion ledger, the life record, `away`, `dead`, `ending`. Old saves load with defaults.
+- **Interaction with §4.** When a dated event fires the random "other" event is suppressed; famine years force the weather roll and multiply grain prices by the scripts' table.
+- **Background systems** run inside the pass: oath beats on a change of count; land revaluation each spring and visibility events; army supply checks on tagged events; royal vassal duties (gated); Viking danger bands feeding the existing raid path; relic upkeep; tributes E-866/E-877 from manses and rank; Richard-as-rival on the Duke track; diffusion timers and espionage; the age roll.
+- **Age and the ending.** The lord was 17 in 825. From spring 910 a seeded death roll runs each season and is certain by winter 911. On death (old age, battle or captivity) `advanceSeason` refuses to turn, and one closing page is written by the model from the record (`history.ending`), with a chronicle fallback when the model cannot be heard.
+- **Deferred.** Historical battles (`features.historicalBattles`) and rank promotions (`features.promotions`) wait for their own passes. Until then a summons still fires and records the lord's side; the fight itself is one neutral Aldric line; promotion windows do not fire. The king's ladder and quest (`features.ladder`, `features.quest`) are built and tested but off, since their trigger needs those passes.
 
 ---
 

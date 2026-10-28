@@ -45,6 +45,25 @@ function quiet(features: { ladder?: boolean; quest?: boolean; promotions?: boole
 
 afterEach(() => setHistoryContentForTests(null));
 
+/**
+ * Flags the registry carries for the two passes still to come (03_HISTORY §9–§10).
+ * Anything else the lint reports as unset is a content bug.
+ */
+const DEFERRED_PASS_FLAGS = {
+  battles: ["witnessed_mutiny_830", "pippin_restoration", "distrusted_834", "saved_gaucelm", "saved_gerberga", "oath_under_duress_834", "robert_saved", "letter_of_protection"],
+  promotions: ["royal_vassal", "villa_confirmed", "second_villa"],
+};
+
+describe("the content lint", () => {
+  it("every registered flag is set by content or the engine, save those of the deferred passes", () => {
+    const unset = lintHistory(historyContent())
+      .filter((p) => p.includes("nothing sets it"))
+      .map((p) => /flag '([^']+)'/.exec(p)?.[1] ?? p)
+      .sort();
+    expect(unset).toEqual([...DEFERRED_PASS_FLAGS.battles, ...DEFERRED_PASS_FLAGS.promotions].sort());
+  });
+});
+
 describe("royal vassal duties", () => {
   it("lints, and rolled events never come by the calendar", () => {
     expect(lintHistoryStructure(historyContent())).toEqual([]);

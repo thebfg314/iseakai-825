@@ -5,6 +5,13 @@
 This document catalogues the special/random events used by the system.  
 Events are organised by category. The LLM selects from the appropriate category (or categories) each season according to the rules in the Constitution and Rules documents.
 
+**The dated calendar comes first (03_HISTORY).** The historical events of 825–911 are not drawn from this catalogue; the engine delivers them verbatim from `data/history/events/` at the start of their season. Two rules follow for the random events below:
+
+- **Suppression.** In any season where a dated event fires (including an Ermenald-only entry such as a Church note), the random "other" event is **not rolled**. The weather event still rolls, or is forced (next point). A season with no dated event behaves as before.
+- **Forced weather.** In the famine years of the scripts (841–845, 859–860, 867–869, 872–874, 895–897) the weather roll is replaced by the forced event in `data/history/tables/forced-weather.json`, with the crop effect doubled, reduced toward normal by the improvements present (drainage, three-field rotation, a barn or granary, a hardy-grain share). Famine prices and the season reports come from the same tables.
+
+The categories below are otherwise unchanged. Where a random event and the calendar would say the same thing in one season (a Viking scare in 886, a sickness in a famine year), the calendar's version is the one the household tells.
+
 ---
 
 ## 1. Weather & Agricultural

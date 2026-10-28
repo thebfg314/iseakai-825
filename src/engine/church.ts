@@ -275,6 +275,9 @@ export function applySponsoredFeast(
   if (grant > 0) state.peopleHappiness = Math.round(current) + grant;
   state.church.feastFade = feastFadeShare(grant);
   state.church.feastHeldKey = feastSeasonKey(state);
+  // The history layer counts feasts kept (flag `feast_sponsored`, engine-set).
+  const kept = state.history.flags.feast_sponsored;
+  state.history.flags.feast_sponsored = (typeof kept === "number" ? kept : 0) + 1;
 
   const name = hallFeastName(state, proposal.feastName);
   const scale = proposal.tier === "grand" ? "A grand feast" : "A plain feast";

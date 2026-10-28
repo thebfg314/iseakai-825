@@ -48,38 +48,42 @@ These were put to the author before design began. They are binding for this pass
 
 ```
 data/history/
-  events/arc1.json … arc9.json, church.json, economy.json, natural.json, ending.json
+  features.json                the switches (§14)
+  flags.json                   the flag registry (§4.1)
+  events/arc1.json … arc9.json, church.json, economy.json, natural.json, ending.json   dated events
+  events/duties.json           D-001…D-010, the royal vassal duty results (rolled events, §6)
+  events/quest.json            L-001…L-004 the ladder rungs, Q-001…Q-003 the king quest (rolled events)
   calendar/realm.json          counts of Autun, kings, emperors by year
   tables/forced-weather.json   famine years → forced event + multipliers
   tables/supply-check.json     the army supply appendix
-  tables/royal-duties.json     royal vassal duties roll table
   tables/viking-danger.json    raid chance by year band
-  tables/tributes.json         866 / 877 rates by rank and manse
-  tables/duke-track.json       the opportunity menu
-  tables/king-quest.json       nine motives, ladder rungs, absolution routes
-  history.schema.json          generated from the zod schema, for editors
+  tables/duke-track.json       the opportunity menu and the open-throne factors
+  tables/king-quest.json       trigger, strip/ban thresholds, the nine nobles, crown routes
 
 src/history/
   schema.ts        zod schemas for every JSON file above + the state block
-  load.ts          loads and validates data at boot; builds the id index
+  load.ts          loads and validates data at boot; builds the id index; season ordinals
   conditions.ts    the requires/unless expression evaluator
   scheduler.ts     which events are due this season start
-  deliver.ts       turns a fired event into chat messages + wantsTalk
+  deliver.ts       turns a fired event into chat messages + wantsTalk; engine re-delivery of rolled events
   hooks.ts         applies a confirmed hook/choice/outcome: flags, renown, coin, land, realm
-  flags.ts         the flag store API (get/set/add, typed per registry)
+  flags.ts         the flag store API (get/set/add, typed per registry); condition variables
+  slots.ts         `{slot}` values in script text and costs (amounts, fees, prices)
   realm.ts         emperor / king / count of Autun by date; oath beats
-  age.ts           body age, participation band, death of old age
+  age.ts           body age, participation band, death of old age, `markDeath`
   land.ts          recorded value, true value, visibility, tenure, the three outs
   prices.ts        famine multipliers on state.market
   weather.ts       forced weather overrides
   supply.ts        army supply checks and countermeasures
-  duties.ts        royal vassal duties roll
+  duties.ts        royal vassal duties roll → delivers D-00n
   vikings.ts       danger bands, winter camps, irregular tactics bookkeeping
   tributes.ts      E-866 / E-877 amounts from manses and rank
+  relics.ts        relic upkeep and the return request
+  richard.ts       Richard-as-rival: untaken Duke-track opportunities, `richard_standing`
   ladder.ts        the king's escalation ladder state machine
-  quest.ts         the king quest (support gathering, election); battle stub
-  diffusion.ts     innovations register and spread timers
-  ending.ts        the life record and the closing summary prompt
+  quest.ts         the king quest (support gathering, battle stub, election)
+  diffusion.ts     innovations register, spread timers, espionage
+  ending.ts        the life record, the closing-page prompt and its fallback
   promptBlocks.ts  what the NPC and referee prompts receive
   lint.ts          cross-checks: every read flag has a setter; every requires parses; ids unique
 ```
@@ -115,6 +119,9 @@ history: {
   openChoices: { eventId: string; opensTurn: number; deadlineTurn: number }[],
   /** Live scenes in progress: stage index and the turn it opened. */
   scenes: Record<string, { stage: number; openedTurn: number }>,
+  /** Choices taken, hooks taken, outcomes judged, per event id. */
+  chosen: Record<string, string>, hooksTaken: Record<string, string[]>, outcomes: Record<string, string>,
+  openOutcomes: { eventId: string; stageId?: string; opensTurn: number; deadlineTurn: number }[],
   realm: {
     emperor: string | null; king: string | null; kingdom: string;
     countOfAutun: string; countSince: number;
@@ -131,17 +138,24 @@ history: {
     charter: "none" | "count" | "royal";
     marriedLocal: boolean;
     secondVilla: boolean;
+    claimDeadlineTurn: number | null;   // the 830 crisis deadline while a claim is open
   },
-  prices: { severity: "normal" | "shortage" | "famine" | "severe"; grainMultiplier: number; untilTurn: number | null },
-  weather: { forcedThisSeason: string | null },
+  prices: {
+    severity: "normal" | "shortage" | "famine" | "severe"; grainMultiplier: number; untilTurn: number | null;
+    eventSeverity: severity | null; base: Record<crop, { min; max }>; hungrySeasons: number;
+  },
+  weather: { forcedThisSeason: string | null; forcedSeverity: number },
   supply: { lastRoll: { turn: number; situation: string; lost: number } | null },
-  vikings: { danger: "none" | "low" | "moderate" | "high"; campNear: boolean; awareSince: number | null },
-  duties: { lastRollTurn: number | null; favour: number },
+  vikings: { danger: "none" | "low" | "moderate" | "high"; campNear: boolean },
+  duties: { lastRollTurn: number | null; favour: number; hostingSettledTurn: number | null },
+  /** Duke-track opportunities Richard took because the lord did not (richard.ts). */
+  richard: { taken: string[] },
   ladder: { stage: "none" | "warning" | "stripped" | "excommunicated" | "attempt" | "quest"; since: number | null },
   quest: {
     active: boolean; attempt: number;
     nobles: { motive: string; name: string; status: "unknown" | "won" | "refused" | "hedging" | "betrayer" }[];
-    phase: "gathering" | "battle" | "election" | "crowned" | "submitted" | "failed";
+    phase: "none" | "gathering" | "battle" | "election" | "crowned" | "submitted" | "failed";
+    lastApproachTurn: number | null; phaseTurn: number | null;
   },
   diffusion: {
     innovations: {
@@ -150,14 +164,18 @@ history: {
       reproduction: "trivial" | "craftsman" | "capital" | "programme";
       proof: "self" | "season" | "cycles" | "generation";
       exposure: ("taught" | "sold" | "public_use" | "battle_allies" | "monks_copied" | "shown_king" | "espionage")[];
-      spread: "own_lands" | "region" | "kingdom"; spreadTurn?: number;
+      spread: "own_lands" | "region" | "kingdom"; spreadTurn?: number; spreadDueTurn: number | null;
       writtenDown: boolean; creditedToPlayer: boolean;
-    }[]
+    }[];
+    grainCut: boolean;              // the one-time 10% cut when a yield-raiser reaches the kingdom
+    lastSpyYear: number | null;
   },
   /** The life record for the closing summary: short dated entries the engine writes on notable flags. */
   record: { year: number; season: Season; text: string; thread: string }[],
   away: { reason: string; untilTurn: number } | null,
-  dead: { cause: "old_age" | "battle" | "illness" | "wound"; year: number } | null,
+  dead: { cause: "old_age" | "battle" | "illness" | "wound" | "captivity"; year: number } | null,
+  /** The closing page (§13), written once. */
+  ending: { death: string; summary: string; voice: string; byModel: boolean } | null,
 }
 ```
 
@@ -177,24 +195,30 @@ Flags are a closed vocabulary. `data/history/flags.json` lists every flag with t
 
 Inserted into `advanceSeason` after agriculture, projects and the clock-independent engine work, before the random roll. The clock has not yet turned at this point (`meta.year/season` is the closing season), so the pass computes `next = nextSeason(...)` and asks what fires at the start of `next`.
 
+`runHistorySeasonPass(state, next, turn)` in `season.ts`, in this order (as built):
+
 ```
-1. age.tick(next)                     body age; if death of old age → ending (§13); stop
+1. away → home beat                   an "away" that ends this season posts Aldric's line
 2. realm.tick(next)                   count/king/emperor changes due this season → oath beat events
-3. weather.forcedFor(next)            → override for rollSeasonEvents
-4. prices.tick(next)                  famine severity by year table + event effects → state.market grain bands
-5. scheduler.due(next)                events whose fires ≤ next, not fired, not dropped, requires true, unless false
-   - drop events whose season has passed and are not `carry`
-   - open choices past deadline → apply the `default` choice, write its flags
-   - scenes: advance stage if the stage's `advanceOn` is "season"
-6. deliver(events)                    one chat message per script block, in order, to its speaker; wantsTalk
-7. supply.check(next)                 if any fired or active event is tagged [Supply check] → roll, apply losses
-8. duties.roll(next)                  if royal_vassal and no political event fired → roll the table, post Aldric's line
-9. vikings.tick(next)                 danger band; raid chance → may raise `battle_call` kind "raid" (existing path)
-10. ladder.tick / quest.tick          thresholds and stage moves
-11. diffusion.tick                    spread timers
-12. rollSeasonEvents(state, { forcedWeather, suppressOther: events.length > 0 })
-13. referee season prompt gets engine lines: "History: <id> delivered by Aldric: <one-line summary>"
+3. expireDeadlines                    open choices past deadline → the `default` option; outcomes → default; scenes advance on "season"
+4. land.tick                          spring revaluation, visibility decay, the 830 claim deadline
+5. prices.tick(next)                  famine severity by year table + event effects → state.market grain bands
+6. hunger debuffs, weather.forcedFor  seed eaten, sickness; the forced-weather override for rollSeasonEvents
+7. relics.tick, tributes.tick, vikings.tick, richard.tick
+8. scheduler.due(next)                dated events whose fires ≤ next, not fired, not dropped, requires true, unless false
+   - drop events whose season has passed and are not `carry`; sorted by `order` then id
+   - deferred battle / promotion events post their interim line instead (§9–§10)
+   - [Supply check] events roll losses after delivery
+9. deliver(events)                    one chat message per script block, in order, to its speaker; wantsTalk
+10. suppressOther = events.length > 0  → rollSeasonEvents skips the random "other" event
+11. duties.tick(next)                 if royal_vassal and no dated event fired → roll D-001…D-010
+12. ladder.tick → quest.tick          thresholds, rung moves, the quest's seasons (gated by `features`)
+13. diffusion.tick                    espionage roll (spring), spread timers, the grain cut
+14. age.tick(next)                    the death roll from 910; sets `history.dead`, result `died`
+15. referee season prompt gets engine lines: "History: <id> was told by Aldric: <one-line summary>", plus each system's line
 ```
+
+When `died` is true, `advanceSeason` writes the closing page (§13) before it returns; every later `advanceSeason` returns the error "The lord of Fontenay is dead. The chronicle of this house is closed."
 
 Multiple events in one season (829-01 and 829-02; 841-02 and 841-V1) all fire, in the order they appear in the data file (`order` field breaks ties). Each event's script blocks are posted as separate messages so the Ermenald part lands in his tab and the Aldric part in his.
 
@@ -258,10 +282,16 @@ One JSON object per event. The zod schema is the contract; this is the shape.
   "stages": [ /* §8.2 live scenes */ ],
   "supplyCheck": false,
   "deferred": null,                      // "battle" | "promotion" → §9/§10 interim behaviour
+  "rolled": false,                       // true = engine-delivered (duties, ladder, quest), never by the calendar
+  "hookWindow": 2,                       // seasons the hooks stay open after delivery (default: see §17.6)
   "links": { "arc": 1, "momentum": 70, "keystone": "K1", "fixedPoint": false },
   "record": "Received Bernard's letter and {choice}."   // template for the life record
 }
 ```
+
+**Rolled events.** `events/duties.json` (D-001…D-010) and `events/quest.json` (L-001…L-004, Q-001…Q-003) carry `rolled: true` and a nominal `fires` of year 9999. The scheduler never picks them; `duties.ts`, `ladder.ts` and `quest.ts` deliver them through the same `deliver` path, so they get the same script posting, hooks, choices, Knows and hook windows as dated events. A rolled event may be delivered more than once (a duty rolled twice, a second quest attempt); re-delivery clears its `hooksTaken` and `chosen`.
+
+**Slots.** `{slot}` in script text, `cost` and `gain` is filled by `slots.ts` at delivery and at apply: `{amount}`-style tribute shares, `{absolution_fee}` (max(120 d, 10% of recorded value, rounded to the solidus)), `{absolution_penance}` (half the fee), `{ally_price}` (120 d × rank). `Knows:` lines are filled too.
 
 ### 6.1 Condition grammar
 
@@ -274,11 +304,11 @@ atom   := flag                       → truthy
         | flag op value              → ==, !=, >=, <=, >, <   (numbers, quoted strings, true/false)
         | "fired(" id ")"            → event delivered
         | "chose(" id "," option ")" → that choice taken
-        | "rank >=" n | "renown >=" n | "age >=" n | "year >=" n
-        | "tenure ==" word | "swornTo ==" word | "royal_vassal"
+        | var op value               → engine variables, below
         | "feature(" name ")"        → any holding has the feature
-        | "units >=" n               → owned units (militia present)
 ```
+
+Engine variables (`conditionVars` in `flags.ts`; `lint.ts` must list each): every canonical resource by id (`wheat`, `wine`, …), `year`, `season`, `rank`, `renown`, `age`, `units`, `men_under_arms`, `manses`, `vacant_manses`, `denarii`, `horses`, `households`, `tenure`, `charter`, `visibility`, `swornTo`, `king`, `emperor`, `count`, `severity`, `viking_danger`, `ladder` (stage), `quest` (phase), `quest_attempt`, `allies` (nobles won), `happiness` (the people's meter), `favour` (royal duties favour), `away`, `regional_famine`, `hunger`, `monastery_nearby`, `relics`. A bare flag name reads the flag store.
 
 Flags with string values (`side_830 = 'bernard'`, `chalon_834 = 'defended'`) are stored as strings; the registry types them as `enum` with the allowed words.
 
@@ -466,9 +496,9 @@ The game line from the scripts: emperors (Louis → Lothair as emperor 840–855
 
 Rolls once per season for events tagged `supplyCheck`, with the situation from the event (enemy main army within a day's march 80% / friendly 60% / foraging parties 30% / deserters after a battle 50%), +15 if `visibility ≥ 60`. Stores lost are the table's band, halved by hidden/dispersed stores (feature `storage_pits`, a new small project), protected for grain moved to the church (a hook), 20% friendly chance with a letter of protection (flag), 10% flat loss when paying foragers off (hook). A trained militia (any owned non-levy unit or a veteran levy) turns foraging parties and deserters into the existing raid/bandit `battle_call` instead of a loss roll; it does nothing against a main army.
 
-### 11.6 Royal vassal duties (`duties.ts`, `tables/royal-duties.json`)
+### 11.6 Royal vassal duties (`duties.ts`, `events/duties.json`)
 
-Only when `royal_vassal` (promotion pass) and no political event fired that season. Roll 1–10 per the table; each result is an Aldric line plus effects (hospitality cost, horses sold at a loss, a season "away", small renown, `royal_favour ±`). Result 7 (hosting the court) is a choice with three options (meanly / adequately / lavishly) with cost and renown; lavishly opens a hook `petition_the_king`. Written now so the promotion pass only has to set the flag.
+Only when `royal_vassal` (promotion pass), the lord is home and alive, and no dated event fired that season. `tickDuties` rolls 1–10 (seed `region:duty:year:season:turn`) and delivers the rolled event `D-00n`; each is an Aldric line plus effects (D-002 the missus: 5 d, and `missus_inspected` + `land_visible` when visibility ≥ 60; D-003/D-010 a season away; D-004 small renown; D-005 3 d; D-008 two horses sold for 24 d when he has them; D-009 wheat and wine). Every result but 1 and 7 adds `duties.favour +1` and `duty_performed +1`. D-007 (hosting the court) is a choice: meanly (−small renown; settles as favour −2, `duty_shirked +1`), adequately (default; wheat 6, rye 6, pigs 2, wine 4, 10 d; renown 25; favour +1), lavishly (double, 30 d; renown 50; visibility +10; favour +2) and opens the hook `petition_the_king` (requires `chose(D-007, lavishly)`). The hosting is settled the following season through `duties.hostingSettledTurn`.
 
 ### 11.7 Vikings (`vikings.ts`, `tables/viking-danger.json`)
 
@@ -486,11 +516,15 @@ Only when `royal_vassal` (promotion pass) and no political event fired that seas
 
 ### 11.9 Escalation ladder and king quest (`ladder.ts`, `quest.ts`, `tables/king-quest.json`)
 
-Fully specified by the scripts; in this pass, the ladder cannot trigger because it needs renown and holdings past a threshold that only battles and promotions provide. The threshold is data: `renown ≥ 800 and (rank ≥ 3 or manses ≥ 40)`. The state machine, the nine nobles with motives, the envoy mapping (Ermenald to bishops, Aldric to stewards, the player in person for marriage/respect), the submission exits, the absolution routes, and the second-attempt rules are implemented and unit-tested against a seeded state so the later passes only flip the switch. The quest's battle is a `deferred: "battle"` event; the election is a `deferred: "promotion"` event.
+Fully specified by the scripts; gated by `features.ladder` / `features.quest` (both off) because the trigger needs renown and holdings that only battles and promotions provide. Implemented and unit-tested with the switches forced on (`setHistoryContentForTests`), so the later passes only flip them.
+
+**The ladder** (`tickLadder`; thresholds in `tables/king-quest.json`): stage `none` → `warning` when `renown ≥ 800 and (rank ≥ 3 or manses ≥ 40)` and at least 8 seasons have passed since the ladder last moved; delivers **L-001** (hooks `send_gifts` 100 d / `go_be_seen` a season away / `be_useful` 60 d, each → `submitted_to_king +1`, −small renown, back to `none`, `quest.phase = submitted`). Four seasons unanswered → the king strips him (**L-002**, needs the people's happiness < 50: `go` default → `rankLevel −1`, `stripped_by_king +1`, −large renown; `refuse` → `rebel_king`, the road), or the Church bans him (**L-003**, needs `favor_church < 3`: `excommunicated`, mood −4 a season until absolved; hooks `donation {absolution_fee}` / `give_land` precaria nona under the Church / `pilgrimage` two seasons away, 60 d / `penance {absolution_penance}`, −moderate renown; absolution sets `absolved_once`), or it comes to the road (**L-004**: `king_attempt`; choices `prepare` default / `make_public` → `quarrel_public` / `submit` → `submitted_to_king +1`, −moderate renown, a season away; hook `hunt_traitor`). Prepare or make it public → stage `quest`.
+
+**The quest** (`tickQuest`): `startQuest` seats the nine nobles from the table (one king's man among money/land/office, seeded, already `refused`) and delivers **Q-001**. Gathering: one `approach_<motive>` hook resolves a season (`money` costs `{ally_price}`; marriage/fear/divine need a first attempt; debt/protection/divine have `requires` from the lord's record); on a second attempt closed motives refuse, thin ones hold 50%; money can be outbid 30% (→ `hedging`, `quest_money_outbid`, `pay_again` wins him). `call_the_assembly` (requires `allies ≥ 4`) names a betrayer among the won (never a grievance man) and moves to the battle (**Q-002**, `deferred: "battle"`: the interim line and a season away) and then the election (**Q-003**, `deferred: "promotion"`: delivered only when `features.promotions`; otherwise pushed to `dropped` with Aldric's interim beat). Election: `earned` (allies ≥ 6, favour ≥ 4, not banned) / `bought` (300 d, `simony_taint`) / `coerced` (40 men, `church_enemy`) → `crowned_king`, `crown_route`, rank 5; `counter_offer` (allies ≥ 4) → `duke_by_counter_offer`, rank ≥ 4, phase failed; `withdraw` → failed, `attempt +1`.
 
 ### 11.10 The Duke track and the open throne
 
-Data now (`tables/duke-track.json`: compulsory beats, the opportunity menu with "if Richard takes it instead" consequences; the open throne's elector factors). Both gated by rank → promotion pass. Richard-as-rival logic (anything not taken by the player is taken by Richard, raising `richard_standing`) is implemented as a yearly tick so it is ready.
+`tables/duke-track.json` carries the compulsory beats, nine opportunities (each with `year`, `deadline`, `playerFlag`, what it buys, what Richard does instead, and Richard's line) and the open throne's elector factors. The player's side is hooks on the Arc 3 events, all gated `rank >= 4` (back Rudolph and marry Adelaide on 889-R1, support Louis of Provence on 890-R1, join the plot on 892-R1, shelter Charles on 894-R1, take Sens on 894-R2, the lay abbacies on 895-R1). **Richard-as-rival** (`richard.ts`, `tickRichard`): the season after an opportunity's deadline, if its `playerFlag` is unset and Richard has not already taken it, he takes it: `richard_standing +1`, an Aldric beat, a record line on the thread `richard`. `dukeTrackScore` reads the result for the ending (7+ of 9 taken, 4+, or fewer). The open throne of 887–888 is an `outcomes` block on 887-K2 (`odo` default; `self` requires `rank >= 3 and renown >= 800 and (objected_886 or march_886 == 'commanded')` and a clean record), with 888-K2's text varying on `king_888 == 'self'` and 893-K1 adding `hold_crown`.
 
 ---
 
@@ -500,21 +534,25 @@ The Rules doc is for the LLM to judge; the engine keeps the ledger.
 
 - When an NPC confirms a new technique, custom resource with tag `innovation`, or a project the LLM marks as anachronistic, the books pass may emit `innovation_register` with the three factors. The engine stores it with `spread = own_lands`.
 - `innovation_expose { how }` is emitted when the lord teaches, sells, demonstrates publicly, uses it in a battle with allies (battle pass), lets monks copy it (a hook on the Church entries), or shows it at court. Each `how` sets a timer from the Rules' defaults (taught/sold 1 year; public use 5 years; monks copied: immediate region, kingdom in 1 year, `writtenDown = true`; opaque + programme: no timer without espionage). "Viking-only" exposure sets nothing.
-- Espionage: after any public demonstration of an opaque innovation, a yearly roll (base 10%, +10 per rival with a motive) can post an Aldric line (a craftsman bought) and cut the timer to 3–5 years; the defence is the specialists' standing (hired, paid, married into the household — read from NPC notes/flags).
-- The timer's end moves `spread` to `region` then `kingdom` and posts a short Aldric note. Spread is read by: the ending summary; the king-quest battle (both sides have it); prices (a yield-raising method that reaches the kingdom lowers grain bands 10%).
+- Espionage (`tickDiffusion`, each spring): for every opaque innovation with a public exposure and no timer running, roll base 10% + 10% per rival with a motive (`count_covets`; Richard once he has taken a Duke-track opportunity; the king once the ladder has begun), halved when the specialists are kept close (an NPC with a craftsman's role whose notes say loyal / married / land of his own / paid well). Success sets `spreadDueTurn = turn + 16` (four years), adds the exposure `espionage` and posts an Aldric beat.
+- The timer's end moves `spread` to `region` then `kingdom` (region → kingdom: four years if written down, else at least four years and no shorter than the time it took to reach the region) and writes a record line on the thread `knowledge`. Spread is read by: the ending summary; the king-quest battle (both sides have it); prices (the first yield-raising method, by name, to reach the kingdom lowers the grain bands 10% once; `diffusion.grainCut`).
 - The LLM's rules text (legibility / reproduction / proof, the worked examples) is a prompt block attached only when the books pass is about to register or expose an innovation, to save tokens.
 
 ---
 
 ## 13. The ending (`ending.ts`)
 
-On death of old age (or an earlier death the battle pass may deliver), the game stops advancing and shows one screen: the death, then the summary, **written by the LLM from the record**, not from a template. The prompt receives `history.record` (dated lines the engine wrote on every notable flag, outcome, battle, promotion, famine survived, refugee settled, innovation registered and spread), the final estate (manses vs 10, tenure, features), `battle_history`, rank and renown, the realm at the end, and the Rules doc's "what became of it" questions. Target length: one short paragraph of death, three or four of summary. No numbers on screen. The voice is whoever is left (Ermenald's successor, a grandson, an old captain). The existing game-over path (`finishPlay`) carries the screen; `estateAbandoned` and `player.dead` remain earlier endings and reuse the same summary with the death adjusted.
+On death of old age (or an earlier death: `battleFinish` calls `markDeath(state, "battle" | "captivity")`), the game stops advancing and shows one screen: the death, then the summary, **written by the LLM from the record**, not from a template.
+
+- `GameController.writeEnding()` (IPC `game:writeEnding`) runs once: it stores the chronicle fallback first, then asks the model with `endingSystemPrompt()` and `endingUserPrompt(state)`; a reply of more than 200 characters replaces the fallback (`byModel: true`; the first paragraph is the death, the rest the life). It then seals the play log (`finishPlay`). `advanceSeason` calls it when the pass reports `died`; the App calls it on load when the lord is dead and no page exists.
+- The prompt receives the voice (`endingVoice`: the Auxerre boy grown and a priest, an old captain of the household for a king or a duke, the priest who followed Ermenald, or a grandson), the death facts, the facts by thread (Station, Land, War, whom he saved, Loyalty, the land itself, Knowledge, the Church, People, what outlived him — including `dukeTrackScore` and Richard's standing) and `endingRecord` (the first 20 and the last 60 record lines when there are more than 80). Target length: one short paragraph of death, three or four of summary; no numbers, no lists.
+- The screen (`App.tsx`, the `ending-page` block) shows `history.ending.death`, the summary paragraphs and the voice, over the Title / New Game menu. `estateAbandoned` and the maimed ending keep their shorter texts.
 
 ---
 
 ## 14. Delivery plan
 
-Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded.
+Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded. **All eight steps are delivered** (commits "History Step A" … "History Step H", Oct 2026); what remains is the two later passes of §9–§10.
 
 | Step | Builds | Done when |
 | --- | --- | --- |
@@ -528,6 +566,8 @@ Everything below is in scope. Order is chosen so each step is testable and the c
 | H | Docs: update `02_EVENTS.md` (random events now yield to the calendar), add the History block to `01_RULES.md`, keep `03_HISTORY.md` current | — |
 
 Feature switches in `data/history/features.json`: `historicalBattles: false`, `promotions: false`, `ladder: false`, `quest: false`, `diffusion: true`.
+
+**Left for the deferred passes.** The lint-as-test (`systems.test.ts`, "the content lint") pins the registered flags that nothing sets yet: battles — `witnessed_mutiny_830`, `pippin_restoration`, `distrusted_834`, `saved_gaucelm`, `saved_gerberga`, `oath_under_duress_834`, `robert_saved`, `letter_of_protection`; promotions — `royal_vassal`, `villa_confirmed`, `second_villa`. Any other unset flag fails the suite. Flags set by code rather than content carry `setBy: "engine"` in the registry (`forfeit_830`, `richard_standing`, `absolved_once`, `quest_money_outbid`, `duty_performed`, `duty_shirked`, `feast_sponsored`).
 
 ---
 
@@ -563,5 +603,8 @@ Confirmed by the author on Oct 27, 2026: the interim battle and promotion behavi
 6. **Hook window:** a hook may be taken until the next dated event on the same channel, minimum two seasons. Some hooks are naturally longer (ergot sorting, predicting the eclipse); those declare `window` explicitly.
 7. **Visibility thresholds** (60 and 1.5×) and the income valuation formula are tunables with the stated test targets, not canon.
 8. **Random "other" suppression** applies to the whole season when any dated event fires, including Ermenald-only events. Weather still rolls (or is forced).
+9. **Lines the source leaves unscripted** (the 884 funeral block, the duty results, the ladder rungs, the quest scenes, Richard's beats, the diffusion and home-coming notes) are engine-written in the scripts' register and flagged `notes: "engine-written"` in the data where they sit on an event.
+10. **Two flags from the first registry draft were removed** (`hildebrand_hosted`, `bishop_jonas_met`): no line in the scripts sets or reads them.
+11. **The death roll is seeded** by region, year, season and turn, so a given save dies at the same season on replay; across saves the death falls anywhere in 910–911.
 
 **End of 03_HISTORY**
