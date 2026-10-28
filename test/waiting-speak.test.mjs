@@ -14,13 +14,17 @@ test("Speak wait overlays the waiting reel only while dialogue send is in flight
   assert.match(app, /from "\.\/waitingAnim"/);
   assert.match(app, /SpeakWaitingReel/);
   assert.match(app, /speakWaiting/);
-  assert.match(app, /aria-label=\{`Speak to \$\{npc\?\.name \?\? "them"\}`\}/);
+  // The Speak button's label: the composer takes the name as a prop and labels the button with it.
+  assert.match(app, /npcName=\{npc\?\.name \?\? "them"\}/);
+  assert.match(app, /aria-label=\{`Speak to \$\{npcName\}`\}/);
 
-  const send = app.slice(app.indexOf("async function send()"), app.indexOf("const settingsModal"));
+  const sendIdx = app.indexOf("function send(draft: string)");
+  assert.ok(sendIdx >= 0, "send(draft) in App.tsx");
+  const send = app.slice(sendIdx, app.indexOf("const settingsModal"));
   assert.match(send, /setSpeakWaiting\(true\)/);
   assert.match(send, /setSpeakWaiting\(false\)/);
 
-  const advance = app.slice(app.indexOf("async function advanceSeason()"), app.indexOf("async function send()"));
+  const advance = app.slice(app.indexOf("async function advanceSeason()"), sendIdx);
   assert.doesNotMatch(advance, /setSpeakWaiting/);
   assert.match(advance, /setLoopingSeason/);
 
