@@ -1,0 +1,24 @@
+{
+  "notes": "Scripts: 'The king's escalation ladder' and 'The king quest'. ladder.ts walks the rungs; quest.ts runs gathering, battle, election. Both gated by features.ladder / features.quest until the battle and promotion passes.",
+  "trigger": { "renown": 800, "rank": 3, "manses": 40, "seasonsAtWarning": 4 },
+  "strip": { "happinessBelow": 50, "ranksLost": 1 },
+  "excommunication": { "favorChurchBelow": 3, "moodPerSeason": -4 },
+  "kingsMen": 3,
+  "parity": 6,
+  "nobles": [
+    { "motive": "grievance", "wants": "Nothing. The king wronged him and he cannot be bought back. The most reliable ally in the game.", "envoy": "steward", "names": ["Count Hugh of Nevers", "Count Manasses of Dijon"], "secondAttempt": "open", "known": true },
+    { "motive": "money", "wants": "Silver. Can be outbid by the king, which is a mid-quest crisis.", "envoy": "steward", "names": ["Viscount Ebbo of Mâcon", "Viscount Teutbald of Chalon"], "secondAttempt": "open", "known": true, "cost": { "denarii": 120 } },
+    { "motive": "land", "wants": "A promise of estates when the player is crowned.", "envoy": "steward", "names": ["Count Rainard of Sens", "Count Walo of Langres"], "secondAttempt": "open", "known": true },
+    { "motive": "office", "wants": "Chancellor, marshal, a bishopric: cheaper than land, paid after winning.", "envoy": "chaplain", "names": ["Bishop Adalgar of Autun", "Abbot Hugh of Flavigny"], "secondAttempt": "open", "known": false },
+    { "motive": "marriage", "wants": "A match into the player's house. Needs an unmarried player or a child.", "envoy": "player", "names": ["Count Gerard of Auxerre", "Count Ingelger of Anjou"], "secondAttempt": "closed", "known": true },
+    { "motive": "debt", "wants": "Nothing: he is repaying. Famine relief, a ransom paid, a lawsuit backed, a son placed at Auxerre.", "envoy": "steward", "names": ["Count Anscar of Oscheret", "Viscount Rotbert of Beaune"], "secondAttempt": "thin", "known": false, "requires": "fed_hungry >= 1 or school_auxerre or sheltered_refugees >= 1" },
+    { "motive": "fear", "wants": "Reassurance. He does not love the player; he thinks the king is worse, or fears a disputed succession more.", "envoy": "chaplain", "names": ["Bishop Geilo of Langres", "Archbishop Aurelian of Lyon"], "secondAttempt": "closed", "known": false },
+    { "motive": "protection", "wants": "A man who will actually fight. Strong pitch from a player who made his name against Northmen.", "envoy": "player", "names": ["Count Theobald of Tonnerre", "Count Letald of Mâcon"], "secondAttempt": "open", "known": true, "requires": "saint_florentin_888 or argenteuil_898 or march_886 == 'commanded' or irregular_tactics >= 2 or renown >= 1000" },
+    { "motive": "divine", "wants": "Nothing but the appearance of blessing. Church standing, relics, abbeys, surviving what killed others.", "envoy": "chaplain", "names": ["Abbot Berno of Gigny", "Bishop Walter of Sens"], "secondAttempt": "closed", "known": false, "requires": "favor_church >= 3 or relics_held or cluny_witness" }
+  ],
+  "crown": [
+    { "route": "earned", "requires": "Decades of church patronage", "cost": "None. They crown him willingly" },
+    { "route": "bought", "requires": "Gifts and privileges", "cost": "Works, and sets a taint: simony" },
+    { "route": "coerced", "requires": "Troops at the door", "cost": "Works now; the Church is an enemy for the rest of the reign" }
+  ]
+}

@@ -5,11 +5,16 @@ import { landLine } from "./land";
 import { historyContent } from "./load";
 import { pricesLine } from "./prices";
 import { realmLine } from "./realm";
+import { diffusionLine } from "./diffusion";
+import { dutiesLine } from "./duties";
+import { ladderLine } from "./ladder";
+import { questLines } from "./quest";
 import { relicsLine } from "./relics";
 import { richardLine } from "./richard";
 import { activeEvents } from "./scheduler";
 import { vikingLine } from "./vikings";
 import type { HistoryEvent, HistorySpeaker } from "./schema";
+import { fillSlots } from "./slots";
 
 const SPEAKER_NAMES: Record<HistorySpeaker, string> = { steward: "Aldric", chaplain: "Ermenald" };
 
@@ -47,7 +52,7 @@ function eventBlock(state: WorldState, event: HistoryEvent, speaker: HistorySpea
   lines.push(src ? `${head}. ${src}` : head);
   const scene = state.history.scenes[event.id];
   const stage = scene ? event.stages[scene.stage] : undefined;
-  if (event.knows.length) lines.push(`  Knows: ${event.knows.join(" ")}`);
+  if (event.knows.length) lines.push(`  Knows: ${fillSlots(state, event.knows.join(" "))}`);
   if (event.doesntKnow.length) lines.push(`  Doesn't know: ${event.doesntKnow.join(" ")}`);
   if (stage) {
     lines.push(`  SCENE in progress, stage "${stage.id}"${stage.title ? ` (${stage.title})` : ""}.${stage.advanceOn === "season" ? " It moves on with the season." : " When the lord's words settle it, emit history_scene {eventId, advance:true" + (stage.choices ? ", choiceId" : "") + "}."}`);
@@ -109,6 +114,13 @@ export function historyPromptBlock(state: WorldState, speaker: HistorySpeaker): 
   if (relics) lines.push(relics);
   const richard = richardLine(state);
   if (richard && speaker === "steward") lines.push(richard);
+  const duties = dutiesLine(state);
+  if (duties) lines.push(duties);
+  const ladder = ladderLine(state);
+  if (ladder) lines.push(ladder);
+  lines.push(...questLines(state));
+  const diffusion = diffusionLine(state);
+  if (diffusion) lines.push(diffusion);
   if (state.history.away) lines.push(`The lord is away: ${state.history.away.reason}. Speak as his clerk at his side.`);
   if (active.length) {
     lines.push("Active events (recent on your channel, or still open):");

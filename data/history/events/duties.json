@@ -1,0 +1,197 @@
+{
+  "arc": "duties",
+  "events": [
+    {
+      "id": "D-001",
+      "title": "Nothing this season",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        { "speaker": "steward", "text": "There was talk at the market that the king is coming south this year, my lord. He isn't. There is always talk." }
+      ],
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Royal vassal duty roll 1. Engine-written from the duties table."
+    },
+    {
+      "id": "D-002",
+      "title": "The king's inspectors",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        { "speaker": "steward", "text": "The missi dominici are touring the county, my lord, hearing complaints and seeing that the king's orders are kept, and they lodge with us this week. Two of them and their clerks and their horses. I have put the good wine away and brought out the next best." },
+        { "speaker": "steward", "when": "visibility >= 60", "frame": "after", "text": "They asked a good many questions about the villa, my lord. How many manses, how many ploughs, what the mill takes. Clerks write things down, and what is written down is read." }
+      ],
+      "onFire": [
+        { "cost": { "denarii": 5 } },
+        { "when": "visibility >= 60", "flags": { "missus_inspected": true, "land_visible": true } }
+      ],
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 2: hospitality for a week; a visibility check."
+    },
+    {
+      "id": "D-003",
+      "title": "The king's assembly",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        { "speaker": "steward", "text": "The king holds his assembly this season, my lord, and his vassals are expected. Several weeks' ride each way. You will hear everything worth hearing and meet everyone worth meeting, and the villa will have to manage without you." }
+      ],
+      "onFire": { "away": { "reason": "at the king's assembly", "seasons": 1 } },
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 3: a season's travel."
+    },
+    {
+      "id": "D-004",
+      "title": "Escort",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        { "speaker": "steward", "text": "The king asks an escort across the county, my lord: a bishop and his train this time, going north. A few men for a few weeks. It is the kind of small service that gets a name remembered." }
+      ],
+      "onFire": { "renown": "small" },
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 4: a few men for a few weeks; small renown."
+    },
+    {
+      "id": "D-005",
+      "title": "The king's messengers",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "note",
+      "script": [
+        { "speaker": "steward", "text": "Royal messengers through the hall this week, my lord, and the king's word to be carried on to the next county. Days of a man's time, and a horse ridden harder than I like." }
+      ],
+      "onFire": { "cost": { "denarii": 3 } },
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 5: days, and horses."
+    },
+    {
+      "id": "D-006",
+      "title": "Judgment",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        { "speaker": "steward", "text": "You are to sit with the count this month to hear a case, my lord: a boundary between two free men, each with his oath-helpers and his grievance. Whichever of them loses will remember who sat on the bench." }
+      ],
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 6: time, and whichever party loses remembers it."
+    },
+    {
+      "id": "D-007",
+      "title": "The court comes to you",
+      "arc": "realm",
+      "type": "choice",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        { "speaker": "steward", "text": "My lord, the king's household is moving through the region and will lie at Fontenay. The king and his great men at your table, their horses in your stables, their followers in your barns. It is a real bite, grain and beasts and cartage, and worse in a bad year. It is also how a lord gets his name known. Men have spent fortunes on this on purpose. How do you want it done?" }
+      ],
+      "choices": {
+        "prompt": "How does the lord host the court?",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "meanly",
+            "label": "Meanly, while visibly prosperous",
+            "effects": { "cost": { "rye": 4, "barley": 4 }, "renown": "-small", "record": "The lord hosted the king's court meanly and was marked as grasping." }
+          },
+          {
+            "id": "adequately",
+            "label": "Adequately",
+            "default": true,
+            "effects": { "cost": { "wheat": 6, "rye": 6, "pigs": 2, "wine": 4, "denarii": 10 }, "renown": 25, "record": "The lord hosted the king's court at Fontenay." }
+          },
+          {
+            "id": "lavishly",
+            "label": "Lavishly: good wine, fresh meat, proper lodging, entertainment",
+            "effects": { "cost": { "wheat": 12, "rye": 12, "pigs": 4, "cattle": 1, "wine": 10, "denarii": 30 }, "renown": 50, "land": { "visibility": "+10" }, "record": "The lord hosted the king's court lavishly, and the king learned his name." }
+          }
+        ]
+      },
+      "hooks": [
+        {
+          "id": "petition_the_king",
+          "trigger": "Having hosted lavishly, the lord puts a request directly to the king (a charter, a mint, a vacant county).",
+          "requires": "chose(D-007, lavishly)",
+          "effects": { "flags": { "petitioned_king": true }, "record": "The lord put a request directly to the king at his own table." }
+        }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 7. The petition's answer belongs to the promotion pass."
+    },
+    {
+      "id": "D-008",
+      "title": "Remounts",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        { "speaker": "steward", "text": "The king's men are buying remounts in the county, my lord, and a royal vassal is expected to sell well. Two good horses, at a price I would not have taken from anyone else." }
+      ],
+      "onFire": [{ "when": "horses >= 2", "cost": { "horses": 2 }, "gain": { "denarii": 24 } }],
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 8: two or three good horses at a loss."
+    },
+    {
+      "id": "D-009",
+      "title": "A guest",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        { "speaker": "steward", "text": "We are to lodge a guest for the king this season, my lord: a young nobleman out of favour at court, sent south to be kept quietly out of the way. His upkeep is ours, and so is the responsibility for him. He may be worth knowing. Men out of favour come back into it." }
+      ],
+      "onFire": { "cost": { "wheat": 3, "wine": 2 } },
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 9: upkeep and responsibility."
+    },
+    {
+      "id": "D-010",
+      "title": "Oath renewal",
+      "arc": "realm",
+      "type": "background",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        { "speaker": "steward", "text": "The king requires his vassals to swear again, my lord, in person, this season. A season's travel. Refusing is not a thing one does." }
+      ],
+      "onFire": { "away": { "reason": "renewing his oath to the king", "seasons": 1 } },
+      "links": { "arc": "duties", "momentum": 90 },
+      "notes": "Duty roll 10: a season's travel."
+    }
+  ]
+}

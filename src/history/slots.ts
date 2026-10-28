@@ -33,6 +33,9 @@ export const SLOT_NAMES = [
   "tribute_877_total",
   "levy_845",
   "bridge_levy_862",
+  "absolution_fee",
+  "absolution_penance",
+  "ally_price",
 ] as const;
 export type SlotName = (typeof SLOT_NAMES)[number];
 
@@ -65,6 +68,14 @@ export function slotValue(state: WorldState, name: string): number | null {
       return 6 * m.recorded;
     case "bridge_levy_862":
       return 15;
+    case "absolution_fee":
+      // "A large sum, scaled to what he holds": a tenth of the recorded value, rounded to the solidus.
+      return Math.max(120, Math.round(state.history.land.recordedValue * 0.1 / 12) * 12);
+    case "absolution_penance":
+      return Math.round((slotValue(state, "absolution_fee") ?? 0) / 2 / 12) * 12;
+    case "ally_price":
+      // Silver for the noble whose motive is money: ten solidi a rank.
+      return 120 * rank;
     default:
       return null;
   }

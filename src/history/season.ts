@@ -1,6 +1,10 @@
 import type { WorldState } from "../engine/schema";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
+import { tickDiffusion } from "./diffusion";
+import { tickDuties } from "./duties";
+import { tickLadder } from "./ladder";
 import { tickLand } from "./land";
+import { tickQuest } from "./quest";
 import { historyContent } from "./load";
 import { tickHungerDebuffs, tickPrices } from "./prices";
 import { tickRealm } from "./realm";
@@ -103,5 +107,28 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
     }
   }
   out.suppressOther = due.fire.length > 0 || due.interim.length > 0;
+
+  // The king's small duties take a quiet season; the ladder and the quest run after the calendar.
+  const duties = tickDuties(state, incoming, turn, sequence.length > 0);
+  out.beats.push(...duties.beats);
+  out.effects.push(...duties.lines);
+  if (duties.duty) {
+    out.fired.push(duties.duty);
+    out.suppressOther = true;
+    out.refereeLines.push(`History: the king's service this season (${duties.duty}) was told by Aldric; do not retell it.`);
+  }
+  const ladder = tickLadder(state, incoming, turn);
+  out.beats.push(...ladder.beats);
+  out.effects.push(...ladder.lines);
+  const quest = tickQuest(state, incoming, turn, ladder.questStarts);
+  out.beats.push(...quest.beats);
+  out.effects.push(...quest.lines);
+  for (const b of [...ladder.beats, ...quest.beats]) {
+    if (!out.fired.includes(b.eventId) && content.byId.has(b.eventId)) out.fired.push(b.eventId);
+  }
+  if (ladder.beats.length || quest.beats.length) out.suppressOther = true;
+  const diffusion = tickDiffusion(state, incoming, turn);
+  out.beats.push(...diffusion.beats);
+  out.effects.push(...diffusion.lines);
   return out;
 }

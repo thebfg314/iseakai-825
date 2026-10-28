@@ -35,6 +35,7 @@ export function dueEvents(state: WorldState, at: SeasonAt, content: HistoryConte
   const now = seasonOrdinal(at.year, at.season);
   const dropped = new Set(state.history.dropped);
   for (const event of content.events) {
+    if (event.rolled) continue;
     if (state.history.fired[event.id] || dropped.has(event.id)) continue;
     const when = seasonOrdinal(event.fires.year, event.fires.season);
     if (when > now) continue;

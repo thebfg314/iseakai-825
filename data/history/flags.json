@@ -197,6 +197,19 @@
     { "id": "nithard_account", "type": "bool", "meaning": "Sent Nithard his own account of the war of the brothers." },
     { "id": "eriugena_met", "type": "bool", "meaning": "Met John Scottus Eriugena at court and impressed him." },
     { "id": "school_auxerre", "type": "bool", "meaning": "Sent a boy of the household to the school at Saint-Germain of Auxerre." },
-    { "id": "cluny_witness", "type": "bool", "meaning": "Stood witness to, or gave to, the foundation of Cluny (910)." }
+    { "id": "cluny_witness", "type": "bool", "meaning": "Stood witness to, or gave to, the foundation of Cluny (910)." },
+    { "id": "petitioned_king", "type": "bool", "meaning": "Put a request directly to the king after hosting his court lavishly (the answer belongs to the promotion pass)." },
+    { "id": "submitted_to_king", "type": "int", "meaning": "Times the lord submitted to the king to end a quarrel (at the warning, or after the attempt)." },
+    { "id": "stripped_by_king", "type": "int", "meaning": "Times the king stripped the lord of honours at an assembly." },
+    { "id": "rebel_king", "type": "bool", "meaning": "Refused the king's summons to answer charges; a rebel by his own choice." },
+    { "id": "absolved_once", "type": "bool", "setBy": "engine", "meaning": "Was excommunicated and absolved." },
+    { "id": "king_attempt", "type": "bool", "meaning": "The king tried to have the lord killed on the road, and failed." },
+    { "id": "quarrel_public", "type": "bool", "meaning": "Accused the king openly of the attempt on his life." },
+    { "id": "traitor_hunted", "type": "bool", "meaning": "Hunted the traitor among his own men after the attempt." },
+    { "id": "quest_money_outbid", "type": "bool", "setBy": "engine", "meaning": "The king outbid the lord for the noble whose price is money; he hedges until paid again." },
+    { "id": "crowned_king", "type": "bool", "meaning": "Elected and crowned king at the end of the king quest." },
+    { "id": "crown_route", "type": "enum", "values": ["earned", "bought", "coerced"], "meaning": "How the bishops came to crown him." },
+    { "id": "simony_taint", "type": "bool", "meaning": "Bought his crown from the bishops; simony is said of it ever after." },
+    { "id": "duke_by_counter_offer", "type": "bool", "meaning": "Took the magnates' counter-offer: a duchy, and a Carolingian child on the throne." }
   ]
 }

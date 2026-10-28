@@ -1,0 +1,235 @@
+{
+  "arc": "quest",
+  "events": [
+    {
+      "id": "L-001",
+      "title": "How they talk about you now",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, I had it from a clerk who was at court this winter, and I did not much like the way he put it. Your name comes up. Not with anything against it, mind, only… often. And he said a man asked him, quite idly, how many men you could raise if you were minded to. Nobody asks that idly, my lord."
+        }
+      ],
+      "knows": [
+        "Not a move by the king: a warning sign. Men who have never met the lord know how many manses he holds.",
+        "The lord's counter: send gifts, go and be seen, be conspicuously useful, or let it ride and accept what comes."
+      ],
+      "hooks": [
+        { "id": "send_gifts", "trigger": "The lord sends rich gifts to the king to still the talk.", "effects": { "cost": { "denarii": 100 }, "flags": { "submitted_to_king": "+1" }, "renown": "-small", "record": "The lord sent gifts to court and let the matter die." } },
+        { "id": "go_be_seen", "trigger": "The lord goes to court himself, to be conspicuously loyal.", "effects": { "away": { "reason": "at court, being seen to be loyal", "seasons": 1 }, "flags": { "submitted_to_king": "+1" }, "renown": "-small", "record": "The lord went to court and showed himself the king's man." } },
+        { "id": "be_useful", "trigger": "The lord makes himself conspicuously useful to the king: men, silver, service offered unasked.", "effects": { "cost": { "denarii": 60 }, "flags": { "submitted_to_king": "+1" }, "renown": "-small" } }
+      ],
+      "hookWindow": 4,
+      "links": { "arc": "ladder", "momentum": 60 },
+      "notes": "The ladder's warning. Any hook is the submission exit: ladder.ts returns the stage to none."
+    },
+    {
+      "id": "L-002",
+      "title": "Summoned to answer",
+      "arc": "realm",
+      "type": "summons",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, you are summoned to court to answer charges, with judgment at the assembly. Counties are the king's to give and the king's to take back. If you go, you can be arrested, or made to submit before them all. If you do not go, you have made yourself a rebel by your own choice, and the men who have not decided about you will decide. I do not think your own people would rise for you if it came to that, and I think the king knows it."
+        }
+      ],
+      "choices": {
+        "prompt": "Answer the king's summons?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "go", "label": "Go, and submit publicly", "default": true, "effects": { "flags": { "stripped_by_king": "+1" }, "renown": "-large", "record": "The king stripped the lord of honours at the assembly; he kept his land and his household." } },
+          { "id": "refuse", "label": "Refuse the summons", "effects": { "flags": { "rebel_king": true }, "record": "The lord refused the king's summons and was named a rebel." } }
+        ]
+      },
+      "links": { "arc": "ladder", "momentum": 60 },
+      "notes": "Rung 1: strip the offices. ladder.ts drops a rank when 'go' is chosen (a demotion, not a ruin)."
+    },
+    {
+      "id": "L-003",
+      "title": "The ban",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["chaplain", "steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, the bishops have pronounced the ban. I am forbidden to say Mass for you or to hear your confession, and your people have been told their lord stands outside the Church. I will not pretend to you that this was God's doing. It was the king's silver finding bishops who would take it. But it is done, and it binds, and until it is lifted nothing you hold will answer to you as it should."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "He has the right of it, my lord. You keep everything and none of it works. The vassals are released from their oaths and they will drift. The levies will not answer. The bishop will not hear your cases and the neighbours know it. It can be lifted. It costs money, or land, or a journey, or your pride, and there is no hurry about it except that every season it stands costs you something."
+        }
+      ],
+      "onFire": { "flags": { "excommunicated": true }, "record": "The lord was excommunicated at the king's instance." },
+      "knows": [
+        "Absolution: a donation in coin ({absolution_fee}); land given to the church outright, taken back as a precaria; a pilgrimage; public penance ({absolution_penance}, and pride).",
+        "A player with nothing left ends as a minor noble with a villa and a grudge. No game over."
+      ],
+      "hooks": [
+        { "id": "donation", "trigger": "The lord buys absolution with a large donation in coin.", "effects": { "cost": { "denarii": "{absolution_fee}" }, "flags": { "excommunicated": false, "favor_church": "+1" }, "record": "The lord bought his absolution with silver." } },
+        { "id": "give_land", "trigger": "The lord gives the villa to the church outright and takes it back as a precaria.", "effects": { "land": { "tenure": "precaria", "precariaRent": { "kind": "nona" } }, "realm": { "swornTo": "church" }, "flags": { "excommunicated": false, "favor_church": "+2" }, "record": "The lord gave his land to the church for absolution and holds it now for life." } },
+        { "id": "pilgrimage", "trigger": "The lord goes on pilgrimage for absolution.", "effects": { "away": { "reason": "on pilgrimage for absolution", "seasons": 2 }, "cost": { "denarii": 60 }, "flags": { "excommunicated": false, "favor_church": "+1" }, "record": "The lord went on pilgrimage and came back absolved." } },
+        { "id": "penance", "trigger": "The lord does public penance before the bishop, barefoot if the bishop is feeling theatrical.", "effects": { "cost": { "denarii": "{absolution_penance}" }, "renown": "-moderate", "flags": { "excommunicated": false, "favor_church": "+1" }, "record": "The lord did public penance and was absolved." } }
+      ],
+      "hookWindow": 400,
+      "links": { "arc": "ladder", "momentum": 60 },
+      "notes": "Rung 2. The ban stands until a hook lifts it; ladder.ts applies the mood cost each season."
+    },
+    {
+      "id": "L-004",
+      "title": "The road",
+      "arc": "realm",
+      "type": "choice",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, they were waiting on the road, dressed as bandits, and they were not bandits. Your men did well and you are alive, which is more than was intended. We have one of them. He names a man who has been dead two years. The coin on him is new and northern. And Odo, who was to ride with you and did not, cannot be found."
+        },
+        {
+          "speaker": "steward",
+          "text": "This wouldn't stand up before any court in the kingdom, my lord. It was the king. We both know it. Not enough to prosecute, but enough to know. He knows you know. What you do now decides the rest of your life."
+        }
+      ],
+      "onFire": { "flags": { "king_attempt": true }, "record": "An attempt on the lord's life on the road pointed at the king without proving anything." },
+      "knows": [
+        "The lord's counters: hunt the traitor among his own men; say nothing and prepare; make it public and force the quarrel into the open.",
+        "Submitting now buys years: a publicly reconciled king cannot easily try again. It costs more renown than submitting after the warning."
+      ],
+      "choices": {
+        "prompt": "After the attempt.",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "prepare", "label": "Say nothing, and prepare", "default": true, "effects": { "record": "The lord said nothing of the attempt and began to gather his friends." } },
+          { "id": "make_public", "label": "Make it public and force the quarrel into the open", "effects": { "flags": { "quarrel_public": true }, "renown": "small", "record": "The lord accused the king openly of the attempt on his life." } },
+          { "id": "submit", "label": "Go to court and submit, while the whole court watches", "effects": { "flags": { "submitted_to_king": "+1" }, "renown": "-moderate", "away": { "reason": "at court, submitting to the king who tried to kill him", "seasons": 1 }, "record": "The lord submitted to the king after the attempt on his life; it bought years." } }
+        ]
+      },
+      "hooks": [
+        { "id": "hunt_traitor", "trigger": "The lord hunts the traitor among his own men.", "effects": { "flags": { "traitor_hunted": true }, "mood": -3 } }
+      ],
+      "hookWindow": 4,
+      "links": { "arc": "ladder", "momentum": 60 },
+      "notes": "Rung 3. The attempt fails by design (the inciting incident). 'prepare' and 'make_public' start the quest in quest.ts."
+    },
+    {
+      "id": "Q-001",
+      "title": "Gathering support",
+      "arc": "realm",
+      "type": "live",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "Then it is the great men, my lord, and we must count them. Nine who matter, and I can speak with confidence about four or five of them. The king starts with three sworn to him and takes everyone we fail to win, so six of nine is only even, and one of the six will turn on the day. A careful man wants seven. Each is a season's work, and some of them you must go to yourself. Sending a steward to talk about a marriage is an insult."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "The bishops and abbots are mine to speak to, my lord. And when it comes to the crown itself, remember that the bishops make a king. The great men elect him; the Church anoints him. There are three ways to have them do it, and only one of them does not cost you the Church for the rest of your life."
+        },
+        {
+          "speaker": "steward",
+          "when": "quest_attempt >= 1",
+          "text": "And it is harder this time, my lord. Nobody weds a daughter to a man who tried and submitted. Nobody fears the alternative when you are the alternative. God evidently did not favour you the first time. What is left is grievance, money, land, office and men who want a protector: a coalition of malcontents, against a king who has had years to prepare."
+        }
+      ],
+      "knows": [
+        "Envoys: Ermenald to bishops and abbots; Aldric to other stewards; the lord in person to anyone whose price is marriage or respect; a craftsman where the price is a mill or an engine.",
+        "Each named ally brings his own followers: nine conversations become forty or fifty men at the assembly."
+      ],
+      "hooks": [
+        { "id": "approach_grievance", "trigger": "An approach to the lord with a grievance against the king.", "effects": { "record": "Approached the lord who bears a grievance against the king." } },
+        { "id": "approach_money", "trigger": "An approach, with silver, to the lord whose price is money.", "effects": { "cost": { "denarii": "{ally_price}" }, "record": "Paid silver to the lord whose price is money." } },
+        { "id": "approach_land", "trigger": "A promise of estates to the lord whose price is land.", "effects": { "record": "Promised estates to the lord whose price is land." } },
+        { "id": "approach_office", "trigger": "Ermenald offers an office or a bishopric after the victory.", "effects": { "record": "Offered an office after the victory." } },
+        { "id": "approach_marriage", "trigger": "The lord goes in person to offer a marriage into his house.", "requires": "quest_attempt == 0", "effects": { "record": "Offered a marriage into the lord's house." } },
+        { "id": "approach_debt", "trigger": "An approach to the lord who owes the player for old kindnesses.", "effects": { "record": "Called in sixty years of small kindnesses." } },
+        { "id": "approach_fear", "trigger": "Ermenald reassures the churchman who fears the king more than he fears the lord.", "requires": "quest_attempt == 0", "effects": { "record": "Reassured the churchman who fears the alternative." } },
+        { "id": "approach_protection", "trigger": "The lord goes in person to the count who wants a man who will fight.", "effects": { "record": "Pitched himself as the protector who will actually fight." } },
+        { "id": "approach_divine", "trigger": "Ermenald speaks to the churchman who looks for the appearance of blessing.", "requires": "quest_attempt == 0", "effects": { "record": "Showed the signs of divine favour to the churchman who looks for them." } },
+        { "id": "pay_again", "trigger": "The king has outbid the lord for the man whose price is money; the lord pays again.", "requires": "quest_money_outbid", "effects": { "cost": { "denarii": "{ally_price}" }, "record": "Outbid the king for the lord whose price is money." } },
+        { "id": "call_the_assembly", "trigger": "The lord declares: it is time, call the great men and march.", "requires": "allies >= 4", "effects": { "record": "The lord called his supporters to arms against the king." } }
+      ],
+      "hookWindow": 400,
+      "links": { "arc": "quest", "momentum": 50 },
+      "notes": "Gathering. quest.ts resolves each approach the season after it is taken (an approach costs a season) and makes one of the won allies the betrayer. call_the_assembly moves to the battle."
+    },
+    {
+      "id": "Q-002",
+      "title": "The field against the king",
+      "arc": "realm",
+      "type": "battle",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "onFire": { "away": { "reason": "in the field against the king", "seasons": 1 } },
+      "battle": {
+        "momentum": 50,
+        "historical": "No such battle: this is the lord's own war. Everything he ever taught or demonstrated is in the field on both sides.",
+        "participation": ["full command"],
+        "cards": ["the betrayer turns with his contingent", "the king's own household troops", "allies armed with the lord's own ideas", "do not kill the king"],
+        "interimLine": "The field against the king is not yet written in this chronicle, my lord. One of ours turned on the day, as I said one would. The king is not dead, which is as it should be; he is not beaten either, not so that it ends. But he cannot remove you now, and that is what brings the great men to the assembly."
+      },
+      "links": { "arc": "quest", "momentum": 50 },
+      "notes": "The quest's battle: deferred to the battle pass. Winning does not make him king; it makes him impossible to remove."
+    },
+    {
+      "id": "Q-003",
+      "title": "The election and the crown",
+      "arc": "realm",
+      "type": "promotion",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward", "chaplain"],
+      "form": "spoken",
+      "deferred": "promotion",
+      "promotion": { "to": 5, "note": "The assembly elects; the bishops crown. Routes: earned / bought / coerced; the magnates' counter-offer is a duchy for a Carolingian child on the throne." },
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "The great men are assembled, my lord, those who came. The field proved you cannot be beaten; this is what makes you lawful, if anything does. They can stall. They can propose a Carolingian child. They can simply not attend, and an assembly without a quorum elects nobody. And there is the offer that is already being whispered: everything but the crown. A regency, or a duchy over the whole of Burgundy, if you will put a child of the old blood on the throne and stand behind him."
+        },
+        {
+          "speaker": "chaplain",
+          "text": "And the crown is the bishops' to give, my lord. If they crown you willingly it is because of forty years of what you have done for the Church, and nobody can take it from you. If you buy them, it works, and simony is a charge your enemies will use for the rest of your reign, and the pope can make trouble. If you put troops at the door, it works today, and the Church is your enemy for a reign that, at your age, will not be long. You must also be able to say why you. Boso had an imperial marriage; Odo had Paris. What have you?"
+        }
+      ],
+      "choices": {
+        "prompt": "The assembly, and the crown.",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "earned", "label": "Take the crown from bishops who crown you willingly", "requires": "allies >= 6 and favor_church >= 4 and not excommunicated", "effects": { "flags": { "crowned_king": true, "crown_route": "earned" }, "renown": "large", "record": "The great men elected the lord king and the bishops crowned him willingly." } },
+          { "id": "bought", "label": "Buy the bishops with gifts and privileges", "requires": "allies >= 6 and denarii >= 300 and not excommunicated", "effects": { "cost": { "denarii": 300 }, "flags": { "crowned_king": true, "crown_route": "bought", "simony_taint": true }, "renown": "large", "record": "The lord was elected and crowned; the bishops were bought, and simony was said of it ever after." } },
+          { "id": "coerced", "label": "Put troops at the door and be crowned", "requires": "allies >= 6 and men_under_arms >= 40 and not excommunicated", "effects": { "flags": { "crowned_king": true, "crown_route": "coerced", "church_enemy": true }, "renown": "large", "record": "The lord was crowned with troops at the church door; the Church never forgave it." } },
+          { "id": "counter_offer", "label": "Accept the magnates' offer: a duchy, and a Carolingian child on the throne", "default": true, "requires": "allies >= 4", "effects": { "flags": { "duke_by_counter_offer": true }, "renown": "moderate", "record": "The lord took the magnates' counter-offer: a duchy over Burgundy, and a child of the old blood on the throne." } },
+          { "id": "withdraw", "label": "Withdraw; the assembly elects nobody", "default": true, "effects": { "renown": "-moderate", "record": "The assembly broke up without electing anyone; the lord went home." } }
+        ]
+      },
+      "links": { "arc": "quest", "momentum": 50 },
+      "notes": "The quest's ending: deferred to the promotion pass (a rank change). quest.ts reads the choice and sets the rank when features.promotions is on."
+    }
+  ]
+}

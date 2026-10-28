@@ -163,6 +163,8 @@ export const HistoryEventSchema = z.object({
   arc: z.union([z.number().int().min(1).max(9), z.enum(["church", "economy", "natural", "ending", "realm"])]),
   type: z.enum(EVENT_TYPES),
   fires: z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER) }),
+  /** Delivered by an engine system (duties, ladder, quest), not the calendar; `fires` is nominal. */
+  rolled: z.boolean().default(false),
   order: z.number().int().default(0),
   requires: z.string().optional(),
   unless: z.string().optional(),
@@ -318,7 +320,14 @@ export const HistoryStateSchema = z.object({
       campNear: z.boolean().default(false),
     })
     .default({}),
-  duties: z.object({ lastRollTurn: z.number().int().nullable().default(null), favour: z.number().int().default(0) }).default({}),
+  duties: z
+    .object({
+      lastRollTurn: z.number().int().nullable().default(null),
+      favour: z.number().int().default(0),
+      /** Turn of the last D-007 hosting whose favour has been settled. */
+      hostingSettledTurn: z.number().int().nullable().default(null),
+    })
+    .default({}),
   /** The Duke track: opportunities Richard has taken because the lord did not (richard.ts). */
   richard: z.object({ taken: z.array(z.string()).default([]) }).default({}),
   ladder: z
@@ -335,6 +344,10 @@ export const HistoryStateSchema = z.object({
         .array(z.object({ motive: z.string(), name: z.string(), status: z.enum(["unknown", "won", "refused", "hedging", "betrayer"]) }))
         .default([]),
       phase: z.enum(["none", "gathering", "battle", "election", "crowned", "submitted", "failed"]).default("none"),
+      /** Turn the last approach was resolved (one a season). */
+      lastApproachTurn: z.number().int().nullable().default(null),
+      /** Turn the phase last changed. */
+      phaseTurn: z.number().int().nullable().default(null),
     })
     .default({}),
   diffusion: z
@@ -357,6 +370,10 @@ export const HistoryStateSchema = z.object({
           }),
         )
         .default([]),
+      /** A yield-raising method reached the kingdom and the grain bands were cut once (03_HISTORY §12). */
+      grainCut: z.boolean().default(false),
+      /** Year of the last espionage roll. */
+      lastSpyYear: z.number().int().nullable().default(null),
     })
     .default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),
