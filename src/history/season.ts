@@ -1,4 +1,5 @@
 import type { WorldState } from "../engine/schema";
+import { tickAge } from "./age";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
 import { tickDiffusion } from "./diffusion";
 import { tickDuties } from "./duties";
@@ -31,6 +32,8 @@ export type HistoryPassResult = {
   forcedSeverity: number;
   /** Ids delivered this pass. */
   fired: string[];
+  /** The lord died of old age at this season's turn (03_HISTORY §11.2). */
+  died: boolean;
 };
 
 /**
@@ -39,7 +42,7 @@ export type HistoryPassResult = {
  * State is mutated (flags, fired, deadlines); the caller posts the beats.
  */
 export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn: number): HistoryPassResult {
-  const out: HistoryPassResult = { beats: [], refereeLines: [], effects: [], suppressOther: false, forcedWeatherId: null, forcedSeverity: 1, fired: [] };
+  const out: HistoryPassResult = { beats: [], refereeLines: [], effects: [], suppressOther: false, forcedWeatherId: null, forcedSeverity: 1, fired: [], died: false };
   if (state.history.dead) return out;
   const content = historyContent();
 
@@ -130,5 +133,13 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const diffusion = tickDiffusion(state, incoming, turn);
   out.beats.push(...diffusion.beats);
   out.effects.push(...diffusion.lines);
+
+  // Last: the old man's season. 911-F1 above still fires in the autumn he dies.
+  const age = tickAge(state, incoming, turn);
+  if (age.died) {
+    out.died = true;
+    if (age.line) out.effects.push(age.line);
+    out.refereeLines.push("History: the lord of Fontenay has died of old age at the turn of this season. Report the season as the household saw it; the chronicle's last page is written separately.");
+  }
   return out;
 }

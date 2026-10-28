@@ -122,6 +122,44 @@ describe("history layer in the game controller", () => {
     expect(game.messages.some((m) => m.npcId === "steward" && m.text === "The matter settled itself: send nothing.")).toBe(true);
   });
 
+  it("when the lord dies the season writes the last page, and the next season refuses to turn", async () => {
+    setHistoryContentForTests({ events: [], features: { ladder: false, quest: false, promotions: false, diffusion: false } });
+    const game = tempGame();
+    game.historyJumpTo(911, "autumn");
+    llmChatMock.mockImplementation(async (_s: unknown, messages: { content: string }[]) => {
+      const sys = messages.map((m) => m.content).join("\n");
+      if (sys.includes("the last page of a chronicle")) {
+        return JSON.stringify({ speech: `He died in the winter, in his bed, with the household about him.\n\n${"He had been a careful lord, and the land remembered it. ".repeat(6)}`, emotion: "neutral", proposals: [] });
+      }
+      return SEASON_JSON;
+    });
+    const view = await game.advanceSeason();
+    expect(view.error).toBeUndefined();
+    expect(game.state.meta.season).toBe("winter");
+    expect(game.state.history.dead).toEqual({ cause: "old_age", year: 911 });
+    expect(game.state.history.ending?.byModel).toBe(true);
+    expect(game.state.history.ending?.death).toBe("He died in the winter, in his bed, with the household about him.");
+    expect(game.state.history.ending?.summary).toContain("careful lord");
+    const again = await game.advanceSeason();
+    expect(again.error).toMatch(/dead/);
+    expect(game.state.meta.season).toBe("winter");
+    // Writing the page twice is a no-op.
+    const calls = llmChatMock.mock.calls.length;
+    await game.writeEnding();
+    expect(llmChatMock.mock.calls.length).toBe(calls);
+  });
+
+  it("a death in the field gets the fallback page when the model cannot be heard", async () => {
+    setHistoryContentForTests({ events: [] });
+    const game = tempGame();
+    game.state.player.dead = true;
+    llmChatMock.mockRejectedValue(new Error("no key"));
+    await game.writeEnding();
+    expect(game.state.history.dead?.cause).toBe("battle");
+    expect(game.state.history.ending?.byModel).toBe(false);
+    expect(game.state.history.ending?.death).toMatch(/fell in the field/);
+  });
+
   it("dev hooks jump the calendar and set registered flags", () => {
     const game = tempGame();
     game.historyJumpTo(840, "autumn");

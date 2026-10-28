@@ -35,6 +35,7 @@ const api = {
   setTutorial: (patch: { status?: "offered" | "active" | "done" | "declined"; step?: number }) =>
     ipcRenderer.invoke("game:setTutorial", patch),
   battleFinish: (disposition?: "settle" | "sell") => ipcRenderer.invoke("game:battleFinish", disposition),
+  writeEnding: () => ipcRenderer.invoke("game:writeEnding"),
   raiseCall: (kind: "summons" | "raid" | "bandits") => ipcRenderer.invoke("game:raiseCall", kind),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (patch: {

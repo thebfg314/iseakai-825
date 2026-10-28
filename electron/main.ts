@@ -187,6 +187,7 @@ ipcMain.handle("game:setTutorial", (_e, patch: { status?: "offered" | "active" |
   requireGame().setTutorial(patch),
 );
 ipcMain.handle("game:battleFinish", (_e, disposition?: "settle" | "sell") => requireGame().battleFinish(disposition));
+ipcMain.handle("game:writeEnding", async () => requireGame().writeEnding());
 ipcMain.handle("game:raiseCall", (_e, kind: "summons" | "raid" | "bandits") => requireGame().raiseCall(kind));
 
 ipcMain.handle("settings:get", () => loadSettings());

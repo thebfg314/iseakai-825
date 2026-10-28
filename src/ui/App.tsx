@@ -152,6 +152,21 @@ export function App() {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [view?.messages.length, view?.sceneNpcId]);
 
+  // The chronicle's last page (03_HISTORY §13): written once, when the lord is dead and no page exists yet.
+  const needsEnding = Boolean(view && !view.state.battle_session && (view.state.history?.dead || view.state.player.dead || view.state.player.captive) && !view.state.history?.ending);
+  useEffect(() => {
+    if (!needsEnding || busy || !window.api.writeEnding) return;
+    void (async () => {
+      try {
+        const result = (await window.api.writeEnding()) as GameView;
+        if (result && "state" in result) setView(result);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per death
+  }, [needsEnding]);
+
   useEffect(() => {
     if (!focusComposer.current || busy) return;
     focusComposer.current = false;
@@ -502,17 +517,30 @@ export function App() {
     );
   }
 
-  if ((view.state.player.dead || view.state.player.maimed || view.state.player.captive) && !view.state.battle_session) {
+  if ((view.state.history?.dead || view.state.player.dead || view.state.player.maimed || view.state.player.captive) && !view.state.battle_session) {
+    const ending = view.state.history?.ending ?? null;
     return (
       <>
-        <div className="title-screen empty-villa" role="dialog" aria-label={view.state.player.dead ? "The lord is dead" : view.state.player.captive ? "The lord is a captive" : "The lord is maimed"} style={{ backgroundImage: `url(${TITLE_MENU_BACKGROUND})` }}>
-          <p className="empty-villa-words">
-            {view.state.player.dead
-              ? "The lord of Fontenay fell in battle. The villa passes to other hands, and the chronicle of this house ends here."
-              : view.state.player.captive
-                ? "Taken in battle, and the chest could not meet the ransom. No one came with the rest. The lord of Fontenay stays in his captors' hands; the villa passes to other hands, and the chronicle of this house ends here."
-                : "Two wounds that never healed. The lord of Fontenay can no longer sit a horse nor hold a court; the villa passes to other hands, and the chronicle of this house ends here."}
-          </p>
+        <div className="title-screen empty-villa" role="dialog" aria-label={view.state.history?.dead || view.state.player.dead ? "The lord is dead" : view.state.player.captive ? "The lord is a captive" : "The lord is maimed"} style={{ backgroundImage: `url(${TITLE_MENU_BACKGROUND})` }}>
+          {ending ? (
+            <div className="empty-villa-words ending-page" aria-label="The last page of the chronicle">
+              <p className="ending-death">{ending.death}</p>
+              {ending.summary.split(/\n\s*\n/).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+              <p className="ending-voice">— {ending.voice}</p>
+            </div>
+          ) : (
+            <p className="empty-villa-words">
+              {view.state.history?.dead || view.state.player.dead
+                ? needsEnding
+                  ? "The lord of Fontenay is dead. The household gathers to say what he was…"
+                  : "The lord of Fontenay fell in battle. The villa passes to other hands, and the chronicle of this house ends here."
+                : view.state.player.captive
+                  ? "Taken in battle, and the chest could not meet the ransom. No one came with the rest. The lord of Fontenay stays in his captors' hands; the villa passes to other hands, and the chronicle of this house ends here."
+                  : "Two wounds that never healed. The lord of Fontenay can no longer sit a horse nor hold a court; the villa passes to other hands, and the chronicle of this house ends here."}
+            </p>
+          )}
           <nav className="title-menu">
             <button className="primary" disabled={busy} onClick={() => setScreen("title")}>
               Title

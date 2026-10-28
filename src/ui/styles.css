@@ -61,6 +61,19 @@ html, body, #root { margin: 0; height: 100%; background: #000; color: var(--ink)
   color: var(--parchment);
 }
 
+/* The chronicle's last page (03_HISTORY §13). */
+.ending-page {
+  max-width: 44rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  text-align: left;
+  font-size: 1.05rem;
+  padding: 0 1rem;
+}
+.ending-page p { margin: 0 0 0.9rem; }
+.ending-page .ending-death { font-style: italic; }
+.ending-page .ending-voice { text-align: right; opacity: 0.8; }
+
 .talk { display: flex; min-height: 0; flex: 1; }
 .merchant-scene {
   display: flex;

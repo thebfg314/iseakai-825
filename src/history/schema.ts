@@ -378,7 +378,9 @@ export const HistoryStateSchema = z.object({
     .default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),
   away: z.object({ reason: z.string(), untilTurn: z.number().int() }).nullable().default(null),
-  dead: z.object({ cause: z.enum(["old_age", "battle", "illness", "wound"]), year: z.number().int() }).nullable().default(null),
+  dead: z.object({ cause: z.enum(["old_age", "battle", "illness", "wound", "captivity"]), year: z.number().int() }).nullable().default(null),
+  /** The closing screen (03_HISTORY §13): the death and the life, written once. */
+  ending: z.object({ death: z.string(), summary: z.string(), voice: z.string(), byModel: z.boolean().default(false) }).nullable().default(null),
 });
 export type HistoryState = z.infer<typeof HistoryStateSchema>;
 

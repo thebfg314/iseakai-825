@@ -242,8 +242,10 @@ describe("Arcs 7–9 content", () => {
     state.resources.denarii = 100;
     expect(hook(state, "910-E1", "witness_cluny", "chaplain").ok).toBe(true);
     expect(state.history.flags.cluny_witness).toBe(true);
+    // From 910 the age roll runs (Step G): Chartres is heard only if he lives to hear it.
     const autumn911 = clock.to(911, "autumn");
-    expect(autumn911[autumn911.length - 1].fired).toContain("911-F1");
+    if (state.history.dead) expect(state.history.dead.year).toBeGreaterThanOrEqual(910);
+    else expect(autumn911[autumn911.length - 1].fired).toContain("911-F1");
   });
 
   it("minting: the notes are flavour, the mint itself is count-rank", () => {

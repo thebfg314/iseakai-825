@@ -18,6 +18,8 @@ import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from ".
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { runHistorySeasonPass } from "../history/season";
+import { markDeath } from "../history/age";
+import { endingFallback, endingSystemPrompt, endingUserPrompt, endingVoice } from "../history/ending";
 import type { HistoryBeat } from "../history/deliver";
 import type { HistoryApplyResult } from "../history/hooks";
 import { applyFlagOp } from "../history/flags";
@@ -191,6 +193,7 @@ export type { DialogueResult, GameView, SeasonResult } from "../shared/types";
 export const SPEECH_TOKENS = 2500;
 export const BOOKS_TOKENS = 3500;
 export const SEASON_TOKENS = 4000;
+export const ENDING_TOKENS = 2500;
 
 /** Ledger drawers plus whatever the research tool found this turn, so the books pass prices from the same facts. */
 function withResearch(drawers: Record<string, unknown>, research?: Record<string, unknown>): Record<string, unknown> {
@@ -1579,8 +1582,13 @@ export class GameController {
     const record = this.state.battle_history.at(-1);
     if (err) return { ...this.view(), error: err };
     if (record) this.ledgerNote(`Written in the chronicle: ${record.summary}`, "steward");
-    if (this.state.player.dead) this.ledgerNote("The lord of Fontenay is dead. The chronicle ends here.", "steward");
-    else if (this.state.player.captive) this.ledgerNote("The ransom could not be met. The lord of Fontenay remains in his captors' hands; the chronicle ends here.", "steward");
+    if (this.state.player.dead) {
+      markDeath(this.state, "battle");
+      this.ledgerNote("The lord of Fontenay is dead. The chronicle ends here.", "steward");
+    } else if (this.state.player.captive) {
+      markDeath(this.state, "captivity");
+      this.ledgerNote("The ransom could not be met. The lord of Fontenay remains in his captors' hands; the chronicle ends here.", "steward");
+    }
     return this.view();
   }
 
@@ -1595,6 +1603,9 @@ export class GameController {
     if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
       markEstateAbandoned(this.state);
       return { ...this.view(), effects: [{ kind: "info", text: ABANDONED_GAME_OVER }] };
+    }
+    if (this.state.history.dead) {
+      return { ...this.view(), effects: [], error: "The lord of Fontenay is dead. The chronicle of this house is closed." };
     }
     if (this.state.battle_session) {
       return { ...this.view(), effects: [], error: "The lord is in the field. The season cannot turn until the battle is done." };
@@ -1702,6 +1713,7 @@ export class GameController {
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       this.postHistoryBeats(history.beats);
+      if (history.died) await this.writeEnding();
       await this.refreshCredits();
       return { ...this.view(), effects };
     } catch (err) {
@@ -1732,9 +1744,47 @@ export class GameController {
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       this.postHistoryBeats(history.beats);
+      if (history.died) await this.writeEnding();
       await this.refreshCredits();
       return { ...this.view(), effects };
     }
+  }
+
+  /**
+   * The closing page (03_HISTORY §13): the death, then the life, written by the
+   * model from the record. Written once; the chronicle entry stands in when the
+   * model cannot be heard. Also called by the hall for a death in the field.
+   */
+  async writeEnding(): Promise<GameView> {
+    if (!this.state.history.dead) {
+      if (this.state.player.dead) markDeath(this.state, "battle");
+      else if (this.state.player.captive) markDeath(this.state, "captivity");
+      else return this.view();
+    }
+    if (this.state.history.ending) return this.view();
+    const fallback = endingFallback(this.state);
+    const voice = endingVoice(this.state);
+    this.state.history.ending = { death: fallback.death, summary: fallback.summary, voice, byModel: false };
+    try {
+      const parsed = await this.callLlm(
+        [
+          { role: "system", content: endingSystemPrompt() },
+          { role: "user", content: endingUserPrompt(this.state) },
+        ],
+        ENDING_TOKENS,
+        { purpose: "the last page", allowRepair: false },
+      );
+      const text = parsed.speech.trim();
+      const gap = text.search(/\n\s*\n/);
+      if (text.length > 200) {
+        this.state.history.ending = gap > 0 ? { death: text.slice(0, gap).trim(), summary: text.slice(gap).trim(), voice, byModel: true } : { death: fallback.death, summary: text, voice, byModel: true };
+      }
+    } catch (err) {
+      this.log("engine", "EVENT", `The last page could not be written by the model: ${(err as Error).message}`);
+    }
+    this.log("engine", "SEASON", `The chronicle closes: ${this.state.history.dead?.cause} in ${this.state.history.dead?.year}.`);
+    this.finishPlay(`The lord died (${this.state.history.dead?.cause}). This play is over.`);
+    return this.view();
   }
 
   /** Verbatim calendar lines land on their speaker's tab; the tab badge says there is news. */
