@@ -14,6 +14,10 @@ export type LayoutOptions = {
   weather?: string;
   /** 0–1: how much terrain to scatter. 0 = open grassland. */
   roughness?: number;
+  /** Terrain weights replacing the generator's own (a campaign's marsh, a river line). Unknown ids are ignored. */
+  terrainWeights?: Record<string, number>;
+  /** A fixed name for the ground, instead of one rolled from the list. */
+  name?: string;
 };
 
 const TERRAIN_WEIGHTS: [string, number][] = [
@@ -45,11 +49,14 @@ export function rollWeather(rng: Rng): string {
 /** One random battlefield. Rivers never land in a side's own deployment rows, so nobody deploys into water. */
 export function generateLayout(rng: Rng, opts: LayoutOptions = {}): Battlefield {
   const rough = opts.roughness ?? 0.5;
-  const field = emptyBattlefield(rng.pick(LAYOUT_NAMES), opts.weather ?? rollWeather(rng));
+  const field = emptyBattlefield(opts.name ?? rng.pick(LAYOUT_NAMES), opts.weather ?? rollWeather(rng));
+  const known = new Set(TERRAIN_WEIGHTS.map(([id]) => id));
+  const custom = opts.terrainWeights ? (Object.entries(opts.terrainWeights).filter(([id, w]) => known.has(id) && w > 0) as [string, number][]) : [];
+  const weights = custom.length ? custom : TERRAIN_WEIGHTS;
   for (let row = 1; row <= GRID_ROWS; row++) {
     for (let col = 0; col < GRID_COLUMNS; col++) {
       if (rng.float() > rough) continue;
-      const id = pickWeighted(rng, TERRAIN_WEIGHTS);
+      const id = pickWeighted(rng, weights);
       if (id === "grassland") continue;
       if (id === "river" && row !== 3) continue;
       const cell = field.cells[cellIndex({ row, col })];

@@ -20,6 +20,7 @@ function clockFor(state: WorldState) {
   const next = (): HistoryPassResult => {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
+    if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
     const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;

@@ -1,3 +1,4 @@
+import { unitSheet } from "../combat/registry";
 import { CANONICAL_RESOURCES } from "../engine/schema";
 import { referencedNames } from "./conditions";
 import { historyContent, type HistoryContent } from "./load";
@@ -164,13 +165,43 @@ export function lintHistory(content: HistoryContent = historyContent()): string[
     }
     if (e.deferred === "battle" && !e.battle) problems.push(`${w}: deferred battle without battle data`);
     if (e.deferred === "promotion" && !e.promotion) problems.push(`${w}: deferred promotion without promotion data`);
-    if (e.type === "battle" && e.deferred !== "battle") problems.push(`${w}: type battle must be deferred: "battle" in this pass`);
+    if (e.type === "battle" && e.deferred !== "battle") problems.push(`${w}: type battle must be deferred: "battle" (the battle pass reads event.battle and the forces table)`);
+    if (e.deferred === "battle" && content.battles.length && !content.battles.some((b) => b.event === e.id && !b.supply)) problems.push(`${w}: deferred battle without a forces table entry (data/history/battles.json)`);
     if (e.type === "promotion" && e.deferred !== "promotion") problems.push(`${w}: type promotion must be deferred: "promotion" in this pass`);
     if (!e.script.length && !e.stages.length && e.deferred !== "promotion" && e.deferred !== "battle") problems.push(`${w}: nothing to say`);
     if (e.carry && e.carryMax < 1) problems.push(`${w}: carry without carryMax`);
   };
 
   for (const e of content.events) checkEvent(e);
+  for (const b of content.battles) checkForces(b);
+  function checkForces(b: HistoryContent["battles"][number]) {
+    const w = `battles.${b.id}`;
+    const ev = content.byId.get(b.event);
+    if (!ev) problems.push(`${w}: names unknown event ${b.event}`);
+    else if (b.supply) {
+      if (!ev.supplyCheck) problems.push(`${w}: a supply-check battle on an event without a supply check`);
+      else if (!b.home) problems.push(`${w}: a supply-check battle must be home defence`);
+    } else if (ev.deferred !== "battle") problems.push(`${w}: ${b.event} is not a deferred battle`);
+    checkCondition(`${w}.when`, b.when);
+    const sheets = (lines: { sheet: string }[], where: string) => {
+      for (const l of lines) if (!unitSheet(l.sheet)) problems.push(`${where}: unknown unit sheet '${l.sheet}'`);
+    };
+    sheets(b.enemy, `${w}.enemy`);
+    for (const [rank, row] of Object.entries(b.rows)) {
+      sheets(row.allies, `${w}.rows.${rank}`);
+      if (row.fill) sheets(row.fill, `${w}.rows.${rank}.fill`);
+      if (b.home && (row.allies.length || row.slots)) problems.push(`${w}.rows.${rank}: home defence has no allies at any rank`);
+    }
+    if (!b.home && !b.quest && !Object.keys(b.rows).length) problems.push(`${w}: no allied rows`);
+    for (const key of ["won", "lost", "held", "any"] as const) checkEffects(`${w}.results.${key}`, b.results?.[key]);
+    if (b.survivor) {
+      checkEffects(`${w}.survivor`, b.survivor.effects);
+      const named = Object.values(b.rows).some((r) => r.allies.some((l) => l.id === b.survivor!.unit));
+      if (!named) problems.push(`${w}.survivor: no allied line carries id '${b.survivor.unit}'`);
+    }
+    checkEffects(`${w}.onRefuse`, b.onRefuse);
+    for (const [i, a] of b.abstract.entries()) if (a.morale === 0) problems.push(`${w}.abstract[${i}]: a morale event of nothing`);
+  }
   for (const [id, def] of content.flags) {
     if (def.setBy === "engine") continue;
     if (!setters.has(id)) problems.push(`flag '${id}' is registered but nothing sets it`);

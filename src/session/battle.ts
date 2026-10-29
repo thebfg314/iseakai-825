@@ -37,6 +37,10 @@ import { candidateObjectives, checkObjective, objectiveBonus } from "../combat/o
 import type { BattleCall, BattleCallKind, BattleNarration, BattleSession, Objective, WorldState } from "../engine/schema";
 import { CALL_TEXT } from "../engine/military";
 import { newId } from "../engine/util";
+import { applyAbstractLayer, applyHistoricalResults, applyLineMorale, historicalEncounter, historicalFort, historyForces, refuseHistoricalBattle, type HistoryRosterLine } from "../history/battles";
+import { participationBand } from "../history/age";
+import { bodyAge } from "../history/flags";
+import type { BattleForces } from "../history/schema";
 
 /**
  * Campaign battle flow (Phase 3): call to arms → muster → Rank-and-File fight narrated
@@ -87,6 +91,14 @@ export function refuseCall(state: WorldState, deps: BattleDeps): string {
   const call = state.battle_call;
   if (!call) return "There is no call to refuse.";
   state.battle_call = null;
+  if (call.kind === "history") {
+    // 03_HISTORY §9: turning back once the call has gone out costs what the tables say (count's opinion, renown).
+    const lines = refuseHistoricalBattle(state, call);
+    const forces = call.historyId ? historyForces(call.historyId) : undefined;
+    deps.log("player", "REJECT", `Turned back from ${forces?.title ?? call.eventId}. ${lines.join(" ")}`);
+    if (call.supply) return `You bar the hall and keep the people inside. ${lines.join(" ")}`.trim();
+    return `You turn back. The men who had gathered go home again, and the word goes ahead of you. ${lines.join(" ")}`.trim();
+  }
   if (call.kind !== "summons") state.flags.active_threat = true;
   const text =
     call.kind === "summons"
@@ -94,6 +106,17 @@ export function refuseCall(state: WorldState, deps: BattleDeps): string {
       : "You bar the hall and keep the people inside. What they take from the outlying manses, they take.";
   deps.log("player", "REJECT", `Refused the call to arms (${call.kind}).`);
   return text;
+}
+
+/** The forces table behind a history session, if any. */
+function sessionForces(session: BattleSession | null | undefined): BattleForces | undefined {
+  return session?.historical ? historyForces(session.historical.id) : undefined;
+}
+
+/** A fight at the lord's own gate: a raid, or a history battle marked home defence. */
+function localFight(session: BattleSession): boolean {
+  if (session.callKind === "raid" || session.callKind === "bandits") return true;
+  return Boolean(sessionForces(session)?.home);
 }
 
 export type AcceptResult = { started: boolean; text: string };
@@ -133,25 +156,45 @@ export function acceptCall(state: WorldState, deps: BattleDeps): AcceptResult {
   const call = state.battle_call;
   if (!call) return { started: false, text: "There is no call to answer." };
   const fit = canRideToWar(state);
-  if (!fit.ok) return { started: false, text: fit.reason ?? "The lord cannot ride." };
+  if (!fit.ok && call.mode !== "captain") return { started: false, text: fit.reason ?? "The lord cannot ride." };
   const owned = state.military.units.filter((u) => u.strength > 0);
+  if (call.kind === "history") {
+    // The sector is composed at the muster from the forces table; the solo rule never applies (allies, or a militia at the gate).
+    const forces = call.historyId ? historyForces(call.historyId) : undefined;
+    if (!forces) {
+      state.battle_call = null;
+      return { started: false, text: "The call has no field behind it." };
+    }
+    if (call.mode === "captain" && owned.length === 0) {
+      state.battle_call = null;
+      deps.log("player", "REJECT", `Could not send men to ${forces.title}: no men to send.`);
+      return { started: false, text: "You chose to send men under a captain, and there are no men to send. The contingent does not go." };
+    }
+    state.battle_session = {
+      ...emptySession(call),
+      historical: { id: forces.id, eventId: call.eventId, mode: call.mode ?? "attached", abstractApplied: [], betrayed: false, supply: call.supply },
+    };
+    deps.log("player", "APPLY", `Answered the call to ${forces.title} (${call.mode ?? "attached"}).`);
+    return { started: true, text: call.text };
+  }
   if (owned.length === 0 && !canLeadFile(state)) {
     // A permanent wound bars him from riding in a file; with no men of his own there is no other way to the field.
     state.battle_call = null;
     deps.log("player", "REJECT", `Could not answer the call (${call.kind}): a permanent wound bars the lord from the line and he has no men to command.`);
     return { started: false, text: "The old wound will not let you sit the line with the other horsemen, and you have no men of your own to lead from behind it. The call goes unanswered." };
   }
-  if (!hasAllies(call.kind) && owned.length === 0) {
+  const randomKind = call.kind as EncounterKind;
+  if (!hasAllies(randomKind) && owned.length === 0) {
     // Solo rule: a lone rider cannot hold a villa. The raid succeeds; the lord's own fate is one roll against the
     // §8.7 rout odds of a single Caballarius run at by the raiders — a mounted man outruns foot, not horse.
     const rng = createRng(call.seed);
-    const loss = soloLossConsequences(call.kind, state.resources.denarii, rng);
+    const loss = soloLossConsequences(randomKind, state.resources.denarii, rng);
     state.resources.denarii = Math.max(0, state.resources.denarii - loss.denariiLost);
     for (const key of ["cattle", "sheep", "pigs"] as const) {
       state.resources[key] = Math.max(0, state.resources[key] - Math.floor(state.resources[key] * loss.livestockFraction));
     }
     state.flags.active_threat = true;
-    const split = soloFateOdds(call.kind, call.seed);
+    const split = soloFateOdds(randomKind, call.seed);
     const roll = rng.float();
     let fate: string;
     if (roll < split.killed) {
@@ -179,7 +222,12 @@ export function acceptCall(state: WorldState, deps: BattleDeps): AcceptResult {
     deps.log("engine", "EVENT", `Solo loss (${call.kind}): −${loss.denariiLost} denarii, herds thinned. ${fate} ${odds}`);
     return { started: false, text: `${loss.text} ${loss.denariiLost} denarii and part of the herds are gone. ${fate}` };
   }
-  state.battle_session = {
+  state.battle_session = emptySession(call);
+  return { started: true, text: call.text };
+}
+
+function emptySession(call: BattleCall): BattleSession {
+  return {
     tier: "rank_and_file",
     callKind: call.kind,
     phase: "muster",
@@ -206,8 +254,8 @@ export function acceptCall(state: WorldState, deps: BattleDeps): AcceptResult {
     repositionPool: [],
     pendingEncounter: null,
     prisonersHeld: 0,
+    historical: null,
   };
-  return { started: true, text: call.text };
 }
 
 /**
@@ -220,21 +268,46 @@ export function musterAndRide(state: WorldState, deps: BattleDeps, bringIds: rea
   const call = state.battle_call;
   if (!session || session.phase !== "muster" || !call) return "No muster is waiting.";
   const owned = state.military.units.filter((u) => bringIds.includes(u.id) && u.strength > 0);
-  const tier = tierFor(owned.length, state.player.fullCommandGranted);
-  const enc = generateEncounter(call.kind, call.seed, { region: state.meta.region, year: state.meta.year });
+  let tier: BattleSession["tier"];
+  let enc: { allies: RosterLine[]; enemy: RosterLine[]; premise: string; battlefield: BattleState["battlefield"] };
+  let forces: BattleForces | undefined;
+  if (call.kind === "history") {
+    if (call.mode === "captain" && owned.length === 0) return "You chose to send men under a captain: choose at least one file to send.";
+    const h = historicalEncounter(state, call, owned.length);
+    if (!h) return "The call has no field behind it.";
+    forces = h.forces;
+    tier = h.tier;
+    const rng = createRng(call.seed ^ seedFromString(h.forces.id));
+    const fort = historicalFort(h.forces);
+    const battlefield = generateLayout(rng, {
+      weather: h.forces.field?.weather,
+      roughness: h.forces.field?.roughness ?? (h.forces.home ? 0.3 : 0.5),
+      terrainWeights: h.forces.field?.terrain,
+      name: h.forces.field?.name,
+      fortification: fort ? { side: fort.side, typeId: fort.typeId, row: frontRow(fort.side), makeshift: fort.makeshift, pointsPerCell: fort.points } : undefined,
+    });
+    enc = { allies: h.allies, enemy: h.enemy, premise: h.premise, battlefield };
+  } else {
+    tier = tierFor(owned.length, state.player.fullCommandGranted);
+    enc = generateEncounter(call.kind as EncounterKind, call.seed, { region: state.meta.region, year: state.meta.year });
+  }
   session.tier = tier;
   session.broughtUnitIds = owned.map((u) => u.id);
   session.premise = enc.premise;
   session.pendingEncounter = { allies: enc.allies, enemy: enc.enemy, premise: enc.premise };
   state.battle_call = null;
-  deps.log("player", "APPLY", `Rode to battle (${call.kind}, ${tier}) with ${owned.length} unit(s) of his own.`);
+  deps.log("player", "APPLY", `Rode to battle (${forces?.title ?? call.kind}, ${tier}) with ${owned.length} unit(s) of his own.`);
 
   if (tier === "full_command") {
     const rng = createRng(call.seed ^ 0x9e3779b9);
+    const fixedFort = fortFor(state, session, forces);
     const pool = generateCandidatePool(rng, {
       weather: enc.battlefield.weather,
+      roughness: forces?.field?.roughness,
+      terrainWeights: forces?.field?.terrain,
+      name: forces?.field?.name,
       // A9.5: a fortification fixed by the campaign filters the pool to layouts that include it.
-      fortification: foughtAtTheVilla(call.kind) ? { side: "player", typeId: villaWallKind(state), row: frontRow("player"), pointsPerCell: 3 } : undefined,
+      fortification: fixedFort ? { side: fixedFort.side, typeId: fixedFort.typeId, row: frontRow(fixedFort.side), makeshift: fixedFort.makeshift, pointsPerCell: fixedFort.points } : undefined,
     });
     const winner = rollDuelWinner(rng);
     session.scouting = { pool, winner, role: null, shortlist: [], stage: "choose_role" };
@@ -264,6 +337,19 @@ export function musterAndRide(state: WorldState, deps: BattleDeps, bringIds: rea
   return undefined;
 }
 
+/** The fortification face fixed by the campaign: the villa's own walls at the gate, or the one the forces table gives. */
+function fortFor(state: WorldState, session: BattleSession, forces: BattleForces | undefined): { side: "player" | "enemy"; typeId: string; makeshift: boolean; points: number } | undefined {
+  const fromTable = historicalFort(forces);
+  if (fromTable) return fromTable;
+  if (session.callKind === "raid" || forces?.home) return { side: "player", typeId: villaWallKind(state), makeshift: forces?.home ? villaWallMakeshift(state) : false, points: 3 };
+  return undefined;
+}
+
+/** Battle_Force_Tables, local encounters: the villa's point is makeshift unless the lord has invested in a palisade or a stone wall. */
+export function villaWallMakeshift(state: WorldState): boolean {
+  return !state.holdings.some((h) => h.features.includes("stone_wall") || h.features.includes("palisade"));
+}
+
 /** Create the battle for the session's encounter on a chosen field; the enemy deploys, the player's side does not yet. */
 function buildBattle(state: WorldState, battlefield: BattleState["battlefield"]): string | undefined {
   const session = state.battle_session!;
@@ -271,6 +357,8 @@ function buildBattle(state: WorldState, battlefield: BattleState["battlefield"])
   if (!enc) return "The muster has been lost.";
   const owned = state.military.units.filter((u) => session.broughtUnitIds.includes(u.id) && u.strength > 0);
   const tier = session.tier;
+  const forces = sessionForces(session);
+  const mode = session.historical?.mode ?? "attached";
   const battle = createBattle({
     id: newId("battle"),
     seed: session.encounterSeed,
@@ -289,49 +377,68 @@ function buildBattle(state: WorldState, battlefield: BattleState["battlefield"])
   battle.player.deferFate = tier === "rank_and_file";
   // Rank-and-File: the lord rides in the minor nobles' Caballarii, one horseman among many, NPC-led.
   // Above it he brings his own men and rides with one of them — no extra free file.
-  if (tier === "rank_and_file") {
+  // History battles: the file he rides in is one of the sector's own (the table's `lord` line).
+  if (tier === "rank_and_file" && !forces) {
     addUnit(battle, spawnUnit("caballarii", { id: LORD_FILE_ID, side: "player", owner: "ally", name: "The minor nobles' horse" }));
   }
   for (const u of owned) {
-    addUnit(battle, spawnUnit(u.sheetId, { id: `p-${u.id}`, side: "player", owner: "player", name: u.name, extraTags: u.veteran ? ["veteran"] : [], overrides: { strength: u.strength } }));
+    const unit = spawnUnit(u.sheetId, { id: `p-${u.id}`, side: "player", owner: "player", name: u.name, extraTags: u.veteran ? ["veteran"] : [], overrides: { strength: u.strength } });
+    // Andernach: his own files were asleep in the camp too, unless veterans kept their watch.
+    if (forces?.ownDisordered && !u.veteran) applyLineMorale(unit, { disordered: true });
+    addUnit(battle, unit);
   }
   let n = 0;
-  for (const line of enc.allies as RosterLine[]) {
-    for (let i = 0; i < (line.count ?? 1); i++) addUnit(battle, spawnUnit(line.sheetId, { id: `a-${line.sheetId}-${++n}`, side: "player", owner: "ally", name: line.name }));
+  let lordFilePlaced = false;
+  for (const line of enc.allies as HistoryRosterLine[]) {
+    for (let i = 0; i < (line.count ?? 1); i++) {
+      const lordFile = tier === "rank_and_file" && Boolean(forces) && line.lord && !lordFilePlaced;
+      const id = lordFile ? LORD_FILE_ID : `a-${line.lineId ?? line.sheetId}-${++n}`;
+      const unit = spawnUnit(line.sheetId, { id, side: "player", owner: "ally", name: line.name, extraTags: line.extraTags, overrides: line.overrides });
+      applyLineMorale(unit, line);
+      addUnit(battle, unit);
+      if (lordFile) lordFilePlaced = true;
+    }
   }
   n = 0;
-  for (const line of enc.enemy as RosterLine[]) {
-    for (let i = 0; i < (line.count ?? 1); i++) addUnit(battle, spawnUnit(line.sheetId, { id: `e-${line.sheetId}-${++n}`, side: "enemy", name: line.name, overrides: line.overrides }));
+  for (const line of enc.enemy as HistoryRosterLine[]) {
+    for (let i = 0; i < (line.count ?? 1); i++) {
+      const unit = spawnUnit(line.sheetId, { id: `e-${line.lineId ?? line.sheetId}-${++n}`, side: "enemy", name: line.name, extraTags: line.extraTags, overrides: line.overrides });
+      applyLineMorale(unit, line);
+      addUnit(battle, unit);
+    }
   }
   // Design review, item 8: attacked at the villa, the lord fights behind his own walls — timber to
-  // begin with, stone once a mason has raised one. The face runs along his front row.
-  if (foughtAtTheVilla(session.callKind)) {
-    const kind = villaWallKind(state);
-    const row = frontRow("player");
+  // begin with, stone once a mason has raised one. History battles bring the table's face: a city wall
+  // the lord holds, or one he must break. The face runs along its side's front row.
+  const fort = fortFor(state, session, forces);
+  if (fort) {
+    const row = frontRow(fort.side);
     for (let col = 0; col < GRID_COLUMNS; col++) {
       const cell = battle.battlefield.cells[cellIndex({ row, col })];
       cell.terrain = cell.terrain.filter((t) => t !== "river");
-      cell.fortification = buildFortificationCell(kind, "player", `${row}:${col}`, 3);
+      cell.fortification = buildFortificationCell(fort.typeId, fort.side, `${row}:${col}`, fort.points, fort.makeshift);
     }
-    pushLog(battle, "info", `The villa's ${kind === "stone" ? "stone wall" : "timber palisade"} stands along the lord's line; his files may hold it.`);
+    const what = `${fort.makeshift ? "makeshift " : ""}${fort.typeId === "stone" ? "stone wall" : "timber palisade"}`;
+    pushLog(battle, "info", fort.side === "player" ? `A ${what} stands along the lord's line; his files may hold it.` : `A ${what} stands along the enemy's line; it must be broken or climbed.`);
   }
   autoDeploy(battle, "enemy");
+  if (fort?.side === "enemy") garrisonWalls(battle, "enemy");
   // Attachment: the nobles' horse at Rank-and-File; otherwise his own mounted file if he has one, else his first.
-  // A permanent wound (wounds.ts) keeps him out of the line altogether: he directs from behind it, unattached.
-  if (tier === "rank_and_file" || canLeadFile(state)) {
+  // A permanent wound (wounds.ts) keeps him out of the line altogether: he directs from behind it, unattached;
+  // so does age past 65, and a contingent sent under a captain (03_HISTORY §9).
+  const unattached = mode !== "attached" && Boolean(forces);
+  if (!unattached && (tier === "rank_and_file" || canLeadFile(state))) {
     const attachId = tier === "rank_and_file" ? LORD_FILE_ID : pickAttachment(battle, owned.map((u) => `p-${u.id}`));
     if (!attachId) return "No file for the lord to ride with.";
     attachPlayer(battle, attachId);
+  } else if (mode === "captain") {
+    pushLog(battle, "player", "The lord is not on the field. His captain carries his orders, and the letters go back and forth.");
   } else {
-    pushLog(battle, "player", "The lord's old wound keeps him out of the line; he commands from behind it.");
+    pushLog(battle, "player", unattached ? "The lord commands from behind the line, unattached, as his years require." : "The lord's old wound keeps him out of the line; he commands from behind it.");
   }
+  if (forces) pushLog(battle, "info", `${forces.title}: the grid is the lord's sector of a wider field. Historical momentum ${forces.momentum}.`);
   state.battle = battle;
   return undefined;
-}
-
-/** Raids come to the villa's gate; a summons and the outlaws on the road are fought elsewhere. */
-export function foughtAtTheVilla(kind: BattleCallKind): boolean {
-  return kind === "raid";
 }
 
 /** The villa's walls as a fortification face: wooden to begin with, stone once a mason's wall stands. */
@@ -339,12 +446,12 @@ export function villaWallKind(state: WorldState): "wooden" | "stone" {
   return state.holdings.some((h) => h.features.includes("stone_wall")) ? "stone" : "wooden";
 }
 
-/** Player files standing in a fortified cell of their own side take up its points (one per point, in order). */
-export function garrisonWalls(battle: BattleState): void {
+/** Files standing in a fortified cell of their own side take up its points (one per point, in order). */
+export function garrisonWalls(battle: BattleState, side: "player" | "enemy" = "player"): void {
   for (const u of battle.units) {
-    if (u.side !== "player" || !u.cell || u.fort) continue;
+    if (u.side !== side || !u.cell || u.fort) continue;
     const fort = battle.battlefield.cells[cellIndex(u.cell)].fortification;
-    if (!fort || fort.side !== "player") continue;
+    if (!fort || fort.side !== side) continue;
     const points = pointsInCell(battle.battlefield, u.cell);
     const free = points.find((p) => !battle.units.some((x) => x.fort?.pointId === p.id));
     if (free) assignToPoint(battle, u.id, free.id);
@@ -553,10 +660,12 @@ export async function battleContinue(state: WorldState, deps: BattleDeps): Promi
 
     const mine = attachedUnit(battle);
     const bias = biasForPositioning(session.engageBias > 0 ? "sooner" : session.engageBias < 0 ? "later" : undefined);
+    beforeRound(state);
     const logBefore = battle.log.length;
+    const postures = posturesFor(session);
     playRound(battle, [], {
-      allyAi: { posture: "attack", unitBias: mine && bias ? { [mine.id]: bias } : undefined },
-      enemyAi: { posture: "attack" },
+      allyAi: { posture: postures.allies, unitBias: mine && bias ? { [mine.id]: bias } : undefined },
+      enemyAi: { posture: postures.enemy },
     });
     session.engageBias = 0;
     // Files breaking are the one engine fact a man in the line always sees; everything else waits for the bridge.
@@ -568,7 +677,7 @@ export async function battleContinue(state: WorldState, deps: BattleDeps): Promi
     if (battle.player.fate === "carried_off") {
       // Wounded and carried from the line: his part is over; the hosts finish without him.
       note(session, "engine", "You are carried from the line, and the fight goes on without you.", battle.round);
-      finishWithoutTheLord(battle);
+      finishWithoutTheLord(state);
       return enterAftermath(state, deps);
     }
     if (battle.player.pendingFate && !session.routCardDone) {
@@ -583,7 +692,7 @@ export async function battleContinue(state: WorldState, deps: BattleDeps): Promi
     }
     if (battle.player.fate !== "fighting") {
       // The lord is out of it; the hosts finish without him.
-      finishWithoutTheLord(battle);
+      finishWithoutTheLord(state);
       return enterAftermath(state, deps);
     }
     const alive = attachedUnit(battle);
@@ -738,8 +847,10 @@ export async function battleCommandRound(state: WorldState, deps: BattleDeps, ra
     if (orders.length) note(session, "engine", "Twice wounded, you can no longer make yourself understood. The sergeants fight the files as they see fit.", battle.round);
     orders = [];
   }
+  beforeRound(state);
   const logBefore = battle.log.length;
-  playRound(battle, orders, { allyAi: { posture: "attack" }, enemyAi: { posture: "attack" } });
+  const postures = posturesFor(session);
+  playRound(battle, orders, { allyAi: { posture: postures.allies }, enemyAi: { posture: postures.enemy } });
   for (const e of battle.log.slice(logBefore)) {
     if (e.kind === "rout" || (e.kind === "player" && /wounded|struck down|taken/.test(e.text))) {
       note(session, "engine", e.text.replace(/\[[^\]]+\]/g, "").replace(/\s+/g, " "), e.round);
@@ -750,7 +861,7 @@ export async function battleCommandRound(state: WorldState, deps: BattleDeps, ra
   const phaseAfter = phaseOf(battle);
   if (phaseAfter === "finished") return enterAftermath(state, deps);
   if (battle.player.fate !== "fighting") {
-    finishWithoutTheLord(battle);
+    finishWithoutTheLord(state);
     return enterAftermath(state, deps);
   }
   if (phaseAfter === "day_end") nightfall(state);
@@ -766,13 +877,34 @@ function phaseOf(battle: BattleState): BattleState["phase"] {
 }
 
 /** Run the remaining rounds with both hosts under their script commanders. */
-function finishWithoutTheLord(battle: BattleState): void {
+function finishWithoutTheLord(state: WorldState): void {
+  const battle = state.battle!;
+  const postures = posturesFor(state.battle_session!);
   for (let g = 0; g < 60; g++) {
     const phase: BattleState["phase"] = battle.phase;
     if (phase === "finished") return;
     if (phase === "day_end") endDay(battle, "hold");
-    else if (phase === "rounds") playRound(battle, [], { allyAi: { posture: "attack" } });
-    else return;
+    else if (phase === "rounds") {
+      beforeRound(state);
+      playRound(battle, [], { allyAi: { posture: postures.allies }, enemyAi: { posture: postures.enemy } });
+    } else return;
+  }
+}
+
+/** Script postures: the forces table may set a side to hold (a garrison behind its wall, Bretons who will not close). */
+function posturesFor(session: BattleSession): { allies: "attack" | "defend"; enemy: "attack" | "defend" } {
+  const forces = sessionForces(session);
+  return { allies: forces?.posture?.allies ?? "attack", enemy: forces?.posture?.enemy ?? "attack" };
+}
+
+/** Before each round of a history battle: the rest of the field arrives (the abstract layer); an older man in the line rolls twice for wounds. */
+export function beforeRound(state: WorldState): void {
+  const battle = state.battle;
+  const session = state.battle_session;
+  if (!battle || !session?.historical) return;
+  for (const text of applyAbstractLayer(state)) note(session, "engine", text, battle.round + 1);
+  if (battle.player.attachedUnitId && battle.player.woundRollMode !== "skip" && participationBand(bodyAge(state)) === "subcommand_or_rear") {
+    battle.player.woundRollMode = "extra";
   }
 }
 
@@ -924,11 +1056,12 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
   if (battle.player.wounds.length >= 2) facts.push("With two wounds unhealed he can neither ride nor hold court until they mend.");
   if (battle.player.dismounted) facts.push("He finished the day on foot; the horse is lost.");
 
-  // Threat.
-  if (outcome === "victory" && session.callKind !== "summons") {
+  // Threat (a fight at the lord's own gate; a home defence raised by a supply check settles its stores below instead).
+  const atTheGate = localFight(session) && !session.historical?.supply;
+  if (outcome === "victory" && atTheGate) {
     state.flags.active_threat = false;
     facts.push("The villa is safe; the threat is driven off.");
-  } else if (outcome === "defeat" && session.callKind !== "summons") {
+  } else if (outcome === "defeat" && atTheGate) {
     const lost = Math.round(state.resources.denarii * 0.2);
     state.resources.denarii = Math.max(0, state.resources.denarii - lost);
     state.flags.active_threat = true;
@@ -961,6 +1094,12 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
     state.population.adult_men = Math.max(0, state.population.adult_men - summary.levyDead);
     const grief = applyLevyGrief(state, summary.levyDead);
     facts.push(`${summary.levyDead} of the villa's men did not come home.${grief < 0 ? ` The people's heart falls by ${-grief}.` : ""}`);
+  }
+  // History battles (03_HISTORY §9): the flags the tables name for this result; history itself stands.
+  if (session.historical) {
+    const forces = sessionForces(session);
+    facts.push(...applyHistoricalResults(state, battle, session));
+    if (forces) facts.push(`The wider battle went as history says it did (momentum ${forces.momentum}); the sector's result is the lord's own.`);
   }
   state.battle_history.push({
     id: battle.id,

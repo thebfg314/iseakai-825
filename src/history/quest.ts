@@ -1,6 +1,7 @@
 import type { WorldState } from "../engine/schema";
 import { createRng, seedFromString } from "../combat/rng";
 import questTable from "../../data/history/tables/king-quest.json";
+import { forcesForEvent, openHistoricalBattle } from "./battles";
 import { evalCondition } from "./conditions";
 import { deliverEvent, markInterimBattle, type DeliveryResult, type HistoryBeat } from "./deliver";
 import { conditionContext } from "./flags";
@@ -148,10 +149,13 @@ export function tickQuest(state: WorldState, at: SeasonAt, turn: number, questSt
         q.phaseTurn = turn;
         const battle = content.byId.get("Q-002");
         if (battle) {
-          if (content.features.historicalBattles) {
+          if (content.features.historicalBattles && forcesForEvent(state, battle.id, at)) {
             const r = deliverEvent(state, battle, at, turn);
             out.beats.push(...r.beats);
             out.lines.push(...r.lines);
+            const opened = openHistoricalBattle(state, battle, at, turn);
+            out.beats.push(...opened.beats);
+            out.lines.push(...opened.lines);
           } else {
             const r = markInterimBattle(state, battle, at, turn);
             out.beats.push(...r.beats);

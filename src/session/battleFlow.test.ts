@@ -1,10 +1,18 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema, type WorldState } from "../engine/schema";
 import { createRng } from "../combat/rng";
+import { openHistoricalBattle } from "../history/battles";
+import { historyContent } from "../history/load";
+import { defaultAppSettings } from "../llm/settings";
+import { GameController } from "./game";
 import {
   acceptCall,
   addressFile,
+  beforeRound,
   contributionShare,
   soloFateOdds,
   spoilsPool,
@@ -543,5 +551,227 @@ describe("Rank-and-File battle flow", () => {
     const parsed = WorldStateSchema.parse(JSON.parse(JSON.stringify(s)));
     expect(parsed.battle?.round).toBe(s.battle?.round);
     expect(parsed.battle_session?.pendingCard?.vignetteId).toBe(s.battle_session?.pendingCard?.vignetteId);
+  });
+});
+
+describe("History battle flow (03_HISTORY §9, Battle Force Tables)", () => {
+  const ev = (id: string) => historyContent().byId.get(id)!;
+  const at830 = { year: 830, season: "spring" } as const;
+
+  function called(id: string, year = 830, season: "spring" | "summer" | "autumn" | "winter" = "spring", prep?: (s: WorldState) => void): WorldState {
+    const s = freshState();
+    s.meta.year = year;
+    s.meta.season = season;
+    prep?.(s);
+    const r = openHistoricalBattle(s, ev(id), { year, season }, 30);
+    expect(r.call).not.toBeNull();
+    return s;
+  }
+
+  it("a history call is raised by the calendar, not by hand, and the season waits on it", () => {
+    const s = freshState();
+    expect(() => raiseCallDirect(s, "history" as never, 1)).toThrow();
+    const game = new GameController(called("830-B1"), fs.mkdtempSync(path.join(os.tmpdir(), "isekai-hist-")), defaultAppSettings());
+    const err = game.raiseCall("history" as never);
+    expect(err.error).toBeTruthy();
+    return game.advanceSeason().then((r) => {
+      expect(r.error).toMatch(/Ride out or turn back/);
+      expect(game.view().state.battle_call?.kind).toBe("history");
+    });
+  });
+
+  it("turning back clears the call and takes the penalty; barring the hall loses the stores", () => {
+    const s = called("830-B1");
+    s.history.flags.count_opinion = 0;
+    s.player.renown = 50;
+    const renown = s.player.renown;
+    const text = refuseCall(s, deps());
+    expect(text).toMatch(/^You turn back/);
+    expect(s.battle_call).toBeNull();
+    expect(s.history.flags.count_opinion).toBe(-2);
+    expect(s.player.renown).toBeLessThan(renown);
+    expect(s.flags.active_threat).toBe(false); // not a raid
+
+    const gate = freshState();
+    gate.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Fontenay spears", veteran: false, strength: 20, raisedTurn: 1 });
+    openHistoricalBattle(gate, ev("834-03"), { year: 834, season: "autumn" }, 40, { supply: { situation: "foraging", share: 0.3 } });
+    const wheat = gate.resources.wheat;
+    expect(refuseCall(gate, deps())).toMatch(/^You bar the hall/);
+    expect(gate.resources.wheat).toBeLessThan(wheat);
+  });
+
+  it("Rank-and-File in a sector: the table's allies, the lord in the table's `lord` file, no extra nobles' file, the premise and momentum logged", async () => {
+    const s = called("830-B1");
+    const d = deps();
+    const accepted = acceptCall(s, d);
+    expect(accepted.started).toBe(true);
+    expect(s.battle_session?.historical).toMatchObject({ id: "deserters_830", eventId: "830-B1", mode: "attached", abstractApplied: [], betrayed: false });
+    expect(musterAndRide(s, d, [])).toBeUndefined();
+    const b = s.battle!;
+    expect(s.battle_session?.tier).toBe("rank_and_file");
+    expect(b.player.attachedUnitId).toBe("p-lord-file");
+    const lordFile = b.units.find((u) => u.id === "p-lord-file")!;
+    expect(lordFile.name).toBe("The deputy's riders");
+    expect(b.units.filter((u) => u.side === "player")).toHaveLength(1); // the row, nothing added
+    const foe = b.units.find((u) => u.side === "enemy")!;
+    expect(foe.name).toBe("Deserters at their plunder");
+    expect(foe.strength).toBe(18);
+    expect(foe.morale).toBeLessThanOrEqual(Math.floor(foe.maxMorale * 0.2)); // Disordered
+    expect(b.battlefield.name).toBe("A village in the Morvan");
+    expect(b.log.some((l) => l.text.includes("Historical momentum"))).toBe(true);
+    await playToEnd(s, d, () => "A");
+    const sess = s.battle_session!;
+    expect(sess.phase).toBe("aftermath");
+    const rec = s.battle_history.at(-1)!;
+    expect(rec.kind).toBe("history");
+    expect(rec.summary).toMatch(/The wider battle went as history says it did/);
+    expect(s.history.record.some((r) => /deserters plundering a village|driven off by deserters|held his ground at/.test(r.text))).toBe(true);
+    expect(finishBattle(s)).toBeUndefined();
+    expect(s.battle_session).toBeNull();
+  });
+
+  it("Sub-Command in a sector: own files displace allied ones one for one, never the fixed; the lord holds the wall he was given", () => {
+    const s = called("834-B1", 834, "summer", (st) => {
+      st.player.rankLevel = 2;
+      st.player.renown = 60;
+      st.military.units.push(
+        { id: "u1", sheetId: "pedites_fyrd", name: "Fontenay spears", veteran: false, strength: 20, raisedTurn: 1 },
+        { id: "u2", sheetId: "caballarii", name: "Fontenay horse", veteran: false, strength: 10, raisedTurn: 1 },
+      );
+    });
+    const d = deps("", true);
+    acceptCall(s, d);
+    expect(musterAndRide(s, d, ["u1", "u2"])).toBeUndefined();
+    const b = s.battle!;
+    expect(s.battle_session?.tier).toBe("sub_command");
+    const allies = b.units.filter((u) => u.owner === "ally");
+    expect(allies).toHaveLength(3); // the rank-2 row of four less one displaced
+    expect(allies.some((u) => u.id.startsWith("a-gaucelm-"))).toBe(true);
+    expect(allies.some((u) => u.name === "The townsfolk")).toBe(false);
+    expect(b.units.filter((u) => u.owner === "player")).toHaveLength(2);
+    expect(b.player.attachedUnitId).toBe("p-u2"); // his mounted file
+    // The table's fort: a makeshift stone wall along the player's front, garrisoned.
+    const walls = b.battlefield.cells.filter((c) => c.fortification);
+    expect(walls.length).toBeGreaterThan(0);
+    expect(walls.every((c) => c.fortification!.side === "player" && c.fortification!.points.every((p) => p.typeId === "stone_makeshift"))).toBe(true);
+    expect(b.units.some((u) => u.side === "player" && u.fort)).toBe(true);
+    expect(b.log.some((l) => /makeshift stone wall stands along the lord's line/.test(l.text))).toBe(true);
+  });
+
+  it("an enemy fort is garrisoned by the enemy; a king row brings Full Command by right", () => {
+    const s = called("866-B1", 866, "autumn", (st) => {
+      st.player.rankLevel = 2;
+      st.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Fontenay spears", veteran: false, strength: 20, raisedTurn: 1 });
+    });
+    const d = deps("", true);
+    acceptCall(s, d);
+    expect(musterAndRide(s, d, ["u1"])).toBeUndefined();
+    const b = s.battle!;
+    const walls = b.battlefield.cells.filter((c) => c.fortification);
+    expect(walls.every((c) => c.fortification!.side === "enemy")).toBe(true);
+    expect(b.units.some((u) => u.side === "enemy" && u.fort)).toBe(true);
+    expect(b.units.some((u) => u.id.startsWith("a-robert-"))).toBe(true);
+
+    const duke = called("888-B1", 888, "summer", (st) => {
+      st.player.rankLevel = 4; // at 80 he commands from behind the line, but a duke's sector is his by right all the same
+      st.military.units.push({ id: "u1", sheetId: "heavy_horse", name: "The household horse", veteran: true, strength: 10, raisedTurn: 1 });
+    });
+    acceptCall(duke, d);
+    expect(musterAndRide(duke, d, ["u1"])).toBeUndefined();
+    expect(duke.battle_session?.tier).toBe("full_command");
+    expect(duke.battle_session?.phase).toBe("scouting");
+  });
+
+  it("men sent under a captain: by letter, no file for the lord, the same orders; nothing to send clears the call", () => {
+    const s = called("888-B1", 888, "summer", (st) => {
+      st.history.flags.saint_florentin_888 = "sent_men";
+      st.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Fontenay spears", veteran: false, strength: 20, raisedTurn: 1 });
+    });
+    expect(s.battle_call?.mode).toBe("captain");
+    const d = deps("", true);
+    acceptCall(s, d);
+    expect(musterAndRide(s, d, [])).toMatch(/choose at least one file to send/);
+    expect(musterAndRide(s, d, ["u1"])).toBeUndefined();
+    const b = s.battle!;
+    expect(b.player.attachedUnitId).toBeNull();
+    expect(b.log.some((l) => /His captain carries his orders/.test(l.text))).toBe(true);
+    expect(s.battle_session?.tier).toBe("sub_command");
+
+    const none = called("888-B1", 888, "summer", (st) => {
+      st.history.flags.saint_florentin_888 = "sent_men";
+    });
+    const r = acceptCall(none, d);
+    expect(r.started).toBe(false);
+    expect(none.battle_call).toBeNull();
+  });
+
+  it("past sixty-five the lord commands from behind the line; in his fifties he rides but every wound roll is taken twice", async () => {
+    const old = called("888-B1", 888, "summer", (st) => {
+      st.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Fontenay spears", veteran: false, strength: 20, raisedTurn: 1 });
+    });
+    expect(old.battle_call?.mode).toBe("unattached"); // born 808 → 80
+    const d = deps("", true);
+    acceptCall(old, d);
+    expect(musterAndRide(old, d, ["u1"])).toBeUndefined();
+    expect(old.battle!.player.attachedUnitId).toBeNull();
+    expect(old.battle!.log.some((l) => /commands from behind the line, unattached, as his years require/.test(l.text))).toBe(true);
+
+    const fifties = called("866-B1", 866, "autumn"); // born 808 → 58
+    expect(fifties.battle_call?.mode).toBe("attached");
+    expect(fifties.battle_call?.note).toMatch(/every wound roll is taken twice/);
+    acceptCall(fifties, d);
+    expect(musterAndRide(fifties, d, [])).toBeUndefined();
+    expect(fifties.battle!.player.attachedUnitId).toBe("p-lord-file");
+    expect(fifties.battle!.player.woundRollMode).toBe("normal");
+    beforeRound(fifties);
+    expect(fifties.battle!.player.woundRollMode).toBe("extra");
+    // The abstract layer arrives as engine notes in the session as the rounds go by (Brissarthe: rounds 3 and 5).
+    await playToEnd(fifties, d, () => "A");
+    const sess = fifties.battle_session!;
+    expect(sess.phase).toBe("aftermath");
+    const applied = sess.historical!.abstractApplied;
+    const rounds = fifties.battle!.round;
+    expect(applied.length).toBe(rounds >= 5 ? 2 : rounds >= 3 ? 1 : 0);
+    expect(sess.narration.filter((n) => n.kind === "engine" && /The heat|The church doors burst open/.test(n.text))).toHaveLength(applied.length);
+  });
+
+  it("a home defence at the gate: no allies, the villa's own makeshift wall, the stores settled by the result", async () => {
+    const s = freshState();
+    s.meta.year = 834;
+    s.meta.season = "autumn";
+    s.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "The militia", veteran: false, strength: 30, raisedTurn: 1 });
+    openHistoricalBattle(s, ev("834-03"), { year: 834, season: "autumn" }, 40, { supply: { situation: "foraging", share: 0.3 } });
+    expect(s.battle_call?.mode).toBe("attached");
+    const d = deps("", true);
+    acceptCall(s, d);
+    expect(musterAndRide(s, d, ["u1"])).toBeUndefined();
+    const b = s.battle!;
+    expect(b.units.filter((u) => u.owner === "ally")).toHaveLength(0);
+    const walls = b.battlefield.cells.filter((c) => c.fortification);
+    expect(walls.length).toBeGreaterThan(0);
+    expect(walls.every((c) => c.fortification!.side === "player" && c.fortification!.points.every((p) => p.typeId === "wooden_makeshift"))).toBe(true);
+    const wheat = s.resources.wheat;
+    const threat = s.flags.active_threat;
+    let guard = 0;
+    while (s.battle_session?.phase === "fighting" && guard++ < 80) await battleCommandRound(s, d, []);
+    expect(s.battle_session?.phase).toBe("aftermath");
+    const rec = s.battle_history.at(-1)!;
+    expect(rec.summary).toMatch(/Supply check \(foraging\)/);
+    if (rec.outcome === "victory") expect(s.resources.wheat).toBe(wheat);
+    else expect(s.resources.wheat).toBeLessThan(wheat);
+    expect(s.flags.active_threat).toBe(threat); // the gate's threat flag is not the supply check's
+  });
+
+  it("the history session round-trips through the schema", () => {
+    const s = called("834-B1", 834, "summer", (st) => {
+      st.player.rankLevel = 2;
+      st.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Fontenay spears", veteran: false, strength: 20, raisedTurn: 1 });
+    });
+    const d = deps("", true);
+    acceptCall(s, d);
+    musterAndRide(s, d, ["u1"]);
+    const parsed = WorldStateSchema.parse(JSON.parse(JSON.stringify(s)));
+    expect(parsed.battle_session?.historical).toEqual(s.battle_session?.historical);
+    expect(parsed.battle_session?.callKind).toBe("history");
   });
 });

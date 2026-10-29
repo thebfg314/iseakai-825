@@ -1,5 +1,6 @@
 import type { WorldState } from "../engine/schema";
 import { tickAge } from "./age";
+import { forcesForEvent, openHistoricalBattle } from "./battles";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
 import { tickDiffusion } from "./diffusion";
 import { tickDuties } from "./duties";
@@ -12,7 +13,7 @@ import { tickRealm } from "./realm";
 import { tickRelics } from "./relics";
 import { tickRichard } from "./richard";
 import { dueEvents, type SeasonAt } from "./scheduler";
-import { runSupplyCheck } from "./supply";
+import { applySupplyLoss, runSupplyCheck } from "./supply";
 import { tickTributes } from "./tributes";
 import { tickVikings } from "./vikings";
 import { tickWeather } from "./weather";
@@ -91,16 +92,38 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   // Told and interim events interleave in calendar order so a fight comes before its aftermath.
   const interim = new Set(due.interim.map((e) => e.id));
   const sequence = [...due.fire, ...due.interim].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+  const battlesOn = content.features.historicalBattles;
   for (const event of sequence) {
     const r = interim.has(event.id) ? markInterimBattle(state, event, incoming, turn) : deliverEvent(state, event, incoming, turn);
     out.beats.push(...r.beats);
     out.effects.push(...r.lines);
     out.fired.push(event.id);
+    let battleOpened = false;
+    if (event.deferred === "battle" && battlesOn && !interim.has(event.id)) {
+      const opened = openHistoricalBattle(state, event, incoming, turn);
+      out.beats.push(...opened.beats);
+      out.effects.push(...opened.lines);
+      if (opened.call) {
+        battleOpened = true;
+        out.refereeLines.push(`History: ${event.id} "${event.title}" is about to be fought; the call to arms is open and the season cannot turn until the lord rides out or turns back. Do not tell the fight.`);
+      }
+    }
     if (event.supplyCheck) {
-      const s = runSupplyCheck(state, event, turn);
+      // With the battle pass on and a forces table for the event, a standing militia fights at the gate instead of rolling
+      // (unless the lord is already called away to a greater field this season).
+      const militiaBattle = battlesOn && state.battle_call?.kind !== "history" && Boolean(forcesForEvent(state, event.id, incoming, { supply: true }));
+      const s = runSupplyCheck(state, event, turn, { militiaBattle });
       out.beats.push(...s.beats);
       out.effects.push(...s.lines);
+      if (s.militiaCall) {
+        const opened = openHistoricalBattle(state, event, incoming, turn, { supply: s.militiaCall });
+        out.beats.push(...opened.beats);
+        out.effects.push(...opened.lines);
+        if (opened.call) out.refereeLines.push("History: foragers are at the villa's gate and the lord's men are under arms; the call to arms is open and the player must ride out or bar the hall.");
+        else out.effects.push(...applySupplyLoss(state, s.militiaCall.situation, s.militiaCall.share));
+      }
     }
+    if (battleOpened) continue;
     if (interim.has(event.id)) {
       out.refereeLines.push(`History: the lord rode out for ${event.id} "${event.title}"; the fight itself is not told yet.`);
     } else {

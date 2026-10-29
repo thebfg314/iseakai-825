@@ -332,6 +332,7 @@ export function applyProposal(
       if (state.battle_call || state.battle_session) return fail(state, "A call is already open.", "A call is already open.");
       if (state.player.dead) return fail(state, "The lord is dead.", "The lord is dead.");
       if (state.player.captive) return fail(state, "The lord is in his captors' hands.", "The lord is in his captors' hands.");
+      if (proposal.kind === "history") return fail(state, "History battles are raised by the calendar.", "History battles are raised by the calendar.");
       raiseCallDirect(state, proposal.kind);
       return ok(state, `Eberhard sounds the call: ${CALL_TEXT[proposal.kind]}`);
     }

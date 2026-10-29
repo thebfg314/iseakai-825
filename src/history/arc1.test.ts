@@ -21,6 +21,7 @@ function clockFor(state: WorldState) {
   const next = (): HistoryPassResult => {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
+    if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
     const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
@@ -82,7 +83,10 @@ describe("Arc 1 content", () => {
     expect(state.history.chosen["830-01"]).toBe("go");
     expect(spring830.fired).toEqual(["830-02", "830-B1"]);
     expect(texts(spring830).some((t) => t.includes("this host will not march"))).toBe(true);
-    expect(texts(spring830).some((t) => t.includes("not yet written in this chronicle"))).toBe(true);
+    // The battle pass: the tutorial fight is raised as a history call and holds the season until it is answered.
+    expect(state.battle_call).toMatchObject({ kind: "history", eventId: "830-B1", historyId: "deserters_830", mode: "attached" });
+    expect(texts(spring830).some((t) => t.includes("The muster waits on you"))).toBe(true);
+    expect(spring830.refereeLines.some((l) => l.includes("830-B1") && l.includes("about to be fought"))).toBe(true);
     expect(state.history.away).not.toBeNull();
 
     const summer830 = clock.next();
@@ -263,10 +267,25 @@ describe("Arc 1 content", () => {
       if (r.happened) expect(r.share).toBeCloseTo(0.1);
     }
     const armed = fresh();
-    armed.military.units = [{ ...(armed.military.units[0] ?? {}), id: "u1", sheetId: "levy", men: 40 } as never];
+    armed.military.units = [{ ...(armed.military.units[0] ?? {}), id: "u1", sheetId: "pedites_fyrd", name: "The militia", veteran: false, strength: 40 } as never];
     let wins = 0;
     for (let i = 0; i < 40; i++) if (rollSupply(armed, "deserters", `d${i}`).militiaWon) wins++;
     expect(wins).toBeGreaterThan(0);
+    // The battle pass: the militia's fight is the grid's; the stores wait on its result and nothing is taken yet.
+    const stands = fresh();
+    stands.military.units = armed.military.units;
+    const grain = stands.resources.wheat;
+    let calls = 0;
+    for (let i = 0; i < 40; i++) {
+      const r = rollSupply(stands, "deserters", `d${i}`, { militiaBattle: true });
+      if (r.happened) {
+        expect(r.militiaCall).toBe(true);
+        expect(r.share).toBeGreaterThan(0);
+        calls++;
+      }
+    }
+    expect(calls).toBeGreaterThan(0);
+    expect(stands.resources.wheat).toBe(grain);
   });
 
   it("seizure never touches the hall and the chronicle records it", () => {

@@ -1595,6 +1595,7 @@ export class GameController {
   /** Eberhard's door and the test hook: raise a call to arms now. */
   raiseCall(kind: BattleCallKind): GameView & { error?: string } {
     if (this.state.battle_call || this.state.battle_session) return { ...this.view(), error: "A call is already open." };
+    if (kind === "history") return { ...this.view(), error: "History battles are raised by the calendar, not at the door." };
     raiseCallDirect(this.state, kind);
     return this.view();
   }
@@ -1609,6 +1610,10 @@ export class GameController {
     }
     if (this.state.battle_session) {
       return { ...this.view(), effects: [], error: "The lord is in the field. The season cannot turn until the battle is done." };
+    }
+    if (this.state.battle_call?.kind === "history") {
+      // 03_HISTORY §9: a history battle holds the season until the lord rides out or turns back.
+      return { ...this.view(), effects: [], error: "The host is waiting on your answer. Ride out or turn back before the season turns." };
     }
     if (this.state.battle_call) {
       // An unanswered call lapses when the season turns, as if refused.

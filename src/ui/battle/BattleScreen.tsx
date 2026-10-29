@@ -60,11 +60,21 @@ export function BattleScreen({ view, busy, onReturn, onMuster, onContinue, onCho
         </header>
         <div className="field-muster">
           <p className="field-call">{call?.text}</p>
-          <p>
-            You ride as one <strong>Caballarius</strong> — your own horse, your own modest gear, one more mounted man in the line. You command no one.
-          </p>
+          {call?.kind === "history" ? (
+            <p>{call.note}</p>
+          ) : (
+            <p>
+              You ride as one <strong>Caballarius</strong> — your own horse, your own modest gear, one more mounted man in the line. You command no one.
+            </p>
+          )}
           {owned.length === 0 ? (
-            <p className="muted">You have no units of your own to bring. Should you raise and pay for a full unit one day, you would ride at its head instead.</p>
+            <p className="muted">
+              {call?.kind === "history"
+                ? call.mode === "captain"
+                  ? "You have no men to send under a captain. The contingent cannot go."
+                  : "You have no units of your own to bring; the sector is someone else's army and you take your place in it."
+                : "You have no units of your own to bring. Should you raise and pay for a full unit one day, you would ride at its head instead."}
+            </p>
           ) : (
             <div className="field-owned">
               <h3>Bring your own men?</h3>
@@ -74,7 +84,11 @@ export function BattleScreen({ view, busy, onReturn, onMuster, onContinue, onCho
                   {u.name} — {u.strength} men{u.veteran ? ", veterans" : ""}
                 </label>
               ))}
-              <p className="muted tiny">Bringing at least one full unit puts you in Sub-Command of your own men.</p>
+              <p className="muted tiny">
+                {call?.kind === "history"
+                  ? "Your own files displace allied ones in the sector one for one; named allies and the king's engines stay. One file puts you in Sub-Command; a count with three, a duke or a king with any, commands the sector."
+                  : "Bringing at least one full unit puts you in Sub-Command of your own men."}
+              </p>
             </div>
           )}
           <div className="p-actions">

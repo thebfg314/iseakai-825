@@ -632,14 +632,14 @@ export function App() {
       {view.state.battle_call && !inBattle && (
         <div className="banner call-to-arms">
           <span className="call-text">
-            <strong>A call to arms.</strong> {view.state.battle_call.text}
+            <strong>{view.state.battle_call.kind === "history" ? (view.state.battle_call.supply ? "At the gate." : "The host musters.") : "A call to arms."}</strong> {view.state.battle_call.text}
           </span>
           <span className="call-actions">
             <button className="primary" disabled={busy} onClick={() => answerCall(true)}>
-              Answer the call
+              {view.state.battle_call.kind === "history" ? "Ride out" : "Answer the call"}
             </button>
             <button disabled={busy} onClick={() => answerCall(false)}>
-              Refuse
+              {view.state.battle_call.kind === "history" ? (view.state.battle_call.supply ? "Bar the hall" : "Turn back") : "Refuse"}
             </button>
           </span>
         </div>

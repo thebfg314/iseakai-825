@@ -212,6 +212,118 @@ export const EventFileSchema = z.object({
   events: z.array(HistoryEventSchema),
 });
 
+// ---------------------------------------------------------------------------
+// Battle forces (design/history/Battle_Force_Tables.md; 03_HISTORY §9)
+// ---------------------------------------------------------------------------
+
+/** One roster line of a sector. `fixed` lines are named allies and royal engines: never displaced. */
+export const BattleLineSchema = z
+  .object({
+    sheet: z.string().min(1),
+    count: z.number().int().positive().default(1),
+    name: z.string().optional(),
+    /** Stable id for results that look a unit up (Robert at Brissarthe, the betrayer's files). */
+    id: z.string().optional(),
+    fixed: z.boolean().default(false),
+    /** At Rank-and-File the lord rides in this file. */
+    lord: z.boolean().default(false),
+    /** Starts Disordered (morale under a quarter): a camp surprised, deserters without a captain. */
+    disordered: z.boolean().default(false),
+    /** Morale as a fraction of the sheet's, for a flank worn down before the sector joins. */
+    morale: z.number().positive().max(1).optional(),
+    /** Men, when under strength (a foraging party of 15). */
+    strength: z.number().int().positive().optional(),
+    tags: z.array(z.string()).default([]),
+  })
+  .strict();
+export type BattleLine = z.infer<typeof BattleLineSchema>;
+
+/** The allied part of the sector at one rank, and how many files the lord is expected to bring. */
+export const BattleRankRowSchema = z
+  .object({
+    allies: z.array(BattleLineSchema).default([]),
+    slots: z.number().int().nonnegative().default(0),
+    /** Files that make up the sector when he brings fewer than `slots` (cycled). */
+    fill: z.array(BattleLineSchema).optional(),
+  })
+  .strict();
+export type BattleRankRow = z.infer<typeof BattleRankRowSchema>;
+
+export const AbstractEventSchema = z
+  .object({
+    round: z.number().int().positive(),
+    side: z.enum(["player", "enemy"]),
+    /** Negative: a morale loss to every file of that side; positive: a boost. */
+    morale: z.number(),
+    text: z.string().min(1),
+  })
+  .strict();
+export type AbstractEvent = z.infer<typeof AbstractEventSchema>;
+
+export const BattleForcesSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9_]+$/),
+    /** The calendar (or quest, or supply-check) event that raises this battle. */
+    event: z.string().min(1),
+    /** Picks between variants of one event (Fontenoy's main line and Warin's column). First match wins. */
+    when: z.string().optional(),
+    title: z.string().min(1),
+    /** The call banner. */
+    call: z.string().min(1),
+    /** The narrator's premise. */
+    premise: z.string().min(1),
+    momentum: z.number().int().min(1).max(100),
+    /** Home defence: no allies at any rank; fought at the villa behind its own walls. */
+    home: z.boolean().default(false),
+    /** Raised by the event's supply check when the lord has a militia, instead of the loss roll. */
+    supply: z.boolean().default(false),
+    /** The king-quest battle: the sector is composed from the supporters won. */
+    quest: z.boolean().default(false),
+    /** Full Command regardless of rank (the lord's own war). */
+    fullCommand: z.boolean().default(false),
+    fort: z
+      .object({
+        side: z.enum(["player", "enemy"]),
+        type: z.enum(["wooden", "stone"]),
+        makeshift: z.boolean().default(false),
+        points: z.number().int().min(1).max(3).default(3),
+      })
+      .strict()
+      .optional(),
+    field: z
+      .object({
+        weather: z.string().optional(),
+        roughness: z.number().min(0).max(1).optional(),
+        /** Terrain weights replacing the generator's (swamp for Ballon, a stream for Fontenoy). */
+        terrain: z.record(z.string(), z.number().nonnegative()).optional(),
+        name: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    posture: z.object({ allies: z.enum(["attack", "defend"]).optional(), enemy: z.enum(["attack", "defend"]).optional() }).strict().optional(),
+    enemy: z.array(BattleLineSchema).min(1),
+    /** Allied rows by rank 1–5 (villa lord, viscount, count, duke, king). A missing rank reads the one below. */
+    rows: z.record(z.enum(["1", "2", "3", "4", "5"]), BattleRankRowSchema).default({}),
+    /** The lord's own files begin Disordered too, unless veterans (Andernach). */
+    ownDisordered: z.boolean().default(false),
+    /** The abstract layer: the rest of the battle arriving as morale events. */
+    abstract: z.array(AbstractEventSchema).default([]),
+    /** Effects by the sector's result: won (victory, the enemy drew off), lost (defeat), held (a draw, a withdrawal). */
+    results: z
+      .object({ won: EffectsListSchema.optional(), lost: EffectsListSchema.optional(), held: EffectsListSchema.optional(), any: EffectsListSchema.optional() })
+      .strict()
+      .optional(),
+    /** Effects when a named file (by `id`) is still standing at the end, whatever the result. */
+    survivor: z.object({ unit: z.string(), effects: EffectsListSchema }).strict().optional(),
+    /** Turning back once the call is raised. */
+    onRefuse: EffectsListSchema.optional(),
+    notes: z.string().optional(),
+  })
+  .strict();
+export type BattleForces = z.infer<typeof BattleForcesSchema>;
+
+export const BattleFileSchema = z.object({ battles: z.array(BattleForcesSchema) });
+
 export const FlagDefSchema = z.object({
   id: z.string().min(1),
   type: z.enum(["bool", "int", "enum"]),

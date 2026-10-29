@@ -54,7 +54,8 @@ export function dueEvents(state: WorldState, at: SeasonAt, content: HistoryConte
       out.dropped.push(event.id);
       continue;
     }
-    if (event.deferred === "battle" && !content.features.historicalBattles) {
+    if (event.deferred === "battle" && (!content.features.historicalBattles || !content.battles.some((b) => b.event === event.id && !b.supply))) {
+      // The battle pass is off, or no forces table exists for this fight: one neutral line instead.
       out.interim.push(event);
       continue;
     }

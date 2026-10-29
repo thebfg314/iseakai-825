@@ -18,12 +18,20 @@ export type SupplyRoll = {
   happened: boolean;
   share: number;
   militiaWon: boolean;
+  /** The militia stands across the lane: the engagement is fought on the grid (03_HISTORY §9), and `share` waits on its result. */
+  militiaCall: boolean;
   lost: Record<string, number>;
   coinLost: number;
 };
 
 export function menUnderArms(state: WorldState): number {
-  return (state.military?.units ?? []).reduce((n, u) => n + ((u as { men?: number }).men ?? 0), 0);
+  return (state.military?.units ?? []).reduce((n, u) => n + (u.strength ?? 0), 0);
+}
+
+/** A militia big enough to meet foragers or deserters in the lanes (the table's minimum under arms). */
+export function militiaCanFight(state: WorldState, situation: Situation): boolean {
+  const row = table.situations[situation];
+  return Boolean(row.militiaFights) && menUnderArms(state) >= table.countermeasures.militia.minMenUnderArms;
 }
 
 function hasHiddenStores(state: WorldState): boolean {
@@ -32,10 +40,10 @@ function hasHiddenStores(state: WorldState): boolean {
 }
 
 /** Roll one situation. Deterministic for the same state seed, event, and turn. */
-export function rollSupply(state: WorldState, situation: Situation, seedKey: string): SupplyRoll {
+export function rollSupply(state: WorldState, situation: Situation, seedKey: string, opts?: { militiaBattle?: boolean }): SupplyRoll {
   const rng = createRng(seedFromString(`${state.meta.region}:${state.meta.year}:supply:${seedKey}`));
   const row = table.situations[situation];
-  const out: SupplyRoll = { situation, happened: false, share: 0, militiaWon: false, lost: {}, coinLost: 0 };
+  const out: SupplyRoll = { situation, happened: false, share: 0, militiaWon: false, militiaCall: false, lost: {}, coinLost: 0 };
 
   let chance = row.chance;
   if (situation === "friendly_main" && flagTruthy(state, table.countermeasures.letter_of_protection.flag)) {
@@ -48,7 +56,15 @@ export function rollSupply(state: WorldState, situation: Situation, seedKey: str
   if (flagTruthy(state, table.countermeasures.paid_off.flag)) {
     out.share = table.countermeasures.paid_off.flatLoss;
   } else {
-    if (row.militiaFights && menUnderArms(state) >= table.countermeasures.militia.minMenUnderArms) {
+    if (militiaCanFight(state, situation)) {
+      if (opts?.militiaBattle) {
+        // The men stand across the lane: the fight is the battle pass's (the loss below waits on its result).
+        const [lo, hi] = row.lost;
+        out.share = rng.between(lo, hi);
+        if (hasHiddenStores(state)) out.share /= 2;
+        out.militiaCall = true;
+        return out;
+      }
       // A drilled band meets foragers or deserters in the lanes; the better-armed side usually wins.
       const edge = Math.min(0.85, 0.45 + menUnderArms(state) / 100);
       if (rng.chance(edge)) {
@@ -61,25 +77,48 @@ export function rollSupply(state: WorldState, situation: Situation, seedKey: str
     if (hasHiddenStores(state)) out.share /= 2;
   }
 
+  const taken = takeStores(state, situation, out.share);
+  out.lost = taken.lost;
+  out.coinLost = taken.coinLost;
+  return out;
+}
+
+function takeStores(state: WorldState, situation: Situation, share: number): { lost: Record<string, number>; coinLost: number } {
+  const row = table.situations[situation];
+  const lost: Record<string, number> = {};
+  let coinLost = 0;
   const res = state.resources as Record<string, number>;
   for (const id of table.stores) {
     const have = res[id] ?? 0;
     if (have <= 0) continue;
-    const taken = Math.floor(have * out.share);
+    const taken = Math.floor(have * share);
     if (taken > 0) {
       res[id] = have - taken;
-      out.lost[id] = taken;
+      lost[id] = taken;
     }
   }
-  if ("takesCoin" in row && row.takesCoin && !out.militiaWon) {
+  if ("takesCoin" in row && row.takesCoin) {
     const coin = state.resources.denarii ?? 0;
-    const taken = Math.floor(coin * out.share);
+    const taken = Math.floor(coin * share);
     if (taken > 0) {
       state.resources.denarii = coin - taken;
-      out.coinLost = taken;
+      coinLost = taken;
     }
   }
-  return out;
+  return { lost, coinLost };
+}
+
+/** The loss a home defence was fought over, taken when the hall is barred or the militia broken. Returns ledger lines. */
+export function applySupplyLoss(state: WorldState, situation: string, share: number): string[] {
+  if (!(situation in table.situations) || share <= 0) return [];
+  const r = takeStores(state, situation as Situation, share);
+  const items = Object.entries(r.lost)
+    .map(([id, n]) => `${n} ${id}`)
+    .join(", ");
+  const lines: string[] = [];
+  if (items) lines.push(`Taken from the stores: ${items}.`);
+  if (r.coinLost) lines.push(`${r.coinLost} denarii taken.`);
+  return lines;
 }
 
 /** Aldric reports the roll in his own words; the engine writes this line, not the scripts. */
@@ -114,15 +153,26 @@ export function supplyBeat(roll: SupplyRoll, eventId: string): HistoryBeat | nul
   };
 }
 
-/** Run an event's supply check once; later seasons of a multi-season check are driven by `state.history.supply`. */
-export function runSupplyCheck(state: WorldState, event: HistoryEvent, turn: number): { beats: HistoryBeat[]; lines: string[] } {
+export type SupplyCheckResult = {
+  beats: HistoryBeat[];
+  lines: string[];
+  /** The militia stands: the caller raises the home-defence battle; the share is lost if the hall is barred or the fight lost. */
+  militiaCall: { situation: Situation; share: number } | null;
+};
+
+/**
+ * Run an event's supply check once; later seasons of a multi-season check are driven by `state.history.supply`.
+ * With `militiaBattle` (the battle pass on, a forces table for the event) a standing militia fights on the grid instead of rolling.
+ */
+export function runSupplyCheck(state: WorldState, event: HistoryEvent, turn: number, opts?: { militiaBattle?: boolean }): SupplyCheckResult {
   const check = event.supplyCheck;
-  if (!check) return { beats: [], lines: [] };
-  const roll = rollSupply(state, check.situation, `${event.id}:${turn}`);
-  state.history.supply.lastRoll = { turn, situation: check.situation, lost: roll.share };
+  if (!check) return { beats: [], lines: [], militiaCall: null };
+  const roll = rollSupply(state, check.situation, `${event.id}:${turn}`, opts);
+  state.history.supply.lastRoll = { turn, situation: check.situation, lost: roll.militiaCall ? 0 : roll.share };
+  if (roll.militiaCall) return { beats: [], lines: [`Supply check (${check.situation}): the militia stands across the lane; the fight decides the stores.`], militiaCall: { situation: check.situation, share: roll.share } };
   const beat = supplyBeat(roll, event.id);
   const lines: string[] = [];
   if (roll.happened && !roll.militiaWon) lines.push(`Supply check (${check.situation}): about ${Math.round(roll.share * 100)}% of stores lost.`);
   if (roll.militiaWon) lines.push(`Supply check (${check.situation}): the militia drove them off.`);
-  return { beats: beat ? [beat] : [], lines };
+  return { beats: beat ? [beat] : [], lines, militiaCall: null };
 }

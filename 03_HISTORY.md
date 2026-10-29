@@ -34,7 +34,7 @@ These were put to the author before design began. They are binding for this pass
 | Delivery of the opening script | **Verbatim.** The engine posts the script word-for-word at season start. No LLM call for delivery. |
 | Player choices and hooks | **All conversational.** The player speaks; the NPC's LLM judges whether a declared hook or choice was taken and emits a proposal; the engine shows a Confirm card; the flag is written only on Confirm. No choice buttons. |
 | Letters, envoys, messengers, the deputy, the count | **Aldric and Ermenald relay everything.** No new speaker, no new portraits. A letter is read by Ermenald; an envoy's words are reported by Aldric ("He said, word for word, …"). Live scenes are narrated by Aldric or Ermenald as the lord's companion on the spot. |
-| Battle events and promotion windows | **Skipped until their own passes.** Events that *are* a battle (the live fight) or *are* a promotion window do not fire. Events that lead to them (a summons with a choice) do fire, because later events read their flags. See §9 and §10 for the exact interim behaviour. |
+| Battle events and promotion windows | Battles are fought on the grid from the Battle Force Tables (§9, delivered Oct 28). Promotion windows are **skipped until their own pass**: events that *are* a promotion window do not fire; events that lead to them (a summons with a choice) do fire, because later events read their flags. See §10 for the interim behaviour. |
 | Land and value system | **Full.** Recorded value, true value, visibility, tenure, and the three outs of 830 with their real costs. |
 | Seasons when the lord is away | **Narrative only.** The hall plays as normal; the text says he is away. |
 | Momentum | **LLM-judged.** The entry's momentum and its "what the player can change" notes go to the LLM; the LLM proposes an outcome from a closed list the entry declares; the engine applies it. Fixed points carry no alternative outcomes. |
@@ -207,7 +207,7 @@ Inserted into `advanceSeason` after agriculture, projects and the clock-independ
 7. relics.tick, tributes.tick, vikings.tick, richard.tick
 8. scheduler.due(next)                dated events whose fires ≤ next, not fired, not dropped, requires true, unless false
    - drop events whose season has passed and are not `carry`; sorted by `order` then id
-   - deferred battle / promotion events post their interim line instead (§9–§10)
+   - deferred battle events raise a `history` call to arms (§9); deferred promotion events post their interim line instead (§10)
    - [Supply check] events roll losses after delivery
 9. deliver(events)                    one chat message per script block, in order, to its speaker; wantsTalk
 10. suppressOther = events.length > 0  → rollSeasonEvents skips the random "other" event
@@ -281,7 +281,7 @@ One JSON object per event. The zod schema is the contract; this is the shape.
   },
   "stages": [ /* §8.2 live scenes */ ],
   "supplyCheck": false,
-  "deferred": null,                      // "battle" | "promotion" → §9/§10 interim behaviour
+  "deferred": null,                      // "battle" → fought from the forces tables (§9) | "promotion" → §10 interim behaviour
   "rolled": false,                       // true = engine-delivered (duties, ladder, quest), never by the calendar
   "hookWindow": 2,                       // seasons the hooks stay open after delivery (default: see §17.6)
   "links": { "arc": 1, "momentum": 70, "keystone": "K1", "fixedPoint": false },
@@ -434,18 +434,31 @@ Not dated events; engine systems with their own data tables (§11). Where the sc
 
 ---
 
-## 9. Battles: interim behaviour (deferred pass)
+## 9. Battles (the battle pass, delivered Oct 28, 2026)
 
-Events tagged `deferred: "battle"` (841-02 Fontenoy, 845-B1 Ballon, 851-B1 Jengland, 866-V1 Brissarthe, 870-C2 and 880-K3 Vienne, 876-C1 Andernach, 880-K2, 886-V1, 887-V1 raids, 888-V1 Saint-Florentin, 898-V1 Argenteuil, the 830-02 tutorial battle, the 832-03 and 839-02 skirmishes, the 834-03 branch B siege, the king-quest battle) **do not fire** in this pass.
+Events tagged `deferred: "battle"` are fought on the grid when `features.historicalBattles` is true (it is). The forces for each are data, not code: `data/history/battles.json`, transcribed from `design/history/Battle_Force_Tables.md`, read by `src/history/battles.ts` and the session layer in `src/session/battle.ts`. With the switch off, or for a battle event with no forces entry, the old behaviour stands: one neutral Aldric line (*"…not yet written in this chronicle"*), the summons flags still recorded.
 
-What still happens, because later entries read it:
+**The grid is the lord's sector.** Every entry gives the enemy roster the sector faces and one allied row per rank 1–5 (villa lord / viscount / count / duke / king; a missing row falls back to the highest defined below it). Each row has `slots`, the number of the lord's own files it assumes. Fewer files than that are made up from the row's `fill` (default: alternating Caballarii and Pedites); more displace allied files one for one from the end of the row, never a `fixed` one (named retinues: Gaucelm, Warin, Robert, Ranulf, Géran, the Saxon contingent, royal engines). Home defences (`home: true`) have no allies at any rank. Lines may carry `strength`, `morale` (a fraction of the sheet's), `disordered` (a fifth of the heart, `DISORDERED_MORALE_FRACTION − 0.05`), `tags`, and an `id` for results. One allied line per row is the `lord` file: at Rank-and-File the lord rides in it (`LORD_FILE_ID`); no extra "minor nobles' horse" is added for history battles.
 
-- The summons or choice that leads to the battle fires and records the player's side (`fontenoy_charles`, `sat_out_841`, `toulouse_warin`, …), including the army fine where the scripts give one (`heribannum` 720 d).
-- If the player chose to go, the engine posts one neutral Aldric line at the battle's season: *"The lord rode with Count Warin. What happened in the field is not yet written in this chronicle."* No renown, no losses, no outcome flags that depend on fighting (`robert_saved`, `bernard_saved`, `chalon_834 = defended`). The historical result is assumed for the aftermath news (841-03 fires as written).
-- `[Supply check]` still rolls for stay-at-home players (foragers, deserters) through the existing raid/bandit encounter path, because that is already in the game.
-- The data for every battle event is **written now** (script, participation levels, card themes, fixed-point flag, "what the player can change"), so the battle pass plugs in without touching content: it reads `event.battle` and replaces the neutral line with the live scene.
+**The call.** The scheduler delivers the event as written, then `openHistoricalBattle` raises a `battle_call` of kind `history` (`historyId`, `mode`, `note`, a seed from `region:id:year:season:turn`, optional `supply`). Nothing is raised for a dead, captive or maimed lord, while a fight is open, or while another history call is open (the second fight that season gives way). The call banner reads "The host musters." / "At the gate."; the buttons are *Ride out* / *Turn back* (*Bar the hall* for a home defence). **The season cannot turn while a history call is open** (`advanceSeason` refuses with "The host is waiting on your answer"); random calls still lapse as before. `raiseCallDirect` and the `call_to_arms` proposal refuse the kind: history calls come from the calendar only.
 
-Hook for the battle pass: `src/history/battles.ts` exporting `openHistoricalBattle(state, event)`; the scheduler calls it when `features.historicalBattles` is true.
+**How the lord goes** (`historyRideMode`, 03_HISTORY §11.2 bands): under 50, or 50–64, he rides `attached` in a file — in the 50–64 band every wound roll is taken twice (`woundRollMode = "extra"` before each round); at 65+, or with a permanent wound (`canLeadFile` false), he is `unattached`: no file, the same Sub-/Full-Command screen from behind the line. A summons answered with "send men under a captain" (the battle's `requires` names a `<flag> == 'sent_men'`) is fought by letter, mode `captain`: at least one file must go, the lord is not on the field; with no men to send the contingent does not go and the call clears.
+
+**Tier.** No files: Rank-and-File if attached, Sub-Command otherwise. One or more: Sub-Command, or Full Command when the table says so (`fullCommand`, the king quest), the lord holds the grant, he is a duke or king, or a count bringing three files (`historicalTier`). Full Command runs the usual scouting duel and deployment with the table's field (`field.weather`, `roughness`, `terrain` weights, `name`) and its fixed fort.
+
+**Forts.** `fort: {side, type, makeshift, points}` builds a face along that side's front row (Chalon, Toulouse inside, Vienne inside: the lord's wall; Brissarthe's church, the castles of 839, Toulouse and Vienne outside, Sens: the enemy's). Enemy forts are garrisoned (`garrisonWalls(battle, "enemy")`). Home defences get the villa's own wall, makeshift unless a palisade or stone wall has been built (`villaWallMakeshift`). `posture` sets the AI postures for allies and enemy.
+
+**The abstract layer.** `abstract[]` is the rest of the battle arriving as morale events: `{round, side, morale, text}`, each applied once before the round it names (undisciplined files take 1.5× a loss), logged as kind `morale` and posted as an engine note in the session. Andernach's `ownDisordered` puts the lord's own non-veteran files to sleep in the camp with everyone else.
+
+**Results.** `resultClass`: victory or enemy withdrawal → `won`; defeat → `lost`; anything else → `held`. After the ledger, `applyHistoricalResults` applies `results[class]` and `results.any` with the normal effects vocabulary (flags, renown, record), a `survivor` entry's effects when a named allied line (`a-<id>-*`) is still active or withdrawn (Chalon: Gaucelm; Brissarthe: Robert → `robert_saved`), and writes a plain record line if the table gave none. History itself stands: only what the tables name changes (Chalon `saved_city` / `defended` / `fell` with `oath_under_duress_834`, Brissarthe `robert_saved`, Argenteuil and the 898 foragers `irregular_tactics +1`, …); renown and losses are the lord's own, and Aldric's momentum line says the wider battle went as it did.
+
+**Turning back** (`refuseHistoricalBattle`): `onRefuse` from the table or the default `count_opinion −2`, renown −moderate, a record line, `history.away` cleared; the king-quest field refused fails the quest. Barring the hall at a home defence takes the pre-rolled supply loss in full.
+
+**Home defence through the supply path** (§11.5). When a supply check lands and the lord has men under arms, `runSupplyCheck` returns `militiaCall` with the rolled share instead of taking stores, and the season pass raises the event's supply entry (`supply: true`, `home: true`: 834-03, 841-H1, 841-02's host, 841-03, 898-V1) as a history call "At the gate". Won → nothing taken; held → half; lost or barred → the full share (`applySupplyLoss`). No men under arms → the loss roll as before. The check is skipped when the lord is already called to a greater field that season. 886–887's raids stay with the Viking raid calls; 911-F1 Chartres is news.
+
+**The king quest** (`field_against_the_king`, Q-002): `composeQuestSector` builds the sector from the supporters won (each motive a contingent; the household Elite Foot is the lord's file) and the king's side from the nobles lost (8/7/6/5 files for <4/4–5/6/7+ won: two Heavy Horse and Elite Foot at the core, any kingdom-spread innovation the lord let out, Caballarii and Pedites fill). At round three the betrayer Aldric warned of turns: his files leave the line and reappear on the enemy's reserve row, −6 (−9 undisciplined) heart to the sector. Lost → `quest.phase = "failed"`.
+
+**Lint** (`checkForces`): every deferred battle has a non-supply entry when any entries exist; supply entries need an event with `supplyCheck` and `home`; `when` parses; every sheet exists; home rows are empty, others are not; results/survivor/onRefuse effects are checked and count as flag setters; a survivor id must be on an allied line.
 
 ## 10. Promotions: interim behaviour (deferred pass)
 
@@ -494,7 +507,7 @@ The game line from the scripts: emperors (Louis → Lothair as emperor 840–855
 
 ### 11.5 Army supply and looting (`supply.ts`, `tables/supply-check.json`)
 
-Rolls once per season for events tagged `supplyCheck`, with the situation from the event (enemy main army within a day's march 80% / friendly 60% / foraging parties 30% / deserters after a battle 50%), +15 if `visibility ≥ 60`. Stores lost are the table's band, halved by hidden/dispersed stores (feature `storage_pits`, a new small project), protected for grain moved to the church (a hook), 20% friendly chance with a letter of protection (flag), 10% flat loss when paying foragers off (hook). A trained militia (any owned non-levy unit or a veteran levy) turns foraging parties and deserters into the existing raid/bandit `battle_call` instead of a loss roll; it does nothing against a main army.
+Rolls once per season for events tagged `supplyCheck`, with the situation from the event (enemy main army within a day's march 80% / friendly 60% / foraging parties 30% / deserters after a battle 50%), +15 if `visibility ≥ 60`. Stores lost are the table's band, halved by hidden/dispersed stores (feature `storage_pits`, a new small project), protected for grain moved to the church (a hook), 20% friendly chance with a letter of protection (flag), 10% flat loss when paying foragers off (hook). A trained militia (any owned non-levy unit or a veteran levy) turns foraging parties and deserters into a fight at the gate instead of a loss roll: with the battle pass on and a `supply` forces entry for the event, a `history` call with the table's roster (§9, home defence); otherwise the old militia edge roll. It does nothing against a main army. `menUnderArms` sums the owned units' `strength` (an earlier reading of a nonexistent `men` field had kept the militia out of every fight).
 
 ### 11.6 Royal vassal duties (`duties.ts`, `events/duties.json`)
 
@@ -520,7 +533,7 @@ Fully specified by the scripts; gated by `features.ladder` / `features.quest` (b
 
 **The ladder** (`tickLadder`; thresholds in `tables/king-quest.json`): stage `none` → `warning` when `renown ≥ 800 and (rank ≥ 3 or manses ≥ 40)` and at least 8 seasons have passed since the ladder last moved; delivers **L-001** (hooks `send_gifts` 100 d / `go_be_seen` a season away / `be_useful` 60 d, each → `submitted_to_king +1`, −small renown, back to `none`, `quest.phase = submitted`). Four seasons unanswered → the king strips him (**L-002**, needs the people's happiness < 50: `go` default → `rankLevel −1`, `stripped_by_king +1`, −large renown; `refuse` → `rebel_king`, the road), or the Church bans him (**L-003**, needs `favor_church < 3`: `excommunicated`, mood −4 a season until absolved; hooks `donation {absolution_fee}` / `give_land` precaria nona under the Church / `pilgrimage` two seasons away, 60 d / `penance {absolution_penance}`, −moderate renown; absolution sets `absolved_once`), or it comes to the road (**L-004**: `king_attempt`; choices `prepare` default / `make_public` → `quarrel_public` / `submit` → `submitted_to_king +1`, −moderate renown, a season away; hook `hunt_traitor`). Prepare or make it public → stage `quest`.
 
-**The quest** (`tickQuest`): `startQuest` seats the nine nobles from the table (one king's man among money/land/office, seeded, already `refused`) and delivers **Q-001**. Gathering: one `approach_<motive>` hook resolves a season (`money` costs `{ally_price}`; marriage/fear/divine need a first attempt; debt/protection/divine have `requires` from the lord's record); on a second attempt closed motives refuse, thin ones hold 50%; money can be outbid 30% (→ `hedging`, `quest_money_outbid`, `pay_again` wins him). `call_the_assembly` (requires `allies ≥ 4`) names a betrayer among the won (never a grievance man) and moves to the battle (**Q-002**, `deferred: "battle"`: the interim line and a season away) and then the election (**Q-003**, `deferred: "promotion"`: delivered only when `features.promotions`; otherwise pushed to `dropped` with Aldric's interim beat). Election: `earned` (allies ≥ 6, favour ≥ 4, not banned) / `bought` (300 d, `simony_taint`) / `coerced` (40 men, `church_enemy`) → `crowned_king`, `crown_route`, rank 5; `counter_offer` (allies ≥ 4) → `duke_by_counter_offer`, rank ≥ 4, phase failed; `withdraw` → failed, `attempt +1`.
+**The quest** (`tickQuest`): `startQuest` seats the nine nobles from the table (one king's man among money/land/office, seeded, already `refused`) and delivers **Q-001**. Gathering: one `approach_<motive>` hook resolves a season (`money` costs `{ally_price}`; marriage/fear/divine need a first attempt; debt/protection/divine have `requires` from the lord's record); on a second attempt closed motives refuse, thin ones hold 50%; money can be outbid 30% (→ `hedging`, `quest_money_outbid`, `pay_again` wins him). `call_the_assembly` (requires `allies ≥ 4`) names a betrayer among the won (never a grievance man) and moves to the battle (**Q-002**, `deferred: "battle"`: the field against the king, §9, and a season away) and then the election (**Q-003**, `deferred: "promotion"`: delivered only when `features.promotions`; otherwise pushed to `dropped` with Aldric's interim beat). Election: `earned` (allies ≥ 6, favour ≥ 4, not banned) / `bought` (300 d, `simony_taint`) / `coerced` (40 men, `church_enemy`) → `crowned_king`, `crown_route`, rank 5; `counter_offer` (allies ≥ 4) → `duke_by_counter_offer`, rank ≥ 4, phase failed; `withdraw` → failed, `attempt +1`.
 
 ### 11.10 The Duke track and the open throne
 
@@ -552,7 +565,7 @@ On death of old age (or an earlier death: `battleFinish` calls `markDeath(state,
 
 ## 14. Delivery plan
 
-Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded. **All eight steps are delivered** (commits "History Step A" … "History Step H", Oct 2026); what remains is the two later passes of §9–§10.
+Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded. **All eight steps are delivered** (commits "History Step A" … "History Step H", Oct 2026), and the battle pass of §9 after them (Oct 28, 2026); what remains is the promotion pass of §10.
 
 | Step | Builds | Done when |
 | --- | --- | --- |
@@ -565,9 +578,9 @@ Everything below is in scope. Order is chosen so each step is testable and the c
 | G | Age and death, the life record, the closing summary screen | A stub run ends in 910–911 with a record of the fired events; the summary prompt renders. |
 | H | Docs: update `02_EVENTS.md` (random events now yield to the calendar), add the History block to `01_RULES.md`, keep `03_HISTORY.md` current | — |
 
-Feature switches in `data/history/features.json`: `historicalBattles: false`, `promotions: false`, `ladder: false`, `quest: false`, `diffusion: true`.
+Feature switches in `data/history/features.json`: `historicalBattles: true`, `promotions: false`, `ladder: false`, `quest: false`, `diffusion: true`.
 
-**Left for the deferred passes.** The lint-as-test (`systems.test.ts`, "the content lint") pins the registered flags that nothing sets yet: battles — `witnessed_mutiny_830`, `pippin_restoration`, `distrusted_834`, `saved_gaucelm`, `saved_gerberga`, `oath_under_duress_834`, `robert_saved`, `letter_of_protection`; promotions — `royal_vassal`, `villa_confirmed`, `second_villa`. Any other unset flag fails the suite. Flags set by code rather than content carry `setBy: "engine"` in the registry (`forfeit_830`, `richard_standing`, `absolved_once`, `quest_money_outbid`, `duty_performed`, `duty_shirked`, `feast_sponsored`).
+**Left for the deferred passes.** The lint-as-test (`systems.test.ts`, "the content lint") pins the registered flags that nothing sets yet: battles — `witnessed_mutiny_830`, `pippin_restoration`, `distrusted_834`, `letter_of_protection` (the forces tables now set `saved_gaucelm`, `saved_gerberga`, `oath_under_duress_834`, `robert_saved`); promotions — `royal_vassal`, `villa_confirmed`, `second_villa`. Any other unset flag fails the suite. Flags set by code rather than content carry `setBy: "engine"` in the registry (`forfeit_830`, `richard_standing`, `absolved_once`, `quest_money_outbid`, `duty_performed`, `duty_shirked`, `feast_sponsored`).
 
 ---
 
@@ -579,7 +592,8 @@ Feature switches in `data/history/features.json`: `historicalBattles: false`, `p
 - **Full-calendar stub run:** advance 825 → 911 with a stub LLM that answers "books:no" and defaults every choice. Assert: every event without `requires` fires in its season; the count of Autun matches the game line each year; prices follow the famine table; nothing throws; the ending fires.
 - **Path runs:** six scripted flag sequences from the scripts' path review, driven by `history.setFlags` and `history_choice` proposals, asserting the 840 standing table.
 - **Land:** the 825 villa values within ±15% of 525 d / year under the stub run; visibility event eligibility thresholds.
-- **Supply:** seeded rolls hit the table bands; countermeasures apply.
+- **Supply:** seeded rolls hit the table bands; countermeasures apply; with men under arms the roll returns a militia call and takes nothing until the gate is fought.
+- **Battles** (`history/battles.test.ts`, `session/battleFlow.test.ts` "History battle flow"): every deferred battle has a forces entry; `when` selection; row fallback; fill and displacement sparing fixed lines; tier by rank and mode; ride modes by age, wound and `sent_men`; the call's shape and the season block; refuse penalties and the barred hall; the abstract layer once per event; results, survivor and home-defence store settlement; the quest sector and the round-three betrayal; a Rank-and-File sector, a Sub-Command sector behind a makeshift stone wall, an enemy fort garrisoned, a duke's Full Command by right, a captain's contingent, an old man unattached, a home defence at the villa's wall, and a schema round-trip. Arc tests drive `runHistorySeasonPass` directly, so their clocks stand in for the hall and clear an open history call before the next season.
 - **Prompt budget:** the History block for the busiest season (autumn 840: 840-02, 840-03, oath beat) stays under 1,800 tokens.
 - Temporary scripts live in `/tmp`; the repo gets only `*.test.ts` beside the modules, as the codebase does today.
 
@@ -587,7 +601,7 @@ Feature switches in `data/history/features.json`: `historicalBattles: false`, `p
 
 ## 16. Source documents in the repo
 
-The three design sources are checked in so later sessions can read them without the author re-attaching them: `design/history/Event_Delivery_Scripts.md`, `design/history/Historical_Event_Arcs.md` (converted from .docx; table cells flattened), `design/history/Technology_Diffusion_Rules.md`. The combat design doc and the rank-and-file vignettes already sit at the repo root.
+The design sources are checked in so later sessions can read them without the author re-attaching them: `design/history/Event_Delivery_Scripts.md`, `design/history/Historical_Event_Arcs.md` (converted from .docx; table cells flattened), `design/history/Technology_Diffusion_Rules.md`, and `design/history/Battle_Force_Tables.md` (the rosters behind `data/history/battles.json`, §9). The combat design doc and the rank-and-file vignettes already sit at the repo root.
 
 ---
 

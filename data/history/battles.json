@@ -1,0 +1,990 @@
+{
+  "$comment": "Sector forces for the story's battles (design/history/Battle_Force_Tables.md; 03_HISTORY §9). The grid is the lord's sector, not the battle. `rows` give the allied part of the sector by rank 1–5 and the files the lord is expected to bring (`slots`); his own files displace allied ones one for one, never `fixed` lines. `home` battles have no allies at any rank. Results effects use the history effects vocabulary (03_HISTORY §6.2).",
+  "battles": [
+    {
+      "id": "deserters_830",
+      "event": "830-B1",
+      "title": "Deserters in the Morvan",
+      "call": "On the road home through the Morvan the column comes on deserters from the broken host at their work in a village. The viscount's deputy means to go in, and looks to you.",
+      "premise": "On the road home through the Morvan the viscount's column has come on deserters from the emperor's broken host plundering a village. The deputy and the lord of Fontenay attack them: men without a captain, drunk on what they have taken.",
+      "momentum": 15,
+      "field": { "roughness": 0.4, "terrain": { "woodland": 4, "heavy_brush": 2, "hills": 2 }, "name": "A village in the Morvan" },
+      "enemy": [{ "sheet": "peasant_levy", "name": "Deserters at their plunder", "strength": 18, "disordered": true }],
+      "rows": {
+        "1": { "allies": [{ "sheet": "caballarii", "name": "The deputy's riders", "lord": true }], "slots": 0 },
+        "2": { "allies": [{ "sheet": "caballarii", "name": "The deputy's riders" }], "slots": 1 }
+      },
+      "results": {
+        "won": { "renown": "small", "record": "Rode down deserters plundering a village in the Morvan on the road home from Compiègne." },
+        "lost": { "record": "Was driven off by deserters in the Morvan on the road home from Compiègne." }
+      },
+      "notes": "The tutorial battle: deliberately winnable by a prepared player and survivable by an unprepared one."
+    },
+    {
+      "id": "skirmishes_832",
+      "event": "832-B1",
+      "title": "Skirmishes in Aquitaine",
+      "call": "The fighting in Aquitaine has come down to small actions: a fortified estate held by Pippin's partisans, an ambush in the hills. Your file is wanted at the front of one of them.",
+      "premise": "A small action in the Aquitaine fighting of 832: a few hundred a side, a fortified estate and the broken country around it. Nobody will remember it but the men who were there.",
+      "momentum": 20,
+      "fort": { "side": "enemy", "type": "wooden", "makeshift": true, "points": 2 },
+      "field": { "roughness": 0.6, "terrain": { "woodland": 4, "heavy_brush": 3, "hills": 2, "grassland": 4 } },
+      "enemy": [
+        { "sheet": "pedites_fyrd", "count": 2, "name": "The estate's spearmen" },
+        { "sheet": "caballarii", "name": "Partisan horse" },
+        { "sheet": "sagittarii", "name": "Partisan archers" }
+      ],
+      "rows": {
+        "1": { "allies": [{ "sheet": "caballarii", "count": 2, "name": "The count's horse", "lord": true }, { "sheet": "pedites_fyrd", "name": "The count's spearmen" }], "slots": 0 },
+        "2": { "allies": [{ "sheet": "caballarii", "name": "The count's horse" }, { "sheet": "pedites_fyrd", "name": "The count's spearmen" }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "pedites_fyrd", "name": "The count's spearmen" }], "slots": 3 },
+        "4": { "allies": [], "slots": 4 }
+      },
+      "abstract": [{ "round": 4, "side": "player", "morale": -5, "text": "Word comes that the other column has turned back; this estate is yours to take or leave." }],
+      "results": {
+        "won": { "renown": "small", "record": "Took a fortified estate from Pippin's partisans in the Aquitaine fighting of 832." },
+        "lost": { "renown": -5, "record": "Was thrown back from a partisan estate in Aquitaine, 832." }
+      }
+    },
+    {
+      "id": "chalon_834",
+      "event": "834-B1",
+      "title": "The siege of Chalon",
+      "call": "Count Warin's letter: Lothair marches on Chalon with all his strength. He holds the city for the emperor with Gaucelm and his kin, and asks every man and horse you can bring, quickly.",
+      "premise": "Chalon-sur-Saône, summer 834. Lothair's army is before the city; Count Warin holds it for the emperor with Gaucelm, son of the great Count William, his sister Gerberga, and the townsfolk on the walls. The lord of Fontenay holds a stretch of the old Roman wall with them against the assault.",
+      "momentum": 45,
+      "fort": { "side": "player", "type": "stone", "makeshift": true, "points": 3 },
+      "field": { "roughness": 0.2, "name": "The walls of Chalon" },
+      "posture": { "allies": "defend", "enemy": "attack" },
+      "enemy": [
+        { "sheet": "heavy_horse", "count": 2, "name": "Lothair's household" },
+        { "sheet": "pedites_fyrd", "count": 3, "name": "Lothair's spearmen" },
+        { "sheet": "sagittarii", "name": "Lothair's archers" },
+        { "sheet": "battering_ram", "name": "A battering ram" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "elite_foot", "name": "Gaucelm's household", "id": "gaucelm", "fixed": true, "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "Warin's spearmen" },
+            { "sheet": "sagittarii", "name": "The city's archers" },
+            { "sheet": "peasant_levy", "name": "The townsfolk" }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "elite_foot", "name": "Gaucelm's household", "id": "gaucelm", "fixed": true },
+            { "sheet": "pedites_fyrd", "name": "Warin's spearmen" },
+            { "sheet": "sagittarii", "name": "The city's archers" },
+            { "sheet": "peasant_levy", "name": "The townsfolk" }
+          ],
+          "slots": 1,
+          "fill": [{ "sheet": "pedites_fyrd", "name": "Warin's spearmen" }]
+        },
+        "3": {
+          "allies": [{ "sheet": "elite_foot", "name": "Gaucelm's household", "id": "gaucelm", "fixed": true }, { "sheet": "peasant_levy", "name": "The townsfolk" }],
+          "slots": 3,
+          "fill": [{ "sheet": "pedites_fyrd", "name": "Warin's spearmen" }, { "sheet": "sagittarii", "name": "The city's archers" }]
+        },
+        "4": {
+          "allies": [{ "sheet": "elite_foot", "name": "Gaucelm's household", "id": "gaucelm", "fixed": true }],
+          "slots": 6,
+          "fill": [{ "sheet": "pedites_fyrd", "name": "Warin's spearmen" }, { "sheet": "sagittarii", "name": "The city's archers" }, { "sheet": "peasant_levy", "name": "The townsfolk" }]
+        }
+      },
+      "abstract": [
+        { "round": 4, "side": "player", "morale": -8, "text": "Another stretch of the wall is under assault; the townsfolk there are wavering." },
+        { "round": 8, "side": "player", "morale": -10, "text": "Word runs along the wall that Count Warin is treating with Lothair." }
+      ],
+      "results": {
+        "won": {
+          "flags": { "chalon_834": "saved_city", "saved_gaucelm": true, "saved_gerberga": true },
+          "renown": "large",
+          "record": "Held his stretch of the wall at Chalon until Lothair drew off; Gaucelm and Gerberga lived."
+        },
+        "held": {
+          "flags": { "chalon_834": "defended", "saved_gaucelm": true },
+          "renown": "moderate",
+          "record": "Held the wall at Chalon for days before the city came to terms, and got Gaucelm away."
+        },
+        "lost": {
+          "flags": { "chalon_834": "fell", "oath_under_duress_834": true },
+          "renown": "small",
+          "record": "Fought on the wall at Chalon when the city fell to Lothair, and swore to him under duress to keep his head."
+        }
+      },
+      "survivor": { "unit": "gaucelm", "effects": { "flags": { "saved_gaucelm": true } } }
+    },
+    {
+      "id": "foragers_834",
+      "event": "834-03",
+      "supply": true,
+      "home": true,
+      "title": "Lothair's foragers",
+      "call": "Foragers from Lothair's army are coming down the valley road with carts, looking for grain. Your men are under arms.",
+      "premise": "Foragers from Lothair's army have come down the valley road with carts to strip the villa's barns. The lord's own men stand across the lane before the gate.",
+      "momentum": 50,
+      "enemy": [{ "sheet": "pedites_fyrd", "name": "Lothair's foragers", "strength": 18 }],
+      "results": {
+        "won": { "renown": "small", "record": "Turned Lothair's foragers from the villa's gate in 834." },
+        "lost": { "record": "Lothair's foragers broke his militia at the gate and stripped the barns, 834." }
+      }
+    },
+    {
+      "id": "castles_839",
+      "event": "839-B1",
+      "title": "Sieges in Aquitaine",
+      "call": "The emperor's host is reducing the castles of Pippin II's men one by one. Your sector is one strongpoint: a timber wall, a gate, and the men behind it.",
+      "premise": "Aquitaine, winter 839. The emperor's army is taking the small holdings of Pippin II's partisans one by one; this is one of them, a timber-walled strongpoint, and the lord of Fontenay's sector is its gate.",
+      "momentum": 20,
+      "fort": { "side": "enemy", "type": "wooden", "makeshift": true, "points": 2 },
+      "field": { "roughness": 0.3 },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "pedites_fyrd", "name": "The castle's spearmen" },
+        { "sheet": "sagittarii", "name": "The castle's archers" },
+        { "sheet": "caballarii", "name": "Partisan horse in reserve" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "caballarii", "count": 2, "name": "The count's horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The count's spearmen" },
+            { "sheet": "sagittarii", "name": "The count's archers" },
+            { "sheet": "battering_ram", "name": "The king's ram", "fixed": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "caballarii", "name": "The count's horse" },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The count's spearmen" },
+            { "sheet": "sagittarii", "name": "The count's archers" },
+            { "sheet": "battering_ram", "name": "The king's ram", "fixed": true }
+          ],
+          "slots": 1
+        },
+        "3": {
+          "allies": [{ "sheet": "sagittarii", "name": "The count's archers" }, { "sheet": "battering_ram", "name": "The king's ram", "fixed": true }, { "sheet": "pedites_fyrd", "name": "The count's spearmen" }],
+          "slots": 3
+        },
+        "4": { "allies": [{ "sheet": "battering_ram", "name": "The king's ram", "fixed": true }], "slots": 6 }
+      },
+      "results": {
+        "won": { "renown": "moderate", "record": "Took a partisan castle for the emperor in the Aquitaine sieges of 839." },
+        "lost": { "renown": -5, "record": "Was beaten back from a partisan castle in Aquitaine, 839." }
+      }
+    },
+    {
+      "id": "fontenoy_relief",
+      "event": "841-02",
+      "when": "fontenoy_charles",
+      "title": "Fontenoy: Warin's column",
+      "call": "Count Warin's column has marched through the night. Ahead, south of Auxerre, the brothers' armies have been at it since dawn, and Lothair has the better of it. The column goes in on his flank.",
+      "premise": "Fontenoy, 25 June 841. The lord of Fontenay rides in Count Warin's relief column, the southern army whose late arrival turns the battle. Lothair's flank has been fighting for hours; the column comes in against it fresh.",
+      "momentum": 55,
+      "field": { "roughness": 0.4, "terrain": { "stream": 6, "hills": 2, "grassland": 8 }, "name": "The slope above the Burgundian stream" },
+      "enemy": [
+        { "sheet": "heavy_horse", "name": "Lothair's flank: the heavy horse", "morale": 0.6 },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "Lothair's flank: spearmen", "morale": 0.6 },
+        { "sheet": "caballarii", "name": "Lothair's flank: horse", "morale": 0.6 }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "caballarii", "count": 2, "name": "Burgundian levies", "lord": true },
+            { "sheet": "heavy_horse", "name": "Warin's household", "id": "warin", "fixed": true },
+            { "sheet": "pedites_fyrd", "name": "Southern spearmen" }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [{ "sheet": "caballarii", "name": "Burgundian levies" }, { "sheet": "heavy_horse", "name": "Warin's household", "id": "warin", "fixed": true }, { "sheet": "pedites_fyrd", "name": "Southern spearmen" }],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "Warin's household", "id": "warin", "fixed": true }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "name": "Warin's household", "id": "warin", "fixed": true }], "slots": 5 }
+      },
+      "abstract": [
+        { "round": 2, "side": "enemy", "morale": -10, "text": "Lothair's flank sees the column coming over the rise and knows what it means." },
+        { "round": 5, "side": "enemy", "morale": -12, "text": "Word spreads along Lothair's line that his centre is giving way; the brothers are winning." },
+        { "round": 5, "side": "player", "morale": 8, "text": "Cheering from the north: Charles's men have broken Lothair's centre." }
+      ],
+      "results": {
+        "won": { "renown": "large", "record": "Rode in Warin's column at Fontenoy and broke Lothair's flank; the brothers won the day." },
+        "held": { "renown": "moderate", "record": "Rode in Warin's column at Fontenoy; the column held its ground while the brothers won the day." },
+        "lost": { "renown": "small", "record": "Rode in Warin's column at Fontenoy and was thrown back, though the brothers won the day." }
+      }
+    },
+    {
+      "id": "fontenoy_main",
+      "event": "841-02",
+      "title": "Fontenoy: the main line",
+      "call": "Dawn south of Auxerre. The brothers' armies face each other across the stream and the ultimatum has run out. Pippin's contingent stands beside Lothair's, and your file is in it.",
+      "premise": "Fontenoy, 25 June 841. The lord of Fontenay stands with Pippin II's contingent beside Lothair's army against Charles and Louis. Three parts of the field cannot see each other; the lord's sector is one stretch of a line that has the better of it until Warin's column arrives.",
+      "momentum": 55,
+      "field": { "roughness": 0.4, "terrain": { "stream": 6, "hills": 2, "grassland": 8 }, "name": "The line above the Burgundian stream" },
+      "enemy": [
+        { "sheet": "heavy_horse", "count": 2, "name": "Charles's household" },
+        { "sheet": "pedites_fyrd", "count": 3, "name": "Charles's spearmen" },
+        { "sheet": "caballarii", "name": "Charles's vassal horse" },
+        { "sheet": "sagittarii", "name": "Charles's archers" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "Pippin's household" },
+            { "sheet": "caballarii", "count": 2, "name": "Aquitanian horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "Aquitanian spearmen" },
+            { "sheet": "sagittarii", "name": "Aquitanian archers" }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "Pippin's household" },
+            { "sheet": "caballarii", "name": "Aquitanian horse" },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "Aquitanian spearmen" },
+            { "sheet": "sagittarii", "name": "Aquitanian archers" }
+          ],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "Pippin's household" }, { "sheet": "sagittarii", "name": "Aquitanian archers" }, { "sheet": "pedites_fyrd", "name": "Aquitanian spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "name": "Pippin's household" }], "slots": 6 }
+      },
+      "abstract": [
+        { "round": 2, "side": "player", "morale": 6, "text": "Word from the centre: Lothair's men are pressing Louis's back across the stream." },
+        { "round": 6, "side": "player", "morale": -10, "text": "Riders from the south: a fresh column under Count Warin is coming in on the flank." },
+        { "round": 6, "side": "enemy", "morale": 10, "text": "Cheering runs down Charles's line as Warin's banners show over the rise." },
+        { "round": 9, "side": "player", "morale": -14, "text": "Lothair's centre has broken. The battle is lost; what matters now is getting away." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Stood with Pippin's men at Fontenoy; his stretch of the line held while the battle was lost around it." },
+        "held": { "renown": "small", "record": "Stood with Pippin's men at Fontenoy and came away in order from a lost field." },
+        "lost": { "record": "Stood with Pippin's men at Fontenoy and was swept away with the rest when Lothair's line broke." }
+      }
+    },
+    {
+      "id": "foragers_841",
+      "event": "841-H1",
+      "supply": true,
+      "home": true,
+      "title": "Foragers before the battle",
+      "call": "Foraging parties from the armies gathering near Auxerre are on the valley road. Your men are under arms.",
+      "premise": "Foragers from the armies gathering for the battle near Auxerre have come down the valley road to strip the villa's barns. The lord's own men stand across the lane before the gate.",
+      "momentum": 50,
+      "enemy": [{ "sheet": "pedites_fyrd", "name": "Foragers with carts", "strength": 18 }],
+      "results": {
+        "won": { "renown": "small", "record": "Turned foragers from the villa's gate in the summer of Fontenoy." },
+        "lost": { "record": "Foragers broke his militia at the gate before Fontenoy and stripped the barns." }
+      }
+    },
+    {
+      "id": "foragers_841_host",
+      "event": "841-02",
+      "supply": true,
+      "home": true,
+      "title": "Foragers at the gate",
+      "call": "While the host gathers near Auxerre, foraging parties are on the valley road. The men left at home are under arms.",
+      "premise": "Foragers from the gathering armies have come down the valley road to strip the villa's barns while the host musters near Auxerre. The men left at home stand across the lane before the gate.",
+      "momentum": 50,
+      "enemy": [{ "sheet": "pedites_fyrd", "name": "Foragers with carts", "strength": 18 }],
+      "results": {
+        "won": { "record": "The villa's men turned foragers from the gate in the summer of Fontenoy." },
+        "lost": { "record": "Foragers broke the villa's militia and stripped the barns while the host was at Fontenoy." }
+      }
+    },
+    {
+      "id": "deserters_841",
+      "event": "841-03",
+      "supply": true,
+      "home": true,
+      "title": "Deserters after Fontenoy",
+      "call": "Men from the broken army are coming through the lanes at night, deserters with no captain. Your men are under arms.",
+      "premise": "Deserters from the army broken at Fontenoy are in the lanes below the villa, men without a captain or a loaf between them. The lord's own men stand across the ford.",
+      "momentum": 50,
+      "enemy": [{ "sheet": "pedites_fyrd", "count": 2, "name": "Deserters from the broken host", "strength": 40, "disordered": true }],
+      "results": {
+        "won": { "renown": "small", "record": "Drove deserters from the Fontenoy army away from the villa's ford, autumn 841." },
+        "lost": { "record": "Deserters from the Fontenoy army broke his militia at the ford and took what they could carry." }
+      }
+    },
+    {
+      "id": "gothia_843",
+      "event": "843-B1",
+      "title": "Skirmishes in Gothia",
+      "call": "The column is in the hills of Gothia, where Gascon skirmishers and Bernard's horse show themselves and vanish. Today they have stood.",
+      "premise": "The hills of Gothia, summer 843: ambushes, Gascon skirmishers, parleys under truce, heat and thirst. Today the enemy horse has stood its ground in broken country and the column goes at it.",
+      "momentum": 60,
+      "field": { "roughness": 0.6, "terrain": { "hills": 5, "woodland": 3, "heavy_brush": 3, "grassland": 4 } },
+      "enemy": [
+        { "sheet": "caballarii", "count": 2, "name": "Gothian horse" },
+        { "sheet": "breton_gascon_light_cavalry", "name": "Gascon skirmishers" },
+        { "sheet": "pedites_fyrd", "name": "Gothian spearmen" }
+      ],
+      "rows": {
+        "1": { "allies": [{ "sheet": "caballarii", "count": 2, "name": "The count's horse", "lord": true }, { "sheet": "pedites_fyrd", "count": 2, "name": "The count's spearmen" }], "slots": 0 },
+        "2": { "allies": [{ "sheet": "caballarii", "name": "The count's horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "The count's spearmen" }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "pedites_fyrd", "name": "The count's spearmen" }], "slots": 3 },
+        "4": { "allies": [], "slots": 4 }
+      },
+      "results": {
+        "won": { "renown": "small", "record": "Beat Gothian horse in the hills in the summer of 843." },
+        "lost": { "renown": -5, "record": "Was ambushed and driven off in the hills of Gothia, 843." }
+      }
+    },
+    {
+      "id": "toulouse_garrison",
+      "event": "844-B1",
+      "when": "toulouse_bernard",
+      "title": "Toulouse: inside the walls",
+      "call": "Charles's army is before Toulouse with engines. You are inside, with Pippin II's garrison, and the stretch of Roman wall before you is about to be tried.",
+      "premise": "Toulouse, spring 844. The lord of Fontenay is inside the city with Pippin II's garrison while Charles's army sits before the old Roman walls with a trebuchet and a ram. One file Presents at the wall at a time; the rest wait below it.",
+      "momentum": 60,
+      "fort": { "side": "player", "type": "stone", "points": 3 },
+      "field": { "roughness": 0.2, "name": "The walls of Toulouse" },
+      "posture": { "allies": "defend", "enemy": "attack" },
+      "enemy": [
+        { "sheet": "caballarii", "count": 2, "name": "Charles's horse" },
+        { "sheet": "pedites_fyrd", "count": 3, "name": "Charles's spearmen" },
+        { "sheet": "traction_trebuchet", "name": "Charles's trebuchet" },
+        { "sheet": "battering_ram_penthouse", "name": "Charles's ram under its penthouse" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "elite_foot", "name": "Pippin's household", "fixed": true, "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The garrison's spearmen" },
+            { "sheet": "sagittarii", "name": "The garrison's archers" },
+            { "sheet": "crossbowmen", "name": "The garrison's crossbows" }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [{ "sheet": "elite_foot", "name": "Pippin's household", "fixed": true }, { "sheet": "pedites_fyrd", "name": "The garrison's spearmen" }, { "sheet": "sagittarii", "name": "The garrison's archers" }, { "sheet": "crossbowmen", "name": "The garrison's crossbows" }],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "elite_foot", "name": "Pippin's household", "fixed": true }, { "sheet": "crossbowmen", "name": "The garrison's crossbows" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "elite_foot", "name": "Pippin's household", "fixed": true }], "slots": 5 }
+      },
+      "abstract": [
+        { "round": 5, "side": "enemy", "morale": -8, "text": "Sickness in the siege camp across the river; the besiegers' lines are thinner than they were." },
+        { "round": 9, "side": "enemy", "morale": -12, "text": "Word from the camp: the king is giving it up." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Held the walls of Toulouse for Pippin II against Charles's siege, 844." },
+        "held": { "renown": "small", "record": "Held his stretch of the walls of Toulouse until Charles gave up the siege." },
+        "lost": { "record": "Was driven from his stretch of the walls of Toulouse, though the city held." }
+      }
+    },
+    {
+      "id": "toulouse_siege",
+      "event": "844-B1",
+      "title": "The siege of Toulouse",
+      "call": "Charles's army is before Toulouse. The engines are up and your sector is one stretch of Roman wall held by Pippin II's garrison.",
+      "premise": "Toulouse, spring 844. Charles's army besieges Pippin II's garrison behind old Roman walls kept in good repair. The lord of Fontenay's sector faces one stretch of wall with a trebuchet and a ram under its penthouse; historically the city held.",
+      "momentum": 60,
+      "fort": { "side": "enemy", "type": "stone", "points": 3 },
+      "field": { "roughness": 0.2, "name": "Before the walls of Toulouse" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "elite_foot", "name": "Pippin's household" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "The garrison's spearmen" },
+        { "sheet": "sagittarii", "name": "The garrison's archers" },
+        { "sheet": "crossbowmen", "name": "The garrison's crossbows" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "caballarii", "count": 2, "name": "The count's horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 3, "name": "The king's spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "caballarii", "count": 2, "name": "The count's horse" },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The king's spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true }
+          ],
+          "slots": 1
+        },
+        "3": {
+          "allies": [
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The king's spearmen" }
+          ],
+          "slots": 3
+        },
+        "4": {
+          "allies": [{ "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true }, { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true }],
+          "slots": 6
+        }
+      },
+      "abstract": [
+        { "round": 5, "side": "player", "morale": -8, "text": "Sickness in the siege camp; the lines are thinner every morning." },
+        { "round": 9, "side": "player", "morale": -12, "text": "Word from the king's tent: the siege is to be raised." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Breached his stretch of the walls of Toulouse in 844, though the king raised the siege." },
+        "held": { "record": "Sat before the walls of Toulouse in the siege Charles gave up, 844." },
+        "lost": { "renown": -5, "record": "Was thrown back from the walls of Toulouse in the siege Charles gave up, 844." }
+      }
+    },
+    {
+      "id": "ballon_845",
+      "event": "845-B2",
+      "title": "Ballon",
+      "call": "The king's army has followed Nominoë into the marsh where the Oust meets the Aff. The Bretons have stopped running. The host goes forward into the soft ground.",
+      "premise": "Ballon, 22 November 845. Charles has followed Nominoë into marshland near Redon; Breton light horse appear and vanish while Frankish heavy horse founder in the soft ground. The lord of Fontenay's sector is one stretch of a line that is about to be beaten.",
+      "momentum": 70,
+      "field": { "roughness": 0.9, "terrain": { "swamp": 10, "heavy_brush": 2, "stream": 2, "grassland": 3 }, "name": "The marsh at the meeting of the Oust and the Aff", "weather": "rain" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "breton_gascon_light_cavalry", "count": 3, "name": "Nominoë's horse" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "Breton spearmen" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "The king's household" },
+            { "sheet": "caballarii", "count": 2, "name": "Burgundian horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The king's spearmen" },
+            { "sheet": "sagittarii", "name": "The king's archers" }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [{ "sheet": "heavy_horse", "name": "The king's household" }, { "sheet": "caballarii", "name": "Burgundian horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "The king's spearmen" }, { "sheet": "sagittarii", "name": "The king's archers" }],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "The king's household" }, { "sheet": "sagittarii", "name": "The king's archers" }, { "sheet": "pedites_fyrd", "name": "The king's spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "name": "The king's household" }], "slots": 6 }
+      },
+      "abstract": [
+        { "round": 3, "side": "player", "morale": -8, "text": "To your left the king's horse are bogged to the girth and the Bretons are riding round them." },
+        { "round": 6, "side": "player", "morale": -14, "text": "The Breton horse have turned the flank. The host is breaking; the road home is behind you." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Held his ground in the marsh at Ballon while the king's army was beaten around him, and brought his men out." },
+        "held": { "renown": "small", "record": "Came out of the marsh at Ballon in order, which few did." },
+        "lost": { "record": "Was beaten with the king's army in the marsh at Ballon, 845." }
+      }
+    },
+    {
+      "id": "jengland_851",
+      "event": "851-B2",
+      "title": "Jengland",
+      "call": "Two days near the Vilaine. Erispoë's horse will not close; they throw javelins and ride off, hour after hour, and the host's heavy horse cannot catch them. The king means to try again today.",
+      "premise": "Jengland, 22 August 851. Erispoë's Bretons, outnumbered perhaps four to one, refuse to close and harass the armoured Franks with javelins from horseback. The Frankish heavy horse cannot catch them; horses and men die for nothing. The lord of Fontenay's sector is one stretch of a line being ridden to death.",
+      "momentum": 65,
+      "field": { "roughness": 0.2, "terrain": { "grassland": 12, "hills": 2 }, "name": "Open ground near the Vilaine" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "breton_gascon_light_cavalry", "count": 4, "name": "Erispoë's horse" },
+        { "sheet": "pedites_fyrd", "name": "Breton spearmen" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "heavy_horse", "count": 2, "name": "The king's household" },
+            { "sheet": "caballarii", "count": 2, "name": "Burgundian horse", "lord": true },
+            { "sheet": "pedites_fyrd", "name": "The king's spearmen" },
+            { "sheet": "elite_foot", "name": "The Saxon auxiliaries", "id": "saxons", "fixed": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [{ "sheet": "heavy_horse", "count": 2, "name": "The king's household" }, { "sheet": "caballarii", "name": "Burgundian horse" }, { "sheet": "pedites_fyrd", "name": "The king's spearmen" }, { "sheet": "elite_foot", "name": "The Saxon auxiliaries", "id": "saxons", "fixed": true }],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "The king's household" }, { "sheet": "elite_foot", "name": "The Saxon auxiliaries", "id": "saxons", "fixed": true }, { "sheet": "pedites_fyrd", "name": "The king's spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "elite_foot", "name": "The Saxon auxiliaries", "id": "saxons", "fixed": true }], "slots": 5 }
+      },
+      "abstract": [
+        { "round": 4, "side": "player", "morale": -8, "text": "The Saxons have broken back through the Frankish line behind you, and the line is tangled." },
+        { "round": 8, "side": "player", "morale": -10, "text": "The second day. Horses are dying along the whole front, and the king talks of terms." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Made the Bretons pay at Jengland while the king's army fell apart around him." },
+        "held": { "renown": "small", "record": "Brought his men out of Jengland whole, which the king's army did not." },
+        "lost": { "record": "Was ridden to death with the king's army at Jengland, 851, and came home with fewer horses." }
+      }
+    },
+    {
+      "id": "brissarthe_866",
+      "event": "866-B1",
+      "title": "Brissarthe",
+      "call": "Count Robert has run Hastein's band to ground at Brissarthe. They have shut themselves in a stone church, and the counts mean to have them out of it.",
+      "premise": "Brissarthe, autumn 866. Hastein's Northmen and their Breton allies have shut themselves in a stone church; Robert the Strong and Ranulf of Poitou besiege it in the heat. The danger is the sortie: a sudden breakout against a force that has stood down.",
+      "momentum": 55,
+      "fort": { "side": "enemy", "type": "stone", "makeshift": true, "points": 1 },
+      "field": { "roughness": 0.3, "name": "The church at Brissarthe" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "ship_crew", "count": 2, "name": "Hastein's crews" },
+        { "sheet": "elite_foot", "name": "Hastein's hirth" },
+        { "sheet": "breton_gascon_light_cavalry", "name": "Breton horse" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "Count Robert's retinue", "id": "robert", "fixed": true },
+            { "sheet": "heavy_horse", "name": "Count Ranulf's retinue", "id": "ranulf", "fixed": true },
+            { "sheet": "caballarii", "count": 2, "name": "The counts' vassal horse", "lord": true },
+            { "sheet": "pedites_fyrd", "name": "The counts' spearmen" }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "Count Robert's retinue", "id": "robert", "fixed": true },
+            { "sheet": "heavy_horse", "name": "Count Ranulf's retinue", "id": "ranulf", "fixed": true },
+            { "sheet": "caballarii", "name": "The counts' vassal horse" },
+            { "sheet": "pedites_fyrd", "name": "The counts' spearmen" }
+          ],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "Count Robert's retinue", "id": "robert", "fixed": true }, { "sheet": "heavy_horse", "name": "Count Ranulf's retinue", "id": "ranulf", "fixed": true }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "name": "Count Robert's retinue", "id": "robert", "fixed": true }, { "sheet": "heavy_horse", "name": "Count Ranulf's retinue", "id": "ranulf", "fixed": true }], "slots": 4 }
+      },
+      "abstract": [
+        { "round": 3, "side": "player", "morale": -6, "text": "The heat. Men along the line are taking off helmets and mail, Count Robert among them." },
+        { "round": 5, "side": "enemy", "morale": 12, "text": "The church doors burst open: the sortie." }
+      ],
+      "results": {
+        "won": { "flags": { "robert_saved": true }, "renown": "large", "record": "Kept the Northmen bottled in the church at Brissarthe; Count Robert lived." },
+        "held": { "renown": "moderate", "record": "Stood through the sortie at Brissarthe." },
+        "lost": { "renown": "small", "record": "Was at Brissarthe when the Northmen burst out of the church." }
+      },
+      "survivor": { "unit": "robert", "effects": { "flags": { "robert_saved": true } } }
+    },
+    {
+      "id": "vienne_870",
+      "event": "870-B1",
+      "title": "The siege of Vienne",
+      "call": "The king's lines are drawn before Vienne, where Girart holds out behind Roman walls. The engines are up. Your sector faces one stretch of wall.",
+      "premise": "Vienne, autumn 870. Charles besieges Girart behind real Roman walls kept in repair. Months of heat, sorties and river supply; the lord of Fontenay's sector faces one stretch of wall with the king's trebuchet, ram and tower.",
+      "momentum": 70,
+      "fort": { "side": "enemy", "type": "stone", "points": 3 },
+      "field": { "roughness": 0.2, "name": "Before the walls of Vienne" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "elite_foot", "name": "Girart's household" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "Girart's spearmen" },
+        { "sheet": "sagittarii", "name": "The city's archers" },
+        { "sheet": "crossbowmen", "name": "The city's crossbows" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "caballarii", "count": 2, "name": "The count's horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The king's spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The king's tower", "fixed": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "caballarii", "name": "The count's horse" },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The king's spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The king's tower", "fixed": true }
+          ],
+          "slots": 1
+        },
+        "3": {
+          "allies": [
+            { "sheet": "pedites_fyrd", "name": "The king's spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The king's tower", "fixed": true }
+          ],
+          "slots": 3
+        },
+        "4": {
+          "allies": [
+            { "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The king's ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The king's tower", "fixed": true }
+          ],
+          "slots": 6
+        }
+      },
+      "abstract": [
+        { "round": 6, "side": "enemy", "morale": -8, "text": "The river supply has been cut; the garrison is on short rations." },
+        { "round": 10, "side": "enemy", "morale": -10, "text": "The countess's envoys have come out under truce to talk terms." }
+      ],
+      "results": {
+        "won": { "renown": "large", "record": "Breached the walls of Vienne for the king in 870 and shortened the siege." },
+        "held": { "renown": "moderate", "record": "Sat in the lines before Vienne through the autumn of 870 until the city came to terms." },
+        "lost": { "renown": -5, "record": "Was thrown back from the walls of Vienne, 870; the city came to terms in December all the same." }
+      }
+    },
+    {
+      "id": "andernach_876",
+      "event": "876-B1",
+      "title": "Andernach",
+      "call": "Envoys from Louis the Younger came at dusk to talk, and the camp stood down in the rain. Now there are horns in the dark and men running without their arms.",
+      "premise": "Andernach, the night of 8 October 876. Louis the Younger feigned negotiation and has attacked the emperor's camp by night in the rain. The host is Disordered and half-armed, the river at its back; the enemy comes in fresh with every charge in hand.",
+      "momentum": 60,
+      "field": { "weather": "rain", "roughness": 0.3, "terrain": { "river": 3, "grassland": 10, "woodland": 2 }, "name": "The camp above the Rhine" },
+      "enemy": [
+        { "sheet": "heavy_horse", "count": 3, "name": "Louis's household" },
+        { "sheet": "caballarii", "count": 2, "name": "Saxon and Frankish horse" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "Louis's spearmen" }
+      ],
+      "ownDisordered": true,
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "The emperor's household", "disordered": true },
+            { "sheet": "caballarii", "count": 2, "name": "Burgundian horse", "lord": true, "disordered": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The emperor's spearmen", "disordered": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [{ "sheet": "heavy_horse", "name": "The emperor's household", "disordered": true }, { "sheet": "caballarii", "name": "Burgundian horse", "disordered": true }, { "sheet": "pedites_fyrd", "count": 2, "name": "The emperor's spearmen", "disordered": true }],
+          "slots": 1
+        },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "The emperor's household", "disordered": true }, { "sheet": "pedites_fyrd", "name": "The emperor's spearmen", "disordered": true }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "name": "The emperor's household", "disordered": true }], "slots": 5 }
+      },
+      "abstract": [
+        { "round": 1, "side": "player", "morale": -8, "text": "Horns in the dark and men running without arms. Nobody knows where the emperor is." },
+        { "round": 4, "side": "player", "morale": -8, "text": "The emperor's camp is lost. The river is at your back." }
+      ],
+      "results": {
+        "won": { "renown": "large", "record": "Stood to at Andernach and broke the night attack on a formed line; the emperor got away, hurt, and the eastern campaign ended all the same." },
+        "held": { "renown": "moderate", "record": "Held a knot of men together through the night at Andernach and brought them home without baggage." },
+        "lost": { "renown": "small", "record": "Was in the camp at Andernach when Louis the Younger came in the night; came home with what he could carry." }
+      }
+    },
+    {
+      "id": "saone_880",
+      "event": "880-B1",
+      "title": "The Saône crossing",
+      "call": "Richard's host is on the Saône and Boso's officers hold the far bank at the ford. Men of the same county stand on both sides. The crossing is to be forced.",
+      "premise": "The Saône, summer 880. Richard's army against his brother Boso's officers: a contested crossing at a ford, then Mâcon and Lyon. Men of the same county stand on both banks, and officers who served beside each other last year.",
+      "momentum": 50,
+      "field": { "roughness": 0.5, "terrain": { "river": 6, "stream": 3, "grassland": 8 }, "name": "The ford on the Saône" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "caballarii", "count": 2, "name": "Boso's horse" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "Boso's spearmen" },
+        { "sheet": "sagittarii", "name": "Boso's archers" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [{ "sheet": "heavy_horse", "name": "Richard's household" }, { "sheet": "caballarii", "count": 2, "name": "Autunois horse", "lord": true }, { "sheet": "pedites_fyrd", "count": 2, "name": "Autunois spearmen" }],
+          "slots": 0
+        },
+        "2": { "allies": [{ "sheet": "heavy_horse", "name": "Richard's household" }, { "sheet": "caballarii", "name": "Autunois horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "Autunois spearmen" }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "Richard's household" }, { "sheet": "pedites_fyrd", "name": "Autunois spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "name": "Richard's household" }], "slots": 5 }
+      },
+      "abstract": [
+        { "round": 3, "side": "enemy", "morale": -6, "text": "Boso's officers hesitate: they know the banners across the water." },
+        { "round": 6, "side": "player", "morale": 6, "text": "Word from upstream: Mâcon has opened its gates." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Forced the Saône crossing for Richard in 880, and rode on to Mâcon and Lyon." },
+        "held": { "renown": "small", "record": "Was at the Saône crossing in 880 when Richard took Mâcon and Lyon." },
+        "lost": { "renown": -5, "record": "Was thrown back at the Saône ford in 880; Richard crossed elsewhere." }
+      }
+    },
+    {
+      "id": "vienne_880",
+      "event": "880-B2",
+      "title": "Before the walls of Vienne",
+      "call": "Two kings and an emperor share one camp before Vienne, Boso's capital. The engines are rising. Your sector faces one stretch of the same Roman walls.",
+      "premise": "Vienne, 881. Boso's capital under a siege that will last two years unless someone shortens it; Ermengard leads the defence behind Roman walls. Two kings and an emperor are in camp. The lord of Fontenay's sector faces one stretch of wall with the royal engines.",
+      "momentum": 55,
+      "fort": { "side": "enemy", "type": "stone", "points": 3 },
+      "field": { "roughness": 0.2, "name": "Before the walls of Vienne" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "elite_foot", "name": "Ermengard's household" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "The garrison's spearmen" },
+        { "sheet": "sagittarii", "name": "The city's archers" },
+        { "sheet": "crossbowmen", "name": "The city's crossbows" },
+        { "sheet": "peasant_levy", "name": "The townsfolk" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "caballarii", "count": 2, "name": "Autunois horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 3, "name": "The kings' spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The kings' trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The kings' ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The kings' tower", "fixed": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [
+            { "sheet": "caballarii", "name": "Autunois horse" },
+            { "sheet": "pedites_fyrd", "count": 3, "name": "The kings' spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The kings' trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The kings' ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The kings' tower", "fixed": true }
+          ],
+          "slots": 1
+        },
+        "3": {
+          "allies": [
+            { "sheet": "pedites_fyrd", "name": "The kings' spearmen" },
+            { "sheet": "traction_trebuchet", "name": "The kings' trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The kings' ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The kings' tower", "fixed": true }
+          ],
+          "slots": 3
+        },
+        "4": {
+          "allies": [
+            { "sheet": "traction_trebuchet", "name": "The kings' trebuchet", "fixed": true },
+            { "sheet": "battering_ram_penthouse", "name": "The kings' ram under its penthouse", "fixed": true },
+            { "sheet": "siege_tower", "name": "The kings' tower", "fixed": true }
+          ],
+          "slots": 6
+        }
+      },
+      "abstract": [
+        { "round": 6, "side": "enemy", "morale": -8, "text": "Sickness and hunger inside the walls; the townsfolk on the wall are thinner every week." },
+        { "round": 12, "side": "enemy", "morale": -10, "text": "Ermengard's envoys have come out under truce." }
+      ],
+      "results": {
+        "won": { "renown": "large", "record": "Breached the walls of Vienne in 881 and shortened Boso's siege by a year or more." },
+        "held": { "renown": "moderate", "record": "Sat in the lines before Vienne, 881–882, until the city came to terms." },
+        "lost": { "renown": -5, "record": "Was thrown back from the walls of Vienne, 881; the siege went on as sieges do." }
+      }
+    },
+    {
+      "id": "vienne_880_inside",
+      "event": "880-B3",
+      "title": "Inside the walls of Vienne",
+      "call": "The gates of Vienne are shut and the kings are outside them. You are a man of Boso's inside, and the stretch of wall before you is about to be tried.",
+      "premise": "Vienne, 881. The lord of Fontenay followed Boso past 880 and is inside his capital with Ermengard's garrison while two kings and an emperor sit before the walls. There is no winning: capture, flight into Provence, or death.",
+      "momentum": 55,
+      "fort": { "side": "player", "type": "stone", "points": 3 },
+      "field": { "roughness": 0.2, "name": "The walls of Vienne" },
+      "posture": { "allies": "defend", "enemy": "attack" },
+      "enemy": [
+        { "sheet": "caballarii", "count": 2, "name": "The kings' horse" },
+        { "sheet": "pedites_fyrd", "count": 3, "name": "The kings' spearmen" },
+        { "sheet": "traction_trebuchet", "name": "The kings' trebuchet" },
+        { "sheet": "battering_ram_penthouse", "name": "The kings' ram under its penthouse" },
+        { "sheet": "siege_tower", "name": "The kings' tower" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "elite_foot", "name": "Ermengard's household", "fixed": true, "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "The garrison's spearmen" },
+            { "sheet": "sagittarii", "name": "The city's archers" },
+            { "sheet": "crossbowmen", "name": "The city's crossbows" }
+          ],
+          "slots": 0
+        },
+        "2": { "allies": [{ "sheet": "elite_foot", "name": "Ermengard's household", "fixed": true }, { "sheet": "pedites_fyrd", "name": "The garrison's spearmen" }, { "sheet": "sagittarii", "name": "The city's archers" }, { "sheet": "crossbowmen", "name": "The city's crossbows" }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "elite_foot", "name": "Ermengard's household", "fixed": true }, { "sheet": "crossbowmen", "name": "The city's crossbows" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "elite_foot", "name": "Ermengard's household", "fixed": true }], "slots": 5 }
+      },
+      "abstract": [
+        { "round": 6, "side": "player", "morale": -8, "text": "Sickness and hunger inside the walls." },
+        { "round": 12, "side": "player", "morale": -10, "text": "Ermengard is treating with the kings. The gates will open; what becomes of Boso's men is not settled." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Held his stretch of the walls of Vienne for Boso until the city came to terms." },
+        "held": { "renown": "small", "record": "Was inside Vienne for Boso through the siege, and came out under the terms." },
+        "lost": { "record": "Was driven from the walls of Vienne, a man of Boso's on the losing side." }
+      }
+    },
+    {
+      "id": "paris_886",
+      "event": "886-B1",
+      "title": "The relief of Paris",
+      "call": "The emperor's host is on the long march north to Paris. Foraging parties from the Northmen's camp are on the road ahead, and the vanguard is to clear them.",
+      "premise": "The march north with the emperor's relief army, October 886. The Northmen's camp at Saint-Germain will be surrounded on Montmartre and then bought off, not stormed; the only fighting is with foraging parties on the road, and this is one of them, by the Seine.",
+      "momentum": 75,
+      "field": { "roughness": 0.4, "terrain": { "river": 4, "hills": 3, "grassland": 8 }, "name": "The Seine road below Paris" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "ship_crew", "count": 2, "name": "Northmen foraging" },
+        { "sheet": "peasant_levy", "name": "Pressed countrymen" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [{ "sheet": "heavy_horse", "count": 2, "name": "The imperial household" }, { "sheet": "caballarii", "count": 2, "name": "Burgundian horse", "lord": true }, { "sheet": "pedites_fyrd", "count": 2, "name": "The emperor's spearmen" }],
+          "slots": 0
+        },
+        "2": { "allies": [{ "sheet": "heavy_horse", "count": 2, "name": "The imperial household" }, { "sheet": "caballarii", "name": "Burgundian horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "The emperor's spearmen" }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "heavy_horse", "count": 2, "name": "The imperial household" }, { "sheet": "pedites_fyrd", "name": "The emperor's spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "heavy_horse", "count": 2, "name": "The imperial household" }], "slots": 6 }
+      },
+      "abstract": [{ "round": 3, "side": "player", "morale": -5, "text": "Word down the column: the emperor will not assault the camp. He means to pay." }],
+      "results": {
+        "won": { "renown": "small", "record": "Cleared Northmen foragers from the Seine road on the march to Paris, 886; the emperor paid the camp off." },
+        "lost": { "record": "Was roughly handled by Northmen foragers on the Seine road, 886." }
+      }
+    },
+    {
+      "id": "saint_florentin_888",
+      "event": "888-B1",
+      "title": "Saint-Florentin",
+      "call": "Count Richard and Bishop Géran have caught the band that burned Bèze in the open plain near Saint-Florentin, loaded with plunder and far from its ships.",
+      "premise": "The plain near Saint-Florentin, summer 888. Richard and Bishop Géran have caught a plunder-laden Viking band on foot in open country, far from its ships. Horse against men who cannot run.",
+      "momentum": 35,
+      "field": { "roughness": 0.2, "terrain": { "grassland": 12, "stream": 2 }, "name": "The plain near Saint-Florentin" },
+      "enemy": [
+        { "sheet": "ship_crew", "count": 3, "name": "The band that burned Bèze" },
+        { "sheet": "elite_foot", "name": "The chieftain's ship" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [
+            { "sheet": "heavy_horse", "name": "Count Richard's household", "id": "richard" },
+            { "sheet": "caballarii", "count": 2, "name": "Autunois horse", "lord": true },
+            { "sheet": "pedites_fyrd", "count": 2, "name": "Autunois spearmen" },
+            { "sheet": "sagittarii", "name": "Bishop Géran's archers", "id": "geran", "fixed": true }
+          ],
+          "slots": 0
+        },
+        "2": {
+          "allies": [{ "sheet": "heavy_horse", "name": "Count Richard's household", "id": "richard" }, { "sheet": "caballarii", "name": "Autunois horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "Autunois spearmen" }, { "sheet": "sagittarii", "name": "Bishop Géran's archers", "id": "geran", "fixed": true }],
+          "slots": 1
+        },
+        "3": {
+          "allies": [{ "sheet": "heavy_horse", "name": "Count Richard's household", "id": "richard" }, { "sheet": "pedites_fyrd", "name": "The bishop's spearmen", "fixed": true }, { "sheet": "sagittarii", "name": "Bishop Géran's archers", "id": "geran", "fixed": true }],
+          "slots": 3
+        },
+        "4": { "allies": [{ "sheet": "pedites_fyrd", "name": "The bishop's spearmen", "fixed": true }, { "sheet": "sagittarii", "name": "Bishop Géran's archers", "id": "geran", "fixed": true }], "slots": 6 },
+        "5": {
+          "allies": [
+            { "sheet": "pedites_fyrd", "name": "The bishop's spearmen", "fixed": true },
+            { "sheet": "sagittarii", "name": "Bishop Géran's archers", "id": "geran", "fixed": true },
+            { "sheet": "heavy_horse", "name": "The king's household horse", "fixed": true },
+            { "sheet": "elite_foot", "name": "The king's household foot", "fixed": true }
+          ],
+          "slots": 4
+        }
+      },
+      "abstract": [
+        { "round": 2, "side": "enemy", "morale": -10, "text": "The band sees the horse coming across the plain and knows it cannot run with what it carries." },
+        { "round": 4, "side": "enemy", "morale": -10, "text": "The road to the river is cut." }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "record": "Rode down the band that burned Bèze in the plain near Saint-Florentin, 888, with Count Richard and Bishop Géran." },
+        "held": { "renown": "small", "record": "Was at Saint-Florentin in 888 when Richard and the bishop destroyed the band that burned Bèze." },
+        "lost": { "renown": -5, "record": "Was thrown back by the band at Saint-Florentin, 888, though Richard destroyed it in the end." }
+      }
+    },
+    {
+      "id": "sens_895",
+      "event": "895-B1",
+      "title": "The campaign for Sens",
+      "call": "Richard's host is before Sens, whose count will not yield. The old walls are in indifferent repair and the trebuchet is up.",
+      "premise": "Sens, 895. Richard takes the county by force: siege lines in the Yonne mud, a count who will not yield, old walls in indifferent repair. The lord of Fontenay's sector faces one stretch of them.",
+      "momentum": 65,
+      "fort": { "side": "enemy", "type": "stone", "makeshift": true, "points": 3 },
+      "field": { "roughness": 0.3, "terrain": { "river": 2, "swamp": 2, "grassland": 10 }, "name": "Before the walls of Sens" },
+      "posture": { "enemy": "defend" },
+      "enemy": [
+        { "sheet": "pedites_fyrd", "name": "The count of Sens's spearmen" },
+        { "sheet": "sagittarii", "name": "The city's archers" },
+        { "sheet": "peasant_levy", "name": "The townsfolk" }
+      ],
+      "rows": {
+        "1": {
+          "allies": [{ "sheet": "caballarii", "count": 2, "name": "Autunois horse", "lord": true }, { "sheet": "pedites_fyrd", "count": 2, "name": "Richard's spearmen" }, { "sheet": "traction_trebuchet", "name": "Richard's trebuchet", "fixed": true }],
+          "slots": 0
+        },
+        "2": { "allies": [{ "sheet": "caballarii", "name": "Autunois horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "Richard's spearmen" }, { "sheet": "traction_trebuchet", "name": "Richard's trebuchet", "fixed": true }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "traction_trebuchet", "name": "Richard's trebuchet", "fixed": true }, { "sheet": "pedites_fyrd", "name": "Richard's spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "traction_trebuchet", "name": "The trebuchet", "fixed": true }], "slots": 5 },
+        "5": { "allies": [{ "sheet": "traction_trebuchet", "name": "The king's trebuchet", "fixed": true }, { "sheet": "elite_foot", "name": "The king's household foot", "fixed": true }], "slots": 5 }
+      },
+      "abstract": [{ "round": 5, "side": "enemy", "morale": -10, "text": "A gate on the far side has been opened by agreement." }],
+      "results": {
+        "won": { "renown": "moderate", "record": "Breached the walls of Sens for Richard in 895." },
+        "held": { "renown": "small", "record": "Was before the walls of Sens in 895 when the city opened its gates." },
+        "lost": { "renown": -5, "record": "Was thrown back from the walls of Sens, 895; the city fell to Richard all the same." }
+      }
+    },
+    {
+      "id": "argenteuil_898",
+      "event": "898-B1",
+      "title": "Argenteuil-sur-Armançon",
+      "call": "A night march in frost. The Northmen's camp on the Armançon is asleep, their ships far off, and the marquis means to fire it before dawn.",
+      "premise": "Argenteuil-sur-Armançon, in the frost before Lent 899. Richard's host has marched by night to surprise the Northmen's winter camp: ships far off, the camp on land, men asleep among their baggage. The cold is a cost; the surprise is everything.",
+      "momentum": 30,
+      "field": { "roughness": 0.4, "terrain": { "stream": 4, "woodland": 3, "grassland": 8 }, "name": "The camp on the Armançon", "weather": "fog" },
+      "enemy": [
+        { "sheet": "ship_crew", "count": 3, "name": "The winter camp's crews", "disordered": true },
+        { "sheet": "elite_foot", "name": "The chieftain's hirth", "disordered": true }
+      ],
+      "rows": {
+        "1": {
+          "allies": [{ "sheet": "heavy_horse", "name": "Count Richard's household", "id": "richard" }, { "sheet": "caballarii", "count": 2, "name": "Autunois horse", "lord": true }, { "sheet": "pedites_fyrd", "count": 2, "name": "Autunois spearmen" }],
+          "slots": 0
+        },
+        "2": { "allies": [{ "sheet": "heavy_horse", "name": "Count Richard's household", "id": "richard" }, { "sheet": "caballarii", "name": "Autunois horse" }, { "sheet": "pedites_fyrd", "count": 2, "name": "Autunois spearmen" }], "slots": 1 },
+        "3": { "allies": [{ "sheet": "heavy_horse", "name": "Count Richard's household", "id": "richard" }, { "sheet": "pedites_fyrd", "name": "Autunois spearmen" }], "slots": 3 },
+        "4": { "allies": [{ "sheet": "pedites_fyrd", "name": "The bishop's spearmen", "fixed": true }], "slots": 6 },
+        "5": { "allies": [{ "sheet": "pedites_fyrd", "name": "The bishop's spearmen", "fixed": true }, { "sheet": "heavy_horse", "name": "The king's household horse", "fixed": true }, { "sheet": "elite_foot", "name": "The king's household foot", "fixed": true }], "slots": 4 }
+      },
+      "abstract": [
+        { "round": 1, "side": "enemy", "morale": -12, "text": "The camp wakes to fire among the baggage and horsemen already inside the lines." },
+        { "round": 3, "side": "player", "morale": -5, "text": "The cold. Men who marched all night in frost are slowing." },
+        { "round": 5, "side": "enemy", "morale": -10, "text": "There are no ships to run to; the Armançon crossings are held." }
+      ],
+      "results": {
+        "won": { "renown": "large", "flags": { "irregular_tactics": "+1" }, "record": "Fired the Northmen's camp at Argenteuil-sur-Armançon before dawn and drove them back toward the Seine: the man who cleared Burgundy." },
+        "held": { "renown": "moderate", "record": "Was in the night attack on the camp at Argenteuil-sur-Armançon." },
+        "lost": { "renown": "small", "record": "Was thrown back at the camp on the Armançon, though Richard drove the Northmen out of Burgundy that spring." }
+      }
+    },
+    {
+      "id": "foragers_898",
+      "event": "898-V1",
+      "supply": true,
+      "home": true,
+      "title": "A Viking foraging party",
+      "call": "A foraging party from the Northmen's winter camp is on the valley road. Your men are under arms.",
+      "premise": "A foraging party from the Northmen wintering between Tonnerre and Montbard has come down the valley road for the villa's grain. The lord's own men stand across the lane before the gate.",
+      "momentum": 50,
+      "enemy": [{ "sheet": "ship_crew", "name": "Northmen foraging", "strength": 20 }],
+      "results": {
+        "won": { "renown": "small", "flags": { "irregular_tactics": "+1" }, "record": "Turned a Northmen foraging party from the villa's gate in the winter of 898." },
+        "lost": { "record": "A Northmen foraging party broke his militia at the gate in the winter of 898 and stripped the barns." }
+      }
+    },
+    {
+      "id": "field_against_the_king",
+      "event": "Q-002",
+      "quest": true,
+      "fullCommand": true,
+      "title": "The field against the king",
+      "call": "The great men you won are in the field with their contingents, and the king's household is drawn up across the valley. One of yours will turn on the day. Do not kill the king.",
+      "premise": "The lord's own war. The supporters he won over sixty years of favours stand with him; the king's household troops and the loyal counties stand across the field, armed with everything the lord ever taught or let escape his lands. One of the lord's allies will turn. The king must not be killed.",
+      "momentum": 50,
+      "field": { "roughness": 0.4 },
+      "enemy": [{ "sheet": "heavy_horse", "name": "The king's household" }],
+      "results": {
+        "won": { "renown": "large", "record": "Took the field against the king and held it; the king was not killed, but he could not remove the lord after that day." },
+        "held": { "renown": "moderate", "record": "Took the field against the king; neither side could claim it, and the great men went to the assembly all the same." },
+        "lost": { "renown": "-moderate", "record": "Took the field against the king and lost it." }
+      },
+      "notes": "Rosters are composed in code from the quest's supporters (Battle_Force_Tables: the king quest battle); the enemy line here is the seed the composition builds on."
+    }
+  ]
+}

@@ -366,9 +366,12 @@ export const CALL_TEXT: Record<BattleCallKind, string> = {
   summons: "A rider from the count: every man who holds land of him is to come armed to the muster at the ford within the week.",
   raid: "Smoke on the river. Northmen have beached their ships below the villa and are coming up the bank.",
   bandits: "An outlaw band has been driving off cattle from the outlying manses and now holds the road to the ford.",
+  // History battles carry their own text from data/history/battles.json; this is never shown.
+  history: "A call from the chronicle.",
 };
 
 export function raiseCallDirect(state: WorldState, kind: BattleCallKind, seed?: number): BattleCall {
+  if (kind === "history") throw new Error("History battles are raised by the calendar, not at the door.");
   const call: BattleCall = {
     kind,
     eventId: `direct-${kind}`,

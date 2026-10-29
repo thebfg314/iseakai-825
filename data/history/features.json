@@ -1,5 +1,5 @@
 {
-  "historicalBattles": false,
+  "historicalBattles": true,
   "promotions": false,
   "ladder": false,
   "quest": false,

@@ -22,6 +22,7 @@ function clockFor(state: WorldState) {
   const next = (): HistoryPassResult => {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
+    if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
     const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
@@ -217,11 +218,13 @@ describe("Arcs 3–6 content", () => {
     clock.to(887, "winter");
     const spring = clock.next();
     expect(spring.fired).toContain("888-V1");
-    state.military.units = [{ ...(state.military.units[0] ?? {}), id: "u1", sheetId: "levy", men: 20 } as never];
+    state.military.units = [{ ...(state.military.units[0] ?? {}), id: "u1", sheetId: "pedites_fyrd", name: "The militia", veteran: false, strength: 20 } as never];
     expect(choose(state, "888-V1", "send_men").ok).toBe(true);
     const summer = clock.next();
     expect(summer.fired).toEqual(["888-B1", "888-V2"]);
-    expect(summer.beats[0].text).toContain("not yet written in this chronicle");
+    // The battle pass: men sent under a captain are still fought on the grid, by letter (mode "captain").
+    expect(state.battle_call).toMatchObject({ kind: "history", eventId: "888-B1", historyId: "saint_florentin_888", mode: "captain" });
+    expect(summer.beats[0].text).toContain("The muster waits on you");
     expect(state.history.away).toBeNull(); // men went; the lord stayed
     expect(summer.beats.some((b) => b.text.includes("The count noticed who was not there"))).toBe(false);
 

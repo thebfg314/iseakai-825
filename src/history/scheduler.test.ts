@@ -147,6 +147,7 @@ function seasonsFrom(state: WorldState) {
     next() {
       const i = order.indexOf(state.meta.season);
       const incoming = i === 3 ? { year: state.meta.year + 1, season: order[0] } : { year: state.meta.year, season: order[i + 1] };
+      if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
       const result = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
       state.meta.year = incoming.year;
       state.meta.season = incoming.season;
@@ -309,7 +310,8 @@ describe("history scheduler and delivery", () => {
     expect(other.history.scenes["828-01"]).toBeUndefined();
   });
 
-  it("deferred battles post one neutral line when the lord went; promotion windows are skipped", () => {
+  it("deferred battles post one neutral line when the lord went (battle pass off); promotion windows are skipped", () => {
+    setHistoryContentForTests({ events: TEST_EVENTS, features: { historicalBattles: false } });
     const state = fresh();
     state.history.flags.stood_to_the_end = true;
     const clock = seasonsFrom(state);

@@ -25,6 +25,7 @@ function clockFor(state: WorldState) {
   const next = (): HistoryPassResult => {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
+    if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
     const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
@@ -49,8 +50,14 @@ afterEach(() => setHistoryContentForTests(null));
  * Flags the registry carries for the two passes still to come (03_HISTORY §9–§10).
  * Anything else the lint reports as unset is a content bug.
  */
+/**
+ * Flags registered for scenes not yet written. The battle pass (03_HISTORY §9) now sets saved_gaucelm,
+ * saved_gerberga, oath_under_duress_834 and robert_saved from the forces tables; these four remain:
+ * witnessed_mutiny_830 and pippin_restoration are 830/834 campaign beats with no battle of their own,
+ * distrusted_834 belongs to the promotion window of 834-02, letter_of_protection to a hook not yet scripted.
+ */
 const DEFERRED_PASS_FLAGS = {
-  battles: ["witnessed_mutiny_830", "pippin_restoration", "distrusted_834", "saved_gaucelm", "saved_gerberga", "oath_under_duress_834", "robert_saved", "letter_of_protection"],
+  battles: ["witnessed_mutiny_830", "pippin_restoration", "distrusted_834", "letter_of_protection"],
   promotions: ["royal_vassal", "villa_confirmed", "second_villa"],
 };
 

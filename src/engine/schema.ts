@@ -432,8 +432,12 @@ export const TrainingSchema = z.object({
 });
 export type Training = z.infer<typeof TrainingSchema>;
 
-export const BATTLE_CALL_KINDS = ["summons", "raid", "bandits"] as const;
+export const BATTLE_CALL_KINDS = ["summons", "raid", "bandits", "history"] as const;
 export type BattleCallKind = (typeof BATTLE_CALL_KINDS)[number];
+
+/** How the lord takes the field in a history battle (03_HISTORY §9, age bands). */
+export const HISTORY_RIDE_MODES = ["attached", "unattached", "captain"] as const;
+export type HistoryRideMode = (typeof HISTORY_RIDE_MODES)[number];
 
 /** An open call to arms raised by a season event; answered or refused from the hall. */
 export const BattleCallSchema = z.object({
@@ -442,6 +446,14 @@ export const BattleCallSchema = z.object({
   text: z.string(),
   seed: z.number().int(),
   createdTurn: z.number().int(),
+  /** History battles: the forces entry in data/history/battles.json. */
+  historyId: z.string().optional(),
+  /** History battles: attached in a file, commanding from behind the line, or by letter through a captain. */
+  mode: z.enum(HISTORY_RIDE_MODES).optional(),
+  /** History battles: the muster panel's line on how he rides. */
+  note: z.string().optional(),
+  /** Home defence raised by a supply check: the share of stores lost if he bars the hall or loses. */
+  supply: z.object({ situation: z.string(), share: z.number().min(0).max(1) }).optional(),
 });
 export type BattleCall = z.infer<typeof BattleCallSchema>;
 
@@ -554,6 +566,20 @@ export const BattleSessionSchema = z.object({
   /** Set once aftermath has been narrated and the ledger written. */
   aftermathText: z.string().optional(),
   renownDelta: z.number().optional(),
+  /** History battles (03_HISTORY §9): which forces entry, how the lord rides, and what the abstract layer has already done. */
+  historical: z
+    .object({
+      id: z.string(),
+      eventId: z.string(),
+      mode: z.enum(HISTORY_RIDE_MODES),
+      /** Indices into the forces entry's `abstract` list already applied. */
+      abstractApplied: z.array(z.number().int()).default([]),
+      /** The king-quest betrayer has turned. */
+      betrayed: z.boolean().default(false),
+      supply: z.object({ situation: z.string(), share: z.number().min(0).max(1) }).optional(),
+    })
+    .nullable()
+    .default(null),
 });
 export type BattleSession = z.infer<typeof BattleSessionSchema>;
 

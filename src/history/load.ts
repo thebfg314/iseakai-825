@@ -16,12 +16,15 @@ import quest from "../../data/history/events/quest.json";
 import flagsFile from "../../data/history/flags.json";
 import realmFile from "../../data/history/calendar/realm.json";
 import featuresFile from "../../data/history/features.json";
+import battlesFile from "../../data/history/battles.json";
 import {
+  BattleFileSchema,
   EventFileSchema,
   FeaturesSchema,
   FlagRegistrySchema,
   RealmCalendarSchema,
   SEASON_ORDER,
+  type BattleForces,
   type FlagDef,
   type HistoryEvent,
   type HistoryFeatures,
@@ -34,6 +37,8 @@ export type HistoryContent = {
   flags: Map<string, FlagDef>;
   realm: RealmCalendar;
   features: HistoryFeatures;
+  /** Sector forces by battle (design/history/Battle_Force_Tables.md), in file order. */
+  battles: BattleForces[];
 };
 
 const EVENT_FILES: unknown[] = [arc1, arc2, arc3, arc4, arc5, arc6, arc7, arc8, arc9, church, economy, natural, ending, duties, quest];
@@ -74,6 +79,7 @@ function build(files: unknown[]): HistoryContent {
     flags,
     realm: RealmCalendarSchema.parse(realmFile),
     features: FeaturesSchema.parse(featuresFile),
+    battles: BattleFileSchema.parse(battlesFile).battles,
   };
 }
 
@@ -88,11 +94,16 @@ export function historyContent(): HistoryContent {
 }
 
 /** Tests: swap in a small calendar. Pass null to restore the shipped content. */
-export function setHistoryContentForTests(content: { events?: unknown[]; features?: Partial<HistoryFeatures> } | null): void {
+export function setHistoryContentForTests(content: { events?: unknown[]; features?: Partial<HistoryFeatures>; battles?: unknown[] } | null): void {
   if (!content) {
     override = null;
     return;
   }
   const base = build(content.events ? [{ arc: "test", events: content.events }] : EVENT_FILES);
-  override = { ...base, features: { ...base.features, ...(content.features ?? {}) } };
+  override = {
+    ...base,
+    features: { ...base.features, ...(content.features ?? {}) },
+    // A test calendar brings its own forces tables or none; the shipped ones name events it does not have.
+    battles: content.battles ? BattleFileSchema.parse({ battles: content.battles }).battles : content.events ? [] : base.battles,
+  };
 }

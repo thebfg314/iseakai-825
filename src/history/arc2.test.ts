@@ -20,6 +20,7 @@ function clockFor(state: WorldState) {
   const next = (): HistoryPassResult => {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
+    if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
     const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
@@ -76,7 +77,7 @@ describe("Arc 2 content", () => {
     expect(state.history.flags.oath_charles_840).toBe(true);
   });
 
-  it("841: the summons, Fontenoy as an interim line with the lord away, the report with the relief-column line", () => {
+  it("841: the summons, Fontenoy raised as Warin's column with the lord away, the report with the relief-column line", () => {
     const state = fresh();
     const clock = settled830(state);
     clock.to(840, "winter");
@@ -85,10 +86,12 @@ describe("Arc 2 content", () => {
     const summer = clock.next();
     expect(state.history.chosen["841-01"]).toBe("answer");
     expect(summer.fired).toEqual(["N-841-S", "841-02", "841-V1"]);
-    expect(texts(summer).some((x) => x.includes("not yet written in this chronicle"))).toBe(true);
+    // The battle pass: on Charles's side the lord's sector is Warin's relief column (Battle_Force_Tables, 841).
+    expect(state.battle_call).toMatchObject({ kind: "history", eventId: "841-02", historyId: "fontenoy_relief" });
+    expect(texts(summer).some((x) => x.includes("Warin's column has marched through the night"))).toBe(true);
     expect(state.history.away?.reason).toContain("Auxerre");
     expect(state.history.supply.lastRoll?.situation).toBe("foraging");
-    expect(summer.refereeLines.some((l) => l.includes("rode out for 841-02"))).toBe(true);
+    expect(summer.refereeLines.some((l) => l.includes("841-02") && l.includes("about to be fought"))).toBe(true);
     const autumn = clock.next();
     expect(state.history.away).toBeNull();
     expect(autumn.fired).toEqual(["N-841-A", "841-03"]);
