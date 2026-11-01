@@ -120,6 +120,8 @@ const TEST_EVENTS = [
     fires: { year: 829, season: "autumn" },
     channel: ["steward"],
     promotion: { rewards: {} },
+    script: [{ speaker: "steward", text: "The count held his court." }],
+    onFire: { promote: { patron: "the count", cap: 3 } },
     links: { momentum: 50 },
   },
   {
@@ -310,8 +312,8 @@ describe("history scheduler and delivery", () => {
     expect(other.history.scenes["828-01"]).toBeUndefined();
   });
 
-  it("deferred battles post one neutral line when the lord went (battle pass off); promotion windows are skipped", () => {
-    setHistoryContentForTests({ events: TEST_EVENTS, features: { historicalBattles: false } });
+  it("deferred battles post one neutral line when the lord went (battle pass off); promotion windows are skipped with the pass off", () => {
+    setHistoryContentForTests({ events: TEST_EVENTS, features: { historicalBattles: false, promotions: false } });
     const state = fresh();
     state.history.flags.stood_to_the_end = true;
     const clock = seasonsFrom(state);
@@ -321,6 +323,25 @@ describe("history scheduler and delivery", () => {
     clock.next();
     expect(state.history.dropped).toContain("829-02");
     expect(state.history.fired["829-02"]).toBeUndefined();
+
+    // With the pass on, the window fires; below the threshold it is thanks, at it the step is granted.
+    setHistoryContentForTests({ events: TEST_EVENTS, features: { historicalBattles: false, promotions: true } });
+    const thanks = fresh();
+    thanks.history.flags.stood_to_the_end = true;
+    seasonsFrom(thanks).to(829, "autumn");
+    expect(thanks.history.fired["829-02"]).toBeDefined();
+    expect(thanks.history.rank.windows["829-02"]).toBe("thanks");
+    expect(thanks.player.rankLevel).toBe(1);
+    const raised = fresh();
+    raised.history.flags.stood_to_the_end = true;
+    const rc = seasonsFrom(raised);
+    rc.to(829, "summer");
+    raised.player.renown = 120; // crosses the threshold just before the window: the window speaks, not the generic summons
+    const autumn = rc.next();
+    expect(raised.history.rank.windows["829-02"]).toBe("promoted");
+    expect(raised.player.rankLevel).toBe(2);
+    expect(raised.holdings.length).toBe(3);
+    expect(autumn.beats.some((b) => b.text.includes("Viscount of this land, by the hand of the count"))).toBe(true);
 
     const home = fresh();
     const c2 = seasonsFrom(home);

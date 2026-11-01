@@ -51,14 +51,14 @@ afterEach(() => setHistoryContentForTests(null));
  * Anything else the lint reports as unset is a content bug.
  */
 /**
- * Flags registered for scenes not yet written. The battle pass (03_HISTORY §9) now sets saved_gaucelm,
- * saved_gerberga, oath_under_duress_834 and robert_saved from the forces tables; these four remain:
+ * Flags registered for scenes not yet written. The battle pass (03_HISTORY §9) sets saved_gaucelm,
+ * saved_gerberga, oath_under_duress_834 and robert_saved from the forces tables; the promotion pass
+ * (§10) sets royal_vassal, villa_confirmed, second_villa and distrusted_834 from 834-02. These remain:
  * witnessed_mutiny_830 and pippin_restoration are 830/834 campaign beats with no battle of their own,
- * distrusted_834 belongs to the promotion window of 834-02, letter_of_protection to a hook not yet scripted.
+ * letter_of_protection a hook not yet scripted.
  */
 const DEFERRED_PASS_FLAGS = {
-  battles: ["witnessed_mutiny_830", "pippin_restoration", "distrusted_834", "letter_of_protection"],
-  promotions: ["royal_vassal", "villa_confirmed", "second_villa"],
+  battles: ["witnessed_mutiny_830", "pippin_restoration", "letter_of_protection"],
 };
 
 describe("the content lint", () => {
@@ -67,7 +67,7 @@ describe("the content lint", () => {
       .filter((p) => p.includes("nothing sets it"))
       .map((p) => /flag '([^']+)'/.exec(p)?.[1] ?? p)
       .sort();
-    expect(unset).toEqual([...DEFERRED_PASS_FLAGS.battles, ...DEFERRED_PASS_FLAGS.promotions].sort());
+    expect(unset).toEqual([...DEFERRED_PASS_FLAGS.battles].sort());
   });
 });
 
@@ -230,7 +230,7 @@ describe("the king quest", () => {
   }
 
   it("resolves one approach a season, the king's man refuses, and the assembly needs four", () => {
-    const { state, clock } = atGathering();
+    const { state, clock } = atGathering({ promotions: false });
     expect(hook(state, "Q-001", "call_the_assembly").ok).toBe(false);
     expect(hook(state, "Q-001", "approach_grievance").ok).toBe(true);
     expect(hook(state, "Q-001", "approach_divine", "chaplain").ok).toBe(true);
@@ -275,9 +275,15 @@ describe("the king quest", () => {
     expect(election.fired).toContain("Q-003");
     expect(choose(state, "Q-003", "earned").ok).toBe(true);
     expect(state.history.flags.crowned_king).toBe(true);
-    clock.next();
+    const crowned = clock.next();
     expect(state.history.quest.phase).toBe("crowned");
     expect(state.player.rankLevel).toBe(5);
+    expect(state.player.rank).toBe("king");
+    // The crown brings the steps between: counties by office, the chest, the royal fisc.
+    expect(state.history.rank.counties.length).toBe(4);
+    expect(state.history.rank.royalFisc?.yearly).toBe(300000);
+    expect(state.history.vassals.some((v) => v.group)).toBe(true);
+    expect(crowned.beats.some((b) => b.text.includes("King of this land"))).toBe(true);
   });
 
   it("a second attempt closes marriage, fear and divine favour", () => {

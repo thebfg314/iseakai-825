@@ -4,6 +4,7 @@ import questTable from "../../data/history/tables/king-quest.json";
 import { deliverEvent, type DeliveryResult, type HistoryBeat } from "./deliver";
 import { flagInt, flagTruthy, totalManses } from "./flags";
 import { historyContent } from "./load";
+import { demoteBy } from "./promotion";
 import type { SeasonAt } from "./scheduler";
 
 /**
@@ -114,8 +115,8 @@ export function tickLadder(state: WorldState, at: SeasonAt, turn: number): Deliv
       if (!chosen) return out; // the summons is still open
       if (chosen === "go") {
         const before = state.player.rankLevel ?? 1;
-        state.player.rankLevel = Math.max(1, before - TABLE.strip.ranksLost);
-        out.lines.push(`The king took honours from the lord: rank ${before} → ${state.player.rankLevel}.`);
+        const stripped = demoteBy(state, TABLE.strip.ranksLost, { by: `${state.history.realm.king ?? "the king"}, the king`, turn, at, eventId: "L-002" });
+        out.lines.push(`The king took honours from the lord: rank ${before} → ${state.player.rankLevel}.`, ...stripped.lines);
         out.beats.push(stewardBeat("L-002", "It is done, my lord. He took the county and left you the land and your household, which is what a king does when he wants a man humbled and not desperate. Bernard of Septimania lost everything twice and held three counties again by 835. We climb back the ordinary way."));
         setStage(state, "none", turn);
       } else {

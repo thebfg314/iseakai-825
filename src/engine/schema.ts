@@ -161,6 +161,16 @@ export const HoldingSchema = z.object({
       vacant: z.number().int().nonnegative().default(4),
     })
     .default({ free: 6, servile: 4, vacant: 4 }),
+  /**
+   * How the villa is held (rank progression). Fontenay's own tenure lives in history.land; granted
+   * villas carry it here. A benefice is lost when its patron falls or the lord is stripped.
+   */
+  tenure: z.enum(["owned", "benefice", "precaria"]).optional(),
+  /** Who granted it (a benefice) — matched by forfeit effects. */
+  grantedBy: z.string().optional(),
+  grantedTurn: z.number().int().optional(),
+  /** The lord's seat: where the fortification point stands. */
+  seat: z.boolean().optional(),
 });
 export type Holding = z.infer<typeof HoldingSchema>;
 

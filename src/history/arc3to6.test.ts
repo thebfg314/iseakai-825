@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "../engine/applyDelta";
 import { WorldStateSchema, type WorldState } from "../engine/schema";
 import { lintHistory, lintHistoryStructure } from "./lint";
-import { historyContent } from "./load";
+import { historyContent, setHistoryContentForTests } from "./load";
 import { PILGRIM_GIFT_DENARII } from "./relics";
+import { seasonRevenue } from "./revenue";
 import { runHistorySeasonPass, type HistoryPassResult } from "./season";
 import { fillSlots, slotValue } from "./slots";
 import { dangerAt, tickVikings } from "./vikings";
@@ -58,6 +59,8 @@ const STEP_D_FLAGS = [
 ];
 
 describe("Arcs 3–6 content", () => {
+  afterEach(() => setHistoryContentForTests(null));
+
   it("lints, and every Step D flag has a setter", () => {
     expect(lintHistoryStructure(historyContent())).toEqual([]);
     const unset = lintHistory(historyContent()).filter((p) => p.includes("nothing sets it"));
@@ -86,11 +89,13 @@ describe("Arcs 3–6 content", () => {
     settled(a, ca);
     ca.to(845, "spring");
     a.resources.denarii = 100;
+    expect(a.player.rankLevel).toBe(2); // Crémieu raised him in 835 on the Field of Lies renown
+    const office = seasonRevenue(a).net;
     const summer = ca.next();
     expect(summer.fired).toEqual(["845-V1", "845-A1"]);
     expect(summer.beats.some((b) => b.text.includes("For us that is 60 denarii (5 solidi)."))).toBe(true);
     ca.next();
-    expect(a.resources.denarii).toBe(40);
+    expect(a.resources.denarii).toBe(100 - 60 + 2 * office);
     expect(a.history.flags.levy_paid).toBe(1);
 
     const b = fresh();
@@ -119,8 +124,9 @@ describe("Arcs 3–6 content", () => {
     expect(state.history.land.visibility).toBe(vis + 15);
     const coin = state.resources.denarii;
     state.resources.rye = 20;
+    const office = seasonRevenue(state).net; // a viscount since Crémieu: the deputy's share and the court fines come in each season
     const spring = clock.next();
-    expect(state.resources.denarii).toBe(coin + PILGRIM_GIFT_DENARII);
+    expect(state.resources.denarii).toBe(coin + PILGRIM_GIFT_DENARII + office);
     expect(state.resources.rye).toBe(18);
     expect(spring.effects.some((l) => l.includes("Pilgrims"))).toBe(true);
     clock.to(884, "winter");
@@ -265,8 +271,13 @@ describe("Arcs 3–6 content", () => {
     settled(state, clock);
     state.history.flags.pippin2_840 = true;
     clock.to(845, "spring");
+    const horses = state.resources.horses;
     clock.next();
-    expect(state.history.dropped).toContain("845-P1"); // the promotion window is skipped this pass
+    // The promotion window fires; a viscount since Crémieu with renown far below 500 gets the horse, the arms and the cloak.
+    expect(state.history.fired["845-P1"]).toBeDefined();
+    expect(state.history.rank.windows["845-P1"]).toBe("thanks");
+    expect(state.player.rankLevel).toBe(2);
+    expect(state.resources.horses).toBe(horses + 1);
     clock.to(848, "spring");
     const s848 = clock.next();
     expect(s848.fired).toEqual(["848-A1", "848-A1P"]);
@@ -279,10 +290,10 @@ describe("Arcs 3–6 content", () => {
     clock.to(863, "winter");
     const s864 = clock.next();
     expect(s864.fired).toEqual(["864-V1", "864-V1P"]);
-    const horses = state.resources.horses;
+    const horsesBefore = state.resources.horses;
     expect(choose(state, "864-V1P", "warn").ok).toBe(true);
     expect(state.history.flags.warned_pippin2).toBe(true);
-    expect(state.resources.horses).toBe(horses - 1);
+    expect(state.resources.horses).toBe(horsesBefore - 1);
     const summer = clock.next();
     expect(summer.fired).toEqual(["864-V2"]); // already submitted: no submit-or-flee
     expect(summer.beats.some((b) => b.text.includes("Your man never reached him"))).toBe(true);
@@ -291,6 +302,42 @@ describe("Arcs 3–6 content", () => {
     clock.next(); // the last stage closes with the season
     expect(state.history.scenes["864-V2"]).toBeUndefined();
     expect(state.history.record.some((r) => r.text.includes("condemned at Pîtres"))).toBe(true);
+  });
+
+  it("Pippin's court raises a man whose renown bears it, and Aquitaine's turn takes his benefices back", () => {
+    const state = fresh();
+    const clock = clockFor(state);
+    settled(state, clock);
+    state.history.flags.pippin2_840 = true;
+    clock.to(845, "spring");
+    expect(state.player.rankLevel).toBe(2);
+    state.player.renown = 600; // crosses the Count threshold just before the window
+    const villasBefore = state.holdings.length;
+    const summer = clock.next();
+    expect(state.history.rank.windows["845-P1"]).toBe("promoted");
+    expect(state.player.rankLevel).toBe(3);
+    expect(state.history.flags.promoted_845).toBe(true);
+    expect(state.history.rank.patron).toBe("Pippin II, king of Aquitaine");
+    expect(state.holdings.length).toBe(12);
+    expect(state.holdings.filter((h) => h.grantedBy === "Pippin II, king of Aquitaine").length).toBe(12 - villasBefore);
+    expect(state.history.rank.counties.map((c) => c.name)).toEqual(["Beaune"]);
+    expect(state.history.vassals.filter((v) => !v.group).length).toBe(10);
+    expect(summer.beats.some((b) => b.text.includes("Count of this land, by the hand of Pippin II"))).toBe(true);
+    // The office pays its quarter from the next season.
+    const coin = state.resources.denarii;
+    const autumn = clock.next();
+    expect(state.history.rank.lastRevenue?.tolls).toBe(625);
+    expect(state.resources.denarii).toBeGreaterThan(coin);
+    expect(autumn.effects.some((l) => l.startsWith("The office paid"))).toBe(true);
+    // 848: Aquitaine throws Pippin over; what he gave in land goes, the rank and the county stay.
+    clock.to(848, "spring");
+    const s848 = clock.next();
+    expect(s848.fired).toContain("848-A1");
+    expect(s848.beats.some((b) => b.text.includes("I have struck them from the books"))).toBe(true);
+    expect(state.holdings.length).toBe(villasBefore);
+    expect(state.holdings.some((h) => h.grantedBy === "Pippin II, king of Aquitaine")).toBe(false);
+    expect(state.player.rankLevel).toBe(3);
+    expect(state.history.rank.counties.length).toBe(1);
   });
 
   it("Pippin II's men: holding out leads to submit-or-flee; fleeing forfeits the villa unless an out is taken", () => {
@@ -336,6 +383,8 @@ describe("Arcs 3–6 content", () => {
   });
 
   it("866: Robert's campaign is optional, his death changes the count, and the tribute fills its amounts and lends", () => {
+    // A villa lord's tribute: the promotion pass is off so Crémieu does not raise him and the heribannum stays at 10 solidi.
+    setHistoryContentForTests({ features: { promotions: false } });
     const state = fresh();
     const clock = clockFor(state);
     clock.to(830, "autumn");
@@ -366,6 +415,7 @@ describe("Arcs 3–6 content", () => {
   });
 
   it("877: Quierzy, the king's death announced by the event, and the second ransom in the same winter", () => {
+    setHistoryContentForTests({ features: { promotions: false } }); // a villa lord's share of the 877 tribute
     const state = fresh();
     const clock = clockFor(state);
     settled(state, clock);

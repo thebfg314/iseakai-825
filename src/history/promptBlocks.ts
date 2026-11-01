@@ -4,6 +4,7 @@ import { bodyAge, conditionContext } from "./flags";
 import { landLine } from "./land";
 import { historyContent } from "./load";
 import { pricesLine } from "./prices";
+import { rankLine } from "./promotion";
 import { realmLine } from "./realm";
 import { diffusionLine } from "./diffusion";
 import { dutiesLine } from "./duties";
@@ -106,6 +107,7 @@ export function historyPromptBlock(state: WorldState, speaker: HistorySpeaker): 
   lines.push("HISTORY (engine truth; expand only from Knows, and plead ignorance on Doesn't know)");
   lines.push(`Today: ${seasonWord(state)}. ${realmLine(state)} The lord's body age is ${bodyAge(state)}.`);
   if (speaker === "steward") lines.push(landLine(state));
+  lines.push(rankLine(state));
   const prices = pricesLine(state);
   if (prices) lines.push(prices);
   const vikings = vikingLine(state);

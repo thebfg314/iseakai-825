@@ -1221,14 +1221,70 @@
       "form": "scene",
       "deferred": "promotion",
       "promotion": {
+        "patron": "Louis the Pious, the emperor",
         "rewards": [
-          { "when": "stood_to_the_end and renown >= 50", "grant": "royal_vassal", "flags": ["royal_vassal"], "land": "villa_owned or second_villa" },
-          { "when": "stood_to_the_end", "grant": "charter", "flags": ["villa_confirmed"] },
+          { "when": "stood_to_the_end and renown >= 50", "grant": "royal_vassal", "flags": ["royal_vassal"], "land": "villa_owned or second_villa", "step": "Viscount if renown >= 100 (promote, cap Count)" },
+          { "when": "stood_to_the_end and renown < 50", "grant": "charter", "flags": ["villa_confirmed"] },
           { "when": "followed_count_833", "grant": "thanks" },
           { "when": "bribed_833 or perjury_833", "grant": "cold", "flags": ["distrusted_834"] }
         ]
       },
-      "links": { "arc": "1", "momentum": 60 }
+      "script": [
+        {
+          "speaker": "steward",
+          "when": "stood_to_the_end and renown >= 50",
+          "text": "My lord, the court remembers who stood on the Field of Lies when the rest went over. The emperor has taken you for his own man: you are commended to him directly now, not through any count, and his chancery is asking what you want in land — Fontenay in your own right, outright and forever, or a second villa to hold of him beside it. I would think carefully; a man is not asked twice."
+        },
+        {
+          "speaker": "steward",
+          "when": "stood_to_the_end and renown < 50",
+          "text": "My lord, the court remembers who stood on the Field of Lies, though your name is not yet one they say aloud. The emperor's chancery has written out a confirmation of Fontenay under his own seal: a royal charter. No count can call the villa forfeit now without answering to the emperor for it."
+        },
+        {
+          "speaker": "steward",
+          "when": "followed_count_833 and not stood_to_the_end",
+          "text": "My lord, the emperor's men were courteous. You followed your count, as a vassal does, and the count went where he went; nobody holds it against you, and nobody rewards it either. There were kind words and a purse, and the road home."
+        },
+        {
+          "speaker": "steward",
+          "when": "(bribed_833 or perjury_833) and not stood_to_the_end",
+          "text": "My lord, it was cold at court. Somebody has told them what passed last year — the money, or the oath — and the emperor's men looked through you as if you were a wall. Nothing was said against you, which is worse than if it had been. We should be careful for a while, and loyal in ways that can be seen."
+        }
+      ],
+      "onFire": [
+        {
+          "when": "stood_to_the_end and renown >= 50",
+          "flags": { "royal_vassal": true },
+          "realm": { "swornTo": "king" },
+          "renown": "moderate",
+          "promote": { "patron": "Louis the Pious, the emperor", "cap": 3, "mark": "promoted_834" }
+        },
+        { "when": "stood_to_the_end and renown < 50", "flags": { "villa_confirmed": true }, "land": { "charter": "royal" }, "renown": "small", "record": "The emperor confirmed Fontenay by royal charter." },
+        { "when": "followed_count_833 and not stood_to_the_end", "renown": "small", "gain": { "denarii": 24 } },
+        { "when": "(bribed_833 or perjury_833) and not stood_to_the_end", "flags": { "distrusted_834": true } }
+      ],
+      "choices": {
+        "prompt": "The emperor's reward in land.",
+        "deadlineSeasons": 1,
+        "options": [
+          {
+            "id": "own_villa",
+            "label": "Fontenay in your own right, outright",
+            "requires": "royal_vassal",
+            "default": true,
+            "effects": { "land": { "tenure": "owned", "charter": "royal" }, "flags": { "villa_owned": true }, "record": "The emperor gave the lord Fontenay outright, in his own right." }
+          },
+          {
+            "id": "second_villa",
+            "label": "A second villa, held of the emperor",
+            "requires": "royal_vassal",
+            "effects": { "grant": { "patron": "Louis the Pious, the emperor", "villas": 1, "like": 2 }, "flags": { "second_villa": true }, "land": { "charter": "royal" }, "record": "The emperor granted the lord a second villa to hold of him." }
+          },
+          { "id": "no_grant", "label": "No grant of land was offered", "requires": "not royal_vassal", "default": true }
+        ]
+      },
+      "links": { "arc": "1", "momentum": 60 },
+      "notes": "Promotion pass: the rewards are data. The promote block raises him to Viscount if his renown is at the threshold; the choice settles the land. Scripts are engine-written from the rewards table."
     },
     {
       "id": "834-03",
@@ -1415,15 +1471,53 @@
       "form": "scene",
       "deferred": "promotion",
       "promotion": {
+        "patron": "Louis the Pious, the emperor",
         "rule": [
-          { "when": "fired(834-02)", "result": "no second promotion; goodwill continues" },
-          { "when": "renown at or above the next rank's threshold", "result": "promotion, plus a charter if not already secured" },
-          { "when": "distrusted_834", "result": "promotion possible at a higher threshold" },
+          { "when": "promoted_834", "result": "no second promotion; goodwill continues" },
+          { "when": "renown at or above the next rank's threshold", "result": "promotion (promote, cap Count), plus a royal charter if not already secured" },
+          { "when": "distrusted_834", "result": "promotion possible at a higher threshold (×1.5)" },
           { "when": "below threshold", "result": "thanks and a small gift" }
         ],
         "meets": "Bernard, restored to Septimania and Barcelona and given Toulouse; Berengar died on the road."
       },
-      "links": { "arc": "1", "momentum": 70 }
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the emperor held his assembly at Crémieu, by Lyon, and the lords of Burgundy went up to it. Bernard of Septimania was there, restored to everything — Septimania, Barcelona, and Toulouse besides, since Berengar died on the road to the assembly. There is a lesson in that about standing in the right place at the right time."
+        },
+        {
+          "speaker": "steward",
+          "when": "promoted_834",
+          "text": "For us it was courtesy and goodwill. The emperor raised you last year; he does not raise a man twice in two summers, and nobody expected it. He asked after the villa by name, which is worth more than it sounds."
+        },
+        {
+          "speaker": "steward",
+          "when": "not promoted_834 and ((rank == 1 and renown >= 100 and not distrusted_834) or (rank == 1 and renown >= 150 and distrusted_834) or (rank == 2 and renown >= 500 and not distrusted_834) or (rank == 2 and renown >= 750 and distrusted_834))",
+          "text": "And they called your name, my lord. The chancery had it ready."
+        },
+        {
+          "speaker": "steward",
+          "when": "not promoted_834 and not ((rank == 1 and renown >= 100 and not distrusted_834) or (rank == 1 and renown >= 150 and distrusted_834) or (rank == 2 and renown >= 500 and not distrusted_834) or (rank == 2 and renown >= 750 and distrusted_834))",
+          "text": "For us it was thanks and a small gift — a purse of sixty pence and a word from the chamberlain that the emperor knows the name of Fontenay. That is not nothing, my lord, but it is not a rank. More would need more done."
+        }
+      ],
+      "onFire": [
+        {
+          "when": "not promoted_834",
+          "promote": {
+            "patron": "Louis the Pious, the emperor",
+            "cap": 3,
+            "scaleWhen": "distrusted_834",
+            "scale": 1.5,
+            "mark": "promoted_835",
+            "onPromote": [{ "when": "charter == 'none'", "land": { "charter": "royal" }, "flags": { "villa_confirmed": true } }],
+            "onThanks": { "gain": { "denarii": 60 }, "renown": "small" }
+          }
+        },
+        { "when": "promoted_834", "renown": "small" }
+      ],
+      "links": { "arc": "1", "momentum": 70 },
+      "notes": "Promotion pass: the Crémieu rule is data (promote with scaleWhen for the distrusted). The eligibility scripts mirror the thresholds 100/500 and ×1.5."
     },
     {
       "id": "837-01",

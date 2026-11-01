@@ -9,7 +9,9 @@ import { tickLand } from "./land";
 import { tickQuest } from "./quest";
 import { historyContent } from "./load";
 import { tickHungerDebuffs, tickPrices } from "./prices";
+import { tickPromotion } from "./promotion";
 import { tickRealm } from "./realm";
+import { tickRevenue } from "./revenue";
 import { tickRelics } from "./relics";
 import { tickRichard } from "./richard";
 import { dueEvents, type SeasonAt } from "./scheduler";
@@ -153,6 +155,18 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
     if (!out.fired.includes(b.eventId) && content.byId.has(b.eventId)) out.fired.push(b.eventId);
   }
   if (ladder.beats.length || quest.beats.length) out.suppressOther = true;
+  // Rank: the generic summons when renown has earned a step and no scripted window spoke for it.
+  const promotion = tickPromotion(state, incoming, turn);
+  out.beats.push(...promotion.beats);
+  out.effects.push(...promotion.lines);
+  if (promotion.promoted) {
+    out.suppressOther = true;
+    out.refereeLines.push(`History: the lord was raised to rank ${promotion.promoted} this season start and Aldric has told him what came with it; do not retell it.`);
+  }
+  // The office pays its quarter into the chest.
+  const revenue = tickRevenue(state, incoming, turn);
+  out.beats.push(...revenue.beats);
+  out.effects.push(...revenue.lines);
   const diffusion = tickDiffusion(state, incoming, turn);
   out.beats.push(...diffusion.beats);
   out.effects.push(...diffusion.lines);

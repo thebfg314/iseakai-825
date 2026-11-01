@@ -107,6 +107,15 @@ export function conditionVars(state: WorldState, at?: { year: number; season: st
     hunger: state.flags.hunger ? 1 : 0,
     monastery_nearby: state.flags.monastery_nearby ? 1 : 0,
     relics: flagTruthy(state, "relics_held") ? 1 : 0,
+    // Rank progression (03_HISTORY §10).
+    villas: state.holdings.length,
+    counties: h.rank?.counties.length ?? 0,
+    vassals: (h.vassals ?? []).filter((v) => !v.group).length,
+    vassal_mood: (() => {
+      const own = (h.vassals ?? []).filter((v) => !v.group);
+      return own.length ? Math.round(own.reduce((n, v) => n + v.mood, 0) / own.length) : 50;
+    })(),
+    trade_health: h.trade?.health ?? 55,
   };
 }
 

@@ -3,6 +3,8 @@ import { SMITH_SEASON_DAYS, smithProgressLine } from "../engine/smithing";
 import { levyMenUnderArms, raiseSpecFor, upkeepDue } from "../engine/military";
 import { unitSheet } from "../combat/registry";
 import { rankTitle } from "../combat/renown";
+import { eligibleRank } from "../history/promotion";
+import { seasonRevenue } from "../history/revenue";
 import { merchantCartsForBooks } from "../engine/merchantShop";
 import { clampEstateOffset, estatePagerFlags, snapshotAtOffset, stepEstateOffset } from "../engine/estateBooks";
 import { seasonsBetween } from "../engine/projectProgress";
@@ -26,15 +28,111 @@ import {
   seasonsOfWorkPhrase,
 } from "./ledgerCopy";
 
-export const BOOKS_TABS = ["estate", "labours", "customs", "arms"] as const;
+export const BOOKS_TABS = ["estate", "holdings", "labours", "customs", "arms"] as const;
 export type BooksTab = (typeof BOOKS_TABS)[number];
 
 export const BOOKS_TAB_LABELS: Record<BooksTab, string> = {
   estate: "Estate",
+  holdings: "Holdings",
   labours: "Labours",
   customs: "Customs",
   arms: "Arms",
 };
+
+// ---------------------------------------------------------------------------
+// Holdings (rank progression doc, "What the books screen shows at each rank")
+// ---------------------------------------------------------------------------
+
+export type HoldingsBook = {
+  rank: { level: number; title: string; patron: string | null; eligibleTitle: string | null; summonsIn: number | null };
+  villas: { id: string; name: string; manses: string; tenure: string; seat: boolean; features: string[] }[];
+  patrimony: { villas: number; manses: number };
+  vassals: { id: string; name: string; holding: string; men: number; mood: string; group: boolean }[];
+  court: string[];
+  counties: { name: string; since: string; fisc: string; fiscManses: number; levy: number; yearly: string }[];
+  revenue: { last: { tolls: number; market: number; justice: number; fisc: number; mint: number; deputy: number; fines: number; officers: number; net: number } | null; yearly: number };
+  officers: string[];
+  levy: number;
+  mint: number;
+  royalFisc: { yearly: number; host: string } | null;
+  emptyLine?: string;
+};
+
+export const HOLDINGS_EMPTY = "One villa, held as a benefice, and no man sworn to you. Vassals, a court and the offices of a county come with rank; renown earns the summons.";
+
+export function vassalMoodWord(mood: number): string {
+  if (mood >= 65) return "content";
+  if (mood < 35) return "angry";
+  return "steady";
+}
+
+function tenureWord(h: WorldState["holdings"][number], state: WorldState, first: boolean): string {
+  if (first) {
+    const t = state.history.land.tenure;
+    if (t === "owned") return "the lord's own";
+    if (t === "precaria") return "held of the church as precaria";
+    if (t === "forfeit_claimed") return "claimed as forfeit";
+    return `a benefice${state.history.land.charter !== "none" ? `, ${state.history.land.charter}'s charter` : ""}`;
+  }
+  if (h.tenure === "owned") return "the lord's own";
+  if (h.tenure === "precaria") return "held of the church as precaria";
+  return `a benefice of ${h.grantedBy ?? "the lord's patron"}`;
+}
+
+export function holdingsBook(state: WorldState): HoldingsBook {
+  const level = Math.max(1, Math.min(5, state.player.rankLevel ?? 1));
+  const rank = state.history.rank;
+  const eligible = eligibleRank(state);
+  const villas = state.holdings.map((h, i) => ({
+    id: h.id,
+    name: h.name,
+    manses: `${h.manses.free} free, ${h.manses.servile} servile, ${h.manses.vacant} vacant`,
+    tenure: tenureWord(h, state, i === 0),
+    seat: Boolean(h.seat) || (i === 0 && !state.holdings.some((x) => x.seat)),
+    features: h.features,
+  }));
+  const vassals = state.history.vassals.map((v) => ({ id: v.id, name: v.name, holding: v.holding, men: v.men, mood: vassalMoodWord(v.mood), group: v.group }));
+  const court: string[] = [];
+  if (level === 2) court.push("The viscount holds the count's court in his district: the deputy's share and the fines of the lesser pleas come to him.");
+  if (level >= 3) court.push("The count sits in judgment on the pleas of the county; the fines are his. The stance of the court (lenient, fair, strict) is set in conversation with Aldric.");
+  const SEASONS_IN_ORDER: Season[] = ["spring", "summer", "autumn", "winter"];
+  const turnLabel = (turn: number) => seasonBooksLabel(SEASONS_IN_ORDER[(Math.max(1, turn) - 1) % 4], 825 + Math.floor((Math.max(1, turn) - 1) / 4));
+  const counties = rank.counties.map((c) => ({
+    name: c.name,
+    since: turnLabel(c.since),
+    fisc: `${c.fiscManses} manses in ${c.fiscVillas} villas, held by office`,
+    fiscManses: c.fiscManses,
+    levy: c.levy,
+    yearly: `tolls ${c.yearly.tolls}, market ${c.yearly.market}, pleas ${c.yearly.justice}, fisc ${c.yearly.fisc}; officers ${c.yearly.officers}`,
+  }));
+  const season = seasonRevenue(state);
+  const officers: string[] = [];
+  if (level >= 3) {
+    const steward = state.npcs.find((n) => n.id === "steward")?.name ?? "Aldric";
+    officers.push(`${steward}, steward of the whole, with the county's clerks under him.`);
+    officers.push(`${rank.counties.length} ${rank.counties.length === 1 ? "county" : "counties"} to administer from ${state.holdings.find((h) => h.seat)?.name ?? state.holdings[0]?.name ?? "the seat"}.`);
+  }
+  return {
+    rank: {
+      level,
+      title: rankTitle(level as 1 | 2 | 3 | 4 | 5),
+      patron: rank.patron,
+      eligibleTitle: eligible > level ? rankTitle(eligible as 1 | 2 | 3 | 4 | 5) : null,
+      summonsIn: eligible > level && rank.dueTurn !== null ? Math.max(1, rank.dueTurn - state.meta.turn) : null,
+    },
+    villas,
+    patrimony: { villas: state.holdings.length, manses: state.holdings.reduce((n, h) => n + h.manses.free + h.manses.servile, 0) },
+    vassals,
+    court,
+    counties,
+    revenue: { last: rank.lastRevenue, yearly: season.net * 4 },
+    officers,
+    levy: rank.counties.reduce((n, c) => n + c.levy, 0),
+    mint: rank.mint,
+    royalFisc: rank.royalFisc ? { yearly: rank.royalFisc.yearly, host: `${rank.royalFisc.host.min}–${rank.royalFisc.host.max} men when the host is called` } : null,
+    emptyLine: level === 1 && state.holdings.length <= 1 && !vassals.length ? HOLDINGS_EMPTY : undefined,
+  };
+}
 
 export type ArmsBook = {
   lord: { renown: number; rankTitle: string; rankLevel: number; strength: string; wounds: string[]; dead: boolean };

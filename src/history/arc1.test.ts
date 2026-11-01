@@ -239,7 +239,24 @@ describe("Arc 1 content", () => {
     hook(state, "834-01", "ride_to_court");
     const summer834 = clock.next();
     expect(summer834.fired).toContain("834-03");
-    expect(state.history.dropped).toContain("834-02"); // promotion windows are skipped this pass
+    // The promotion window: he stood to the end with renown over 50, so the emperor's man; over 100, so Viscount.
+    expect(summer834.fired).toContain("834-02");
+    expect(state.history.flags.royal_vassal).toBe(true);
+    expect(state.history.realm.swornTo).toBe("king");
+    expect(state.history.flags.promoted_834).toBe(true);
+    expect(state.player.rankLevel).toBe(2);
+    expect(state.player.rank).toBe("viscount");
+    expect(state.holdings.length).toBe(3); // Fontenay and the two villas of the step, held of the emperor
+    expect(state.holdings.slice(1).every((h) => h.tenure === "benefice" && h.grantedBy === "Louis the Pious, the emperor")).toBe(true);
+    expect(state.military.units.some((u) => u.sheetId === "caballarii" && u.strength === 9)).toBe(true);
+    expect(state.history.vassals.filter((v) => !v.group).length).toBe(3);
+    expect(state.holdings[0].features).toContain("palisade");
+    expect(texts(summer834).some((t) => t.includes("Viscount of this land"))).toBe(true);
+    // The land choice: a second villa of the emperor beside the step's.
+    expect(choose(state, "834-02", "second_villa").ok).toBe(true);
+    expect(state.holdings.length).toBe(4);
+    expect(state.history.flags.second_villa).toBe(true);
+    expect(state.history.land.charter).toBe("royal");
     expect(summer834.fired).not.toContain("834-B1");
     expect(state.history.supply.lastRoll?.situation).toBe("foraging");
     const autumn834 = clock.next();

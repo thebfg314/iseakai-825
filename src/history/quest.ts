@@ -6,6 +6,7 @@ import { evalCondition } from "./conditions";
 import { deliverEvent, markInterimBattle, type DeliveryResult, type HistoryBeat } from "./deliver";
 import { conditionContext } from "./flags";
 import { historyContent } from "./load";
+import { promoteTo } from "./promotion";
 import type { SeasonAt } from "./scheduler";
 
 /**
@@ -187,11 +188,15 @@ export function tickQuest(state: WorldState, at: SeasonAt, turn: number, questSt
       if (!chosen) return out;
       if (chosen === "earned" || chosen === "bought" || chosen === "coerced") {
         q.phase = "crowned";
-        state.player.rankLevel = 5;
+        const r = promoteTo(state, 5, { patron: "the assembly of the great men and the bishops", turn, at, eventId: "Q-003" });
+        out.beats.push(...r.beats);
+        out.lines.push(...r.lines);
         out.lines.push("The lord is king.");
       } else if (chosen === "counter_offer") {
         q.phase = "failed";
-        state.player.rankLevel = Math.max(state.player.rankLevel ?? 1, 4);
+        const r = promoteTo(state, 4, { patron: "the magnates' counter-offer", turn, at, eventId: "Q-003" });
+        out.beats.push(...r.beats);
+        out.lines.push(...r.lines);
         out.lines.push("The lord took the duchy and put a Carolingian child on the throne.");
       } else {
         q.phase = "failed";

@@ -8,13 +8,17 @@ import { labourPool, labourRemaining } from "../engine/labour";
 import { WorldStateSchema, type Project, type WorldState } from "../engine/schema";
 import { emptyMeter } from "../llm/usage";
 import type { GameView } from "../shared/types";
+import { promoteTo } from "../history/promotion";
+import { tickRevenue } from "../history/revenue";
 import { BooksPanel } from "./BooksPanel";
 import {
   BOOKS_TAB_LABELS,
   BOOKS_TABS,
+  HOLDINGS_EMPTY,
   customsBookEntries,
   customsEmptyLines,
   estatePagerView,
+  holdingsBook,
   isBooksTab,
   labourBookEntries,
   laboursEmptyLine,
@@ -101,9 +105,10 @@ describe("arms at a new game", () => {
 });
 
 describe("books tabs", () => {
-  it("names the three tabs in hall language", () => {
-    expect([...BOOKS_TABS]).toEqual(["estate", "labours", "customs", "arms"]);
+  it("names the tabs in hall language", () => {
+    expect([...BOOKS_TABS]).toEqual(["estate", "holdings", "labours", "customs", "arms"]);
     expect(BOOKS_TAB_LABELS.estate).toBe("Estate");
+    expect(BOOKS_TAB_LABELS.holdings).toBe("Holdings");
     expect(BOOKS_TAB_LABELS.labours).toBe("Labours");
     expect(BOOKS_TAB_LABELS.customs).toBe("Customs");
     expect(isBooksTab("estate")).toBe(true);
@@ -112,6 +117,53 @@ describe("books tabs", () => {
     expect(selectBooksTab("labours", "customs")).toBe("customs");
     expect(selectBooksTab("customs", "not-a-tab")).toBe("customs");
     expect(JSON.stringify(BOOKS_TAB_LABELS)).not.toMatch(JARGON);
+  });
+});
+
+describe("holdings page", () => {
+  it("a villa lord sees one villa and what rank would bring; a count sees his county, vassals and public revenue", () => {
+    const fresh = estate();
+    const page = holdingsBook(fresh);
+    expect(page.rank.title).toBe("Minor Noble");
+    expect(page.villas).toHaveLength(1);
+    expect(page.villas[0].seat).toBe(true);
+    expect(page.villas[0].tenure).toContain("benefice");
+    expect(page.emptyLine).toBe(HOLDINGS_EMPTY);
+    expect(page.counties).toEqual([]);
+    const html = renderToStaticMarkup(createElement(BooksPanel, { view: viewOf(fresh), initialTab: "holdings" }));
+    expect(html).toContain("Minor Noble");
+    expect(html).toContain("renown earns the summons"); // the empty line, with "villa" wrapped by the glossary
+    expect(html).not.toContain("Public revenue");
+    expect(html).not.toMatch(JARGON);
+
+    const count = estate();
+    count.player.renown = 600;
+    promoteTo(count, 3, { patron: "Charles the Bald, the king", turn: 40 });
+    tickRevenue(count, { year: 850, season: "summer" }, 41);
+    const book = holdingsBook(count);
+    expect(book.rank.title).toBe("Count");
+    expect(book.rank.patron).toBe("Charles the Bald, the king");
+    expect(book.rank.eligibleTitle).toBeNull();
+    expect(book.villas).toHaveLength(12);
+    expect(book.patrimony.manses).toBe(10 + 2 * 11 + 9 * 13);
+    expect(book.vassals.filter((v) => !v.group)).toHaveLength(10);
+    expect(book.vassals[0].mood).toBe("steady");
+    expect(book.counties).toHaveLength(1);
+    expect(book.counties[0].name).toBe("Beaune");
+    expect(book.counties[0].since).toBe("Winter 834"); // turn 40
+    expect(book.levy).toBe(300);
+    expect(book.revenue.last?.tolls).toBe(625);
+    expect(book.revenue.yearly).toBe(book.revenue.last!.net * 4);
+    const countHtml = renderToStaticMarkup(createElement(BooksPanel, { view: viewOf(count), initialTab: "holdings" }));
+    expect(countHtml).toContain("The county");
+    expect(countHtml).toContain("Public revenue");
+    expect(countHtml).toContain("Fisc and patrimony");
+    expect(countHtml).toContain("Callable in the king");
+    expect(countHtml).not.toMatch(JARGON);
+    // The Estate page sums the land of every villa and names them.
+    const estateHtml = renderToStaticMarkup(createElement(BooksPanel, { view: viewOf(count), initialTab: "estate" }));
+    expect(estateHtml).toContain("Land — 12 villas");
+    expect(estateHtml).toContain("Holdings page");
   });
 });
 

@@ -40,6 +40,11 @@ export const CONDITION_VARS = new Set([
   "hunger",
   "monastery_nearby",
   "relics",
+  "villas",
+  "counties",
+  "vassals",
+  "vassal_mood",
+  "trade_health",
 ]);
 
 /**
@@ -101,6 +106,18 @@ export function lintHistory(content: HistoryContent = historyContent()): string[
     for (const [id, amount] of [...Object.entries(fx.cost ?? {}), ...Object.entries(fx.gain ?? {})]) {
       if (typeof amount === "string" && !isSlotName(amount.replace(/^\{|\}$/g, ""))) problems.push(`${where}: ${id} names unknown amount slot ${amount}`);
     }
+    if (fx.promote) {
+      checkCondition(`${where}.promote.scaleWhen`, fx.promote.scaleWhen);
+      if (fx.promote.mark) {
+        const def = flagIds.get(fx.promote.mark);
+        if (!def) problems.push(`${where}.promote: marks unregistered flag '${fx.promote.mark}'`);
+        else if (def.type !== "bool") problems.push(`${where}.promote: mark '${fx.promote.mark}' must be a bool flag`);
+        else setters.set(fx.promote.mark, (setters.get(fx.promote.mark) ?? 0) + 1);
+      }
+      checkEffects(`${where}.promote.onPromote`, fx.promote.onPromote as HistoryEffectsList | undefined);
+      checkEffects(`${where}.promote.onThanks`, fx.promote.onThanks as HistoryEffectsList | undefined);
+    }
+    if (fx.grant && !fx.grant.villas && !fx.grant.county) problems.push(`${where}: grant of nothing`);
   };
 
   const checkSlots = (where: string, text: string) => {
@@ -165,6 +182,12 @@ export function lintHistory(content: HistoryContent = historyContent()): string[
     }
     if (e.deferred === "battle" && !e.battle) problems.push(`${w}: deferred battle without battle data`);
     if (e.deferred === "promotion" && !e.promotion) problems.push(`${w}: deferred promotion without promotion data`);
+    if (e.type === "promotion" && !e.rolled) {
+      // Rolled windows (Q-003) are settled by the system that rolls them; dated ones must carry the grant in data.
+      const blocks = (fx: HistoryEffectsList | undefined): HistoryEffects[] => (!fx ? [] : Array.isArray(fx) ? fx : [fx]);
+      const all = [...blocks(e.onFire), ...e.choices?.options.flatMap((o) => blocks(o.effects)) ?? [], ...e.stages.flatMap((s) => [...blocks(s.exitEffects), ...(s.choices?.options.flatMap((o) => blocks(o.effects)) ?? [])])];
+      if (!all.some((fx) => fx.promote || fx.grant)) problems.push(`${w}: a promotion window must carry a promote or grant effect`);
+    }
     if (e.type === "battle" && e.deferred !== "battle") problems.push(`${w}: type battle must be deferred: "battle" (the battle pass reads event.battle and the forces table)`);
     if (e.deferred === "battle" && content.battles.length && !content.battles.some((b) => b.event === e.id && !b.supply)) problems.push(`${w}: deferred battle without a forces table entry (data/history/battles.json)`);
     if (e.type === "promotion" && e.deferred !== "promotion") problems.push(`${w}: type promotion must be deferred: "promotion" in this pass`);

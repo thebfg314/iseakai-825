@@ -5,8 +5,10 @@ import { applyPopulationDelta } from "../engine/peopleMovement";
 import type { ModifierTarget, WorldState } from "../engine/schema";
 import { newId } from "../engine/util";
 import { evalCondition } from "./conditions";
+import type { HistoryBeat } from "./deliver";
 import { applyFlagOp, conditionContext } from "./flags";
 import { historyContent } from "./load";
+import { applyPromoteEffect, forfeitFrom, grantCounty, grantVillas } from "./promotion";
 import type { HistoryEffects, HistoryEffectsList } from "./schema";
 import { resolveAmount } from "./slots";
 
@@ -30,6 +32,8 @@ export function rollRenownBand(band: string, seed: string): number {
 export type EffectReport = {
   /** Short ledger lines for the player, in order. */
   lines: string[];
+  /** Verbatim lines an effect produced for the speakers' tabs (a promotion's account of the grant). */
+  beats: HistoryBeat[];
   /** Why it could not be applied, if so. Nothing is written when this is set. */
   refused?: string;
 };
@@ -77,21 +81,22 @@ export function costShortfall(state: WorldState, cost: Record<string, number | s
  * `seed` makes renown bands reproducible per event + option.
  */
 export function applyEffects(state: WorldState, effects: HistoryEffectsList | undefined, seed: string, opts?: { at?: { year: number; season: string } }): EffectReport {
-  if (!effects) return { lines: [] };
+  if (!effects) return { lines: [], beats: [] };
   const list = Array.isArray(effects) ? effects : [effects];
   const ctx = conditionContext(state, opts?.at);
   const applicable = list.filter((e) => !e.when || evalCondition(e.when, ctx));
   for (const e of applicable) {
     const short = costShortfall(state, e.cost);
-    if (short) return { lines: [], refused: short };
+    if (short) return { lines: [], beats: [], refused: short };
   }
   const lines: string[] = [];
-  applicable.forEach((e, i) => lines.push(...applyOne(state, e, applicable.length > 1 ? `${seed}#${i}` : seed, opts)));
-  return { lines };
+  const beats: HistoryBeat[] = [];
+  applicable.forEach((e, i) => lines.push(...applyOne(state, e, applicable.length > 1 ? `${seed}#${i}` : seed, opts, beats)));
+  return { lines, beats };
 }
 
 /** The condition variables an effects `when` may read include every flag written so far this call. */
-function applyOne(state: WorldState, effects: HistoryEffects, seed: string, opts?: { at?: { year: number; season: string } }): string[] {
+function applyOne(state: WorldState, effects: HistoryEffects, seed: string, opts: { at?: { year: number; season: string } } | undefined, pendingBeats: HistoryBeat[]): string[] {
   const lines: string[] = [];
 
   const registry = historyContent().flags;
@@ -186,6 +191,41 @@ function applyOne(state: WorldState, effects: HistoryEffects, seed: string, opts
   if (effects.away) {
     state.history.away = { reason: effects.away.reason, untilTurn: state.meta.turn + effects.away.seasons };
     lines.push(`The lord will be away: ${effects.away.reason}.`);
+  }
+  if (effects.grant) {
+    const g = effects.grant;
+    if (g.villas) {
+      const names = grantVillas(state, g.villas, { patron: g.patron, tenure: g.tenure, like: g.like, turn: state.meta.turn });
+      if (names.length) lines.push(`Granted ${names.length === 1 ? "the villa" : "the villas"} of ${names.join(", ")} by ${g.patron}${g.tenure === "owned" ? ", outright" : ", as a benefice"}.`);
+    }
+    if (g.county) {
+      const name = grantCounty(state, g.county, state.meta.turn);
+      if (name) lines.push(`The county of ${name} is held by office from ${g.patron}.`);
+    }
+  }
+  if (effects.forfeit) {
+    const lost = forfeitFrom(state, effects.forfeit.patron);
+    if (lost.length) lines.push(`Benefices held from ${effects.forfeit.patron} are lost: ${lost.join(", ")}.`);
+  }
+  if (effects.promote) {
+    const eventId = seed.split(":")[0];
+    const at = opts?.at ?? { year: state.meta.year, season: state.meta.season };
+    const ctx = conditionContext(state, at);
+    const r = applyPromoteEffect(state, effects.promote, {
+      eventId,
+      turn: state.meta.turn,
+      at: at as never,
+      holds: (cond) => !cond || evalCondition(cond, ctx),
+    });
+    lines.push(...r.lines);
+    pendingBeats.push(...r.beats);
+    const follow = r.promoted ? effects.promote.onPromote : effects.promote.onThanks;
+    if (follow) {
+      const nested = applyEffects(state, follow as HistoryEffectsList, `${seed}:${r.promoted ? "promoted" : "thanks"}`, opts);
+      if (nested.refused) lines.push(nested.refused);
+      lines.push(...nested.lines);
+      pendingBeats.push(...nested.beats);
+    }
   }
   if (effects.record) {
     const at = opts?.at ?? { year: state.meta.year, season: state.meta.season };

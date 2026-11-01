@@ -35,13 +35,38 @@
       "deferred": "promotion",
       "promotion": {
         "patron": "Pippin II, king of Aquitaine",
-        "cap": "No promotion to Duke or above from Pippin.",
+        "cap": "No promotion to Duke or above from Pippin (promote cap 3).",
         "rewards": [
-          { "when": "renown >= 200", "grant": "rank_up", "note": "Promotion at Pippin's court and a benefice in Aquitaine, or confirmation of the villa; the Aquitaine benefice is lost when Pippin falls." },
-          { "when": "renown < 200", "grant": "gifts", "note": "A horse, arms, a cloak." }
+          { "when": "renown at the next threshold", "grant": "rank_up", "note": "Promotion at Pippin's court; the villas that come with the step are benefices held of Pippin and are forfeit when he falls (848-A1)." },
+          { "when": "below threshold", "grant": "gifts", "note": "A horse, arms, a cloak." }
         ]
       },
-      "links": { "arc": "5", "momentum": 70 }
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, Pippin held his court this summer as a king at last, and those who rode for him in the bad years were called up one by one. He cannot raise a man above his own standing — he is a king of part of Aquitaine, holding of his uncle — and anything he gives is his to give only while he has it."
+        },
+        {
+          "speaker": "steward",
+          "when": "(rank == 1 and renown >= 100) or (rank == 2 and renown >= 500)",
+          "text": "He called your name among the first, my lord, and he meant it as thanks and as a binding both. What he has given in land lies in Aquitaine, and is his gift: if Pippin falls, it falls with him. Fontenay is not his and not at risk."
+        },
+        {
+          "speaker": "steward",
+          "when": "not ((rank == 1 and renown >= 100) or (rank == 2 and renown >= 500))",
+          "text": "For us there was a horse from his own stables, a sword and a good cloak, and his hand on your shoulder before the hall. Kings' gifts, not kings' offices; he does not have enough of those to spare for every man who rode with him."
+        }
+      ],
+      "onFire": {
+        "promote": {
+          "patron": "Pippin II, king of Aquitaine",
+          "cap": 3,
+          "mark": "promoted_845",
+          "onThanks": { "gain": { "horses": 1, "denarii": 36 }, "renown": "small", "record": "Pippin II gave the lord a horse, arms and a cloak at his court." }
+        }
+      },
+      "links": { "arc": "5", "momentum": 70 },
+      "notes": "Promotion pass: data-driven. The step's villas carry Pippin's name as patron; 848-A1 forfeits them."
     },
     {
       "id": "848-A1",
@@ -55,8 +80,14 @@
         {
           "speaker": "steward",
           "text": "My lord, the Aquitanians have thrown Pippin over. His own lords have gone to King Charles and asked him to rule them, and Charles has been crowned and anointed at Orléans as their king. Three years he's been king down there and they've tired of him already. Pippin's still loose with a few men, but he's a king of nothing now."
+        },
+        {
+          "speaker": "steward",
+          "when": "promoted_845",
+          "text": "And what he gave in land is gone with him, my lord. Charles's officers hold the Aquitaine villas as the king's now; the rank he gave you nobody has taken back, but the benefices are lost. I have struck them from the books."
         }
       ],
+      "onFire": { "forfeit": { "patron": "Pippin II, king of Aquitaine" } },
       "links": { "arc": "5", "momentum": 65 }
     },
     {

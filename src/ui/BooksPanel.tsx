@@ -9,12 +9,14 @@ import {
   customsBookEntries,
   customsEmptyLines,
   estatePagerView,
+  holdingsBook,
   labourBookEntries,
   laboursEmptyLine,
   selectBooksTab,
   stepEstateOffset,
   type BooksTab,
   type EstateLedgerSource,
+  type HoldingsBook,
   type LabourBookEntry,
 } from "./booksView";
 import {
@@ -90,6 +92,7 @@ export function BooksPanel({
             onForward={() => setEstateOffset((o) => stepEstateOffset(o, historyLength, false))}
           />
         )}
+        {tab === "holdings" && <HoldingsTab book={holdingsBook(view.state)} />}
         {tab === "labours" && <LaboursTab entries={labours} />}
         {tab === "arms" && <ArmsTab book={armsBook(view.state)} />}
         {tab === "customs" && (
@@ -200,16 +203,21 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
         <GlossaryText text={armsBookLine(s.npcs)} />
       </p>
 
-      <h3>Land — {holding?.name}</h3>
+      <h3>{s.holdings.length > 1 ? `Land — ${s.holdings.length} villas` : `Land — ${holding?.name}`}</h3>
+      {s.holdings.length > 1 && (
+        <p className="ledger-note">
+          <GlossaryText text={`${s.holdings.map((h) => h.name).join(", ")}. Each villa's manses and tenure are on the Holdings page.`} />
+        </p>
+      )}
       {holding &&
-        Object.entries(holding.land).map(([k, v]) => (
-          <Row key={k} k={landName(k)} v={`${v} acres`} land />
+        Object.keys(holding.land).map((k) => (
+          <Row key={k} k={landName(k)} v={`${s.holdings.reduce((n, h) => n + (h.land as Record<string, number>)[k], 0)} acres`} land />
         ))}
       {holding && (
         <>
           <h3>Sown</h3>
-          {Object.entries(holding.sown).map(([k, v]) => (
-            <Row key={k} k={resourceName(k)} v={`${v} acres`} delta={d(`sown_${k}`)} />
+          {Object.keys(holding.sown).map((k) => (
+            <Row key={k} k={resourceName(k)} v={`${Math.round(s.holdings.reduce((n, h) => n + (h.sown as Record<string, number>)[k], 0) * 10) / 10} acres`} delta={d(`sown_${k}`)} />
           ))}
           <p className="ledger-note">
             <GlossaryText text={sowingRotationLine(s.agriculture?.rotation)} />
@@ -275,6 +283,135 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
           <GlossaryText text={t.name} />
         </p>
       ))}
+    </>
+  );
+}
+
+function HoldingsTab({ book }: { book: HoldingsBook }) {
+  const r = book.rank;
+  const level = r.level;
+  return (
+    <>
+      <h3>Rank</h3>
+      <Row k="Title" v={r.title} />
+      {r.patron && <Row k="By the hand of" v={r.patron} />}
+      {r.eligibleTitle && (
+        <p className="ledger-note">
+          <GlossaryText text={`Your renown would bear the rank of ${r.eligibleTitle}; a summons is expected${r.summonsIn !== null ? ` within ${r.summonsIn} ${r.summonsIn === 1 ? "season" : "seasons"}` : ""}.`} />
+        </p>
+      )}
+      {book.emptyLine && (
+        <p className="muted">
+          <GlossaryText text={book.emptyLine} />
+        </p>
+      )}
+
+      <h3>{book.villas.length > 1 ? `Villas — ${book.patrimony.villas}, ${book.patrimony.manses} manses` : "The villa"}</h3>
+      {book.villas.map((v) => (
+        <Row key={v.id} k={v.seat ? `${v.name} (seat)` : v.name} v={`${v.manses} · ${v.tenure}`} />
+      ))}
+
+      {(level >= 2 || book.vassals.length > 0) && (
+        <>
+          <h3>Vassals</h3>
+          {book.vassals.length === 0 && <p className="muted">No man is sworn to you yet.</p>}
+          {book.vassals.map((v) => (
+            <Row key={v.id} k={v.group ? v.name : `${v.name} of ${v.holding}`} v={`${v.men} men · ${v.mood}`} />
+          ))}
+        </>
+      )}
+
+      {book.court.length > 0 && (
+        <>
+          <h3>Court</h3>
+          {book.court.map((line, i) => (
+            <p key={i} className="ledger-note">
+              <GlossaryText text={line} />
+            </p>
+          ))}
+        </>
+      )}
+
+      {level >= 3 && (
+        <>
+          <h3>{book.counties.length === 1 ? "The county" : "Counties"}</h3>
+          {book.counties.length === 0 && <p className="muted">No county is held by office.</p>}
+          {book.counties.map((c) => (
+            <article key={c.name} className="labour-entry">
+              <div className="row">
+                <span>{c.name}</span>
+                <span>since {c.since}</span>
+              </div>
+              <p className="ledger-note">
+                <GlossaryText text={`Fisc: ${c.fisc}. Levy ${c.levy} in the king's name. A year: ${c.yearly}.`} />
+              </p>
+            </article>
+          ))}
+
+          <h3>Fisc and patrimony</h3>
+          <p className="ledger-note">
+            <GlossaryText text={`Patrimony: ${book.patrimony.villas} villas, ${book.patrimony.manses} manses — yours, and kept if the office goes. Fisc: ${book.counties.reduce((n, c) => n + c.fiscManses, 0)} manses held by office — the king's, reported by Aldric in aggregate.`} />
+          </p>
+
+          <h3>Public revenue</h3>
+          {book.revenue.last ? (
+            <>
+              <Row k="Last season, net" v={`${formatLedgerNumber(book.revenue.last.net)} d`} />
+              <Row k="Tolls" v={`${formatLedgerNumber(book.revenue.last.tolls)} d`} />
+              <Row k="Market dues" v={`${formatLedgerNumber(book.revenue.last.market)} d`} />
+              <Row k="Pleas and fines" v={`${formatLedgerNumber(book.revenue.last.justice + book.revenue.last.fines)} d`} />
+              <Row k="Fisc" v={`${formatLedgerNumber(book.revenue.last.fisc)} d`} />
+              {book.revenue.last.mint > 0 && <Row k="Mint" v={`${formatLedgerNumber(book.revenue.last.mint)} d`} />}
+              <Row k="Officers' pay" v={`−${formatLedgerNumber(book.revenue.last.officers)} d`} />
+            </>
+          ) : (
+            <p className="muted">The office has not yet paid its first quarter.</p>
+          )}
+          <p className="ledger-note">
+            <GlossaryText text={`About ${formatLedgerNumber(book.revenue.yearly)} d a year at the present trade.`} />
+          </p>
+
+          <h3>Officers</h3>
+          {book.officers.map((line, i) => (
+            <p key={i} className="ledger-note">
+              <GlossaryText text={line} />
+            </p>
+          ))}
+
+          <h3>Levy</h3>
+          <Row k="Callable in the king's name" v={`${book.levy} men`} />
+        </>
+      )}
+
+      {level === 2 && book.revenue.last && (
+        <>
+          <h3>The deputy's share</h3>
+          <Row k="Last season" v={`${formatLedgerNumber(book.revenue.last.deputy + book.revenue.last.fines)} d`} />
+        </>
+      )}
+
+      {level >= 4 && (
+        <>
+          <h3>Mint</h3>
+          <p className="ledger-note">
+            <GlossaryText text={book.mint > 0 ? `The mint at Chalon pays ${formatLedgerNumber(book.mint)} d a year.` : "No mint is held. Chalon strikes coin from 864; the right can be granted or taken."} />
+          </p>
+        </>
+      )}
+
+      {book.royalFisc && (
+        <>
+          <h3>Royal fisc</h3>
+          <Row k="A year" v={`${formatLedgerNumber(book.royalFisc.yearly)} d`} />
+          <p className="ledger-note">
+            <GlossaryText text="Palaces, forests and several hundred villas: the crown's, not yours. Your own 45 villas stay if the crown goes." />
+          </p>
+          <h3>The host</h3>
+          <p className="ledger-note">
+            <GlossaryText text={book.royalFisc.host} />
+          </p>
+        </>
+      )}
     </>
   );
 }

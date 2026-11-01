@@ -57,10 +57,48 @@ export const ModifierEffectSchema = z.object({
   customNote: z.string().optional(),
 });
 
+/**
+ * A promotion window (03_HISTORY §10): the lord rises one rank if his renown has reached the next
+ * threshold (scaled when `scaleWhen` holds), capped at `cap`. `onPromote` / `onThanks` apply after.
+ */
+export const PromoteEffectSchema = z
+  .object({
+    /** Who grants it; benefices that come with the step are held from this hand. */
+    patron: z.string().min(1),
+    /** Highest rank this patron can give (a king of part of Aquitaine cannot make dukes). */
+    cap: z.number().int().min(2).max(4).default(4),
+    /** Multiply the threshold when this condition holds (a doubtful man needs more). */
+    scaleWhen: z.string().optional(),
+    scale: z.number().positive().default(1),
+    /** Flag set when the step is granted (registered setBy "engine"). */
+    mark: z.string().optional(),
+    onPromote: z.lazy((): z.ZodTypeAny => EffectsListSchema).optional(),
+    onThanks: z.lazy((): z.ZodTypeAny => EffectsListSchema).optional(),
+  })
+  .strict();
+export type PromoteEffect = z.infer<typeof PromoteEffectSchema>;
+
+/** Land or office handed over outside a rank step: villas as benefices from `patron`, or a named county. */
+export const GrantEffectSchema = z
+  .object({
+    patron: z.string().min(1),
+    villas: z.number().int().positive().optional(),
+    tenure: z.enum(["benefice", "owned"]).default("benefice"),
+    /** Villa template to use: the rank step's (default: the lord's current rank, at least Viscount's). */
+    like: z.number().int().min(2).max(4).optional(),
+    county: z.string().optional(),
+  })
+  .strict();
+export type GrantEffect = z.infer<typeof GrantEffectSchema>;
+
 export const EffectsSchema = z
   .object({
     /** Condition (§6.1); the block applies only when true. Lets one option branch on earlier flags. */
     when: z.string().optional(),
+    promote: PromoteEffectSchema.optional(),
+    grant: GrantEffectSchema.optional(),
+    /** Benefices held from this patron are lost (the patron fell). */
+    forfeit: z.object({ patron: z.string().min(1) }).strict().optional(),
     flags: z.record(z.string(), FlagOpSchema).optional(),
     renown: z.union([z.number(), z.enum(RENOWN_BANDS)]).optional(),
     /** Amounts are numbers or a `{slot}` name resolved from rank and manses (slots.ts). */
@@ -353,6 +391,74 @@ export const RealmCalendarSchema = z.object({
 });
 export type RealmCalendar = z.infer<typeof RealmCalendarSchema>;
 
+// ---------------------------------------------------------------------------
+// Rank steps (data/history/ranks.json; 03_HISTORY §10)
+// ---------------------------------------------------------------------------
+
+export const VillaTemplateSchema = z
+  .object({
+    manses: z.object({ free: z.number().int().nonnegative(), servile: z.number().int().nonnegative(), vacant: z.number().int().nonnegative() }),
+    land: z.object({
+      fertile_arable: z.number().nonnegative(),
+      meadow: z.number().nonnegative(),
+      vineyard: z.number().nonnegative(),
+      orchard: z.number().nonnegative(),
+      woodland: z.number().nonnegative(),
+      scrub: z.number().nonnegative(),
+      waste: z.number().nonnegative(),
+      swamp: z.number().nonnegative(),
+    }),
+    people: z.object({ men: z.number().int().nonnegative(), women: z.number().int().nonnegative(), youths: z.number().int().nonnegative() }),
+    stores: z.record(z.string(), z.number().nonnegative()),
+    features: z.array(z.string()).default([]),
+  })
+  .strict();
+export type VillaTemplate = z.infer<typeof VillaTemplateSchema>;
+
+export const CountyTemplateSchema = z
+  .object({
+    fiscManses: z.number().int().nonnegative(),
+    fiscVillas: z.number().int().nonnegative(),
+    levy: z.number().int().nonnegative(),
+    yearly: z.object({ tolls: z.number().nonnegative(), market: z.number().nonnegative(), justice: z.number().nonnegative(), fisc: z.number().nonnegative(), officers: z.number().nonnegative() }),
+  })
+  .strict();
+
+export const RankStepSchema = z
+  .object({
+    title: z.string(),
+    targetVillas: z.number().int().nonnegative(),
+    villa: VillaTemplateSchema.optional(),
+    chest: z.number().nonnegative(),
+    units: z.array(z.object({ sheet: z.string(), men: z.number().int().positive(), name: z.string() })).default([]),
+    vassals: z.number().int().nonnegative().default(0),
+    seatFeature: z.string().optional(),
+    office: z.object({ deputyShare: z.number().nonnegative(), courtFines: z.number().nonnegative() }).optional(),
+    counties: z.number().int().nonnegative().default(0),
+    county: CountyTemplateSchema.optional(),
+    mint: z.number().nonnegative().optional(),
+    royalFisc: z.object({ yearly: z.number().nonnegative(), host: z.object({ min: z.number().int(), max: z.number().int() }) }).optional(),
+  })
+  .strict();
+export type RankStep = z.infer<typeof RankStepSchema>;
+
+export const RanksFileSchema = z.object({
+  notes: z.string().optional(),
+  thresholds: z.array(z.number()).length(5),
+  summons: z.object({
+    minSeasons: z.number().int().positive(),
+    maxSeasons: z.number().int().positive(),
+    cooldownSeasons: z.number().int().nonnegative(),
+    quietAfterScriptedSeasons: z.number().int().nonnegative(),
+  }),
+  steps: z.object({ "2": RankStepSchema, "3": RankStepSchema, "4": RankStepSchema, "5": RankStepSchema }),
+  autun: z.object({ tollsMultiplier: z.number().positive(), seatFeature: z.string(), mintFromYear: z.number().int() }),
+  counties: z.array(z.string()).min(4),
+  villaNames: z.array(z.string()).min(45),
+  vassalNames: z.array(z.string()).min(10),
+});
+export type RanksFile = z.infer<typeof RanksFileSchema>;
+
 export const FeaturesSchema = z.object({
   historicalBattles: z.boolean().default(false),
   promotions: z.boolean().default(false),
@@ -488,6 +594,68 @@ export const HistoryStateSchema = z.object({
       lastSpyYear: z.number().int().nullable().default(null),
     })
     .default({}),
+  /** Rank progression (03_HISTORY §10): eligibility, the generic summons clock, and what the office holds. */
+  rank: z
+    .object({
+      /** Turn the renown first crossed the next threshold; null when not eligible. */
+      eligibleSince: z.number().int().nullable().default(null),
+      /** Turn the generic summons falls due (within two years of eligibility). */
+      dueTurn: z.number().int().nullable().default(null),
+      /** No generic summons before this turn (after a stripping). */
+      cooldownUntil: z.number().int().nullable().default(null),
+      /** Who granted the last step. */
+      patron: z.string().nullable().default(null),
+      promotedTurn: z.number().int().nullable().default(null),
+      /** What each scripted window did: promoted | thanks. */
+      windows: z.record(z.string(), z.enum(["promoted", "thanks"])).default({}),
+      /** Counties held by office (Count and above). */
+      counties: z
+        .array(
+          z.object({
+            name: z.string(),
+            since: z.number().int(),
+            fiscManses: z.number().int().nonnegative(),
+            fiscVillas: z.number().int().nonnegative(),
+            levy: z.number().int().nonnegative(),
+            yearly: z.object({
+              tolls: z.number().nonnegative(),
+              market: z.number().nonnegative(),
+              justice: z.number().nonnegative(),
+              fisc: z.number().nonnegative(),
+              officers: z.number().nonnegative(),
+            }),
+          }),
+        )
+        .default([]),
+      /** The crown's revenues while he is king: not his, but his to spend. */
+      royalFisc: z.object({ yearly: z.number().nonnegative(), host: z.object({ min: z.number().int(), max: z.number().int() }) }).nullable().default(null),
+      /** Mint share a year, when held. */
+      mint: z.number().nonnegative().default(0),
+      /** Last season's office revenue, itemised, for the Books. */
+      lastRevenue: z
+        .object({ turn: z.number().int(), tolls: z.number(), market: z.number(), justice: z.number(), fisc: z.number(), mint: z.number(), deputy: z.number(), fines: z.number(), officers: z.number(), net: z.number() })
+        .nullable()
+        .default(null),
+    })
+    .default({}),
+  /** Sworn men (step 3 gives them moods that move; here they are rostered at 50). */
+  vassals: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        holding: z.string(),
+        men: z.number().int().nonnegative(),
+        mood: z.number().int().min(0).max(100).default(50),
+        since: z.number().int(),
+        /** A county's lords as one line at Duke and King. */
+        group: z.boolean().default(false),
+        grantedBy: z.string().optional(),
+      }),
+    )
+    .default([]),
+  /** Trade health of the home region (hidden 0–100; step 2 moves it). */
+  trade: z.object({ health: z.number().min(0).max(100).default(55) }).default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),
   away: z.object({ reason: z.string(), untilTurn: z.number().int() }).nullable().default(null),
   dead: z.object({ cause: z.enum(["old_age", "battle", "illness", "wound", "captivity"]), year: z.number().int() }).nullable().default(null),

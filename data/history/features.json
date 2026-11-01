@@ -1,6 +1,6 @@
 {
   "historicalBattles": true,
-  "promotions": false,
+  "promotions": true,
   "ladder": false,
   "quest": false,
   "diffusion": true

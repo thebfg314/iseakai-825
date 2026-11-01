@@ -74,6 +74,7 @@ export function deliverEvent(state: WorldState, event: HistoryEvent, at: SeasonA
     const r = applyEffects(state, event.onFire, `${event.id}:onFire`, { at });
     if (r.refused) lines.push(`${event.title}: ${r.refused}`);
     lines.push(...r.lines);
+    beats.push(...r.beats);
   }
   if (event.stages.length) {
     state.history.scenes[event.id] = { stage: 0, openedTurn: turn, stageTurn: turn };
@@ -104,12 +105,14 @@ export function interimBattleBeat(event: HistoryEvent): HistoryBeat {
 export function markInterimBattle(state: WorldState, event: HistoryEvent, at: SeasonAt, turn: number): DeliveryResult {
   state.history.fired[event.id] = { year: at.year, season: at.season, turn };
   const lines: string[] = [];
+  const beats: HistoryBeat[] = [interimBattleBeat(event)];
   if (event.onFire) {
     const r = applyEffects(state, event.onFire, `${event.id}:onFire`, { at });
     if (r.refused) lines.push(`${event.title}: ${r.refused}`);
     lines.push(...r.lines);
+    beats.push(...r.beats);
   }
-  return { beats: [interimBattleBeat(event)], lines };
+  return { beats, lines };
 }
 
 function recordChoice(state: WorldState, event: HistoryEvent, stage: HistoryStage | undefined, option: HistoryOption, at: SeasonAt) {
@@ -131,51 +134,51 @@ export function takeChoice(
   stageId: string | undefined,
   optionId: string,
   at: SeasonAt,
-): { ok: boolean; reason?: string; lines: string[]; endsScene?: boolean } {
+): { ok: boolean; reason?: string; lines: string[]; beats: HistoryBeat[]; endsScene?: boolean } {
   const stage = stageId ? event.stages.find((s) => s.id === stageId) : undefined;
   const choices = stage?.choices ?? event.choices;
   const option = choices?.options.find((o) => o.id === optionId);
-  if (!choices || !option) return { ok: false, reason: `No such choice ${optionId} on ${event.id}.`, lines: [] };
+  if (!choices || !option) return { ok: false, reason: `No such choice ${optionId} on ${event.id}.`, lines: [], beats: [] };
   if (option.requires && !evalCondition(option.requires, conditionContext(state, at))) {
-    return { ok: false, reason: `That course is not open: ${option.label}.`, lines: [] };
+    return { ok: false, reason: `That course is not open: ${option.label}.`, lines: [], beats: [] };
   }
   const r = applyEffects(state, option.effects, `${event.id}:${option.id}`, { at });
-  if (r.refused) return { ok: false, reason: r.refused, lines: [] };
+  if (r.refused) return { ok: false, reason: r.refused, lines: [], beats: [] };
   recordChoice(state, event, stage, option, at);
   state.history.openChoices = state.history.openChoices.filter((c) => !(c.eventId === event.id && c.stageId === stageId));
-  return { ok: true, lines: r.lines, endsScene: option.ends };
+  return { ok: true, lines: r.lines, beats: r.beats, endsScene: option.ends };
 }
 
-export function takeOutcome(state: WorldState, event: HistoryEvent, stageId: string | undefined, outcomeId: string, at: SeasonAt): { ok: boolean; reason?: string; lines: string[] } {
+export function takeOutcome(state: WorldState, event: HistoryEvent, stageId: string | undefined, outcomeId: string, at: SeasonAt): { ok: boolean; reason?: string; lines: string[]; beats: HistoryBeat[] } {
   const stage = stageId ? event.stages.find((s) => s.id === stageId) : undefined;
   const outcomes = stage?.outcomes ?? event.outcomes;
   const option = outcomes?.options.find((o) => o.id === outcomeId);
-  if (!outcomes || !option) return { ok: false, reason: `No such outcome ${outcomeId} on ${event.id}.`, lines: [] };
+  if (!outcomes || !option) return { ok: false, reason: `No such outcome ${outcomeId} on ${event.id}.`, lines: [], beats: [] };
   if (option.requires && !evalCondition(option.requires, conditionContext(state, at))) {
-    return { ok: false, reason: `That outcome is not open to this lord: ${option.label}.`, lines: [] };
+    return { ok: false, reason: `That outcome is not open to this lord: ${option.label}.`, lines: [], beats: [] };
   }
   const r = applyEffects(state, option.effects, `${event.id}:${option.id}`, { at });
-  if (r.refused) return { ok: false, reason: r.refused, lines: [] };
+  if (r.refused) return { ok: false, reason: r.refused, lines: [], beats: [] };
   const key = stage ? `${event.id}#${stage.id}` : event.id;
   state.history.outcomes[key] = option.id;
   state.history.openOutcomes = state.history.openOutcomes.filter((c) => !(c.eventId === event.id && c.stageId === stageId));
-  return { ok: true, lines: r.lines };
+  return { ok: true, lines: r.lines, beats: r.beats };
 }
 
-export function takeHook(state: WorldState, event: HistoryEvent, hookId: string, at: SeasonAt): { ok: boolean; reason?: string; lines: string[] } {
+export function takeHook(state: WorldState, event: HistoryEvent, hookId: string, at: SeasonAt): { ok: boolean; reason?: string; lines: string[]; beats: HistoryBeat[] } {
   const scene = state.history.scenes[event.id];
   const stage = scene ? event.stages[scene.stage] : undefined;
   const hook = [...(stage?.hooks ?? []), ...event.hooks].find((h) => h.id === hookId);
-  if (!hook) return { ok: false, reason: `No such hook ${hookId} on ${event.id}.`, lines: [] };
+  if (!hook) return { ok: false, reason: `No such hook ${hookId} on ${event.id}.`, lines: [], beats: [] };
   const taken = state.history.hooksTaken[event.id] ?? [];
-  if (taken.includes(hookId)) return { ok: false, reason: "That was already done.", lines: [] };
+  if (taken.includes(hookId)) return { ok: false, reason: "That was already done.", lines: [], beats: [] };
   if (hook.requires && !evalCondition(hook.requires, conditionContext(state, at))) {
-    return { ok: false, reason: "That course is not open now.", lines: [] };
+    return { ok: false, reason: "That course is not open now.", lines: [], beats: [] };
   }
   const r = applyEffects(state, hook.effects, `${event.id}:${hook.id}`, { at });
-  if (r.refused) return { ok: false, reason: r.refused, lines: [] };
+  if (r.refused) return { ok: false, reason: r.refused, lines: [], beats: [] };
   state.history.hooksTaken[event.id] = [...taken, hookId];
-  return { ok: true, lines: r.lines };
+  return { ok: true, lines: r.lines, beats: r.beats };
 }
 
 /** The scene moves to the next stage (or closes). Posts the next stage's script. */
@@ -192,16 +195,20 @@ export function advanceScene(state: WorldState, event: HistoryEvent, at: SeasonA
       const d = defaultOption(current.choices.options, conditionContext(state, at));
       const r = takeChoice(state, event, current.id, d.id, at);
       lines.push(...r.lines);
+      beats.push(...r.beats);
       if (r.endsScene) opts = { close: true };
     }
     const openOut = state.history.openOutcomes.find((c) => c.eventId === event.id && c.stageId === current.id);
     if (openOut && current.outcomes) {
       const d = defaultOption(current.outcomes.options, conditionContext(state, at));
-      lines.push(...takeOutcome(state, event, current.id, d.id, at).lines);
+      const r = takeOutcome(state, event, current.id, d.id, at);
+      lines.push(...r.lines);
+      beats.push(...r.beats);
     }
     if (current.exitEffects) {
       const r = applyEffects(state, current.exitEffects, `${event.id}:${current.id}:exit`, { at });
       lines.push(...r.lines);
+      beats.push(...r.beats);
     }
   }
   const ctx = conditionContext(state, at);
@@ -248,6 +255,7 @@ export function expireDeadlines(state: WorldState, at: SeasonAt, turn: number): 
     }
     lines.push(...r.lines);
     beats.push({ npcId: "steward", eventId: event.id, text: `The matter settled itself: ${d.label.toLowerCase()}.` });
+    beats.push(...r.beats);
   }
   for (const open of [...state.history.openOutcomes]) {
     if (open.deadlineTurn > turn) continue;
@@ -261,7 +269,9 @@ export function expireDeadlines(state: WorldState, at: SeasonAt, turn: number): 
     const outcomes = stage?.outcomes ?? event.outcomes;
     if (!outcomes) continue;
     const d = defaultOption(outcomes.options, conditionContext(state, at));
-    lines.push(...takeOutcome(state, event, open.stageId, d.id, at).lines);
+    const r = takeOutcome(state, event, open.stageId, d.id, at);
+    lines.push(...r.lines);
+    beats.push(...r.beats);
   }
   // Scenes whose stage advances with the season; fallthrough stages keep going.
   for (const [eventId, scene] of Object.entries(state.history.scenes)) {

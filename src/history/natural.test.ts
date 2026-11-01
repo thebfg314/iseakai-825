@@ -170,9 +170,10 @@ describe("natural events, prices and forced weather", () => {
     const w2 = c2.next();
     expect(w2.beats.some((b) => b.text.includes("in two of our own houses"))).toBe(true);
     expect(unaware.history.openOutcomes.some((o) => o.eventId === "N-868-W")).toBe(true);
+    const loyalty = Number(unaware.history.flags.local_loyalty ?? 0);
     expect(applyProposal(unaware, { type: "history_outcome", summary: "", eventId: "N-868-W", outcomeId: "explained_plainly" }, "referee").ok).toBe(true);
     expect(unaware.history.flags.ergot_aware).toBe(true);
-    expect(unaware.history.flags.local_loyalty).toBe(3);
+    expect(unaware.history.flags.local_loyalty).toBe(loyalty + 3);
   });
 
   it("873: the locusts cut the yield, the fight against them claws some back; 895 reads the granary", () => {
@@ -197,9 +198,9 @@ describe("natural events, prices and forced weather", () => {
     const s895 = clock.next();
     expect(s895.beats[0].text).toContain("the granary is full"); // the villa has a barn
     const bare = fresh();
-    bare.holdings[0].features = bare.holdings[0].features.filter((f) => f !== "barn");
     const c2 = clockFor(bare);
     c2.to(895, "spring");
+    for (const h of bare.holdings) h.features = h.features.filter((f) => f !== "barn"); // the villas that came with the rank have barns too
     expect(c2.next().beats[0].text).toContain("I wish I could say the granary was full");
   });
 });

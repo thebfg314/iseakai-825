@@ -48,15 +48,15 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
       const lines = [p.summary, ...r.lines].filter(Boolean).join(" ");
       if (scene && stage && (r.endsScene || stage.advanceOn !== "season")) {
         const adv = advanceScene(state, event, now, turn, { close: r.endsScene });
-        return { ok: true, logLine: [lines, ...adv.lines].filter(Boolean).join(" "), state, beats: adv.beats };
+        return { ok: true, logLine: [lines, ...adv.lines].filter(Boolean).join(" "), state, beats: [...r.beats, ...adv.beats] };
       }
-      return { ok: true, logLine: lines, state };
+      return { ok: true, logLine: lines, state, beats: r.beats };
     }
     case "history_hook": {
       if (!eventActive(state, event, turn)) return fail(`The moment for ${event.title} has passed.`);
       const r = takeHook(state, event, p.hookId, now);
       if (!r.ok) return fail(r.reason ?? "It cannot be made so.");
-      return { ok: true, logLine: [p.summary, ...r.lines].filter(Boolean).join(" "), state };
+      return { ok: true, logLine: [p.summary, ...r.lines].filter(Boolean).join(" "), state, beats: r.beats };
     }
     case "history_outcome": {
       const scene = state.history.scenes[event.id];
@@ -69,7 +69,7 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
       const r = takeOutcome(state, event, stageId, p.outcomeId, now);
       if (!r.ok) return fail(r.reason ?? "It cannot be made so.");
       const why = p.reasoning ? ` (${p.reasoning})` : "";
-      return { ok: true, logLine: `${p.summary}${why} ${r.lines.join(" ")}`.trim(), state };
+      return { ok: true, logLine: `${p.summary}${why} ${r.lines.join(" ")}`.trim(), state, beats: r.beats };
     }
     case "history_scene": {
       const scene = state.history.scenes[event.id];
@@ -81,7 +81,7 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
         const r = takeChoice(state, event, stage.id, p.choiceId, now);
         if (!r.ok) return fail(r.reason ?? "It cannot be made so.");
         const adv = advanceScene(state, event, now, turn, { close: r.endsScene });
-        return { ok: true, logLine: [p.summary, ...r.lines, ...adv.lines].filter(Boolean).join(" "), state, beats: adv.beats };
+        return { ok: true, logLine: [p.summary, ...r.lines, ...adv.lines].filter(Boolean).join(" "), state, beats: [...r.beats, ...adv.beats] };
       }
       const adv = advanceScene(state, event, now, turn);
       return { ok: true, logLine: [p.summary, ...adv.lines].filter(Boolean).join(" "), state, beats: adv.beats };

@@ -4,7 +4,8 @@ import type { RosterLine } from "../combat/scenario";
 import type { BattleState } from "../combat/battleTypes";
 import { PLAYER_PERSONAL_BASELINE, RAF_RENOWN_TIER } from "../combat/constants";
 import { generateEncounter, hasAllies, LORD_FILE_ID, soloLossConsequences, tierFor, type EncounterKind } from "../combat/encounter";
-import { applyRenown, rankMultiplier, rankTitle, stickyRank } from "../combat/renown";
+import { applyRenown, rankMultiplier } from "../combat/renown";
+import { eligibilityNote } from "../history/promotion";
 import { createRng, seedFromString, type Rng } from "../combat/rng";
 import { pushLog, rollPlayerFate } from "../combat/round";
 import { canDirect, canLeadFile, canRideToWar, GENERAL_DEFEAT_WOUND_CHANCE } from "../engine/wounds";
@@ -1020,8 +1021,7 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
   // Renown and rank.
   const before = state.player.renown;
   state.player.renown = applyRenown(before, summary.renownDelta);
-  const oldRank = state.player.rankLevel as Rank;
-  state.player.rankLevel = stickyRank(oldRank, state.player.renown);
+  // Renown makes him eligible; the rank itself waits on a hand to grant it (history/promotion.ts).
   if (session.tier === "rank_and_file") {
     facts.push(`Renown ${summary.renownDelta >= 0 ? "+" : ""}${summary.renownDelta} (now ${state.player.renown}); personal blows dealt ${battle.player.personalDealt} and taken ${battle.player.personalTaken}; deeds worth ${session.cardRenown}.`);
   } else {
@@ -1030,7 +1030,8 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
       facts.push(`Order "${o.text.slice(0, 90)}${o.text.length > 90 ? "…" : ""}" — ${o.status}${o.bonus !== undefined ? ` (${o.bonus >= 0 ? "+" : ""}${o.bonus})` : ""}.`);
     }
   }
-  if (state.player.rankLevel > oldRank) facts.push(`The lord's name now carries the rank of ${rankTitle(state.player.rankLevel as Rank)}.`);
+  const eligibility = eligibilityNote(state);
+  if (eligibility) facts.push(eligibility);
   session.renownDelta = summary.renownDelta;
 
   // The lord's body.

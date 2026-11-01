@@ -460,15 +460,28 @@ Events tagged `deferred: "battle"` are fought on the grid when `features.histori
 
 **Lint** (`checkForces`): every deferred battle has a non-supply entry when any entries exist; supply entries need an event with `supplyCheck` and `home`; `when` parses; every sheet exists; home rows are empty, others are not; results/survivor/onRefuse effects are checked and count as flag setters; a survivor id must be on an allied line.
 
-## 10. Promotions: interim behaviour (deferred pass)
+## 10. Rank progression (the promotion pass)
 
-Events tagged `deferred: "promotion"` (834-02, 835-02, 845-A1's window, the rank steps inside 880-K1, 898-K1, the open throne, the king quest's election) **do not fire**. Consequences for this pass, stated plainly:
+Design: `Isekai 825 Rank Progression — Holdings and Powers.md`. Code: `src/history/promotion.ts`, `revenue.ts`, `ranks.ts`; data `data/history/ranks.json`; switch `features.promotions` (on). The battle ledger no longer promotes: `stickyRank` is gone from `session/battle.ts`, which notes instead that "the lord's name would now bear the rank of …".
 
-- `royal_vassal`, `villa_owned`, `villa_confirmed`, `second_villa`, `distrusted_834` cannot be set, so 834-03 always takes branch A, royal vassal duties never roll, and 870-C2's royal-vassal line is not reachable. The land crisis (§11.3) is still resolvable through the three outs and through the charter hook on 832-02.
-- Rank stays wherever `combat/renown.ts` puts it from battles (none in this pass), so the player is a villa lord for the whole calendar. Entries with rank branches (853-V1, E-866, the Duke track, 880-K1's "below count rank" oath) take their lowest-rank branch.
-- The data for promotion events is written now; `event.promotion` carries the rewards table by standing. The promotion pass reads it.
+**Eligible, then granted.** Renown at the thresholds (1 / 100 / 500 / 1,000 / 2,000) makes the lord *eligible* for a rank; a hand must grant it. Two ways:
 
-Hook for the promotion pass: `src/history/promotion.ts` exporting `openPromotionWindow(state, event)`; `features.promotions`.
+- **Scripted windows.** Dated events of `type: "promotion"` carry a `promote` effect (below). 834-02 (the emperor's gratitude: `royal_vassal`, sworn to the king, a step if renown ≥ 100, and the land choice `own_villa` / `second_villa`), 835-02 (Crémieu: a step at the threshold, ×1.5 when `distrusted_834`, a royal charter if none, else 60 d; nothing twice if `promoted_834`), 845-P1 (Pippin's court, cap Count; the step's villas are Pippin's and 848-A1 `forfeit`s them), Q-003 (the election: `quest.ts` crowns through `promoteTo`; the counter-offer makes a duke). Lint: a dated promotion window must carry a `promote` or `grant` effect; `deferred: "promotion"` + `event.promotion` stay as the design note.
+- **The generic summons** (`tickPromotion`, after the ladder and quest in the season pass). When `eligibleRank` (capped at Duke — the crown is never generic) exceeds the rank held, `history.rank.eligibleSince` is set and `dueTurn` rolled 2–8 seasons ahead (seed `summons:turn:rank:renown`). At the due turn, if the lord is home, alive, off the ladder, not in the quest, no call to arms is open, no scripted window fired in the last 2 seasons or falls in the next, and no cooldown runs, Aldric announces the summons (`rank:summons`) and the step is granted by the patron: the count of Autun for a viscount not sworn to the king, otherwise the king. The eligibility note goes to the referee lines when the threshold is crossed.
+
+**The step** (`promoteTo(state, rank, {patron, turn})`, one account from Aldric per step, `history.record` "Raised to … by …"): `player.rankLevel` and the legacy `player.rank` label; villas up to the step's count (3 / 12 / 45, never fewer than one new) as real `Holding`s from the step's villa template (land ±15%, manses, autumn sowing, people added to the one population pool, stores) with `tenure: "benefice"`, `grantedBy: patron`, names from the Burgundian pool; the chest (600 / 4,000 / 30,000 / 80,000 d); the men as `OwnedUnit`s (9 caballarii; +30 in three units; +100 in four; the king's guard); the seat marked and palisaded if unwalled; vassals to the step's roster (3 / 10) as `history.vassals` at mood 50 (step 3 moves them); from Count a county block in `history.rank.counties` (name from the pool Beaune, Avallon, Chalon, Autun…, fisc 150 manses / 10 villas, levy, yearly tolls/market/pleas/fisc/officers); at Duke four counties, a vassal group per county, `holds_autun` with a stone wall at the seat and the Chalon mint (1,200 d/yr from 864); at King the royal fisc block (300,000 d/yr, host 5–20,000). The Autun variant is the Duke's fourth county; the realm calendar's count of Autun stays the narrative one.
+
+**Office revenue** (`tickRevenue`, each season): a quarter of the yearly figures into the chest. Viscount: deputy's share 60 + court fines 40 a year. Count and above: per county tolls × trade multiplier (`trade.health / 55`, 0.4–1.6; Autun ×1.4) + market × trade + pleas × justice multiplier (1 until step 4) + fisc dues + mint, minus officers' pay; the royal fisc when king. `history.rank.lastRevenue` feeds the Books; the ledger line "The office paid … d".
+
+**Stripping** (`demoteBy`, used by L-002 "go"): the office goes — counties beyond the rank kept, the mint, the crown, `holds_autun` — and the benefices held from the stripping hand (`forfeitFrom`); owned villas, the men and the chest stay; vassals trimmed to the rank's roster; `cooldownUntil = turn + 12` blocks the generic summons. Titles are otherwise sticky.
+
+**Effects vocabulary added** (§6.2): `promote { patron, cap (2–4, default 4), scaleWhen, scale, mark, onPromote, onThanks }` — one step if renown ≥ next threshold × scale and next ≤ cap; `history.rank.windows[eventId]` records `promoted` or `thanks`; `mark` sets a bool flag (counts as a setter in lint); the nested lists apply after. `grant { patron, villas, tenure (benefice|owned), like (template rank), county }`. `forfeit { patron }`. Effects now return `beats` (Aldric's account of a grant) and every delivery path posts them. New condition variables: `villas`, `counties`, `vassals`, `vassal_mood`, `trade_health`; new flags `promoted_834`, `promoted_835`, `promoted_845`, `holds_autun` (engine).
+
+**State** (§4): `history.rank { eligibleSince, dueTurn, cooldownUntil, patron, promotedTurn, windows, counties[], royalFisc, mint, lastRevenue }`, `history.vassals[] { id, name, holding, men, mood, since, group, grantedBy }`, `history.trade { health: 55 }`; `Holding.tenure / grantedBy / grantedTurn / seat`. Old saves default to a villa lord with none of it.
+
+**Prompt and Books.** `rankLine` joins the History block (rank, patron, villas and benefices, counties, sworn men, the expected summons, last season's office take). The Books gain a **Holdings** page (`booksView.ts#holdingsBook`): rank and eligibility; villas with manses, tenure and the seat; vassals with men and mood word; the court; from Count the county blocks, fisc vs patrimony, public revenue itemised, officers, the levy; the mint at Duke; the royal fisc and the host at King. The Estate page sums the land and sowing of every villa.
+
+**Assumptions.** A patron's fall takes his benefices only where the data says so (848-A1); a change of count by the realm calendar does not. Villas are not yet buyable outright in play (an owned grant exists in the vocabulary). The generic county is Beaune, then Avallon, Chalon and Autun at Duke; Autun's bishop and the double `favor_church` weight wait on the justice step.
 
 ---
 
@@ -565,7 +578,7 @@ On death of old age (or an earlier death: `battleFinish` calls `markDeath(state,
 
 ## 14. Delivery plan
 
-Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded. **All eight steps are delivered** (commits "History Step A" … "History Step H", Oct 2026), and the battle pass of §9 after them (Oct 28, 2026); what remains is the promotion pass of §10.
+Everything below is in scope. Order is chosen so each step is testable and the content pattern is proven before the long tail is loaded. **All eight steps are delivered** (commits "History Step A" … "History Step H", Oct 2026), the battle pass of §9 after them (Oct 28, 2026), and the promotion pass of §10 (Oct 31, 2026). The trade, vassal, justice and capacity systems of the rank design follow in that order.
 
 | Step | Builds | Done when |
 | --- | --- | --- |
@@ -578,9 +591,9 @@ Everything below is in scope. Order is chosen so each step is testable and the c
 | G | Age and death, the life record, the closing summary screen | A stub run ends in 910–911 with a record of the fired events; the summary prompt renders. |
 | H | Docs: update `02_EVENTS.md` (random events now yield to the calendar), add the History block to `01_RULES.md`, keep `03_HISTORY.md` current | — |
 
-Feature switches in `data/history/features.json`: `historicalBattles: true`, `promotions: false`, `ladder: false`, `quest: false`, `diffusion: true`.
+Feature switches in `data/history/features.json`: `historicalBattles: true`, `promotions: true`, `ladder: false`, `quest: false`, `diffusion: true`.
 
-**Left for the deferred passes.** The lint-as-test (`systems.test.ts`, "the content lint") pins the registered flags that nothing sets yet: battles — `witnessed_mutiny_830`, `pippin_restoration`, `distrusted_834`, `letter_of_protection` (the forces tables now set `saved_gaucelm`, `saved_gerberga`, `oath_under_duress_834`, `robert_saved`); promotions — `royal_vassal`, `villa_confirmed`, `second_villa`. Any other unset flag fails the suite. Flags set by code rather than content carry `setBy: "engine"` in the registry (`forfeit_830`, `richard_standing`, `absolved_once`, `quest_money_outbid`, `duty_performed`, `duty_shirked`, `feast_sponsored`).
+**Left for the deferred passes.** The lint-as-test (`systems.test.ts`, "the content lint") pins the registered flags that nothing sets yet: battles — `witnessed_mutiny_830`, `pippin_restoration`, `letter_of_protection` (the forces tables now set `saved_gaucelm`, `saved_gerberga`, `oath_under_duress_834`, `robert_saved`; 834-02 sets `royal_vassal`, `villa_confirmed`, `second_villa`, `distrusted_834`). Any other unset flag fails the suite. Flags set by code rather than content carry `setBy: "engine"` in the registry (`forfeit_830`, `richard_standing`, `absolved_once`, `quest_money_outbid`, `duty_performed`, `duty_shirked`, `feast_sponsored`).
 
 ---
 

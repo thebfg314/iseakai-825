@@ -1,0 +1,111 @@
+{
+  "notes": "Rank progression (Isekai 825 Rank Progression — Holdings and Powers.md, 'Hard numbers by rank'). Each step is what the promotion GRANTS on top of what the lord already holds: the villas, their people and stores, the chest, the men, the vassals, the office. Villas are real holdings farmed by the engine; the fisc and the office revenue are one aggregate block per county. Amounts per villa are the doc's totals minus Fontenay's start, split across the villas granted.",
+  "thresholds": [1, 100, 500, 1000, 2000],
+  "summons": {
+    "minSeasons": 2,
+    "maxSeasons": 8,
+    "cooldownSeasons": 12,
+    "quietAfterScriptedSeasons": 2
+  },
+  "steps": {
+    "2": {
+      "title": "Viscount",
+      "targetVillas": 3,
+      "villa": {
+        "manses": { "free": 7, "servile": 4, "vacant": 1 },
+        "land": { "fertile_arable": 34, "meadow": 8, "vineyard": 2, "orchard": 1, "woodland": 40, "scrub": 30, "waste": 30, "swamp": 12 },
+        "people": { "men": 12, "women": 13, "youths": 9 },
+        "stores": { "wheat": 5, "rye": 8, "barley": 4, "oats": 3, "cattle": 5, "sheep": 14, "pigs": 4, "horses": 2, "wine": 1, "cheese": 4, "honey": 2, "wool": 6, "linen": 2, "softwood": 2, "hardwood": 1, "charcoal": 1, "iron": 25, "salt": 4, "stone": 1, "hides": 2, "beeswax": 1, "trade_goods": 1 },
+        "features": ["manor_hall", "barn"]
+      },
+      "chest": 600,
+      "units": [{ "sheet": "caballarii", "men": 9, "name": "The viscount's riders" }],
+      "vassals": 3,
+      "seatFeature": "palisade",
+      "office": { "deputyShare": 60, "courtFines": 40 }
+    },
+    "3": {
+      "title": "Count",
+      "targetVillas": 12,
+      "villa": {
+        "manses": { "free": 8, "servile": 5, "vacant": 1 },
+        "land": { "fertile_arable": 40, "meadow": 10, "vineyard": 2, "orchard": 1, "woodland": 48, "scrub": 36, "waste": 36, "swamp": 14 },
+        "people": { "men": 26, "women": 27, "youths": 19 },
+        "stores": { "wheat": 6, "rye": 10, "barley": 5, "oats": 4, "cattle": 6, "sheep": 17, "pigs": 5, "horses": 2, "wine": 1, "cheese": 5, "honey": 2, "wool": 7, "linen": 2, "softwood": 2, "hardwood": 1, "charcoal": 1, "iron": 30, "salt": 5, "stone": 1, "hides": 2, "beeswax": 1, "trade_goods": 1 },
+        "features": ["manor_hall", "barn"]
+      },
+      "chest": 4000,
+      "units": [
+        { "sheet": "caballarii", "men": 10, "name": "The count's riders" },
+        { "sheet": "pedites_fyrd", "men": 12, "name": "The count's spears" },
+        { "sheet": "sagittarii", "men": 8, "name": "The count's archers" }
+      ],
+      "vassals": 10,
+      "seatFeature": "palisade",
+      "counties": 1,
+      "county": {
+        "fiscManses": 150,
+        "fiscVillas": 10,
+        "levy": 300,
+        "yearly": { "tolls": 2500, "market": 1200, "justice": 1800, "fisc": 2500, "officers": 600 }
+      }
+    },
+    "4": {
+      "title": "Duke",
+      "targetVillas": 45,
+      "villa": {
+        "manses": { "free": 8, "servile": 4, "vacant": 1 },
+        "land": { "fertile_arable": 38, "meadow": 9, "vineyard": 2, "orchard": 1, "woodland": 45, "scrub": 34, "waste": 34, "swamp": 13 },
+        "people": { "men": 36, "women": 37, "youths": 25 },
+        "stores": { "wheat": 6, "rye": 10, "barley": 5, "oats": 4, "cattle": 6, "sheep": 17, "pigs": 5, "horses": 2, "wine": 1, "cheese": 5, "honey": 2, "wool": 7, "linen": 2, "softwood": 2, "hardwood": 1, "charcoal": 1, "iron": 30, "salt": 5, "stone": 1, "hides": 2, "beeswax": 1, "trade_goods": 1 },
+        "features": ["manor_hall", "barn"]
+      },
+      "chest": 30000,
+      "units": [
+        { "sheet": "caballarii", "men": 25, "name": "The duke's riders" },
+        { "sheet": "caballarii", "men": 25, "name": "The second troop" },
+        { "sheet": "pedites_fyrd", "men": 30, "name": "The duke's spears" },
+        { "sheet": "sagittarii", "men": 20, "name": "The duke's archers" }
+      ],
+      "vassals": 10,
+      "counties": 4,
+      "county": {
+        "fiscManses": 150,
+        "fiscVillas": 10,
+        "levy": 375,
+        "yearly": { "tolls": 2750, "market": 1250, "justice": 2000, "fisc": 2750, "officers": 900 }
+      },
+      "mint": 1200
+    },
+    "5": {
+      "title": "King",
+      "targetVillas": 45,
+      "chest": 80000,
+      "units": [
+        { "sheet": "caballarii", "men": 40, "name": "The king's guard" },
+        { "sheet": "elite_foot", "men": 30, "name": "The palace foot" }
+      ],
+      "vassals": 10,
+      "royalFisc": { "yearly": 300000, "host": { "min": 5000, "max": 20000 } }
+    }
+  },
+  "autun": {
+    "tollsMultiplier": 1.4,
+    "seatFeature": "stone_wall",
+    "mintFromYear": 864
+  },
+  "counties": ["Beaune", "Avallon", "Chalon", "Autun", "Mâcon", "Nevers", "Auxerre", "Dijon"],
+  "villaNames": [
+    "Saulieu", "Arnay", "Couches", "Mesvres", "Lucenay", "Anost", "Cussy", "Nolay", "Sully", "Dracy",
+    "Broye", "Épinac", "Marmagne", "Toulon-sur-Arroux", "Issy", "Monthelon", "Laizy", "Brion", "Étang", "Igornay",
+    "Reclesne", "Tavernay", "Chissey", "Curgy", "Auxy", "Antully", "Saint-Léger", "Montcenis", "Uchon", "Dettey",
+    "Charmoy", "Saint-Émiland", "Tintry", "Morlet", "Viévy", "Thury", "Lacanche", "Magnien", "Vianges", "Chaudenay",
+    "Blanot", "Manlay", "Ménessaire", "Alligny", "Gouloux", "Saint-Didier", "Roussillon", "Bard", "Barnay", "Sommant",
+    "Glux", "Villapourçon", "Larochemillay", "Poil", "Millay", "Sémelay", "Fléty", "Savigny", "Lanty", "Rémilly"
+  ],
+  "vassalNames": [
+    "Adalhard", "Hildebold", "Warnar", "Theodric", "Ratbert", "Ingelram", "Gauzlin", "Eccard", "Hucbald", "Leutfrid",
+    "Ansegis", "Odalric", "Walafrid", "Gerbald", "Ermenfrid", "Rotland", "Berengar", "Wichmann", "Arnulf", "Teutbald",
+    "Gozbert", "Hildegaud", "Anselm", "Folcwin", "Landric", "Ratgar", "Sigebald", "Adalgis", "Wido", "Folcrad"
+  ]
+}
