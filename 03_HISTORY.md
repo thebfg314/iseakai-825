@@ -211,8 +211,11 @@ Inserted into `advanceSeason` after agriculture, projects and the clock-independ
    - [Supply check] events roll losses after delivery
 9. deliver(events)                    one chat message per script block, in order, to its speaker; wantsTalk
 10. suppressOther = events.length > 0  → rollSeasonEvents skips the random "other" event
+10a. trade.tick(next)                 the roads: raid, army fed, conditions, drift (§11.8a)
 11. duties.tick(next)                 if royal_vassal and no dated event fired → roll D-001…D-010
 12. ladder.tick → quest.tick          thresholds, rung moves, the quest's seasons (gated by `features`)
+12a. promotion.tick → vassals.tick → justice.tick   the generic summons (§10); moods fade, a man may go (§10a); feuds, missi, stance year, one case (§10b)
+12b. revenue.tick → administration.tick             the office's quarter (§10); the household's pay, overload, Aldric's complaint (§10c)
 13. diffusion.tick                    espionage roll (spring), spread timers, the grain cut
 14. age.tick(next)                    the death roll from 910; sets `history.dead`, result `died`
 15. referee season prompt gets engine lines: "History: <id> was told by Aldric: <one-line summary>", plus each system's line
@@ -351,6 +354,7 @@ Added to `PROPOSAL_TYPES` and the discriminated union. All go through the normal
 | `vassal_mood` | `vassalId` (an id from the HISTORY block, or `"all"`), `delta` −15..15, `reason` | Aldric (Ermenald, the referee) | the lord has sworn men; the id is one of them (§10a) |
 | `justice_verdict` | `caseId`, `verdictId` | the speaker who brought the case | the case is the one before the hall; the verdict is on its closed list (§10b) |
 | `set_stance` | `kind` justice\|tolls, `stance` (lenient\|fair\|strict\|extortionate, or low\|customary\|greedy) | Aldric | the lord holds a county (rank ≥ 3) |
+| `steward_office` | `action` promote\|hire\|deputy, `name?` | Aldric | the chest can pay; promote twice per tier at most, four clerks, one deputy and only at Duke (§10c) |
 
 The existing `transfer_resources`, `add_modifier`, `settle_households`, `raise_unit` remain the way costs and gains reach the books; the engine emits them itself when applying `effects`, so the LLM does not have to pair them.
 
@@ -477,7 +481,7 @@ Design: `Isekai 825 Rank Progression — Holdings and Powers.md`. Code: `src/his
 
 **The step** (`promoteTo(state, rank, {patron, turn})`, one account from Aldric per step, `history.record` "Raised to … by …"): `player.rankLevel` and the legacy `player.rank` label; villas up to the step's count (3 / 12 / 45, never fewer than one new) as real `Holding`s from the step's villa template (land ±15%, manses, autumn sowing, people added to the one population pool, stores) with `tenure: "benefice"`, `grantedBy: patron`, names from the Burgundian pool; the chest (600 / 4,000 / 30,000 / 80,000 d); the men as `OwnedUnit`s (9 caballarii; +30 in three units; +100 in four; the king's guard); the seat marked and palisaded if unwalled; vassals to the step's roster (3 / 10) as `history.vassals` at mood 50 (step 3 moves them); from Count a county block in `history.rank.counties` (name from the pool Beaune, Avallon, Chalon, Autun…, fisc 150 manses / 10 villas, levy, yearly tolls/market/pleas/fisc/officers); at Duke four counties, a vassal group per county, `holds_autun` with a stone wall at the seat and the Chalon mint (1,200 d/yr from 864); at King the royal fisc block (300,000 d/yr, host 5–20,000). The Autun variant is the Duke's fourth county; the realm calendar's count of Autun stays the narrative one.
 
-**Office revenue** (`tickRevenue`, each season): a quarter of the yearly figures into the chest. Viscount: deputy's share 60 + court fines 40 a year. Count and above: per county tolls × trade multiplier (`trade.health / 55`, 0.4–1.6; Autun ×1.4) + market × trade + pleas × justice multiplier (1 until step 4) + fisc dues + mint, minus officers' pay; the royal fisc when king. `history.rank.lastRevenue` feeds the Books; the ledger line "The office paid … d".
+**Office revenue** (`tickRevenue`, each season): a quarter of the yearly figures into the chest. Viscount: deputy's share 60 + court fines 40 a year. Count and above: per county tolls × trade multiplier (`trade.health / 55`, 0.4–1.6; Autun ×1.4) + market × trade + pleas × justice multiplier (the stance's fines factor, §10b) + fisc dues + mint, minus officers' pay; the royal fisc when king. `history.rank.lastRevenue` feeds the Books; the ledger line "The office paid … d".
 
 **Stripping** (`demoteBy`, used by L-002 "go"): the office goes — counties beyond the rank kept, the mint, the crown, `holds_autun` — and the benefices held from the stripping hand (`forfeitFrom`); owned villas, the men and the chest stay; vassals trimmed to the rank's roster; `cooldownUntil = turn + 12` blocks the generic summons. Titles are otherwise sticky.
 
@@ -512,6 +516,20 @@ Design: rank doc 'Justice'. Not an income line: a lever that pays in money and r
 **Books.** The Holdings page's Court section shows the officers' stance (Count+), the case before the hall and who brought it, cases heard this year, the lord's name as a judge, unsettled quarrels, the missi's visits, and the last four verdicts.
 
 **Assumptions.** The verdict's `fines` are the lord's own court and are not scaled by the stance (the stance governs the officers' routine pleas). Autun's bishop as a party and the double `favor_church` weight of the design are carried by the county and duke tables' `church` values rather than a separate rule. Bribes are the `fines`/`missi` pairing on verdicts such as the mill-fee, the immunity sold and the distraint; there is no separate bribe card.
+
+## 10c. Administration (`administration.ts`, `ranks.json` → `administration`)
+
+Design: rank doc 'Administration — abstracted through Aldric'. No cast of new officers: Aldric grows with the lord, and the fisc's villas are run by the county's own officers (the `officers` pay line of §10), so the number that matters is **the lord's own villas** (`holdingsRun` = `state.holdings.length`) against **what Aldric can hold** (`capacity`). State in `history.administration`: `standing` (0–2, times the lord has raised him), `staff` (clerks), `deputy` (`{name, since}`, Duke+), `lastTier`, `paidTurn`, `leaked`.
+
+**Capacity.** By rank a range `[low, high]` (1–2, 3–4, 10–16, 40–60, no limit at King): the lord starts at the low end and each raising of Aldric moves him half the way to the high end (`low + round(standing × (high − low) / 2)`); each clerk adds 3 (to four clerks); a deputy adds 12. So a new count's twelve villas against ten already stretch him (tier 1), a new duke's forty-five against forty more so (tier 2), and the grant itself is the prompt to see to the household. `stewardTitle` gives the Books his style by rank ("chief officer of the county, with staff in each villa, raised once by the lord's hand").
+
+**Overload** (`overloadTier`, `ranks.json` → `administration.overload`). Over by 1–2: the furthest villas pay a tenth less, and Aldric sounds tired. 3–5: a fifth less, and a villa's dues go uncollected each season (4 d per villa over). 6+: three tenths less, 8 d per villa over kept back by a reeve, the people −1 a season — a villa running itself, and not honestly. The yield drop is a maintained pair of `permanent` multiply modifiers (`mod-administration-grain` on `grain_yield`, `mod-administration-livestock` on `livestock_yield`, source `administration`) whose value is 1 − drop × over / villas (`overloadFactor`; `syncOverload` each season and after every office action), so the harvest tables and the Customs page see it as any other custom of the hall. Aldric speaks once per step up (`administration:tier:<n>`; the complaint names the furthest villa and the fixes open to the lord) and once when the books are in hand again.
+
+**The fixes** (`steward_office` proposal, §6.3; `officeCost`, `applyOfficeAction`; Aldric's card). `promote`: 100 d × rank once and 5 d × rank a season, twice at most per tier. `hire`: 120 d once and 8 d a season per clerk, four at most. `deputy` (Duke+, one): 400 d once and 25 d a season, +12 villas; he is competent and ambitious — each spring a 20% roll keeps back a tenth of last season's fisc line (`leaked`, Aldric's `administration:deputy:<year>` account). Or hold less. The household's pay is taken each season (`tickAdministration`, after the revenue tick; "The household's officers were paid N d"). The prompt line (`administrationLine`, Aldric only) gives his style, villas against capacity, the books' state in words, and the offers with their prices; nothing is said while a villa lord has one villa and no household.
+
+**Books.** The Holdings page's Officers section (shown from Viscount, or whenever the books are strained or a household exists) gives Aldric's style and clerks, villas against capacity with the overload word, the deputy and his date, the season's pay, and what has gone uncollected or been kept back over the years.
+
+**Assumptions.** Capacity counts the lord's own villas only; the fisc's are the office's and are already paid for in the county's `officers` line. Raising Aldric is the "promote Aldric" of the design and is capped within the rank's range; a new rank widens the range without resetting his standing. The deputy is a line in the books, not a portrait NPC; the design's "whether that becomes useful or dangerous is a thread" is left to the calendar.
 
 ---
 

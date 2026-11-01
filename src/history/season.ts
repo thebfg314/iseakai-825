@@ -1,4 +1,5 @@
 import type { WorldState } from "../engine/schema";
+import { tickAdministration } from "./administration";
 import { tickAge } from "./age";
 import { forcesForEvent, openHistoricalBattle } from "./battles";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
@@ -190,6 +191,10 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const revenue = tickRevenue(state, incoming, turn);
   out.beats.push(...revenue.beats);
   out.effects.push(...revenue.lines);
+  // Aldric's reach: the household's pay, what the furthest villas lose, and his complaint when the strain changes.
+  const admin = tickAdministration(state, incoming, turn);
+  out.beats.push(...admin.beats);
+  out.effects.push(...admin.lines);
   const diffusion = tickDiffusion(state, incoming, turn);
   out.beats.push(...diffusion.beats);
   out.effects.push(...diffusion.lines);

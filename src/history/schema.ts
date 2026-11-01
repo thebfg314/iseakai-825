@@ -465,6 +465,19 @@ export const RanksFileSchema = z.object({
     quietAfterScriptedSeasons: z.number().int().nonnegative(),
   }),
   steps: z.object({ "2": RankStepSchema, "3": RankStepSchema, "4": RankStepSchema, "5": RankStepSchema }),
+  administration: z.object({
+    notes: z.string().optional(),
+    capacity: z.record(z.enum(["1", "2", "3", "4", "5"]), z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])),
+    titles: z.record(z.enum(["1", "2", "3", "4", "5"]), z.string()),
+    staffPerHire: z.number().int().positive(),
+    maxStaff: z.number().int().nonnegative(),
+    costs: z.object({
+      promote: z.object({ oncePerRank: z.number().nonnegative(), perSeasonPerRank: z.number().nonnegative() }),
+      staff: z.object({ once: z.number().nonnegative(), perSeason: z.number().nonnegative() }),
+      deputy: z.object({ once: z.number().nonnegative(), perSeason: z.number().nonnegative(), capacity: z.number().int().positive(), leakChance: z.number().min(0).max(1), leakShare: z.number().min(0).max(1) }),
+    }),
+    overload: z.array(z.object({ over: z.number().int().positive(), drop: z.number().min(0).max(1), leakPerHolding: z.number().nonnegative(), mood: z.number().int() })).min(1),
+  }),
   autun: z.object({ tollsMultiplier: z.number().positive(), seatFeature: z.string(), mintFromYear: z.number().int() }),
   counties: z.array(z.string()).min(4),
   villaNames: z.array(z.string()).min(45),
@@ -786,6 +799,23 @@ export const HistoryStateSchema = z.object({
       verdicts: z.array(z.object({ caseId: z.string(), title: z.string(), verdictId: z.string(), label: z.string(), turn: z.number().int() })).default([]),
       /** Year the stance last paid its yearly effects. */
       stanceYear: z.number().int().nullable().default(null),
+    })
+    .default({}),
+  /** Administration (rank design 'Administration — abstracted through Aldric'; 03_HISTORY §10c): what Aldric can run. */
+  administration: z
+    .object({
+      /** Times the lord has raised Aldric within his tier (0–2): moves capacity from the low end of the rank's range to the high. */
+      standing: z.number().int().min(0).max(2).default(0),
+      /** Clerks hired under him. */
+      staff: z.number().int().nonnegative().default(0),
+      /** A regional deputy (Duke+): competent and ambitious. */
+      deputy: z.object({ name: z.string(), since: z.number().int() }).nullable().default(null),
+      /** The overload tier last spoken (0 none … 3 running itself), so Aldric complains once per step. */
+      lastTier: z.number().int().min(0).max(3).default(0),
+      /** Turn the household's pay was last taken. */
+      paidTurn: z.number().int().nullable().default(null),
+      /** Denarii lost to uncollected dues and the deputy's hand, for the Books. */
+      leaked: z.number().nonnegative().default(0),
     })
     .default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),

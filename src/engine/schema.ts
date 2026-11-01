@@ -870,6 +870,7 @@ export const PROPOSAL_TYPES = [
   "vassal_mood",
   "justice_verdict",
   "set_stance",
+  "steward_office",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -1218,10 +1219,18 @@ export const SetStanceProposalSchema = ProposalBase.extend({
   stance: z.enum(["lenient", "fair", "strict", "extortionate", "low", "customary", "greedy"]),
 });
 
+/** Administration (03_HISTORY §10c): raise Aldric, let him hire clerks, or name a regional deputy (Duke+). */
+export const StewardOfficeProposalSchema = ProposalBase.extend({
+  type: z.literal("steward_office"),
+  action: z.enum(["promote", "hire", "deputy"]),
+  name: z.string().optional(),
+});
+
 export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   VassalMoodProposalSchema,
   JusticeVerdictProposalSchema,
   SetStanceProposalSchema,
+  StewardOfficeProposalSchema,
   FreeMancipiaProposalSchema,
   RaiseUnitProposalSchema,
   DisbandUnitProposalSchema,
@@ -1299,6 +1308,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   VassalMoodProposalSchema,
   JusticeVerdictProposalSchema,
   SetStanceProposalSchema,
+  StewardOfficeProposalSchema,
   DeferProposalSchema,
 ]);
 
@@ -1306,6 +1316,7 @@ export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
 export type VassalMoodProposal = z.infer<typeof VassalMoodProposalSchema>;
 export type JusticeVerdictProposal = z.infer<typeof JusticeVerdictProposalSchema>;
 export type SetStanceProposal = z.infer<typeof SetStanceProposalSchema>;
+export type StewardOfficeProposal = z.infer<typeof StewardOfficeProposalSchema>;
 export type SetStandingOrderProposal = z.infer<typeof SetStandingOrderProposalSchema>;
 export type StartProjectProposal = z.infer<typeof StartProjectProposalSchema>;
 export type AdjustProjectProposal = z.infer<typeof AdjustProjectProposalSchema>;
@@ -1345,6 +1356,7 @@ export type MechanicalProposal =
   | VassalMoodProposal
   | JusticeVerdictProposal
   | SetStanceProposal
+  | StewardOfficeProposal
   | RaiseUnitProposal
   | DisbandUnitProposal
   | CallToArmsProposal

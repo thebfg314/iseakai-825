@@ -7,6 +7,23 @@
     "cooldownSeasons": 12,
     "quietAfterScriptedSeasons": 2
   },
+  "administration": {
+    "notes": "Rank doc 'Administration — abstracted through Aldric'. Capacity is the number of the lord's own villas Aldric can run, by rank [low, high]; raising him moves it from the low end toward the high end in two steps; clerks add to it; a deputy (Duke+) adds a region. Overload tiers: holdings over capacity, the income drop on the furthest holdings, the leak in denarii per holding over per season, the people's mood per season.",
+    "capacity": { "1": [1, 2], "2": [3, 4], "3": [10, 16], "4": [40, 60], "5": [999, 999] },
+    "titles": { "1": "steward of the villa", "2": "steward, with under-stewards beneath him", "3": "chief officer of the county, with staff in each villa", "4": "head of the household administration", "5": "chancellor in all but name" },
+    "staffPerHire": 3,
+    "maxStaff": 4,
+    "costs": {
+      "promote": { "oncePerRank": 100, "perSeasonPerRank": 5 },
+      "staff": { "once": 120, "perSeason": 8 },
+      "deputy": { "once": 400, "perSeason": 25, "capacity": 12, "leakChance": 0.2, "leakShare": 0.1 }
+    },
+    "overload": [
+      { "over": 1, "drop": 0.1, "leakPerHolding": 0, "mood": 0 },
+      { "over": 3, "drop": 0.2, "leakPerHolding": 4, "mood": 0 },
+      { "over": 6, "drop": 0.3, "leakPerHolding": 8, "mood": -1 }
+    ]
+  },
   "steps": {
     "2": {
       "title": "Viscount",

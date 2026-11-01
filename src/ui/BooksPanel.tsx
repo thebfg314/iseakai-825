@@ -380,15 +380,19 @@ function HoldingsTab({ book }: { book: HoldingsBook }) {
             <GlossaryText text={`About ${formatLedgerNumber(book.revenue.yearly)} d a year at the present trade.`} />
           </p>
 
+          <h3>Levy</h3>
+          <Row k="Callable in the king's name" v={`${book.levy} men`} />
+        </>
+      )}
+
+      {book.officers.length > 0 && (
+        <>
           <h3>Officers</h3>
           {book.officers.map((line, i) => (
             <p key={i} className="ledger-note">
               <GlossaryText text={line} />
             </p>
           ))}
-
-          <h3>Levy</h3>
-          <Row k="Callable in the king's name" v={`${book.levy} men`} />
         </>
       )}
 

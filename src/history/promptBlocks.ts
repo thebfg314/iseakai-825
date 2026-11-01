@@ -1,4 +1,5 @@
 import type { WorldState } from "../engine/schema";
+import { administrationLine } from "./administration";
 import { evalCondition } from "./conditions";
 import { bodyAge, conditionContext } from "./flags";
 import { landLine } from "./land";
@@ -115,6 +116,8 @@ export function historyPromptBlock(state: WorldState, speaker: HistorySpeaker): 
     lines.push(tradeLine(state));
     const vassals = vassalsLine(state);
     if (vassals) lines.push(vassals);
+    const admin = administrationLine(state);
+    if (admin) lines.push(admin);
   }
   lines.push(...justiceLines(state, speaker));
   const prices = pricesLine(state);

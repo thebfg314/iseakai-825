@@ -1,4 +1,5 @@
 import type { ApplyResult, MechanicalProposal, WorldState } from "../engine/schema";
+import { applyOfficeAction } from "./administration";
 import { advanceScene, takeChoice, takeHook, takeOutcome, type HistoryBeat } from "./deliver";
 import { applyVerdict, justiceCase, setJusticeStance } from "./justice";
 import { historyContent } from "./load";
@@ -9,11 +10,13 @@ import { moveVassalMood } from "./vassals";
 
 export type HistoryProposal = Extract<
   MechanicalProposal,
-  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" | "justice_verdict" | "set_stance" }
+  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" | "justice_verdict" | "set_stance" | "steward_office" }
 >;
 
+const RANK_PROPOSALS = new Set(["vassal_mood", "justice_verdict", "set_stance", "steward_office"]);
+
 export function isHistoryProposal(p: MechanicalProposal): p is HistoryProposal {
-  return p.type.startsWith("history_") || p.type.startsWith("innovation_") || p.type === "vassal_mood" || p.type === "justice_verdict" || p.type === "set_stance";
+  return p.type.startsWith("history_") || p.type.startsWith("innovation_") || RANK_PROPOSALS.has(p.type);
 }
 
 const HISTORY_ACTORS = new Set(["steward", "chaplain", "referee", "player"]);
@@ -36,6 +39,10 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
   if (p.type === "vassal_mood") return applyVassalMood(state, p);
   if (p.type === "justice_verdict") return applyJusticeVerdict(state, p);
   if (p.type === "set_stance") return applySetStance(state, p);
+  if (p.type === "steward_office") {
+    const r = applyOfficeAction(state, p.action, state.meta.turn, p.name);
+    return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
   const event = content.byId.get(p.eventId);
   if (!event) return fail(`No such matter as ${p.eventId} is before the hall.`);
   if (!state.history.fired[event.id]) return fail(`${event.title} has not yet come to the hall.`);

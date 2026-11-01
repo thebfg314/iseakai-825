@@ -3,6 +3,7 @@ import { SMITH_SEASON_DAYS, smithProgressLine } from "../engine/smithing";
 import { levyMenUnderArms, raiseSpecFor, upkeepDue } from "../engine/military";
 import { unitSheet } from "../combat/registry";
 import { rankTitle } from "../combat/renown";
+import { capacity, holdingsRun, overloadTier, overloadWord, stewardTitle, upkeepPerSeason } from "../history/administration";
 import { fairnessWord, justiceCase, justiceTable, stanceApplies } from "../history/justice";
 import { eligibleRank } from "../history/promotion";
 import { seasonRevenue } from "../history/revenue";
@@ -126,10 +127,19 @@ export function holdingsBook(state: WorldState): HoldingsBook {
   }));
   const season = seasonRevenue(state);
   const officers: string[] = [];
+  const steward = state.npcs.find((n) => n.id === "steward")?.name ?? "Aldric";
+  const admin = state.history.administration;
+  const tier = overloadTier(state);
+  if (level >= 2 || tier > 0 || admin.staff || admin.standing || admin.deputy) {
+    officers.push(`${steward}, ${stewardTitle(state)}${admin.staff ? `, with ${admin.staff} ${admin.staff === 1 ? "clerk" : "clerks"} under him` : ""}.`);
+    officers.push(`${holdingsRun(state)} ${holdingsRun(state) === 1 ? "villa" : "villas"} in his books against ${capacity(state)} he can hold; the books are ${overloadWord(tier)}.`);
+    if (admin.deputy) officers.push(`${admin.deputy.name}, deputy over the outlying villas since ${turnLabel(admin.deputy.since)}.`);
+    const pay = upkeepPerSeason(state);
+    if (pay) officers.push(`The household's officers cost ${pay} d a season.`);
+    if (admin.leaked) officers.push(`${Math.round(admin.leaked)} d have gone uncollected or been kept back over the years.`);
+  }
   if (level >= 3) {
-    const steward = state.npcs.find((n) => n.id === "steward")?.name ?? "Aldric";
-    officers.push(`${steward}, steward of the whole, with the county's clerks under him.`);
-    officers.push(`${rank.counties.length} ${rank.counties.length === 1 ? "county" : "counties"} to administer from ${state.holdings.find((h) => h.seat)?.name ?? state.holdings[0]?.name ?? "the seat"}.`);
+    officers.push(`${rank.counties.length} ${rank.counties.length === 1 ? "county" : "counties"} to administer from ${state.holdings.find((h) => h.seat)?.name ?? state.holdings[0]?.name ?? "the seat"}; the fisc's own officers run its villas.`);
   }
   return {
     rank: {
