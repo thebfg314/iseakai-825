@@ -1,5 +1,6 @@
 import type { WorldState } from "../engine/schema";
 import type { HistoryBeat } from "./deliver";
+import { stanceFinesFactor } from "./justice";
 import { currentRank } from "./promotion";
 import { rankStep, ranksTable } from "./ranks";
 import type { SeasonAt } from "./scheduler";
@@ -8,8 +9,8 @@ import { TRADE_BASELINE, tradeHealth } from "./trade";
 /**
  * Public revenue (rank progression doc, "Count" and above; the viscount's deputy's share and court
  * fines below that). Paid into the chest each season as a quarter of the yearly figures held on the
- * county blocks. Tolls and market dues move with trade health (step 2); the pleas with the justice
- * stance (step 4); Autun's tolls run +40% for the Saône road.
+ * county blocks. Tolls and market dues move with trade health (trade.ts); the pleas with the justice
+ * stance (justice.ts); Autun's tolls run +40% for the Saône road.
  */
 
 export type RevenueTick = { lines: string[]; beats: HistoryBeat[] };
@@ -19,9 +20,9 @@ export function tradeMultiplier(state: WorldState): number {
   return Math.max(0.4, Math.min(1.6, tradeHealth(state) / TRADE_BASELINE));
 }
 
-/** Fines and pleas: 1 until the justice stance (step 4) says otherwise. */
-export function justiceMultiplier(_state: WorldState): number {
-  return 1;
+/** Fines and pleas follow the stance the lord set for his officers (justice.ts): half at lenient, double at extortionate. */
+export function justiceMultiplier(state: WorldState): number {
+  return stanceFinesFactor(state);
 }
 
 export type RevenueBreakdown = { tolls: number; market: number; justice: number; fisc: number; mint: number; deputy: number; fines: number; officers: number; net: number };

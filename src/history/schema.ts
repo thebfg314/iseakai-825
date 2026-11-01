@@ -472,6 +472,66 @@ export const RanksFileSchema = z.object({
 });
 export type RanksFile = z.infer<typeof RanksFileSchema>;
 
+/** Justice (data/history/justice.json; 03_HISTORY §10b): the dispute tables, the stances, the cadence. */
+export const JUSTICE_STANCES = ["lenient", "fair", "strict", "extortionate"] as const;
+export type JusticeStance = (typeof JUSTICE_STANCES)[number];
+export const JUSTICE_TABLES = ["villa", "county", "duke"] as const;
+export type JusticeTable = (typeof JUSTICE_TABLES)[number];
+
+export const JusticeVerdictSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    /** Denarii into the chest (negative: paid out). */
+    fines: z.number().default(0),
+    /** −1 unjust, 0 neither, +1 fair: the running measure of the lord as a judge. */
+    fairness: z.number().int().min(-1).max(1).default(0),
+    /** The people's happiness. */
+    people: z.number().int().default(0),
+    /** favor_church. */
+    church: z.number().int().default(0),
+    /** The sworn men's mood (vassals.ts). */
+    vassals: z.number().int().default(0),
+    renown: z.union([z.number(), z.enum(RENOWN_BANDS)]).optional(),
+    /** The king's missi take notice. */
+    missi: z.number().int().nonnegative().default(0),
+    /** Nothing settled: the quarrel comes back as a feud in a few seasons. */
+    feud: z.boolean().default(false),
+  })
+  .strict();
+export type JusticeVerdict = z.infer<typeof JusticeVerdictSchema>;
+
+export const JusticeCaseSchema = z
+  .object({
+    id: z.string().min(1),
+    speaker: z.enum(["steward", "chaplain"]),
+    title: z.string().min(1),
+    text: z.string().min(1),
+    verdicts: z.array(JusticeVerdictSchema).min(2),
+  })
+  .strict();
+export type JusticeCase = z.infer<typeof JusticeCaseSchema>;
+
+export const JusticeFileSchema = z.object({
+  notes: z.string().optional(),
+  cadence: z.object({
+    perYearMin: z.number().int().nonnegative(),
+    perYearMax: z.number().int().positive(),
+    maxPerSeason: z.number().int().positive(),
+    chancePerSeason: z.number().min(0).max(1),
+    deadlineSeasons: z.number().int().positive(),
+    feudSeasons: z.tuple([z.number().int().positive(), z.number().int().positive()]),
+  }),
+  stances: z.record(
+    z.enum(JUSTICE_STANCES),
+    z.object({ fines: z.number().positive(), loyaltyPerYear: z.number().int(), church: z.number().int(), missiPerYear: z.number().int().nonnegative(), word: z.string() }),
+  ),
+  missi: z.object({ attentionBefore: z.number().int().positive(), fineShare: z.number().min(0).max(1), renown: z.enum(RENOWN_BANDS), favour: z.number().int() }),
+  framing: z.object({ county: z.string(), duke: z.string() }),
+  tables: z.object({ villa: z.array(JusticeCaseSchema).min(1), county: z.array(JusticeCaseSchema).min(1), duke: z.array(JusticeCaseSchema).min(1) }),
+});
+export type JusticeFile = z.infer<typeof JusticeFileSchema>;
+
 export const FeaturesSchema = z.object({
   historicalBattles: z.boolean().default(false),
   promotions: z.boolean().default(false),
@@ -696,6 +756,36 @@ export const HistoryStateSchema = z.object({
       lastWord: z.string().nullable().default(null),
       /** Rolled catalog events already counted this turn (one knock per event per season). */
       countedTurn: z.number().int().nullable().default(null),
+    })
+    .default({}),
+  /** Justice (rank design 'Justice'; 03_HISTORY §10b): the case before the hall, the stance, the lord as a judge. */
+  justice: z
+    .object({
+      /** How the officers judge in the lord's name once he holds a county (Count+). */
+      stance: z.enum(JUSTICE_STANCES).default("fair"),
+      /** Aldric has explained the stance once (at the first county). */
+      stanceExplained: z.boolean().default(false),
+      /** The case waiting on the lord's judgement, if any. */
+      open: z
+        .object({ caseId: z.string(), table: z.enum(JUSTICE_TABLES), speaker: z.enum(["steward", "chaplain"]), openedTurn: z.number().int(), deadlineTurn: z.number().int() })
+        .nullable()
+        .default(null),
+      /** Cases already brought, so the tables do not repeat until they are spent. */
+      heard: z.array(z.string()).default([]),
+      /** Cases brought this year and the year they count for. */
+      casesThisYear: z.number().int().nonnegative().default(0),
+      year: z.number().int().nullable().default(null),
+      /** Running measure of the lord as a judge: fair verdicts raise it, unjust ones lower it (−12..12). */
+      fairness: z.number().int().min(-12).max(12).default(0),
+      /** The king's missi: how much notice they have taken; at the threshold they come. */
+      missiAttention: z.number().int().nonnegative().default(0),
+      missiVisits: z.number().int().nonnegative().default(0),
+      /** Quarrels left unsettled, due to come back as feuds. */
+      feuds: z.array(z.object({ caseId: z.string(), title: z.string(), dueTurn: z.number().int() })).default([]),
+      /** The last verdicts, newest last, for the Books. */
+      verdicts: z.array(z.object({ caseId: z.string(), title: z.string(), verdictId: z.string(), label: z.string(), turn: z.number().int() })).default([]),
+      /** Year the stance last paid its yearly effects. */
+      stanceYear: z.number().int().nullable().default(null),
     })
     .default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),

@@ -321,13 +321,22 @@ function HoldingsTab({ book }: { book: HoldingsBook }) {
         </>
       )}
 
-      {book.court.length > 0 && (
+      <h3>Court</h3>
+      {book.court.map((line, i) => (
+        <p key={i} className="ledger-note">
+          <GlossaryText text={line} />
+        </p>
+      ))}
+      {book.justice.stance && <Row k="The officers judge" v={book.justice.stance.word} />}
+      {book.justice.open && <Row k="Before the hall" v={`${book.justice.open.title} (brought by ${book.justice.open.by})`} />}
+      <Row k="Cases heard this year" v={String(book.justice.casesThisYear)} />
+      <p className="ledger-note">
+        <GlossaryText text={`The lord is ${book.justice.fairness}.${book.justice.feuds ? ` ${book.justice.feuds === 1 ? "One quarrel was" : `${book.justice.feuds} quarrels were`} left unsettled.` : ""}${book.justice.missi ? ` The king's missi have sat on the lord's court ${book.justice.missi === 1 ? "once" : `${book.justice.missi} times`}.` : ""}`} />
+      </p>
+      {book.justice.verdicts.length > 0 && (
         <>
-          <h3>Court</h3>
-          {book.court.map((line, i) => (
-            <p key={i} className="ledger-note">
-              <GlossaryText text={line} />
-            </p>
+          {book.justice.verdicts.map((v, i) => (
+            <Row key={i} k={`${v.title} (${v.when})`} v={v.label} />
           ))}
         </>
       )}

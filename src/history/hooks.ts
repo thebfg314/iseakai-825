@@ -1,17 +1,19 @@
 import type { ApplyResult, MechanicalProposal, WorldState } from "../engine/schema";
 import { advanceScene, takeChoice, takeHook, takeOutcome, type HistoryBeat } from "./deliver";
+import { applyVerdict, justiceCase, setJusticeStance } from "./justice";
 import { historyContent } from "./load";
 import { eventActive, type SeasonAt } from "./scheduler";
-import type { HistorySeason } from "./schema";
+import { JUSTICE_STANCES, type HistorySeason, type JusticeStance } from "./schema";
+import { setTollStance } from "./trade";
 import { moveVassalMood } from "./vassals";
 
 export type HistoryProposal = Extract<
   MechanicalProposal,
-  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" }
+  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" | "justice_verdict" | "set_stance" }
 >;
 
 export function isHistoryProposal(p: MechanicalProposal): p is HistoryProposal {
-  return p.type.startsWith("history_") || p.type.startsWith("innovation_") || p.type === "vassal_mood";
+  return p.type.startsWith("history_") || p.type.startsWith("innovation_") || p.type === "vassal_mood" || p.type === "justice_verdict" || p.type === "set_stance";
 }
 
 const HISTORY_ACTORS = new Set(["steward", "chaplain", "referee", "player"]);
@@ -32,6 +34,8 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
   }
   if (!HISTORY_ACTORS.has(actor)) return fail("npc_not_authorized");
   if (p.type === "vassal_mood") return applyVassalMood(state, p);
+  if (p.type === "justice_verdict") return applyJusticeVerdict(state, p);
+  if (p.type === "set_stance") return applySetStance(state, p);
   const event = content.byId.get(p.eventId);
   if (!event) return fail(`No such matter as ${p.eventId} is before the hall.`);
   if (!state.history.fired[event.id]) return fail(`${event.title} has not yet come to the hall.`);
@@ -103,6 +107,32 @@ function applyVassalMood(state: WorldState, p: Extract<HistoryProposal, { type: 
   const who = ids.length ? names[0] : "the sworn men";
   const word = p.delta > 0 ? "warmer" : p.delta < 0 ? "colder" : "unmoved";
   return { ok: true, logLine: `${who[0].toUpperCase()}${who.slice(1)} ${names.length === 1 && ids.length ? "is" : "are"} ${word} toward the lord: ${p.reason}.`, state };
+}
+
+/** The lord's judgement on the case before the hall (justice.ts); the verdict must be one the case lists. */
+function applyJusticeVerdict(state: WorldState, p: Extract<HistoryProposal, { type: "justice_verdict" }>): HistoryApplyResult {
+  const fail = (reason: string): HistoryApplyResult => ({ ok: false, reason, logLine: reason, state });
+  const c = justiceCase(p.caseId);
+  if (!c) return fail(`No case is written as ${p.caseId}.`);
+  const verdict = c.verdicts.find((v) => v.id === p.verdictId);
+  const r = applyVerdict(state, p.caseId, p.verdictId, at(state), state.meta.turn);
+  if (!r.ok) return fail(r.reason ?? "It cannot be made so.");
+  return { ok: true, logLine: [`${c.title}: ${verdict?.label ?? p.verdictId}.`, ...r.lines].join(" "), state };
+}
+
+/** How the officers judge (Count+), or how the tolls are set (justice.ts, trade.ts). */
+function applySetStance(state: WorldState, p: Extract<HistoryProposal, { type: "set_stance" }>): HistoryApplyResult {
+  const fail = (reason: string): HistoryApplyResult => ({ ok: false, reason, logLine: reason, state });
+  if (p.kind === "justice") {
+    if (!(JUSTICE_STANCES as readonly string[]).includes(p.stance)) return fail(`A court is lenient, fair, strict or extortionate; not ${p.stance}.`);
+    const err = setJusticeStance(state, p.stance as JusticeStance);
+    if (err) return fail(err);
+    return { ok: true, logLine: `The county's courts will judge ${p.stance === "extortionate" ? "for the chest" : `${p.stance}ly`} in the lord's name from now.`, state };
+  }
+  if (p.stance !== "low" && p.stance !== "customary" && p.stance !== "greedy") return fail(`Tolls are low, customary or greedy; not ${p.stance}.`);
+  if ((state.player.rankLevel ?? 1) < 3) return fail("The lord holds no county; the tolls are not his to set.");
+  setTollStance(state, p.stance, state.meta.turn);
+  return { ok: true, logLine: `The tolls on the lord's roads are set ${p.stance === "greedy" ? "high" : p.stance}.`, state };
 }
 
 function applyInnovation(state: WorldState, p: Extract<HistoryProposal, { type: "innovation_register" | "innovation_expose" }>): HistoryApplyResult {

@@ -4,6 +4,7 @@ import { forcesForEvent, openHistoricalBattle } from "./battles";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
 import { tickDiffusion } from "./diffusion";
 import { tickDuties } from "./duties";
+import { justiceCase, tickJustice } from "./justice";
 import { tickLadder } from "./ladder";
 import { tickLand } from "./land";
 import { tickQuest } from "./quest";
@@ -176,6 +177,15 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const vassals = tickVassals(state, incoming, turn);
   out.beats.push(...vassals.beats);
   out.effects.push(...vassals.lines);
+  // Justice: feuds and the missi come due, the stance pays its year, and one case may come before the hall.
+  const justice = tickJustice(state, incoming, turn, { quiet: sequence.length === 0 && !duties.duty && !promotion.promoted && !ladder.beats.length && !quest.beats.length });
+  out.beats.push(...justice.beats);
+  out.effects.push(...justice.lines);
+  if (justice.opened) {
+    const c = justiceCase(justice.opened);
+    const by = c?.speaker === "chaplain" ? "Ermenald" : "Aldric";
+    out.refereeLines.push(`History: ${by} brought a case before the lord this season start (${c?.title ?? justice.opened}); the lord judges it in talk with ${by}. Do not retell or decide it.`);
+  }
   // The office pays its quarter into the chest.
   const revenue = tickRevenue(state, incoming, turn);
   out.beats.push(...revenue.beats);

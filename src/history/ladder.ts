@@ -31,14 +31,19 @@ export function ladderThresholdMet(state: WorldState): boolean {
   return renown >= TABLE.trigger.renown && (rank >= TABLE.trigger.rank || totalManses(state) >= TABLE.trigger.manses);
 }
 
+/** A judge this partial has given the king his pretext (justice.ts fairness). */
+const UNJUST_AT = -4;
+
 /**
  * Rung 1 is open when a stripping would not be ugly: the lord's own people are unhappy and his sworn
- * men are not content enough to stand by him; or his sworn men are angry, whatever the people think.
+ * men are not content enough to stand by him; or his sworn men are angry, whatever the people think;
+ * or his court is the kind the capitularies complain of.
  */
 export function canStrip(state: WorldState): boolean {
   const sworn = (state.history.vassals ?? []).length > 0;
   const mood = averageVassalMood(state);
   if (sworn && mood < ANGRY_BELOW) return true;
+  if ((state.history.justice?.fairness ?? 0) <= UNJUST_AT) return true;
   if (sworn && mood >= CONTENT_AT) return false;
   return state.peopleHappiness < TABLE.strip.happinessBelow;
 }

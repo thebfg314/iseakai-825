@@ -3,6 +3,7 @@ import { SMITH_SEASON_DAYS, smithProgressLine } from "../engine/smithing";
 import { levyMenUnderArms, raiseSpecFor, upkeepDue } from "../engine/military";
 import { unitSheet } from "../combat/registry";
 import { rankTitle } from "../combat/renown";
+import { fairnessWord, justiceCase, justiceTable, stanceApplies } from "../history/justice";
 import { eligibleRank } from "../history/promotion";
 import { seasonRevenue } from "../history/revenue";
 import { vassalMoodWord } from "../history/vassals";
@@ -56,6 +57,16 @@ export type HoldingsBook = {
   levy: number;
   mint: number;
   royalFisc: { yearly: number; host: string } | null;
+  justice: {
+    /** The officers' stance, once a county is held. */
+    stance: { id: string; word: string } | null;
+    open: { title: string; by: string } | null;
+    casesThisYear: number;
+    fairness: string;
+    verdicts: { title: string; label: string; when: string }[];
+    feuds: number;
+    missi: number;
+  };
   emptyLine?: string;
 };
 
@@ -91,9 +102,20 @@ export function holdingsBook(state: WorldState): HoldingsBook {
   const vassals = state.history.vassals.map((v) => ({ id: v.id, name: v.name, holding: v.holding, men: v.men, mood: vassalMoodWord(v.mood), group: v.group }));
   const court: string[] = [];
   if (level === 2) court.push("The viscount holds the count's court in his district: the deputy's share and the fines of the lesser pleas come to him.");
-  if (level >= 3) court.push("The count sits in judgment on the pleas of the county; the fines are his. The stance of the court (lenient, fair, strict) is set in conversation with Aldric.");
+  if (level >= 3) court.push("The count sits in judgment on the pleas of the county; the fines are his. The stance of the court (lenient, fair, strict, extortionate) is set in conversation with Aldric.");
   const SEASONS_IN_ORDER: Season[] = ["spring", "summer", "autumn", "winter"];
   const turnLabel = (turn: number) => seasonBooksLabel(SEASONS_IN_ORDER[(Math.max(1, turn) - 1) % 4], 825 + Math.floor((Math.max(1, turn) - 1) / 4));
+  const j = state.history.justice;
+  const openCase = j.open ? justiceCase(j.open.caseId) : undefined;
+  const justice: HoldingsBook["justice"] = {
+    stance: stanceApplies(state) ? { id: j.stance, word: justiceTable().stances[j.stance]?.word ?? j.stance } : null,
+    open: openCase && j.open ? { title: openCase.title, by: state.npcs.find((n) => n.id === j.open?.speaker)?.name ?? (j.open.speaker === "chaplain" ? "Ermenald" : "Aldric") } : null,
+    casesThisYear: j.casesThisYear,
+    fairness: fairnessWord(j.fairness),
+    verdicts: [...j.verdicts].reverse().slice(0, 4).map((v) => ({ title: v.title, label: v.label, when: turnLabel(v.turn) })),
+    feuds: j.feuds.length,
+    missi: j.missiVisits,
+  };
   const counties = rank.counties.map((c) => ({
     name: c.name,
     since: turnLabel(c.since),
@@ -127,6 +149,7 @@ export function holdingsBook(state: WorldState): HoldingsBook {
     levy: rank.counties.reduce((n, c) => n + c.levy, 0),
     mint: rank.mint,
     royalFisc: rank.royalFisc ? { yearly: rank.royalFisc.yearly, host: `${rank.royalFisc.host.min}–${rank.royalFisc.host.max} men when the host is called` } : null,
+    justice,
     emptyLine: level === 1 && state.holdings.length <= 1 && !vassals.length ? HOLDINGS_EMPTY : undefined,
   };
 }

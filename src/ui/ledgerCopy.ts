@@ -16,6 +16,7 @@ import { labourCalledPhrase, labourDaysPhrase, resolveActiveProject } from "../e
 import { huntQuantityPhrase, huntRoadPhrase } from "../engine/hunts";
 import { matchHireableSpecialist } from "../engine/specialists";
 import { quoteRaise } from "../engine/military";
+import { justiceCase } from "../history/justice";
 import { historyContent } from "../history/load";
 
 export const BOOKS_TITLE = "The books";
@@ -177,6 +178,8 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   innovation_register: "A new thing of this house",
   innovation_expose: "A thing shown abroad",
   vassal_mood: "The sworn men",
+  justice_verdict: "The lord's judgement",
+  set_stance: "How the county is governed",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -593,6 +596,19 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       const how = p.delta > 0 ? "warmer" : p.delta < 0 ? "colder" : "unmoved";
       return `Note in the books that ${who} ${p.vassalId === "all" ? "are" : "is"} ${how} toward the lord: ${p.reason}.`;
     }
+    case "justice_verdict": {
+      const c = justiceCase(p.caseId);
+      const label = c?.verdicts.find((v) => v.id === p.verdictId)?.label ?? humanizeKey(p.verdictId);
+      return `On ${c?.title.toLowerCase() ?? "the case before the hall"}: ${label.charAt(0).toLowerCase()}${label.slice(1)}.`;
+    }
+    case "set_stance": {
+      if (p.kind === "tolls") {
+        const word = p.stance === "greedy" ? "high, above the custom" : p.stance === "low" ? "low, to draw the carts" : "at the customary rate";
+        return `Set the tolls on the lord's roads ${word}.`;
+      }
+      const word = p.stance === "extortionate" ? "for the chest, whatever the capitularies say" : p.stance === "lenient" ? "leniently, for the people's love" : p.stance === "strict" ? "strictly, for the chest and for order" : "fairly, as custom sets";
+      return `Have the county's courts judge ${word} in the lord's name.`;
+    }
   }
 }
 
@@ -617,7 +633,7 @@ function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b|\bvassal_mood\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b|\bvassal_mood\b|\bjustice_verdict\b|\bset_stance\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {

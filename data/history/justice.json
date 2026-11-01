@@ -1,0 +1,359 @@
+{
+  "notes": "Justice (Isekai 825 Rank Progression — Holdings and Powers.md, 'Justice'; 03_HISTORY §10b). One to two cases a year, never more than one a season; the many others were easily handled. Aldric brings the case (Ermenald one with the church in it), the lord judges in talk, the speaker emits justice_verdict from the closed list. At Count and above the lord also sets a stance for the officers who judge in his name; the fines of the office follow it.",
+  "cadence": { "perYearMin": 1, "perYearMax": 2, "maxPerSeason": 1, "chancePerSeason": 0.4, "deadlineSeasons": 2, "feudSeasons": [2, 6] },
+  "stances": {
+    "lenient": { "fines": 0.5, "loyaltyPerYear": 2, "church": 1, "missiPerYear": 0, "word": "lenient: half the fines, the people warm to you two a year, the church approves; disorder grows" },
+    "fair": { "fines": 1, "loyaltyPerYear": 1, "church": 0, "missiPerYear": 0, "word": "fair: the fines as custom sets them, the people warm to you one a year; the slow, safe way" },
+    "strict": { "fines": 1.3, "loyaltyPerYear": -1, "church": 0, "missiPerYear": 0, "word": "strict: fines a third above custom, the people cool one a year; resentment gathers quietly" },
+    "extortionate": { "fines": 2, "loyaltyPerYear": -3, "church": -1, "missiPerYear": 1, "word": "extortionate: double fines, the people cool three a year, the church condemns it, and the king's missi take notice" }
+  },
+  "missi": { "attentionBefore": 2, "fineShare": 0.1, "renown": "-small", "favour": -1 },
+  "framing": {
+    "county": "You hear dozens of cases at the county court this season, my lord, and your officers settle most before they reach you. This is the one that will be remembered.",
+    "duke": "The lesser courts have done what they could this year, my lord. This one could not be settled below you."
+  },
+  "tables": {
+    "villa": [
+      {
+        "id": "J-V01",
+        "speaker": "steward",
+        "title": "The boundary stone",
+        "text": "My lord, a boundary stone between two strips has been moved, and both families swear on the saints it was always where they say. I have walked it; the grass under the stone is fresh. Will you hear them?",
+        "verdicts": [
+          { "id": "restore", "label": "Put the stone back where the grass says it stood, and fine the mover", "fines": 4, "fairness": 1, "people": 1 },
+          { "id": "split", "label": "Split the disputed furrow between them and fine neither", "fairness": 1, "people": 1 },
+          { "id": "elder", "label": "Rule for the older family and let the other learn its place", "fairness": -1, "people": -2 },
+          { "id": "refuse", "label": "It is a matter for the village; send them away", "fairness": -1, "people": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V02",
+        "speaker": "steward",
+        "title": "The pig in the beans",
+        "text": "A pig got into Godo's garden and rooted up the beans he was keeping for seed. The pig is Adalbert's, and Adalbert says the fence was Godo's to mend. Both are at the gate, my lord, and neither is quiet.",
+        "verdicts": [
+          { "id": "owner_pays", "label": "The pig's owner makes good the beans", "fairness": 1, "people": 1 },
+          { "id": "half", "label": "Half the loss each: the fence was bad and the pig was loose", "fairness": 1, "people": 1 },
+          { "id": "fine_both", "label": "Fine them both for bringing a pig to the hall", "fines": 2, "fairness": 0, "people": -1 },
+          { "id": "refuse", "label": "Send them away; it is beans", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V03",
+        "speaker": "steward",
+        "title": "The dead man's strip",
+        "text": "Old Ratbert is dead and two men claim his strip in the open field: his nephew, who worked it beside him these five years, and his son-in-law, who has the widow. The strip is yours to assign, my lord; the custom says the one who worked it, the widow says otherwise.",
+        "verdicts": [
+          { "id": "nephew", "label": "The nephew, who worked it", "fairness": 1, "people": 1 },
+          { "id": "widow", "label": "The widow's household, who must eat", "fairness": 1, "people": 1, "church": 1 },
+          { "id": "take_back", "label": "Take the strip back into the demesne and let them both look elsewhere", "fairness": -1, "people": -3, "fines": 3 },
+          { "id": "refuse", "label": "Let them settle it between themselves", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V04",
+        "speaker": "chaplain",
+        "title": "The betrothal refused",
+        "text": "My lord, a betrothal was agreed between two households and the bride-price paid. Now the girl's father refuses, and the price has been spent on the roof. The young man's family wants the girl or the silver. The girl, I will say, does not want the young man.",
+        "verdicts": [
+          { "id": "repay", "label": "The price is repaid over two harvests; no one is forced", "fairness": 1, "church": 1, "people": 1 },
+          { "id": "marry", "label": "The bargain stands; the marriage goes forward", "fairness": -1, "church": -1, "people": -2 },
+          { "id": "forgive", "label": "The price is forgiven and the matter closed", "fairness": 0, "church": 1, "people": 0 },
+          { "id": "refuse", "label": "Leave it to the families", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V05",
+        "speaker": "steward",
+        "title": "Tools from the forge",
+        "text": "Tools have gone from the forge — a hammer and two sets of tongs. The man accused is Wulfhard, who works as hard as any two and has been accused before of things that were never proven. Bernard wants him whipped. Nothing was found in his house.",
+        "verdicts": [
+          { "id": "acquit", "label": "Nothing found, nothing proven; let him go, and let the forge be locked", "fairness": 1, "people": 1 },
+          { "id": "oath", "label": "He swears with oath-helpers; if he finds them he is clear", "fairness": 1, "church": 1 },
+          { "id": "punish", "label": "Whip him as an example and fine him the tools", "fines": 6, "fairness": -1, "people": -3 },
+          { "id": "refuse", "label": "Let the smith deal with his own forge", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V06",
+        "speaker": "steward",
+        "title": "The dues he cannot pay",
+        "text": "Theutbald says he cannot pay his dues this year: a cow dead, a son sick. His neighbours say he can, and that he was seen selling wool at the gate. If you forgive him, my lord, three more will say the same next year; if you do not, the household may break.",
+        "verdicts": [
+          { "id": "defer", "label": "Defer the dues to next harvest, with the reeve to watch the wool", "fairness": 1, "people": 2 },
+          { "id": "forgive", "label": "Forgive the year outright", "fairness": 0, "people": 3, "church": 1, "fines": -8 },
+          { "id": "collect", "label": "Collect in full; the law is the law", "fines": 8, "fairness": 0, "people": -2 },
+          { "id": "seize", "label": "Take the wool and a fine besides for the lie", "fines": 12, "fairness": -1, "people": -4 }
+        ]
+      },
+      {
+        "id": "J-V07",
+        "speaker": "steward",
+        "title": "The dog and the sheep",
+        "text": "A dog has killed three sheep in the night. Two men keep dogs that could have done it; each says it was the other's. The shepherd wants his sheep made good and the dog hanged.",
+        "verdicts": [
+          { "id": "both_pay", "label": "Both dog-keepers share the loss; the dogs are tied at night", "fairness": 1, "people": 1 },
+          { "id": "hang_both", "label": "Hang both dogs and let the owners thank you it was not worse", "fairness": -1, "people": -2 },
+          { "id": "lord_pays", "label": "Make the sheep good from your own flock and end it", "fairness": 1, "people": 2, "fines": -6 },
+          { "id": "refuse", "label": "Dogs and sheep are the shepherd's concern", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V08",
+        "speaker": "steward",
+        "title": "Blood at the harvest feast",
+        "text": "A man struck another at the harvest feast — a cup, then a fist, then a knife. There is blood but no death, and the wounded man will mend. Both were drunk; both have kin. The law gives a composition for the wound.",
+        "verdicts": [
+          { "id": "composition", "label": "The striker pays the wound-price to the wounded man, and a fine to you", "fines": 5, "fairness": 1, "people": 1 },
+          { "id": "forgive", "label": "Both were drunk; both pay a fine and shake hands", "fines": 4, "fairness": 1 },
+          { "id": "harsh", "label": "The striker loses his place at the feast for a year and pays double", "fines": 10, "fairness": -1, "people": -2 },
+          { "id": "refuse", "label": "Let the kin settle it", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V09",
+        "speaker": "steward",
+        "title": "Timber from your woodland",
+        "text": "Someone has been taking timber from your woodland without leave — good oak, not firewood. The tracks lead to the lower manses. Two households have new roof-beams this spring, my lord, and neither bought them.",
+        "verdicts": [
+          { "id": "fine", "label": "Fine the households the worth of the oak and leave the roofs", "fines": 10, "fairness": 1, "people": -1 },
+          { "id": "labour", "label": "They work the days off in the woodland and plant for what they took", "fairness": 1, "people": 1 },
+          { "id": "strip", "label": "Have the beams pulled down and the men flogged", "fairness": -1, "people": -4, "fines": 6 },
+          { "id": "forgive", "label": "A roof is a roof; say nothing this once", "fairness": 0, "people": 2 }
+        ]
+      },
+      {
+        "id": "J-V10",
+        "speaker": "chaplain",
+        "title": "The widow's holding",
+        "text": "My lord, a widow holds her dead husband's manse and works it well with her children. His brother says it should come to him, as the nearest man of the blood, and offers to take her in. She does not wish to be taken in. The custom could go either way.",
+        "verdicts": [
+          { "id": "widow", "label": "The widow keeps the holding while she works it", "fairness": 1, "church": 1, "people": 2 },
+          { "id": "brother", "label": "The brother takes it and keeps her and the children", "fairness": 0, "people": -1 },
+          { "id": "brother_pays", "label": "The brother takes it and pays her a portion each year", "fairness": 1, "people": 0 },
+          { "id": "refuse", "label": "Not the hall's affair", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V11",
+        "speaker": "steward",
+        "title": "The well",
+        "text": "Two families share a well, and have for forty years; now one has built a wall across the path to it and the other is drawing from the stream, which is further and fouler. The wall-builder says the path crossed his garden. It did.",
+        "verdicts": [
+          { "id": "right_of_way", "label": "A path to water is older than any garden; the wall comes down", "fairness": 1, "people": 2 },
+          { "id": "new_path", "label": "A new path round the garden, dug by both", "fairness": 1, "people": 1 },
+          { "id": "wall_stands", "label": "A man's garden is his own; the wall stands", "fairness": -1, "people": -2 },
+          { "id": "refuse", "label": "Let them share the stream", "fairness": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-V12",
+        "speaker": "chaplain",
+        "title": "Within the forbidden degrees",
+        "text": "My lord, a couple on the lower manses wish to marry and the degrees are against it — second cousins, by my reckoning, which the canons forbid. They do not care; the families do not care; the village is laughing at me. I would have you forbid it. I am not sure you will.",
+        "verdicts": [
+          { "id": "forbid", "label": "Forbid it; the Church's rule is the rule", "fairness": 0, "church": 2, "people": -2 },
+          { "id": "allow", "label": "Allow it and let Ermenald write to the bishop if he must", "fairness": 0, "church": -2, "people": 2 },
+          { "id": "dispensation", "label": "Send to the bishop for a dispensation, and a gift with the letter", "fines": -10, "fairness": 1, "church": 1, "people": 1 },
+          { "id": "refuse", "label": "Say nothing either way", "fairness": -1, "church": -1 }
+        ]
+      }
+    ],
+    "county": [
+      {
+        "id": "J-C01",
+        "speaker": "steward",
+        "title": "A killing between noble houses",
+        "text": "A man of one noble house has killed a man of another on the road to Beaune. Both houses demand justice at your court and neither will take a wergild: the one wants the killer's head, the other says it was a fair fight. Their men are at the door with swords.",
+        "verdicts": [
+          { "id": "wergild", "label": "Set the wergild yourself, high, and make both swear peace on relics", "fines": 60, "fairness": 1, "renown": "small", "vassals": 2 },
+          { "id": "execute", "label": "Hang the killer; a death for a death", "fairness": 0, "people": 2, "vassals": -6 },
+          { "id": "exile", "label": "Exile the killer a year and a day and let the houses cool", "fairness": 1, "vassals": 0 },
+          { "id": "refuse", "label": "Refuse the case and let them fight it out", "fairness": -1, "vassals": -4, "feud": true, "renown": "-small" }
+        ]
+      },
+      {
+        "id": "J-C02",
+        "speaker": "chaplain",
+        "title": "The abbey's charter and the lord's possession",
+        "text": "An abbey and a lay lord both claim a villa near Saulieu. The abbey has a charter — I have read it, my lord, and the seal is good. The lord has held it for twenty years and his tenants know no other. The law favours the charter; the country favours the man who is there.",
+        "verdicts": [
+          { "id": "abbey", "label": "The charter stands; the abbey has the villa", "fairness": 1, "church": 2, "vassals": -4 },
+          { "id": "lord", "label": "Twenty years' possession is title enough; the lord keeps it", "fairness": -1, "church": -2, "vassals": 4 },
+          { "id": "rent", "label": "The lord keeps it and pays the abbey a rent for it", "fairness": 1, "church": 1, "vassals": 1 },
+          { "id": "refuse", "label": "Send it to the king's court", "fairness": 0, "renown": "-small" }
+        ]
+      },
+      {
+        "id": "J-C03",
+        "speaker": "steward",
+        "title": "Three brothers and one inheritance",
+        "text": "A dead lord's lands fall to three brothers, and they cannot divide them. The youngest is your own sworn man, my lord, and he looks to you. The eldest says the custom gives him the hall; the middle one says the custom gives them equal parts. Each has a lawyer and all three have men.",
+        "verdicts": [
+          { "id": "equal", "label": "Equal parts, by lot, with the hall to the eldest", "fairness": 1, "vassals": 1 },
+          { "id": "favour_vassal", "label": "The best third to your own man, since he will hold it well", "fairness": -1, "vassals": 6, "people": -2 },
+          { "id": "eldest", "label": "The eldest takes the hall and the lion's share, as the old custom says", "fairness": 0, "vassals": -3 },
+          { "id": "refuse", "label": "Let the brothers settle it", "fairness": -1, "vassals": -2, "feud": true }
+        ]
+      },
+      {
+        "id": "J-C04",
+        "speaker": "steward",
+        "title": "A vassal accused by his own tenants",
+        "text": "Tenants of one of your sworn men have come to the court over his head: he takes more than his due, they say, a third again above the custom, and beats those who complain. He says they are liars and that it is no business of the count's what passes between a lord and his men. It is, my lord; that is what a count is for. But he is yours.",
+        "verdicts": [
+          { "id": "for_tenants", "label": "Hear the tenants, fix the dues in writing and fine him the excess", "fines": 40, "fairness": 1, "people": 3, "vassals": -8 },
+          { "id": "for_vassal", "label": "Back your man and send the tenants home", "fairness": -1, "people": -4, "vassals": 6 },
+          { "id": "quiet_word", "label": "A quiet word with him, and the dues set right without a fine", "fairness": 1, "people": 1, "vassals": -2 },
+          { "id": "refuse", "label": "Refuse to hear it", "fairness": -1, "people": -2, "feud": true }
+        ]
+      },
+      {
+        "id": "J-C05",
+        "speaker": "steward",
+        "title": "The robbed merchant",
+        "text": "A merchant was robbed on the road below Avallon — the road is yours to keep safe, and he knows the law that says so. He wants you to make good his loss: forty pounds of pepper and a mule. He has witnesses. He is also, I will say, not a man I would lend to.",
+        "verdicts": [
+          { "id": "compensate", "label": "Make good the loss and set a watch on the road", "fines": -50, "fairness": 1, "renown": "small" },
+          { "id": "half", "label": "Half his claim, and the watch", "fines": -25, "fairness": 1 },
+          { "id": "refuse_claim", "label": "He travelled unarmed in a bad year; the loss is his", "fairness": -1, "renown": "-small" },
+          { "id": "refuse", "label": "Send him to the king", "fairness": 0, "renown": "-small" }
+        ]
+      },
+      {
+        "id": "J-C06",
+        "speaker": "steward",
+        "title": "A man who says he is free",
+        "text": "A man says he is free and his lord says he is not. The man's father, he says, was freed by charter; the charter is lost, burned in a raid. The lord says there never was one. There are old men who remember the father as free, and old men who remember otherwise.",
+        "verdicts": [
+          { "id": "free", "label": "Free, on the oath of the old men who say so", "fairness": 1, "people": 3, "church": 1, "vassals": -3 },
+          { "id": "unfree", "label": "No charter, no freedom; he goes back to his lord", "fairness": 0, "people": -3, "vassals": 3 },
+          { "id": "redeem", "label": "Set a price for his freedom and let him work it off", "fairness": 1, "people": 1 },
+          { "id": "refuse", "label": "Refuse to judge without the charter", "fairness": -1, "people": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-C07",
+        "speaker": "chaplain",
+        "title": "The bishop's advocate and the count's officer",
+        "text": "My lord, the bishop's advocate and your own officer each claim the right to judge the village of Montcenis. The bishop has an immunity, old and real; your officer says the village was never in it. If you rule for the bishop you lose the pleas of a village; if you rule for your officer you make an enemy at Autun.",
+        "verdicts": [
+          { "id": "bishop", "label": "The immunity stands; the bishop's man judges there", "fairness": 1, "church": 2, "fines": -20 },
+          { "id": "officer", "label": "Your officer judges; let the bishop write to Rome", "fairness": 0, "church": -3, "fines": 20 },
+          { "id": "shared", "label": "The bishop judges the clergy, your man the rest", "fairness": 1, "church": 0 },
+          { "id": "refuse", "label": "Leave it as it stands", "fairness": -1, "church": -1 }
+        ]
+      },
+      {
+        "id": "J-C08",
+        "speaker": "steward",
+        "title": "The disputed mill",
+        "text": "A lord has built a mill on the river above the old one, and the old miller's wheel runs slow. Both want the right to grind for the villages between them; the villages want the nearer mill. There is money in this, my lord, and whichever way you rule one of them will owe you.",
+        "verdicts": [
+          { "id": "both", "label": "Both mills stand; the villages grind where they please", "fairness": 1, "people": 2, "vassals": 0 },
+          { "id": "old", "label": "The old mill has the right; the new one pays him for the water it takes", "fairness": 1, "vassals": 1 },
+          { "id": "new", "label": "The new mill stands and the old miller may pull his wheel", "fairness": -1, "vassals": 2, "people": -1 },
+          { "id": "fee", "label": "Both stand, and both pay the count a mill-fee for the river", "fines": 40, "fairness": 0, "vassals": -2 }
+        ]
+      },
+      {
+        "id": "J-C09",
+        "speaker": "chaplain",
+        "title": "Sorcery",
+        "text": "My lord, a village has brought a woman to the court accused of sorcery: cattle dead, a child sick, words muttered at a gate. I have spoken with her. She is old and sharp-tongued and I do not think she has killed anything. The village is certain, and frightened, and that is the danger.",
+        "verdicts": [
+          { "id": "acquit", "label": "No proof; she goes free under the priest's protection", "fairness": 1, "church": 2, "people": -2 },
+          { "id": "ordeal", "label": "The ordeal of water, as the village demands", "fairness": -1, "church": -1, "people": 2 },
+          { "id": "remove", "label": "Send her to a convent, for her safety and theirs", "fairness": 1, "church": 1, "people": 1 },
+          { "id": "refuse", "label": "Refuse the case", "fairness": -1, "church": -1, "feud": true }
+        ]
+      },
+      {
+        "id": "J-C10",
+        "speaker": "steward",
+        "title": "A royal vassal refuses your court",
+        "text": "A royal vassal with lands in the county has been summoned over a boundary and refuses your court entirely: he answers to the king, he says, and not to any count. He is within his rights, perhaps. He is also making you look small before the whole county.",
+        "verdicts": [
+          { "id": "write_king", "label": "Write to the king and ask him to send the man to your court", "fairness": 1, "renown": "small" },
+          { "id": "seize", "label": "Distrain his cattle until he comes", "fairness": -1, "renown": "small", "vassals": 3, "missi": 1 },
+          { "id": "let_go", "label": "Let it go; the boundary can wait", "fairness": 0, "renown": "-small", "vassals": -3 },
+          { "id": "refuse", "label": "Say nothing and let the county talk", "fairness": -1, "renown": "-small", "vassals": -4 }
+        ]
+      }
+    ],
+    "duke": [
+      {
+        "id": "J-D01",
+        "speaker": "steward",
+        "title": "Two counts over a border district",
+        "text": "Two of your counts are in open quarrel over a district on their border; both have armed men out, and there has been a burning. Each asks you to confirm him. Whichever you choose, the other will remember it; if you choose neither, they will settle it with fire.",
+        "verdicts": [
+          { "id": "divide", "label": "Divide the district by the river and make both swear to it before you", "fairness": 1, "vassals": 2, "renown": "small" },
+          { "id": "stronger", "label": "Confirm the stronger; he is more use to you", "fairness": -1, "vassals": -2, "renown": "small" },
+          { "id": "take", "label": "Take the district into your own hand until they can behave", "fairness": 0, "vassals": -5, "fines": 200 },
+          { "id": "refuse", "label": "Let them fight", "fairness": -1, "vassals": -6, "feud": true, "renown": "-moderate" }
+        ]
+      },
+      {
+        "id": "J-D02",
+        "speaker": "steward",
+        "title": "An appeal against your own officer",
+        "text": "An appeal has come up against one of your own officers, accused of extortion in the pleas: fines doubled, bribes taken, a man kept in irons until his family paid. I believe it, my lord. Judging against him costs you a servant who has been useful; judging for him costs you the county's trust.",
+        "verdicts": [
+          { "id": "dismiss", "label": "Dismiss him, repay what can be traced and fine him the rest", "fines": 100, "fairness": 1, "people": 4, "renown": "small" },
+          { "id": "keep", "label": "Keep him and send the appellants home", "fairness": -1, "people": -5, "missi": 1 },
+          { "id": "move", "label": "Move him to another county and repay the appellants quietly", "fines": -60, "fairness": 0, "people": 1 },
+          { "id": "refuse", "label": "Refuse to hear an appeal against your own man", "fairness": -1, "people": -3, "missi": 1 }
+        ]
+      },
+      {
+        "id": "J-D03",
+        "speaker": "chaplain",
+        "title": "A bishop against a count",
+        "text": "My lord, a bishop and one of your counts are at law over a church's lands, and the bishop has let it be known that Rome may hear of it if your court does him wrong. The count has the lands and the count has your trust. The bishop has the law, and a long memory.",
+        "verdicts": [
+          { "id": "bishop", "label": "The church's lands to the church", "fairness": 1, "church": 3, "vassals": -4 },
+          { "id": "count", "label": "The count holds them; let Rome write", "fairness": -1, "church": -3, "vassals": 4, "missi": 1 },
+          { "id": "compromise", "label": "The count holds them of the bishop and does homage for them", "fairness": 1, "church": 1, "vassals": 0 },
+          { "id": "refuse", "label": "Send it to Rome yourself", "fairness": 0, "church": 0, "renown": "-small" }
+        ]
+      },
+      {
+        "id": "J-D04",
+        "speaker": "chaplain",
+        "title": "A monastery asks immunity",
+        "text": "My lord, a monastery in your lands asks you to confirm its immunity: freedom from your own officers' jurisdiction, its own courts, its own dues. Every great house has one. To grant it costs you the pleas of a dozen villages; to refuse it is to be the one duke who would not.",
+        "verdicts": [
+          { "id": "grant", "label": "Grant the immunity in full", "fairness": 1, "church": 3, "fines": -100 },
+          { "id": "partial", "label": "Grant it for the monks' own lands, not the villages", "fairness": 1, "church": 1, "fines": -40 },
+          { "id": "refuse_it", "label": "Refuse; the duke's law runs everywhere", "fairness": 0, "church": -3, "fines": 40 },
+          { "id": "price", "label": "Grant it for a gift to the ducal chest", "fines": 150, "fairness": -1, "church": -1, "missi": 1 }
+        ]
+      },
+      {
+        "id": "J-D05",
+        "speaker": "steward",
+        "title": "A disputed succession",
+        "text": "A count is dead and his son and his brother both claim the county; both parties' men are gathering, and the county's lords are choosing sides. The son is a boy; the brother is a soldier. The custom is the son's. The peace of the county may be the brother's.",
+        "verdicts": [
+          { "id": "son", "label": "The son, with the brother as his guardian until he is of age", "fairness": 1, "vassals": 2 },
+          { "id": "brother", "label": "The brother; a county needs a man", "fairness": -1, "vassals": 2, "renown": "small" },
+          { "id": "son_alone", "label": "The son, and the brother sent away", "fairness": 1, "vassals": -3, "feud": true },
+          { "id": "refuse", "label": "Let the county's lords choose", "fairness": -1, "vassals": -4, "renown": "-small" }
+        ]
+      },
+      {
+        "id": "J-D06",
+        "speaker": "steward",
+        "title": "A case the king has sent you",
+        "text": "The king has sent a case down to you to decide: a royal vassal against one of your own counts, over a forest both claim. The king's letter says he trusts your judgement. It is a test, my lord, of whether you will rule in his interest or your own, and he will read the answer either way.",
+        "verdicts": [
+          { "id": "royal", "label": "Rule for the king's man; the forest was the fisc's", "fairness": 1, "vassals": -3, "renown": "small" },
+          { "id": "own", "label": "Rule for your own count", "fairness": 0, "vassals": 4, "renown": "-small", "missi": 1 },
+          { "id": "share", "label": "Divide the forest and send the king the hunting rights", "fairness": 1, "vassals": 0, "renown": "small" },
+          { "id": "refuse", "label": "Send it back to the king undecided", "fairness": -1, "renown": "-moderate", "vassals": -2 }
+        ]
+      }
+    ]
+  }
+}

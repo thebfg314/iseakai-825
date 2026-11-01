@@ -868,6 +868,8 @@ export const PROPOSAL_TYPES = [
   "innovation_register",
   "innovation_expose",
   "vassal_mood",
+  "justice_verdict",
+  "set_stance",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -1202,8 +1204,24 @@ export const VassalMoodProposalSchema = ProposalBase.extend({
   reason: z.string().min(1),
 });
 
+/** Justice (03_HISTORY §10b): the lord's judgement on the case before the hall, from the closed list the speaker was given. */
+export const JusticeVerdictProposalSchema = ProposalBase.extend({
+  type: z.literal("justice_verdict"),
+  caseId: z.string().min(1),
+  verdictId: z.string().min(1),
+});
+
+/** How the lord's officers judge in his name (Count+), or how his tolls are set on the roads. */
+export const SetStanceProposalSchema = ProposalBase.extend({
+  type: z.literal("set_stance"),
+  kind: z.enum(["justice", "tolls"]),
+  stance: z.enum(["lenient", "fair", "strict", "extortionate", "low", "customary", "greedy"]),
+});
+
 export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   VassalMoodProposalSchema,
+  JusticeVerdictProposalSchema,
+  SetStanceProposalSchema,
   FreeMancipiaProposalSchema,
   RaiseUnitProposalSchema,
   DisbandUnitProposalSchema,
@@ -1279,11 +1297,15 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   InnovationRegisterProposalSchema,
   InnovationExposeProposalSchema,
   VassalMoodProposalSchema,
+  JusticeVerdictProposalSchema,
+  SetStanceProposalSchema,
   DeferProposalSchema,
 ]);
 
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
 export type VassalMoodProposal = z.infer<typeof VassalMoodProposalSchema>;
+export type JusticeVerdictProposal = z.infer<typeof JusticeVerdictProposalSchema>;
+export type SetStanceProposal = z.infer<typeof SetStanceProposalSchema>;
 export type SetStandingOrderProposal = z.infer<typeof SetStandingOrderProposalSchema>;
 export type StartProjectProposal = z.infer<typeof StartProjectProposalSchema>;
 export type AdjustProjectProposal = z.infer<typeof AdjustProjectProposalSchema>;
@@ -1321,6 +1343,8 @@ export type MechanicalProposal =
   | InnovationRegisterProposal
   | InnovationExposeProposal
   | VassalMoodProposal
+  | JusticeVerdictProposal
+  | SetStanceProposal
   | RaiseUnitProposal
   | DisbandUnitProposal
   | CallToArmsProposal

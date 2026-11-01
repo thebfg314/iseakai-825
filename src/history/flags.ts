@@ -116,6 +116,8 @@ export function conditionVars(state: WorldState, at?: { year: number; season: st
       return own.length ? Math.round(own.reduce((n, v) => n + v.mood, 0) / own.length) : 50;
     })(),
     trade_health: h.trade?.health ?? 55,
+    justice_fairness: h.justice?.fairness ?? 0,
+    justice_stance: h.justice?.stance ?? "fair",
   };
 }
 

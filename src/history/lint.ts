@@ -45,6 +45,8 @@ export const CONDITION_VARS = new Set([
   "vassals",
   "vassal_mood",
   "trade_health",
+  "justice_fairness",
+  "justice_stance",
 ]);
 
 /**

@@ -8,6 +8,7 @@ import { rankLine } from "./promotion";
 import { realmLine } from "./realm";
 import { diffusionLine } from "./diffusion";
 import { dutiesLine } from "./duties";
+import { justiceLines } from "./justice";
 import { ladderLine } from "./ladder";
 import { questLines } from "./quest";
 import { relicsLine } from "./relics";
@@ -115,6 +116,7 @@ export function historyPromptBlock(state: WorldState, speaker: HistorySpeaker): 
     const vassals = vassalsLine(state);
     if (vassals) lines.push(vassals);
   }
+  lines.push(...justiceLines(state, speaker));
   const prices = pricesLine(state);
   if (prices) lines.push(prices);
   const vikings = vikingLine(state);
