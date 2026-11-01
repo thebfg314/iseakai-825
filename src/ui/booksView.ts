@@ -5,6 +5,7 @@ import { unitSheet } from "../combat/registry";
 import { rankTitle } from "../combat/renown";
 import { eligibleRank } from "../history/promotion";
 import { seasonRevenue } from "../history/revenue";
+import { vassalMoodWord } from "../history/vassals";
 import { merchantCartsForBooks } from "../engine/merchantShop";
 import { clampEstateOffset, estatePagerFlags, snapshotAtOffset, stepEstateOffset } from "../engine/estateBooks";
 import { seasonsBetween } from "../engine/projectProgress";
@@ -60,11 +61,7 @@ export type HoldingsBook = {
 
 export const HOLDINGS_EMPTY = "One villa, held as a benefice, and no man sworn to you. Vassals, a court and the offices of a county come with rank; renown earns the summons.";
 
-export function vassalMoodWord(mood: number): string {
-  if (mood >= 65) return "content";
-  if (mood < 35) return "angry";
-  return "steady";
-}
+export { vassalMoodWord };
 
 function tenureWord(h: WorldState["holdings"][number], state: WorldState, first: boolean): string {
   if (first) {

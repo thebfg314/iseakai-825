@@ -5,6 +5,7 @@ import { isCoreHouseholdId } from "../engine/specialists";
 import { normalizeEmotion, type AldricEmotion } from "../engine/emotion";
 import { BooksPanel } from "./BooksPanel";
 import { PeopleHappinessMeter } from "./PeopleHappinessMeter";
+import { VassalRow } from "./VassalRow";
 import {
   BUTTON_CLICK,
   COINS,
@@ -590,7 +591,10 @@ export function App() {
             {hudInkLine(view.llmMeter)}
           </div>
         </div>
-        <PeopleHappinessMeter value={view.state.peopleHappiness} />
+        <div className="happiness-block">
+          <PeopleHappinessMeter value={view.state.peopleHappiness} />
+          <VassalRow state={view.state} />
+        </div>
         <SeasonHeaderArt
           season={view.state.meta.season}
           loopingSeason={loopingSeason}

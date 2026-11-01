@@ -3,7 +3,7 @@ import type { HistoryBeat } from "./deliver";
 import type { SeasonAt } from "./scheduler";
 
 /**
- * Trade health (rank design 'Trade health'; 03_HISTORY §11.9). One hidden number
+ * Trade health (rank design 'Trade health'; 03_HISTORY §11.8a). One hidden number
  * for the home region, 0–100, Autun starting at 55. The player never sees it: he
  * sees merchants come or not, what his surplus fetches, what the tolls bring in,
  * and what Gerulf and Aldric say about the roads.

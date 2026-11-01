@@ -506,6 +506,8 @@ export const BattleSessionSchema = z.object({
   callKind: z.enum(BATTLE_CALL_KINDS),
   phase: z.enum(["muster", "scouting", "deployment", "fighting", "aftermath", "closed"]).default("muster"),
   broughtUnitIds: z.array(z.string()).default([]),
+  /** Men the lord's sworn vassals brought to this field (history/vassals.ts); 0 when none rode. */
+  swornMen: z.number().int().nonnegative().default(0),
   /** Full Command §9.5 Scouting Duel in progress. */
   scouting: z
     .object({
@@ -865,6 +867,7 @@ export const PROPOSAL_TYPES = [
   "history_scene",
   "innovation_register",
   "innovation_expose",
+  "vassal_mood",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -1190,7 +1193,17 @@ export const InnovationExposeProposalSchema = ProposalBase.extend({
   how: z.enum(INNOVATION_EXPOSURES),
 });
 
+/** Vassals (03_HISTORY §10a): Aldric's reading of how the lord's words sat with a sworn man, or with all of them. */
+export const VassalMoodProposalSchema = ProposalBase.extend({
+  type: z.literal("vassal_mood"),
+  /** A vassal id from the HISTORY block, or "all". */
+  vassalId: z.string().min(1),
+  delta: z.number().int().min(-15).max(15),
+  reason: z.string().min(1),
+});
+
 export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
+  VassalMoodProposalSchema,
   FreeMancipiaProposalSchema,
   RaiseUnitProposalSchema,
   DisbandUnitProposalSchema,
@@ -1265,10 +1278,12 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   HistorySceneProposalSchema,
   InnovationRegisterProposalSchema,
   InnovationExposeProposalSchema,
+  VassalMoodProposalSchema,
   DeferProposalSchema,
 ]);
 
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
+export type VassalMoodProposal = z.infer<typeof VassalMoodProposalSchema>;
 export type SetStandingOrderProposal = z.infer<typeof SetStandingOrderProposalSchema>;
 export type StartProjectProposal = z.infer<typeof StartProjectProposalSchema>;
 export type AdjustProjectProposal = z.infer<typeof AdjustProjectProposalSchema>;
@@ -1305,6 +1320,7 @@ export type MechanicalProposal =
   | HistorySceneProposal
   | InnovationRegisterProposal
   | InnovationExposeProposal
+  | VassalMoodProposal
   | RaiseUnitProposal
   | DisbandUnitProposal
   | CallToArmsProposal

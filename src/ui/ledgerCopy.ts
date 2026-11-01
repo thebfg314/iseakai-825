@@ -176,6 +176,7 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   history_scene: "The next turn of events",
   innovation_register: "A new thing of this house",
   innovation_expose: "A thing shown abroad",
+  vassal_mood: "The sworn men",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -587,6 +588,11 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return `Note ${p.name} as a new thing of this house, so the chronicle may follow where it spreads.`;
     case "innovation_expose":
       return `It has been ${p.how === "public_use" ? "used in plain sight" : p.how.replace(/_/g, " ")}; word of it will travel.`;
+    case "vassal_mood": {
+      const who = p.vassalId === "all" ? "the sworn men" : (state?.history?.vassals ?? []).find((v) => v.id === p.vassalId)?.name ?? "a sworn man";
+      const how = p.delta > 0 ? "warmer" : p.delta < 0 ? "colder" : "unmoved";
+      return `Note in the books that ${who} ${p.vassalId === "all" ? "are" : "is"} ${how} toward the lord: ${p.reason}.`;
+    }
   }
 }
 
@@ -611,7 +617,7 @@ function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b|\bvassal_mood\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {

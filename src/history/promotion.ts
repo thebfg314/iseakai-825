@@ -8,6 +8,7 @@ import { historyContent, seasonOrdinal } from "./load";
 import { rankStep, ranksTable, thresholdFor } from "./ranks";
 import type { SeasonAt } from "./scheduler";
 import type { PromoteEffect, VillaTemplate } from "./schema";
+import { noteVassalEvent } from "./vassals";
 
 /**
  * Rank progression (03_HISTORY §10; "Isekai 825 Rank Progression — Holdings and Powers").
@@ -50,8 +51,9 @@ function slugify(name: string): string {
     .replace(/^_|_$/g, "");
 }
 
+/** Names not yet a villa of the lord's nor a sworn man's own holding. */
 function unusedNames(state: WorldState, pool: readonly string[], used: Set<string>): string[] {
-  return pool.filter((n) => !used.has(n) && !state.holdings.some((h) => h.name === n));
+  return pool.filter((n) => !used.has(n) && !state.holdings.some((h) => h.name === n) && !state.history.vassals.some((v) => v.holding === n));
 }
 
 function seatOf(state: WorldState): Holding | undefined {
@@ -133,7 +135,10 @@ export function forfeitFrom(state: WorldState, patron: string): string[] {
       state.population.youths = Math.max(0, state.population.youths - t.people.youths);
     }
   }
+  const before = state.history.vassals.length;
   state.history.vassals = state.history.vassals.filter((v) => !lost.some((h) => h.name === v.holding));
+  // The men who held of the lord on those villas go with them; the rest see holdings taken back.
+  if (state.history.vassals.length < before) noteVassalEvent(state, "holding_taken", state.meta.turn);
   return lost.map((h) => h.name);
 }
 
@@ -175,7 +180,7 @@ function addVassals(state: WorldState, upTo: number, patron: string, turn: numbe
     const freeVillas = ranksTable().villaNames.filter((n) => !usedHoldings.has(n) && !state.holdings.some((h) => h.name === n));
     const holding = freeVillas.length ? rng.pick(freeVillas) : `a manse near ${seatOf(state)?.name ?? "the hall"}`;
     usedHoldings.add(holding);
-    state.history.vassals.push({ id: `vassal_${slugify(name)}_${turn}_${i}`, name, holding, men: rng.int(2, 5), mood: 50, since: turn, group: false, grantedBy: patron });
+    state.history.vassals.push({ id: `vassal_${slugify(name)}_${turn}_${i}`, name, holding, men: rng.int(2, 5), mood: 50, since: turn, group: false, grantedBy: patron, angrySince: null, lastReason: null });
     names.push(name);
   }
   return names;
@@ -185,7 +190,7 @@ function addVassalGroups(state: WorldState, turn: number): void {
   for (const c of state.history.rank.counties) {
     const id = `county_${slugify(c.name)}`;
     if (state.history.vassals.some((v) => v.id === id)) continue;
-    state.history.vassals.push({ id, name: `The lords of ${c.name}`, holding: c.name, men: c.levy, mood: 50, since: turn, group: true });
+    state.history.vassals.push({ id, name: `The lords of ${c.name}`, holding: c.name, men: c.levy, mood: 50, since: turn, group: true, angrySince: null, lastReason: null });
   }
 }
 
@@ -203,6 +208,8 @@ export function promoteTo(state: WorldState, target: number, opts: { patron: str
   const to = Math.max(1, Math.min(5, Math.round(target)));
   if (to <= from) return out;
   const at = opts.at ?? { year: state.meta.year, season: state.meta.season as SeasonAt["season"] };
+  // The men already sworn are glad of a lord raised up; the new ones come in at the middle.
+  noteVassalEvent(state, "promotion", opts.turn);
   for (let r = from + 1; r <= to; r++) {
     const step = rankStep(r);
     if (!step) continue;
@@ -305,6 +312,8 @@ export function demoteBy(state: WorldState, ranksLost: number, opts: { by: strin
     const dropped = individuals.slice(keep);
     state.history.vassals = state.history.vassals.filter((v) => !dropped.includes(v));
   }
+  // The men who stay have seen their lord stripped.
+  noteVassalEvent(state, "demotion", opts.turn);
   rank.cooldownUntil = opts.turn + ranksTable().summons.cooldownSeasons;
   rank.eligibleSince = null;
   rank.dueTurn = null;

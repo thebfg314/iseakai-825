@@ -193,12 +193,42 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
   border-bottom: 1px solid var(--line);
   background: var(--bg-2);
 }
+.happiness-block {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  gap: 0.15rem;
+}
 .happiness-meter {
   position: relative;
   flex: 0 0 auto;
   width: calc(5.6rem * 2128 / 912);
   height: 5.6rem;
   align-self: center;
+}
+/* The sworn men beneath the meter: a figure each, the counties' lords a little larger. */
+.vassal-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem;
+  max-width: calc(5.6rem * 2128 / 912);
+}
+.vassal-figure {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+  transition: transform 0.2s ease;
+}
+.vassal-figure:hover {
+  transform: translateY(-2px) scale(1.12);
+}
+.vassal-group {
+  width: 2rem;
+  height: 2rem;
 }
 .happiness-meter-bar {
   display: block;

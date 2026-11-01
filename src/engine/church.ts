@@ -3,6 +3,7 @@ import { consumeGrain, GRAIN_CROPS, grainOnHand, type GrainCrop } from "./grain"
 import { appendNpcMemory, stampMemory } from "./memory";
 import { applyPeopleHappinessDelta } from "./peopleHappiness";
 import { newId, round1 } from "./util";
+import { noteVassalEvent } from "../history/vassals";
 
 /**
  * Cell of Saint-Martin: sponsored feasts, neglect, modest surplus, hunger alms.
@@ -278,10 +279,13 @@ export function applySponsoredFeast(
   // The history layer counts feasts kept (flag `feast_sponsored`, engine-set).
   const kept = state.history.flags.feast_sponsored;
   state.history.flags.feast_sponsored = (typeof kept === "number" ? kept : 0) + 1;
+  // The sworn men sit at the lord's table too (a grand feast counts double).
+  const sworn = noteVassalEvent(state, "feast", state.meta.turn);
+  if (sworn && proposal.tier === "grand") noteVassalEvent(state, "feast", state.meta.turn);
 
   const name = hallFeastName(state, proposal.feastName);
   const scale = proposal.tier === "grand" ? "A grand feast" : "A plain feast";
-  const logLine = `${scale} for ${name}: ${paid.paid}. ${heartLine(grant, nominal)}`;
+  const logLine = `${scale} for ${name}: ${paid.paid}. ${heartLine(grant, nominal)}${sworn ? " The sworn men were at the board." : ""}`;
   return { ok: true, logLine, state };
 }
 

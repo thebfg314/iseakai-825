@@ -6,6 +6,7 @@ import { PLAYER_PERSONAL_BASELINE, RAF_RENOWN_TIER } from "../combat/constants";
 import { generateEncounter, hasAllies, LORD_FILE_ID, soloLossConsequences, tierFor, type EncounterKind } from "../combat/encounter";
 import { applyRenown, rankMultiplier } from "../combat/renown";
 import { eligibilityNote } from "../history/promotion";
+import { noteBattleForVassals, noteVassalEvent, vassalMusterLines } from "../history/vassals";
 import { createRng, seedFromString, type Rng } from "../combat/rng";
 import { pushLog, rollPlayerFate } from "../combat/round";
 import { canDirect, canLeadFile, canRideToWar, GENERAL_DEFEAT_WOUND_CHANCE } from "../engine/wounds";
@@ -92,6 +93,11 @@ export function refuseCall(state: WorldState, deps: BattleDeps): string {
   const call = state.battle_call;
   if (!call) return "There is no call to refuse.";
   state.battle_call = null;
+  // The sworn men mark a lord who does not answer when the country is attacked (a summons away is the count's affair).
+  if (call.kind !== "summons") {
+    const sworn = noteVassalEvent(state, "refused_call", state.meta.turn);
+    if (sworn) deps.log("engine", "EVENT", `Vassals: ${sworn}`);
+  }
   if (call.kind === "history") {
     // 03_HISTORY §9: turning back once the call has gone out costs what the tables say (count's opinion, renown).
     const lines = refuseHistoricalBattle(state, call);
@@ -233,6 +239,7 @@ function emptySession(call: BattleCall): BattleSession {
     callKind: call.kind,
     phase: "muster",
     broughtUnitIds: [],
+    swornMen: 0,
     drawn: [],
     openingDone: false,
     crisisDraws: 0,
@@ -292,12 +299,19 @@ export function musterAndRide(state: WorldState, deps: BattleDeps, bringIds: rea
     tier = tierFor(owned.length, state.player.fullCommandGranted);
     enc = generateEncounter(call.kind as EncounterKind, call.seed, { region: state.meta.region, year: state.meta.year });
   }
+  // The sworn men ride with their lord (not with a captain he sends in his place); content men bring one more, angry men stay home.
+  const sworn = call.mode === "captain" ? { lines: [], men: 0, stayed: [] } : vassalMusterLines(state);
+  if (sworn.lines.length) {
+    enc = { ...enc, allies: [...enc.allies, ...sworn.lines.map((l) => ({ sheetId: l.sheetId, name: l.name, overrides: l.overrides }))] };
+    enc.premise = `${enc.premise} ${sworn.men} of the lord's sworn men ride at his side${sworn.stayed.length ? `; ${sworn.stayed.join(", ")} sent no one` : ""}.`;
+  }
   session.tier = tier;
   session.broughtUnitIds = owned.map((u) => u.id);
+  session.swornMen = sworn.men;
   session.premise = enc.premise;
   session.pendingEncounter = { allies: enc.allies, enemy: enc.enemy, premise: enc.premise };
   state.battle_call = null;
-  deps.log("player", "APPLY", `Rode to battle (${forces?.title ?? call.kind}, ${tier}) with ${owned.length} unit(s) of his own.`);
+  deps.log("player", "APPLY", `Rode to battle (${forces?.title ?? call.kind}, ${tier}) with ${owned.length} unit(s) of his own${sworn.men ? ` and ${sworn.men} sworn men` : ""}.`);
 
   if (tier === "full_command") {
     const rng = createRng(call.seed ^ 0x9e3779b9);
@@ -1033,6 +1047,9 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
   const eligibility = eligibilityNote(state);
   if (eligibility) facts.push(eligibility);
   session.renownDelta = summary.renownDelta;
+  // The sworn men: led to victory or defeat, or left at home while their lord won.
+  const sworn = noteBattleForVassals(state, outcome, state.meta.turn, (session.swornMen ?? 0) > 0);
+  if (sworn) facts.push(`The sworn men — ${sworn}`);
 
   // The lord's body.
   state.player.personal.hp = Math.max(0, battle.player.hp);

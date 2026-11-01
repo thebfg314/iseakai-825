@@ -14,6 +14,7 @@ import { relicsLine } from "./relics";
 import { richardLine } from "./richard";
 import { activeEvents } from "./scheduler";
 import { tradeLine } from "./trade";
+import { vassalsLine } from "./vassals";
 import { vikingLine } from "./vikings";
 import type { HistoryEvent, HistorySpeaker } from "./schema";
 import { fillSlots } from "./slots";
@@ -109,7 +110,11 @@ export function historyPromptBlock(state: WorldState, speaker: HistorySpeaker): 
   lines.push(`Today: ${seasonWord(state)}. ${realmLine(state)} The lord's body age is ${bodyAge(state)}.`);
   if (speaker === "steward") lines.push(landLine(state));
   lines.push(rankLine(state));
-  if (speaker === "steward") lines.push(tradeLine(state));
+  if (speaker === "steward") {
+    lines.push(tradeLine(state));
+    const vassals = vassalsLine(state);
+    if (vassals) lines.push(vassals);
+  }
   const prices = pricesLine(state);
   if (prices) lines.push(prices);
   const vikings = vikingLine(state);

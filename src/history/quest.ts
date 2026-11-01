@@ -8,6 +8,7 @@ import { conditionContext } from "./flags";
 import { historyContent } from "./load";
 import { promoteTo } from "./promotion";
 import type { SeasonAt } from "./scheduler";
+import { ANGRY_BELOW, averageVassalMood, CONTENT_AT } from "./vassals";
 
 /**
  * The king quest (03_HISTORY §11.9; scripts "The king quest"). Started by the
@@ -97,6 +98,16 @@ function resolveApproach(state: WorldState, motive: string, at: SeasonAt, turn: 
     status = "hedging";
     state.history.flags.quest_money_outbid = true;
     why = "The king has outbid the lord; he will come for more silver or go to the king.";
+  }
+  // The sworn men's word travels (rank design 'Vassals'): a lord whose men are content is vouched for;
+  // one whose men are angry is doubted even by those who would have come.
+  const mood = averageVassalMood(state);
+  if (status !== "won" && mood >= CONTENT_AT && (state.history.vassals ?? []).length && rng.chance(0.5)) {
+    status = "won";
+    why = `${why ? why + " " : ""}But the lord's own sworn men speak for him, and that turns it.`;
+  } else if (status === "won" && mood < ANGRY_BELOW && (state.history.vassals ?? []).length && rng.chance(0.5)) {
+    status = "hedging";
+    why = "He has heard how the lord's own sworn men speak of him, and will wait to see.";
   }
   noble.status = status;
   q.lastApproachTurn = turn;

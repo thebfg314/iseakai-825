@@ -6,6 +6,7 @@ import { flagInt, flagTruthy, totalManses } from "./flags";
 import { historyContent } from "./load";
 import { demoteBy } from "./promotion";
 import type { SeasonAt } from "./scheduler";
+import { ANGRY_BELOW, averageVassalMood, CONTENT_AT } from "./vassals";
 
 /**
  * The king's escalation ladder (03_HISTORY §11.9; scripts "The king's
@@ -30,8 +31,15 @@ export function ladderThresholdMet(state: WorldState): boolean {
   return renown >= TABLE.trigger.renown && (rank >= TABLE.trigger.rank || totalManses(state) >= TABLE.trigger.manses);
 }
 
-/** Rung 1 is open when the lord's own people would not make a stripping ugly. */
+/**
+ * Rung 1 is open when a stripping would not be ugly: the lord's own people are unhappy and his sworn
+ * men are not content enough to stand by him; or his sworn men are angry, whatever the people think.
+ */
 export function canStrip(state: WorldState): boolean {
+  const sworn = (state.history.vassals ?? []).length > 0;
+  const mood = averageVassalMood(state);
+  if (sworn && mood < ANGRY_BELOW) return true;
+  if (sworn && mood >= CONTENT_AT) return false;
   return state.peopleHappiness < TABLE.strip.happinessBelow;
 }
 

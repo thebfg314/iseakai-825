@@ -664,11 +664,16 @@ export const HistoryStateSchema = z.object({
         /** A county's lords as one line at Duke and King. */
         group: z.boolean().default(false),
         grantedBy: z.string().optional(),
+        /** Turn his mood fell below angry and has stayed there (null when not angry); four seasons and he may go. */
+        angrySince: z.number().int().nullable().default(null),
+        /** The last thing that moved him, for the household's lines and the icon's tooltip. */
+        lastReason: z.string().nullable().default(null),
       }),
     )
     .default([]),
-  /** Trade health of the home region (hidden 0–100; step 2 moves it). */
-  /** Trade health (rank design 'Trade health'; 03_HISTORY §11.9): one hidden number for the home region. */
+  /** Sworn men who left the lord's service (vassals.ts), for the record and the prompt. */
+  vassalsLost: z.array(z.object({ name: z.string(), turn: z.number().int(), why: z.string() })).default([]),
+  /** Trade health (rank design 'Trade health'; 03_HISTORY §11.8a): one hidden number for the home region. */
   trade: z
     .object({
       /** What the roads carry this season, 0–100: the number revenue, the merchant and the prices read. */

@@ -15,6 +15,9 @@ import gameOverTheme from "../../art assets/Sound fx/game-over.mp3";
 import npcWantsTalkIcon from "../../art assets/UI/npc-wants-talk.png";
 import happinessMeter from "../../art assets/UI/happiness-meter.png";
 import happinessArrow from "../../art assets/UI/happiness-arrow.png";
+import vassalContent from "../../art assets/UI/happvass.png";
+import vassalSteady from "../../art assets/UI/neutvass.png";
+import vassalAngry from "../../art assets/UI/madvass.png";
 
 import aldricNeutral from "../../art assets/NPC Images/Aldrec Steward/Aldric neutral nobg.png";
 import aldricRespectful from "../../art assets/NPC Images/Aldrec Steward/Aldrec respectful nobg.png";
@@ -121,6 +124,8 @@ export const GAME_OVER_THEME = gameOverTheme;
 export const NPC_WANTS_TALK = npcWantsTalkIcon;
 export const HAPPINESS_METER = happinessMeter;
 export const HAPPINESS_ARROW = happinessArrow;
+/** The sworn men's figures under the happiness meter, by mood word (history/vassals.ts). */
+export const VASSAL_ICONS = { content: vassalContent, steady: vassalSteady, angry: vassalAngry } as const;
 export const GAME_THEMES = [
   titleTheme,
   frostOnTheStone,

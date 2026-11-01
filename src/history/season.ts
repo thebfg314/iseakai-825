@@ -18,6 +18,7 @@ import { dueEvents, type SeasonAt } from "./scheduler";
 import { applySupplyLoss, runSupplyCheck } from "./supply";
 import { tickTrade } from "./trade";
 import { tickTributes } from "./tributes";
+import { tickVassals } from "./vassals";
 import { tickVikings } from "./vikings";
 import { tickWeather } from "./weather";
 
@@ -171,6 +172,10 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
     out.suppressOther = true;
     out.refereeLines.push(`History: the lord was raised to rank ${promotion.promoted} this season start and Aldric has told him what came with it; do not retell it.`);
   }
+  // The sworn men: moods fade toward the middle; a man angry a year may go.
+  const vassals = tickVassals(state, incoming, turn);
+  out.beats.push(...vassals.beats);
+  out.effects.push(...vassals.lines);
   // The office pays its quarter into the chest.
   const revenue = tickRevenue(state, incoming, turn);
   out.beats.push(...revenue.beats);

@@ -3,14 +3,15 @@ import { advanceScene, takeChoice, takeHook, takeOutcome, type HistoryBeat } fro
 import { historyContent } from "./load";
 import { eventActive, type SeasonAt } from "./scheduler";
 import type { HistorySeason } from "./schema";
+import { moveVassalMood } from "./vassals";
 
 export type HistoryProposal = Extract<
   MechanicalProposal,
-  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" }
+  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" }
 >;
 
 export function isHistoryProposal(p: MechanicalProposal): p is HistoryProposal {
-  return p.type.startsWith("history_") || p.type.startsWith("innovation_");
+  return p.type.startsWith("history_") || p.type.startsWith("innovation_") || p.type === "vassal_mood";
 }
 
 const HISTORY_ACTORS = new Set(["steward", "chaplain", "referee", "player"]);
@@ -30,6 +31,7 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
     return applyInnovation(state, p);
   }
   if (!HISTORY_ACTORS.has(actor)) return fail("npc_not_authorized");
+  if (p.type === "vassal_mood") return applyVassalMood(state, p);
   const event = content.byId.get(p.eventId);
   if (!event) return fail(`No such matter as ${p.eventId} is before the hall.`);
   if (!state.history.fired[event.id]) return fail(`${event.title} has not yet come to the hall.`);
@@ -88,6 +90,19 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
     }
   }
   return fail("Unknown proposal type.");
+}
+
+/** Aldric's reading of how the lord's words sat with his sworn men (vassals.ts); ids come from the HISTORY block. */
+function applyVassalMood(state: WorldState, p: Extract<HistoryProposal, { type: "vassal_mood" }>): HistoryApplyResult {
+  const fail = (reason: string): HistoryApplyResult => ({ ok: false, reason, logLine: reason, state });
+  const all = state.history.vassals ?? [];
+  if (!all.length) return fail("No man is sworn to the lord yet.");
+  const ids = p.vassalId === "all" ? [] : [p.vassalId];
+  if (ids.length && !all.some((v) => v.id === ids[0])) return fail(`No sworn man is written as ${p.vassalId}.`);
+  const names = moveVassalMood(state, p.delta, p.reason, state.meta.turn, ids);
+  const who = ids.length ? names[0] : "the sworn men";
+  const word = p.delta > 0 ? "warmer" : p.delta < 0 ? "colder" : "unmoved";
+  return { ok: true, logLine: `${who[0].toUpperCase()}${who.slice(1)} ${names.length === 1 && ids.length ? "is" : "are"} ${word} toward the lord: ${p.reason}.`, state };
 }
 
 function applyInnovation(state: WorldState, p: Extract<HistoryProposal, { type: "innovation_register" | "innovation_expose" }>): HistoryApplyResult {

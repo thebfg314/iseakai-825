@@ -7,6 +7,7 @@ import { WorldStateSchema, type WorldState } from "../engine/schema";
 import { createRng } from "../combat/rng";
 import { openHistoricalBattle } from "../history/battles";
 import { historyContent } from "../history/load";
+import { promoteTo } from "../history/promotion";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
 import {
@@ -773,5 +774,49 @@ describe("History battle flow (03_HISTORY §9, Battle Force Tables)", () => {
     const parsed = WorldStateSchema.parse(JSON.parse(JSON.stringify(s)));
     expect(parsed.battle_session?.historical).toEqual(s.battle_session?.historical);
     expect(parsed.battle_session?.callKind).toBe("history");
+  });
+});
+
+describe("the sworn men on the field (rank design 'Vassals')", () => {
+  it("a viscount's vassals ride as an allied file sized by their mood, and the result moves them; a call refused sours them", async () => {
+    const s = freshState();
+    s.player.renown = 120;
+    promoteTo(s, 2, { patron: "the count", turn: 1 });
+    const own = s.history.vassals.filter((v) => !v.group);
+    expect(own).toHaveLength(3);
+    own[0].mood = 70; // brings one more
+    own[2].mood = 20; // stays home
+    s.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Spears", veteran: false, strength: 20, raisedTurn: 1 });
+    raiseCallDirect(s, "bandits", 8);
+    const d = deps("", true);
+    acceptCall(s, d);
+    musterAndRide(s, d, ["u1"]);
+    const expected = own[0].men + 1 + own[1].men;
+    expect(s.battle_session?.swornMen).toBe(expected);
+    expect(s.battle_session?.premise).toContain(`${expected} of the lord's sworn men ride at his side`);
+    expect(s.battle_session?.premise).toContain(`${own[2].name} sent no one`);
+    const file = s.battle!.units.find((u) => u.name === "The sworn men")!;
+    expect(file.owner).toBe("ally");
+    expect(file.strength).toBe(expected);
+    let guard = 0;
+    while (s.battle_session?.phase === "fighting" && guard++ < 80) await battleCommandRound(s, d, []);
+    expect(s.battle_session?.phase).toBe("aftermath");
+    const outcome = s.battle_history.at(-1)!.outcome;
+    const moved = own[1].mood;
+    if (outcome === "victory") expect(moved).toBe(58);
+    else if (outcome === "defeat") expect(moved).toBe(42);
+    else expect(moved).toBe(48);
+    expect(s.battle_history.at(-1)!.summary).toContain("The sworn men —");
+
+    const t = freshState();
+    t.player.renown = 120;
+    promoteTo(t, 2, { patron: "the count", turn: 1 });
+    raiseCallDirect(t, "raid", 1);
+    refuseCall(t, deps());
+    expect(t.history.vassals.every((v) => v.mood === 44 && v.lastReason === "the lord did not answer the call")).toBe(true);
+    // A summons away is the count's affair, not theirs.
+    raiseCallDirect(t, "summons", 2);
+    refuseCall(t, deps());
+    expect(t.history.vassals.every((v) => v.mood === 44)).toBe(true);
   });
 });
