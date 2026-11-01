@@ -528,7 +528,6 @@ export type JusticeCase = z.infer<typeof JusticeCaseSchema>;
 export const JusticeFileSchema = z.object({
   notes: z.string().optional(),
   cadence: z.object({
-    perYearMin: z.number().int().nonnegative(),
     perYearMax: z.number().int().positive(),
     maxPerSeason: z.number().int().positive(),
     chancePerSeason: z.number().min(0).max(1),

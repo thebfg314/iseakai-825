@@ -1,6 +1,6 @@
 {
-  "notes": "Justice (Isekai 825 Rank Progression — Holdings and Powers.md, 'Justice'; 03_HISTORY §10b). One to two cases a year, never more than one a season; the many others were easily handled. Aldric brings the case (Ermenald one with the church in it), the lord judges in talk, the speaker emits justice_verdict from the closed list. At Count and above the lord also sets a stance for the officers who judge in his name; the fines of the office follow it.",
-  "cadence": { "perYearMin": 1, "perYearMax": 2, "maxPerSeason": 1, "chancePerSeason": 0.4, "deadlineSeasons": 2, "feudSeasons": [2, 6] },
+  "notes": "Justice (Isekai 825 Rank Progression — Holdings and Powers.md, 'Justice'; 03_HISTORY §10b). One to two cases a year on average, never more than one a season, and none forced: a quiet year is a well-behaved villa, and the many small matters were handled without the lord. Aldric brings the case (Ermenald one with the church in it), the lord judges in talk, the speaker emits justice_verdict from the closed list. At Count and above the lord also sets a stance for the officers who judge in his name; the fines of the office follow it.",
+  "cadence": { "perYearMax": 2, "maxPerSeason": 1, "chancePerSeason": 0.45, "deadlineSeasons": 2, "feudSeasons": [2, 6] },
   "stances": {
     "lenient": { "fines": 0.5, "loyaltyPerYear": 2, "church": 1, "missiPerYear": 0, "word": "lenient: half the fines, the people warm to you two a year, the church approves; disorder grows" },
     "fair": { "fines": 1, "loyaltyPerYear": 1, "church": 0, "missiPerYear": 0, "word": "fair: the fines as custom sets them, the people warm to you one a year; the slow, safe way" },

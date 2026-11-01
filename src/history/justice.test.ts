@@ -99,36 +99,47 @@ describe("the dispute tables", () => {
 });
 
 describe("cadence", () => {
-  it("one to two cases a year, never two in a season, over a quiet decade", () => {
+  it("one to two cases a year on average, never two in a season, some years none, over forty quiet years", () => {
     const state = fresh();
     const byYear = new Map<number, number>();
-    runYears(state, 1, 40, (id, turn) => {
+    const seasons = new Set<number>();
+    runYears(state, 1, 160, (id, turn) => {
       byYear.set(atFor(turn).year, (byYear.get(atFor(turn).year) ?? 0) + 1);
+      expect(seasons.has(turn)).toBe(false);
+      seasons.add(turn);
       // Judge each at once so the next may come.
       const c = justiceCase(id)!;
       applyVerdict(state, id, c.verdicts[0].id, atFor(turn), turn);
     });
-    expect(byYear.size).toBe(10);
-    for (const n of byYear.values()) {
-      expect(n).toBeGreaterThanOrEqual(1);
-      expect(n).toBeLessThanOrEqual(2);
-    }
+    const total = [...byYear.values()].reduce((n, x) => n + x, 0);
+    const average = total / 40;
+    expect(average).toBeGreaterThanOrEqual(1);
+    expect(average).toBeLessThanOrEqual(2);
+    for (const n of byYear.values()) expect(n).toBeLessThanOrEqual(2);
+    // No year is forced: a well-behaved villa has quiet years.
+    expect(byYear.size).toBeLessThan(40);
     expect(state.history.justice.verdicts.length).toBe(8); // the books keep the last eight
   });
 
-  it("no second case while one is open; none while the lord is away or the call to arms is open; the winter forces the year's first", () => {
+  it("no second case while one is open; none while the lord is away, the call to arms is open, a dated event fired, or the year has had two", () => {
     const state = fresh();
     const c = justiceCase("J-V01")!;
     openCase(state, c, "villa", 3);
     expect(caseDue(state, { year: 825, season: "winter" }, 4, true)).toBe(false);
     state.history.justice.open = null;
     state.history.justice.casesThisYear = 0;
-    expect(caseDue(state, { year: 825, season: "winter" }, 4, false)).toBe(true);
-    state.history.away = { reason: "at the king's court", untilTurn: 9 };
-    expect(caseDue(state, { year: 825, season: "winter" }, 4, true)).toBe(false);
+    // Find a turn whose quiet-season roll says yes, then show each gate closes it.
+    let turn = 4;
+    while (!caseDue(state, atFor(turn), turn, true)) turn++;
+    expect(caseDue(state, atFor(turn), turn, false)).toBe(false);
+    state.history.away = { reason: "at the king's court", untilTurn: turn + 4 };
+    expect(caseDue(state, atFor(turn), turn, true)).toBe(false);
     state.history.away = null;
+    state.battle_call = { kind: "raid", eventId: "th-raid", text: "Riders at the ford.", seed: 1, createdTurn: turn };
+    expect(caseDue(state, atFor(turn), turn, true)).toBe(false);
+    state.battle_call = null;
     state.history.justice.casesThisYear = 2;
-    expect(caseDue(state, { year: 826, season: "summer" }, 6, true)).toBe(false);
+    expect(caseDue(state, atFor(turn), turn, true)).toBe(false);
   });
 
   it("a case is not repeated until its table is spent", () => {
@@ -331,13 +342,18 @@ describe("the prompt and the season pass", () => {
     expect(justiceLines(c, "chaplain").join("\n")).not.toContain("set_stance");
   });
 
-  it("the season pass brings a case in a quiet winter and the referee is told who brought it", () => {
+  it("the season pass brings a case in a quiet season and the referee is told who brought it", () => {
     setHistoryContentForTests({ events: [] });
     const state = fresh();
-    state.meta.turn = 3;
-    state.meta.year = 825;
-    state.meta.season = "autumn";
-    const r = runHistorySeasonPass(state, { year: 825, season: "winter" }, 4);
+    let turn = 1;
+    let r = runHistorySeasonPass(state, atFor(turn + 1), turn + 1);
+    while (!state.history.justice.open && turn < 12) {
+      turn++;
+      state.meta.turn = turn;
+      state.meta.year = atFor(turn).year;
+      state.meta.season = atFor(turn).season;
+      r = runHistorySeasonPass(state, atFor(turn + 1), turn + 1);
+    }
     expect(state.history.justice.open).not.toBeNull();
     expect(r.beats.some((b) => b.eventId.startsWith("justice:J-V"))).toBe(true);
     expect(r.refereeLines.some((l) => l.includes("brought a case before the lord"))).toBe(true);

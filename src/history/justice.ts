@@ -13,8 +13,9 @@ import { moveVassalMood } from "./vassals";
 
 /**
  * Justice (rank design 'Justice'; 03_HISTORY §10b). Not an income line: a lever that pays in
- * money and reputation in opposite directions. One or two cases a year come before the lord,
- * never more than one a season — the rest were small and the reeve settled them. Aldric brings
+ * money and reputation in opposite directions. One or two cases a year, on average, come before
+ * the lord, never more than one a season and none by obligation — a quiet year is a villa that
+ * behaved, and the rest were small and the reeve settled them. Aldric brings
  * the case (Ermenald one with the church in it), the lord judges it in talk, and the speaker
  * emits `justice_verdict` from the closed list; a case left two seasons goes by default.
  *
@@ -103,15 +104,17 @@ function pickCase(state: WorldState, table: JusticeTable, turn: number): Justice
   return pool[rng.int(0, pool.length - 1)];
 }
 
-/** Whether a case comes this season: at least one a year (forced in winter), at most two, never two in a season. */
-export function caseDue(state: WorldState, at: SeasonAt, turn: number, quiet: boolean): boolean {
+/**
+ * Whether a case comes this season: a roll in a quiet season, at most two a year, never two in a
+ * season, and none forced — a year with no case is a villa that behaved, not a rule unmet.
+ */
+export function caseDue(state: WorldState, _at: SeasonAt, turn: number, quiet: boolean): boolean {
   const j = justiceState(state);
   const cadence = justiceTable().cadence;
   if (j.open) return false;
   if (state.history.dead || state.history.away) return false;
   if (state.battle_call) return false;
   if (j.casesThisYear >= cadence.perYearMax) return false;
-  if (at.season === "winter" && j.casesThisYear < cadence.perYearMin) return true;
   if (!quiet) return false;
   const rng = createRng(seedFromString(`${state.meta.region}:justice:due:${turn}`));
   return rng.chance(cadence.chancePerSeason);
