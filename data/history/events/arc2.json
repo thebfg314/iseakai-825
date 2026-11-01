@@ -487,6 +487,7 @@
           "text": "My lord, it's settled, at Verdun. The empire is cut in three. Louis takes the east, Charles the west, and Lothair keeps the title of emperor and a long middle kingdom from Frisia down through Lyon and Provence to Italy. We're King Charles's, for good. But mark this: the far bank of the Saône, and Lyon with it, belongs to Lothair now. We live on a border, my lord."
         }
       ],
+      "onFire": { "trade": { "shift": -10, "reason": "the border drawn at the Saône" } },
       "knows": [
         "Trade across the Saône is now trade with another kingdom; Lothair's men are a river away.",
         "Good grounds for building defenses and for border diplomacy."

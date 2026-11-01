@@ -16,6 +16,7 @@ import { tickRelics } from "./relics";
 import { tickRichard } from "./richard";
 import { dueEvents, type SeasonAt } from "./scheduler";
 import { applySupplyLoss, runSupplyCheck } from "./supply";
+import { tickTrade } from "./trade";
 import { tickTributes } from "./tributes";
 import { tickVikings } from "./vikings";
 import { tickWeather } from "./weather";
@@ -95,6 +96,7 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const interim = new Set(due.interim.map((e) => e.id));
   const sequence = [...due.fire, ...due.interim].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
   const battlesOn = content.features.historicalBattles;
+  let armyAtHome = false;
   for (const event of sequence) {
     const r = interim.has(event.id) ? markInterimBattle(state, event, incoming, turn) : deliverEvent(state, event, incoming, turn);
     out.beats.push(...r.beats);
@@ -111,6 +113,7 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
       }
     }
     if (event.supplyCheck) {
+      armyAtHome = true;
       // With the battle pass on and a forces table for the event, a standing militia fights at the gate instead of rolling
       // (unless the lord is already called away to a greater field this season).
       const militiaBattle = battlesOn && state.battle_call?.kind !== "history" && Boolean(forcesForEvent(state, event.id, incoming, { supply: true }));
@@ -135,6 +138,11 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
     }
   }
   out.suppressOther = due.fire.length > 0 || due.interim.length > 0;
+
+  // The roads: what the season's conditions and the calendar did to trade, and the slow recovery.
+  const trade = tickTrade(state, incoming, turn, { raid: vikings.raid, armyAtHome });
+  out.beats.push(...trade.beats);
+  out.effects.push(...trade.lines);
 
   // The king's small duties take a quiet season; the ladder and the quest run after the calendar.
   const duties = tickDuties(state, incoming, turn, sequence.length > 0);

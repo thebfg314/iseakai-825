@@ -298,7 +298,10 @@
               "text": "It's done, my lord. At Pîtres the great men condemned Pippin as a traitor and an apostate. He's been shut away in a monastery at Senlis, and I doubt he'll ever come out. And the king has made new laws there: a new coin, struck only at a handful of mints, Chalon among them; fortified bridges on the rivers; and death for any man who sells horses or arms to the Northmen."
             }
           ],
-          "exitEffects": { "record": "Pippin II was condemned at Pîtres and shut away at Senlis; the king's edict made a new coin and forbade selling horses or arms to the Northmen." }
+          "exitEffects": {
+            "trade": { "baseline": 8, "reason": "the new coin struck at Chalon" },
+            "record": "Pippin II was condemned at Pîtres and shut away at Senlis; the king's edict made a new coin and forbade selling horses or arms to the Northmen."
+          }
         }
       ],
       "knows": ["The Edict of Pîtres: a new denarius from a handful of mints (Chalon among them), fortified bridges, death for selling horses or arms to the Northmen."],

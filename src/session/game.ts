@@ -18,6 +18,7 @@ import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from ".
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
 import { runHistorySeasonPass } from "../history/season";
+import { noteRolledEventsForTrade } from "../history/trade";
 import { markDeath } from "../history/age";
 import { endingFallback, endingSystemPrompt, endingUserPrompt, endingVoice } from "../history/ending";
 import type { HistoryBeat } from "../history/deliver";
@@ -1648,6 +1649,10 @@ export class GameController {
     for (const line of history.effects) effects.push({ kind: "info", text: line });
     for (const id of history.fired) this.log("engine", "EVENT", `History: ${id} delivered.`);
     const roll = rollSeasonEvents(this.state, { suppressOther: history.suppressOther, forcedWeatherId: history.forcedWeatherId, forcedSeverity: history.forcedSeverity });
+    // Bandits, a host on the roads, a hard winter: the rolled events move the roads before the merchant roll reads them.
+    for (const line of noteRolledEventsForTrade(this.state, [roll.weather.id, ...(roll.other ? [roll.other.id] : [])], this.state.meta.turn + 1)) {
+      effects.push({ kind: "info", text: line });
+    }
     const merchantResult = rollMerchantVisit(this.state, incoming.season);
     const merchantNote = applyMerchantRoll(this.state, merchantResult);
     effects.push({ kind: "info", text: merchantNote });

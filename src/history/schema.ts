@@ -114,6 +114,19 @@ export const EffectsSchema = z
     record: z.string().optional(),
     /** Regional famine switch and grain band multiplier, for natural events. */
     prices: z.object({ severity: z.enum(["normal", "shortage", "famine", "severe"]), seasons: z.number().int().positive().optional() }).optional(),
+    /**
+     * Trade health: `shift` knocks the slow number (it recovers), with `seasons` it is a passing shock instead;
+     * `baseline` moves the regional baseline for good (an abbey, a mint). `reason` is what the household says.
+     */
+    trade: z
+      .object({
+        shift: z.number().optional(),
+        seasons: z.number().int().positive().optional(),
+        baseline: z.number().optional(),
+        reason: z.string().min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type HistoryEffects = z.infer<typeof EffectsSchema>;
@@ -655,7 +668,31 @@ export const HistoryStateSchema = z.object({
     )
     .default([]),
   /** Trade health of the home region (hidden 0–100; step 2 moves it). */
-  trade: z.object({ health: z.number().min(0).max(100).default(55) }).default({}),
+  /** Trade health (rank design 'Trade health'; 03_HISTORY §11.9): one hidden number for the home region. */
+  trade: z
+    .object({
+      /** What the roads carry this season, 0–100: the number revenue, the merchant and the prices read. */
+      health: z.number().min(0).max(100).default(55),
+      /** The slow underlying number: events knock it, it drifts back toward the baseline plus improvements. */
+      base: z.number().min(0).max(100).default(55),
+      /** The regional baseline (Autun 55); abbeys and mints raise it for good. */
+      baseline: z.number().min(0).max(100).default(55),
+      /** How the lord's tolls are set once he holds a county (Count+). */
+      tollStance: z.enum(["low", "customary", "greedy"]).default("customary"),
+      /** Passing shocks (a hard winter, a levy) with the turn they last apply. */
+      shocks: z.array(z.object({ reason: z.string(), amount: z.number(), untilTurn: z.number().int() })).default([]),
+      /** Market bands for the trade goods before this season's shift, so they can be restored. */
+      marketBase: z.record(z.string(), z.object({ min: z.number(), max: z.number() })).default({}),
+      /** Health a year ago (spring snapshot) for Gerulf's "thinner than last year". */
+      lastYear: z.number().nullable().default(null),
+      /** The last named cause of a knock, for the household's lines. */
+      lastCause: z.string().nullable().default(null),
+      /** The qualitative word last reported, so a change is spoken once. */
+      lastWord: z.string().nullable().default(null),
+      /** Rolled catalog events already counted this turn (one knock per event per season). */
+      countedTurn: z.number().int().nullable().default(null),
+    })
+    .default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),
   away: z.object({ reason: z.string(), untilTurn: z.number().int() }).nullable().default(null),
   dead: z.object({ cause: z.enum(["old_age", "battle", "illness", "wound", "captivity"]), year: z.number().int() }).nullable().default(null),

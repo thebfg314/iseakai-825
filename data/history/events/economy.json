@@ -10,6 +10,7 @@
       "order": 2,
       "channel": ["steward", "chaplain"],
       "form": "spoken",
+      "onFire": { "trade": { "shift": -10, "seasons": 4, "reason": "the king's levy for the Northmen's silver" } },
       "script": [
         {
           "speaker": "steward",
@@ -104,6 +105,7 @@
       "order": 1,
       "channel": ["steward"],
       "form": "spoken",
+      "onFire": { "trade": { "shift": -10, "seasons": 4, "reason": "the second levy for the Northmen's silver" } },
       "script": [
         {
           "speaker": "steward",

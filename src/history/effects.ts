@@ -11,6 +11,7 @@ import { historyContent } from "./load";
 import { applyPromoteEffect, forfeitFrom, grantCounty, grantVillas } from "./promotion";
 import type { HistoryEffects, HistoryEffectsList } from "./schema";
 import { resolveAmount } from "./slots";
+import { applyTradeEffect } from "./trade";
 
 /** Renown bands from the scripts: small 5–15, moderate 25–50, large 75–150. */
 export const RENOWN_BAND_RANGES: Record<string, [number, number]> = {
@@ -187,6 +188,11 @@ function applyOne(state: WorldState, effects: HistoryEffects, seed: string, opts
     const p = state.history.prices;
     p.eventSeverity = effects.prices.severity;
     p.untilTurn = effects.prices.seasons ? state.meta.turn + effects.prices.seasons : null;
+  }
+  if (effects.trade) {
+    // Effects land for the season about to begin (the pass runs before the clock turns).
+    const line = applyTradeEffect(state, effects.trade, state.meta.turn + 1);
+    if (line) lines.push(line);
   }
   if (effects.away) {
     state.history.away = { reason: effects.away.reason, untilTurn: state.meta.turn + effects.away.seasons };

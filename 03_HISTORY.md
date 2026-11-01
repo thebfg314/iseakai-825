@@ -308,7 +308,7 @@ atom   := flag                       → truthy
         | "feature(" name ")"        → any holding has the feature
 ```
 
-Engine variables (`conditionVars` in `flags.ts`; `lint.ts` must list each): every canonical resource by id (`wheat`, `wine`, …), `year`, `season`, `rank`, `renown`, `age`, `units`, `men_under_arms`, `manses`, `vacant_manses`, `denarii`, `horses`, `households`, `tenure`, `charter`, `visibility`, `swornTo`, `king`, `emperor`, `count`, `severity`, `viking_danger`, `ladder` (stage), `quest` (phase), `quest_attempt`, `allies` (nobles won), `happiness` (the people's meter), `favour` (royal duties favour), `away`, `regional_famine`, `hunger`, `monastery_nearby`, `relics`. A bare flag name reads the flag store.
+Engine variables (`conditionVars` in `flags.ts`; `lint.ts` must list each): every canonical resource by id (`wheat`, `wine`, …), `year`, `season`, `rank`, `renown`, `age`, `units`, `men_under_arms`, `manses`, `vacant_manses`, `denarii`, `horses`, `households`, `tenure`, `charter`, `visibility`, `swornTo`, `king`, `emperor`, `count`, `severity`, `viking_danger`, `ladder` (stage), `quest` (phase), `quest_attempt`, `allies` (nobles won), `happiness` (the people's meter), `favour` (royal duties favour), `away`, `regional_famine`, `hunger`, `monastery_nearby`, `relics`, `villas`, `counties`, `vassals`, `vassal_mood`, `trade_health`. A bare flag name reads the flag store.
 
 Flags with string values (`side_830 = 'bernard'`, `chalon_834 = 'defended'`) are stored as strings; the registry types them as `enum` with the allowed words.
 
@@ -332,6 +332,9 @@ Everything a hook, choice, outcome or stage may do. The engine applies these; th
 | `scene` | `{ open: id }` or `{ advance: true }` |
 | `record` | a line for the life record |
 | `innovation` | `{ register: {…} }` or `{ expose: id, how }` (§12) |
+| `prices` | `{ severity, seasons? }` → the famine price table for a span (§11.4) |
+| `promote` / `grant` / `forfeit` | rank steps, land and office handed over, benefices taken back (§10) |
+| `trade` | `{ shift?, seasons?, baseline?, reason }` → trade health: a knock that recovers, a passing shock, or the regional baseline for good (§11.8a) |
 
 ### 6.3 New proposal types
 
@@ -539,6 +542,18 @@ Only when `royal_vassal` (promotion pass), the lord is home and alive, and no da
 - E-866 and E-877 compute the player's share from rank and the manse split, fill the `[amount]` slots in Aldric's script, and offer the five options as a choice with costs; "pay the tenants' share yourself" costs the per-manse total; "advance as a loan" returns with increase over four seasons; "buy up what neighbours sell" is a land hook gated by stored coin.
 - 862-V1 bridge levy: labour / cartage / coin, ~15 d; a hook for sending skilled men.
 - Minting notes are flavour lines by decade; the mint as a business is gated by rank (promotion pass) and written as a project key `mint` in data for then.
+
+### 11.8a Trade health (`trade.ts`; rank design 'Trade health')
+
+One hidden number for the home region, 0–100, Autun 825 = 55, in `history.trade`. The player never sees it; the Books carry no figure. Three layers: `baseline` (the region's resting level; raised for good by `trade.baseline` effects: Chalon's coin 864-V2 +8, Tournus 875-V1 +10, Cluny 910-E1 +10), `base` (the slow number — knocked by `trade.shift` effects and engine events, drifting back toward baseline + the lord's improvements at +0.75 a season, +1.25 when nothing is wrong, and down again at 0.75 when a boost has gone), and the passing layer: shocks with an end turn (`trade.shift` + `seasons`: E-866 and E-877 −10 for four seasons; a hard winter −8 for one) and conditions read each season (Viking danger high −30 / moderate −15 / low −5 from `history.vikings.danger`; famine −15, shortage −7 from `history.prices.severity`). `health` = base + shocks + conditions, clamped; `tickTrade` runs after the dated events and before the duties.
+
+**Improvements** (`tradeImprovements`, from the features standing on every villa): road kept up `improved_road` +3; `bridge` +5; `landing_stage` +3; a watch (`watch_post`/`tower`/`gatehouse`/`stone_wall`) +5 and it turns a banditry roll aside; `market` +10 and `fair` +8 (features for a later licence hook; no project yet); mills and workshops +3 each up to four; `stables`/`guesthouse` +2; vines across the holdings ≥4 +2, ≥12 +4, ≥30 +6; at Count+ `tollStance` low +5 / greedy −10 (the stance is set by `setTollStance`; the Confirm card for it comes with the justice step).
+
+**Engine knocks:** a Viking raid at the gate −10 and any supply-check event (an army fed off the country) −10 on the slow number (`season.ts` passes `raid` and `armyAtHome`); from the data, 843-02 Verdun −10 and 887-S1 Fraxinetum −8 (`shift`). Rolled catalog events (`noteRolledEventsForTrade`, called in `game.ts` after the roll and before the merchant roll): `th-bandits`/`th-armed`/`th-theft` −10 unless a watch stands; `pol-muster`/`th-muster` −10; `mkt-road` −5; `win-snow`/`win-cold` −8 for the season; `mkt-demand`/`mkt-exotic`/`mkt-distant` +3.
+
+**What it does.** Merchant chance × `merchantTradeFactor` (0 below 20; (health−20)/35, so 1 at 55 and 1.6 at 76+; `merchant.ts`); the pack 4–6 lines at 75+, 2–3 and no fine wares below 35; the purse × health/55 within 0.5–1.5. The trade goods' bands (wine, wool, hides, honey, linen, cheese, trade goods, beeswax) are the books' bands × `tradeGoodsPriceFactor` (1 + (health−55)/150, 0.7–1.2), restored when within a few points of ordinary; grain stays the famine table's. Tolls and market dues at Count+ × health/55 within 0.4–1.6 (`revenue.ts`). The condition variable `trade_health` is readable by content.
+
+**The readout** is diegetic only: `tradeLine` (the band word busy/fair/steady/thin/very thin/empty, the trend against last spring, the last cause, what draws trade here, this season's conditions) goes into Aldric's HISTORY block and Gerulf's system prompt with an instruction never to give a figure; Aldric speaks once when the band changes (`trade:change`), naming the cause when it worsened, and the ledger carries "Trade on the roads is … now." A stub run: ~58–60 in the quiet decades, the 840s war years and Verdun take it to the twenties, the 860s–870s climb to the high seventies on Chalon's coin and Tournus, 886–898 collapse it to 12–30, and the 900s recover toward the sixties.
 
 ### 11.9 Escalation ladder and king quest (`ladder.ts`, `quest.ts`, `tables/king-quest.json`)
 

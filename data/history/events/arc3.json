@@ -356,6 +356,7 @@
       "fires": { "year": 875, "season": "spring" },
       "channel": ["steward", "chaplain"],
       "form": "spoken",
+      "onFire": { "trade": { "baseline": 10, "reason": "the monks at Tournus and the pilgrims they draw" } },
       "script": [
         {
           "speaker": "steward",

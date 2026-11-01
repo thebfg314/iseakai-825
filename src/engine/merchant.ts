@@ -4,6 +4,7 @@ import { clamp, round1 } from "./util";
 import { resourceName } from "../ui/ledgerCopy";
 import { beginMerchantVisitShop, persistMerchantPurseOnLeave } from "./merchantShop";
 import { MANCIPIA_ID, MERCHANT_MANCIPIA_CHANCE } from "./mancipia";
+import { merchantTradeFactor, TRADE_BASELINE, tradeHealth, tradeWord } from "../history/trade";
 
 export const MERCHANT_BASE_RANGE: Record<Season, { lo: number; hi: number }> = {
   spring: { lo: 0.25, hi: 0.3 },
@@ -158,9 +159,20 @@ export function merchantChance(state: WorldState, season: Season = state.meta.se
     );
   }
 
-  const chance = clamp(base + bonus, 0.02, 0.9);
+  // The roads (history/trade.ts): below 20 nobody comes; at 55 the usual; at 76+ half again as many.
+  const health = tradeHealth(state);
+  const factor = merchantTradeFactor(health);
+  if (factor === 0) {
+    notes.push(`The roads are ${tradeWord(health)}: no merchant will come`);
+    return { base, bonus, chance: 0, notes };
+  }
+  if (Math.abs(factor - 1) >= 0.05) notes.push(`The roads are ${tradeWord(health)} (×${factor.toFixed(2)})`);
+  const chance = clamp(clamp(base + bonus, 0.02, 0.9) * factor, 0.02, 0.9);
   return { base, bonus, chance, notes };
 }
+
+/** Goods a peddler only carries where the roads are worth it. */
+const FINE_WARES = new Set<string>(["wine", "linen", "copper", "tin", "beeswax", "trade_goods", "honey"]);
 
 export function rollMerchantVisit(
   state: WorldState,
@@ -170,9 +182,10 @@ export function rollMerchantVisit(
   return { ...rolled, arrived: Math.random() < rolled.chance };
 }
 
-export function generateMerchantStock(): { resource: string; amount: number }[] {
-  const count = 3 + Math.floor(Math.random() * 3);
-  const pool = [...PEDDLER_WARES];
+/** A peddler's pack: 3–5 lines on ordinary roads, 4–6 when busy (75+), 2–3 and no fine goods when thin (<35). */
+export function generateMerchantStock(health = TRADE_BASELINE): { resource: string; amount: number }[] {
+  const count = health >= 75 ? 4 + Math.floor(Math.random() * 3) : health < 35 ? 2 + Math.floor(Math.random() * 2) : 3 + Math.floor(Math.random() * 3);
+  const pool: string[] = health < 35 ? PEDDLER_WARES.filter((w) => !FINE_WARES.has(w)) : [...PEDDLER_WARES];
   const stock: { resource: string; amount: number }[] = [];
   for (let i = 0; i < count && pool.length; i++) {
     const idx = Math.floor(Math.random() * pool.length);
@@ -227,7 +240,7 @@ export function applyMerchantRoll(
   state.merchant.present = true;
   state.merchant.name = name;
   state.merchant.face = face;
-  state.merchant.stock = generateMerchantStock();
+  state.merchant.stock = generateMerchantStock(tradeHealth(state));
   beginMerchantVisitShop(state, name);
   state.npcs.push({
     id: "merchant",

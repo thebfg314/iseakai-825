@@ -5,7 +5,8 @@ import { WorldStateSchema, type WorldState } from "../engine/schema";
 import { lintHistory, lintHistoryStructure } from "./lint";
 import { historyContent, setHistoryContentForTests } from "./load";
 import { PILGRIM_GIFT_DENARII } from "./relics";
-import { seasonRevenue } from "./revenue";
+import { seasonRevenue, tradeMultiplier } from "./revenue";
+import { tradeHealth } from "./trade";
 import { runHistorySeasonPass, type HistoryPassResult } from "./season";
 import { fillSlots, slotValue } from "./slots";
 import { dangerAt, tickVikings } from "./vikings";
@@ -326,7 +327,9 @@ describe("Arcs 3–6 content", () => {
     // The office pays its quarter from the next season.
     const coin = state.resources.denarii;
     const autumn = clock.next();
-    expect(state.history.rank.lastRevenue?.tolls).toBe(625);
+    // 625 a quarter on ordinary roads; the roads are poorer after Fontenoy's year, Verdun and the dearth.
+    expect(tradeHealth(state)).toBeLessThan(55);
+    expect(state.history.rank.lastRevenue?.tolls).toBe(Math.round(625 * tradeMultiplier(state)));
     expect(state.resources.denarii).toBeGreaterThan(coin);
     expect(autumn.effects.some((l) => l.startsWith("The office paid"))).toBe(true);
     // 848: Aquitaine throws Pippin over; what he gave in land goes, the rank and the county stay.

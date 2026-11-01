@@ -70,7 +70,7 @@
           "text": "My lord, a band of Saracens has fortified itself at a place called Fraxinetum, on the coast in Provence, in the hills above the sea. Not a raid this time: a fortress, held and garrisoned. They are already taking travellers on the roads and in the passes. Anyone of ours going south to Lyon, or over the Alps to Rome, had best go in company and armed."
         }
       ],
-      "onFire": { "flags": { "fraxinetum": true }, "modifier": { "target": "market_price", "kind": "permanent", "op": "multiply", "value": 1.03, "source": "the Saracens at Fraxinetum on the southern roads" } },
+      "onFire": { "flags": { "fraxinetum": true }, "trade": { "shift": -8, "reason": "the Saracens in the southern passes" }, "modifier": { "target": "market_price", "kind": "permanent", "op": "multiply", "value": 1.03, "source": "the Saracens at Fraxinetum on the southern roads" } },
       "knows": [
         "Travel to Italy or Rome now risks capture and ransom; escorts cost more.",
         "Trade down the Saône–Rhône corridor: southern goods dearer; some seasons nothing comes through.",

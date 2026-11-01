@@ -3,6 +3,7 @@ import { CANONICAL_RESOURCES } from "./schema";
 import { clamp, round1 } from "./util";
 import { amountPhrase, resourceName } from "../ui/ledgerCopy";
 import { isMancipia, MANCIPIA_ID, MANCIPIA_PRICE, mancipiaCount, setMancipia } from "./mancipia";
+import { tradeHealth } from "../history/trade";
 
 export const MERCHANT_BASE_PURSE = 1000;
 export const MERCHANT_PURSE_BONUS = 200;
@@ -135,9 +136,15 @@ export function priceForAmount(
   return { total, avg: qty ? round1(total / qty) : 0 };
 }
 
+/** Coin in the merchant's purse scales with the roads: half at 27, the usual at 55, half again at 83+. */
+export function merchantPurseFactor(health: number): number {
+  return clamp(health / 55, 0.5, 1.5);
+}
+
 export function purseForVisit(state: WorldState, name: string | undefined): number {
   const bonus = name ? (state.merchant_purse_bonus?.[name] ?? 0) : 0;
-  return round1(Math.min(MERCHANT_PURSE_CAP, MERCHANT_BASE_PURSE + Math.max(0, bonus)));
+  const factor = merchantPurseFactor(tradeHealth(state));
+  return round1(Math.min(MERCHANT_PURSE_CAP, MERCHANT_BASE_PURSE + Math.max(0, bonus)) * factor);
 }
 
 export function addPurseBonus(state: WorldState, name: string): void {

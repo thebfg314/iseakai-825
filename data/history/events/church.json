@@ -196,6 +196,7 @@
       "fires": { "year": 910, "season": "autumn" },
       "channel": ["chaplain"],
       "form": "spoken",
+      "onFire": { "trade": { "baseline": 10, "reason": "the new abbey at Cluny and its pilgrims" } },
       "script": [
         {
           "speaker": "chaplain",

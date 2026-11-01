@@ -3,6 +3,7 @@ import type { HistoryBeat } from "./deliver";
 import { currentRank } from "./promotion";
 import { rankStep, ranksTable } from "./ranks";
 import type { SeasonAt } from "./scheduler";
+import { TRADE_BASELINE, tradeHealth } from "./trade";
 
 /**
  * Public revenue (rank progression doc, "Count" and above; the viscount's deputy's share and court
@@ -13,12 +14,9 @@ import type { SeasonAt } from "./scheduler";
 
 export type RevenueTick = { lines: string[]; beats: HistoryBeat[] };
 
-export const TRADE_BASELINE = 55;
-
-/** Tolls and market dues scale with trade health against the 825 baseline, within 0.4–1.6. */
+/** Tolls and market dues scale with trade health (trade.ts) against the 825 baseline, within 0.4–1.6. */
 export function tradeMultiplier(state: WorldState): number {
-  const health = state.history.trade?.health ?? TRADE_BASELINE;
-  return Math.max(0.4, Math.min(1.6, health / TRADE_BASELINE));
+  return Math.max(0.4, Math.min(1.6, tradeHealth(state) / TRADE_BASELINE));
 }
 
 /** Fines and pleas: 1 until the justice stance (step 4) says otherwise. */
