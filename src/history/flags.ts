@@ -2,6 +2,7 @@ import { CANONICAL_RESOURCES, type WorldState } from "../engine/schema";
 import type { ConditionContext } from "./conditions";
 import { historyContent } from "./load";
 import type { FlagDef, FlagValue } from "./schema";
+import { applyStandingOp, isBandFlag, isHundredFlag, noteSeptimanianEnemy, STANDING_NEUTRAL } from "./standing";
 
 /** Body age this year (03_HISTORY §4): the modern man was `ageAt825` when he arrived. */
 export function bodyAge(state: WorldState, year = state.meta.year): number {
@@ -31,6 +32,8 @@ export function flagTruthy(state: WorldState, id: string): boolean {
 export function flagInt(state: WorldState, id: string): number {
   const v = state.history.flags[id];
   if (typeof v === "number") return v;
+  if (isHundredFlag(id)) return STANDING_NEUTRAL;
+  if (isBandFlag(id)) return 0;
   if (typeof v === "boolean") return v ? 1 : 0;
   return 0;
 }
@@ -43,6 +46,8 @@ export function flagInt(state: WorldState, id: string): number {
 export function applyFlagOp(state: WorldState, id: string, op: FlagValue, registry: Map<string, FlagDef> = historyContent().flags): string | null {
   const def = registry.get(id);
   if (!def) return `Unknown history flag ${id}`;
+  const standing = applyStandingOp(state, id, op);
+  if (standing !== undefined) return standing;
   const flags = state.history.flags;
   if (typeof op === "string" && /^[+-]\d+$/.test(op)) {
     if (def.type !== "int") return `Flag ${id} is ${def.type}; cannot add ${op}`;
@@ -52,6 +57,7 @@ export function applyFlagOp(state: WorldState, id: string, op: FlagValue, regist
   switch (def.type) {
     case "bool":
       flags[id] = typeof op === "boolean" ? op : Boolean(op);
+      if (id === "enemy_septimania") noteSeptimanianEnemy(state);
       return null;
     case "int":
       if (typeof op === "number") flags[id] = op;

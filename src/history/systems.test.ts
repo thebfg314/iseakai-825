@@ -9,6 +9,9 @@ import { DUTY_IDS, rollDuty } from "./duties";
 import { ladderThresholdMet } from "./ladder";
 import { lintHistory, lintHistoryStructure } from "./lint";
 import { historyContent, setHistoryContentForTests } from "./load";
+import { npcSystemPrompt } from "../llm/prompts";
+import { proposalBlurb } from "../ui/ledgerCopy";
+import { historyPromptBlock } from "./promptBlocks";
 import { alliesWon } from "./quest";
 import { runHistorySeasonPass, type HistoryPassResult } from "./season";
 import { slotValue } from "./slots";
@@ -26,7 +29,7 @@ function clockFor(state: WorldState) {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
     if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
-    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
     state.meta.turn += 1;
@@ -203,7 +206,7 @@ describe("the king's escalation ladder", () => {
 
   it("reaches for the road when the lawful tools are blocked, and the attempt starts the quest", () => {
     quiet({ ladder: true, quest: true });
-    const state = dangerous(70, 5);
+    const state = dangerous(70, 55);
     const clock = clockFor(state);
     for (let i = 0; i < 5; i++) clock.next();
     expect(state.history.fired["L-004"]).toBeDefined();
@@ -221,7 +224,7 @@ describe("the king's escalation ladder", () => {
 describe("the king quest", () => {
   function atGathering(features: { promotions?: boolean } = {}): { state: WorldState; clock: ReturnType<typeof clockFor> } {
     quiet({ ladder: true, quest: true, ...features });
-    const state = dangerous(70, 5);
+    const state = dangerous(70, 55);
     state.history.flags.saint_florentin_888 = true;
     const clock = clockFor(state);
     for (let i = 0; i < 6; i++) clock.next();
@@ -284,6 +287,42 @@ describe("the king quest", () => {
     expect(state.history.rank.royalFisc?.yearly).toBe(300000);
     expect(state.history.vassals.some((v) => v.group)).toBe(true);
     expect(crowned.beats.some((b) => b.text.includes("King of this land"))).toBe(true);
+  });
+
+  it("Aldric sends for each man by name, and the lord hears him in the hall", () => {
+    const { state, clock } = atGathering();
+    const banned = ["Debt Owed", "Fear of Alternative", "Divine Favour"];
+    const grievance = state.history.quest.nobles.find((n) => n.motive === "grievance")!;
+    const kingsMan = state.history.quest.nobles.find((n) => n.status === "refused")!;
+    expect(banned).not.toContain(grievance.name);
+    expect(hook(state, "Q-001", `arrange_${kingsMan.motive}`).ok).toBe(false);
+    expect(hook(state, "Q-001", "arrange_grievance").ok).toBe(true);
+    expect(state.history.quest.meeting).toMatchObject({ motive: "grievance", name: grievance.name, settled: false });
+    expect(hook(state, "Q-001", "arrange_land").ok).toBe(false);
+    const aldric = historyPromptBlock(state, "steward");
+    expect(aldric).toContain(grievance.name);
+    expect(aldric).toContain("in the hall now");
+    expect(aldric).not.toContain("approach_grievance");
+    for (const title of banned) expect(aldric).not.toContain(title);
+    expect(historyPromptBlock(state, "chaplain")).not.toContain("arrange_grievance");
+    const guest = npcSystemPrompt("audience", state);
+    expect(guest).toContain(grievance.name);
+    expect(guest).toContain("approach_grievance");
+    for (const title of banned) expect(guest).not.toContain(title);
+    expect(proposalBlurb({ type: "history_hook", summary: "", eventId: "Q-001", hookId: "arrange_grievance" }, state)).toBe(`Send for ${grievance.name}, and hear him in the hall.`);
+    expect(hook(state, "Q-001", "approach_grievance", "audience").ok).toBe(true);
+    expect(state.history.quest.meeting?.settled).toBe(true);
+    expect(hook(state, "Q-001", "call_the_assembly", "audience").ok).toBe(false);
+    clock.next();
+    expect(grievance.status).toBe("won");
+    expect(state.history.quest.meeting).toBeNull();
+    expect(hook(state, "Q-001", "arrange_protection").ok).toBe(true);
+    expect(hook(state, "Q-001", "end_audience").ok).toBe(true);
+    expect(state.history.quest.meeting).toBeNull();
+    const another = state.history.quest.nobles.find((n) => n.status === "unknown" && n.motive !== "protection")!;
+    expect(hook(state, "Q-001", `arrange_${another.motive}`).ok).toBe(true);
+    expect(state.history.quest.meeting?.name).toBe(another.name);
+    expect(banned).not.toContain(another.name);
   });
 
   it("a second attempt closes marriage, fear and divine favour", () => {

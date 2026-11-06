@@ -5,11 +5,16 @@ import type { BattleState } from "../combat/battleTypes";
 import { PLAYER_PERSONAL_BASELINE, RAF_RENOWN_TIER } from "../combat/constants";
 import { generateEncounter, hasAllies, LORD_FILE_ID, soloLossConsequences, tierFor, type EncounterKind } from "../combat/encounter";
 import { applyRenown, rankMultiplier } from "../combat/renown";
+import { updateFieldVerdict } from "../history/decay";
+import { totalManses } from "../history/flags";
 import { eligibilityNote } from "../history/promotion";
+import { noteMishapBattle } from "../history/mishaps";
+import { noteMusterAnswered, noteMusterRefused } from "../history/office";
+import { wallsAreMakeshift } from "../history/upkeep";
 import { noteBattleForVassals, noteVassalEvent, vassalMusterLines } from "../history/vassals";
 import { createRng, seedFromString, type Rng } from "../combat/rng";
 import { pushLog, rollPlayerFate } from "../combat/round";
-import { canDirect, canLeadFile, canRideToWar, GENERAL_DEFEAT_WOUND_CHANCE } from "../engine/wounds";
+import { canDirect, canLeadFile, canRideToWar, GENERAL_DEFEAT_WOUND_CHANCE, isLame } from "../engine/wounds";
 import type { Rank } from "../combat/schema";
 import { autoDeploy } from "../combat/scenario";
 import { sheetFor, spawnUnit } from "../combat/units";
@@ -89,6 +94,13 @@ function note(session: BattleSession, kind: BattleNarration["kind"], text: strin
   session.narration.push({ id: newId("nar"), kind, round, text, ref });
 }
 
+/** A march away from the villa. A fight at his own gate is not one, and neither is a contingent sent under a captain. */
+function hardRide(call: BattleCall): boolean {
+  if (call.kind === "raid" || call.kind === "bandits" || call.supply) return false;
+  if (call.kind === "history") return !historyForces(call.historyId ?? "")?.home;
+  return call.kind === "summons";
+}
+
 export function refuseCall(state: WorldState, deps: BattleDeps): string {
   const call = state.battle_call;
   if (!call) return "There is no call to refuse.";
@@ -98,6 +110,10 @@ export function refuseCall(state: WorldState, deps: BattleDeps): string {
     const sworn = noteVassalEvent(state, "refused_call", state.meta.turn);
     if (sworn) deps.log("engine", "EVENT", `Vassals: ${sworn}`);
   }
+  // The count's office: a muster not answered is counted against the man who holds it (office.ts).
+  if (call.kind === "summons" || (call.kind === "history" && !call.supply)) noteMusterRefused(state);
+  // A mishap's battle turned back from is a mishap left unanswered (mishaps.ts).
+  if (call.kind === "history") noteMishapBattle(state, call.eventId, "refused");
   if (call.kind === "history") {
     // 03_HISTORY §9: turning back once the call has gone out costs what the tables say (count's opinion, renown).
     const lines = refuseHistoricalBattle(state, call);
@@ -164,6 +180,10 @@ export function acceptCall(state: WorldState, deps: BattleDeps): AcceptResult {
   if (!call) return { started: false, text: "There is no call to answer." };
   const fit = canRideToWar(state);
   if (!fit.ok && call.mode !== "captain") return { started: false, text: fit.reason ?? "The lord cannot ride." };
+  // A crushed leg holds his own gate and can send a captain; it will not bear a hard ride.
+  if (isLame(state) && call.mode !== "captain" && hardRide(call)) {
+    return { started: false, text: "The crushed leg will not bear a hard ride. He can hold his own gate, and a captain can take the men; he cannot go himself." };
+  }
   const owned = state.military.units.filter((u) => u.strength > 0);
   if (call.kind === "history") {
     // The sector is composed at the muster from the forces table; the solo rule never applies (allies, or a militia at the gate).
@@ -177,6 +197,7 @@ export function acceptCall(state: WorldState, deps: BattleDeps): AcceptResult {
       deps.log("player", "REJECT", `Could not send men to ${forces.title}: no men to send.`);
       return { started: false, text: "You chose to send men under a captain, and there are no men to send. The contingent does not go." };
     }
+    if (!call.supply) noteMusterAnswered(state);
     state.battle_session = {
       ...emptySession(call),
       historical: { id: forces.id, eventId: call.eventId, mode: call.mode ?? "attached", abstractApplied: [], betrayed: false, supply: call.supply },
@@ -229,6 +250,7 @@ export function acceptCall(state: WorldState, deps: BattleDeps): AcceptResult {
     deps.log("engine", "EVENT", `Solo loss (${call.kind}): −${loss.denariiLost} denarii, herds thinned. ${fate} ${odds}`);
     return { started: false, text: `${loss.text} ${loss.denariiLost} denarii and part of the herds are gone. ${fate}` };
   }
+  if (call.kind === "summons") noteMusterAnswered(state);
   state.battle_session = emptySession(call);
   return { started: true, text: call.text };
 }
@@ -240,6 +262,7 @@ function emptySession(call: BattleCall): BattleSession {
     phase: "muster",
     broughtUnitIds: [],
     swornMen: 0,
+    ownMen: 0,
     drawn: [],
     openingDone: false,
     crisisDraws: 0,
@@ -308,6 +331,7 @@ export function musterAndRide(state: WorldState, deps: BattleDeps, bringIds: rea
   session.tier = tier;
   session.broughtUnitIds = owned.map((u) => u.id);
   session.swornMen = sworn.men;
+  session.ownMen = owned.reduce((n, u) => n + u.strength, 0);
   session.premise = enc.premise;
   session.pendingEncounter = { allies: enc.allies, enemy: enc.enemy, premise: enc.premise };
   state.battle_call = null;
@@ -360,9 +384,9 @@ function fortFor(state: WorldState, session: BattleSession, forces: BattleForces
   return undefined;
 }
 
-/** Battle_Force_Tables, local encounters: the villa's point is makeshift unless the lord has invested in a palisade or a stone wall. */
+/** Battle_Force_Tables, local encounters: the villa's point is makeshift unless a palisade or a stone wall is still sound. A wall let go fights as a fence. */
 export function villaWallMakeshift(state: WorldState): boolean {
-  return !state.holdings.some((h) => h.features.includes("stone_wall") || h.features.includes("palisade"));
+  return wallsAreMakeshift(state);
 }
 
 /** Create the battle for the session's encounter on a chosen field; the enemy deploys, the player's side does not yet. */
@@ -1130,7 +1154,17 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
     rounds: battle.round,
     renownDelta: summary.renownDelta,
     summary: facts.join(" "),
+    moraleDealt: summary.moraleDealt,
+    moraleTaken: summary.moraleTaken,
+    ownMen: session.ownMen ?? 0,
+    manses: totalManses(state),
+    captain: session.historical?.mode === "captain",
   });
+  // The hall judges the cause of a poor run, never the loss itself (decay.ts).
+  for (const beat of updateFieldVerdict(state, state.meta.turn)) {
+    facts.push(beat.text);
+    deps.log("engine", "EVENT", `Field verdict: ${state.history.decay.verdict}.`);
+  }
   deps.log("engine", "EVENT", `Battle ${outcome} (${session.callKind}, ${session.tier}): renown ${summary.renownDelta >= 0 ? "+" : ""}${summary.renownDelta}.`);
   return facts;
 }
@@ -1140,16 +1174,17 @@ function applyLedger(state: WorldState, deps: BattleDeps, summary: BattleSummary
 // ---------------------------------------------------------------------------
 
 /**
- * A captured lord is redeemed at Renown × rank multiplier. History was not kind about shortfalls:
- * there was no loan to work off. If the chest cannot meet it he stays where he is, and the
- * chronicle of this house ends (design review, item 9).
+ * A captured lord is redeemed at Renown × rank multiplier. When the chest cannot meet it,
+ * the shortfall is written down and he comes home. Raising the rest by taxation, and the
+ * unrest that can cost him holdings, waits on the economy; until then this is a stub, not an ending.
  */
 export function settleRansom(state: WorldState): string {
   const ransom = Math.round(state.player.renown * rankMultiplier(state.player.rankLevel as Rank));
   const paid = Math.min(state.resources.denarii, ransom);
   if (paid < ransom) {
-    state.player.captive = true;
-    return `The lord was taken. His captors asked ${ransom} denarii and the chest held ${paid}; no one came with the rest, and he remains in their hands.`;
+    state.history.ransom = { owed: ransom - paid, turn: state.meta.turn };
+    state.resources.denarii = Math.max(0, state.resources.denarii - paid);
+    return `The lord was taken. His captors asked ${ransom} denarii and the chest could meet ${paid}. The rest stands owing. How a hall raises what it does not have is not yet in this world; he comes home, and the debt is written down.`;
   }
   state.resources.denarii -= paid;
   return `The lord was taken and ransomed for ${paid} denarii.`;

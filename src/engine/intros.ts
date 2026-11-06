@@ -41,6 +41,18 @@ export const MERCHANT_INTROS: Record<string, string> = {
   Wichard: "Hides, bloom iron. Talk straight or I move on, partner.",
 };
 
+/** The lord's wife (history/marriage.ts), the first time he comes to her tab after the wedding. */
+export const WIFE_INTROS: Record<string, (name: string) => string> = {
+  hildegard: (name) =>
+    `${name}. You know my father's hall, so you know what I was raised to: who owes whom in this district, which families have not spoken in twenty years and why, and what the market thinks of you by Thursday. Ask me about the neighbours and the sworn men. Ask Aldric about the kingdom; I will only tell you what the district believes, and the district is often wrong.`,
+  theoderada: (name) =>
+    `${name}. I will be useful to you, and I will be plain about it: when I tell you what a count will do, I am usually right, and when what I advise would also serve my brothers, I will say so before you have to ask. The court is a game of three moves, not one. Bring me the letters. Leave the barns to Aldric; he is better at them than either of us.`,
+  gisla: (name) =>
+    `${name}. I have run a household before, and buried the man I ran it with, so you will forgive me if I ask about the stores before I ask about your day. Tenants, officers, barns, what a steward is not saying: that I know. Kings and counts I know as a householder knows weather. Ask me what I know, and I will tell you when you have reached the end of it.`,
+  linda: (name) =>
+    `${name}. I know what they say, and I know I was not raised to any of this. I do not know what a benefice is yet, or why a sworn man must be given a horse he does not need, and I will ask you until I do. But I know when a thing is right and when it is not, and I will tell you so, which I think is why you married me. Nobody else in this hall will.`,
+};
+
 function merchantVisitorName(state: WorldState): string | undefined {
   return state.merchant.name ?? state.npcs.find((n) => n.id === "merchant")?.name;
 }
@@ -49,6 +61,11 @@ export function introSpeechFor(npcId: string, state: WorldState): string | undef
   if (npcId === "merchant") {
     const name = merchantVisitorName(state);
     return name ? MERCHANT_INTROS[name] : undefined;
+  }
+  if (npcId === "wife") {
+    const m = state.history?.marriage;
+    if (!m?.archetype || !m.name) return undefined;
+    return WIFE_INTROS[m.archetype]?.(m.name);
   }
   return HOUSEHOLD_INTROS[npcId];
 }

@@ -3,6 +3,8 @@ import { applyPeopleHappinessDelta } from "../engine/peopleHappiness";
 import questTable from "../../data/history/tables/king-quest.json";
 import { deliverEvent, type DeliveryResult, type HistoryBeat } from "./deliver";
 import { flagInt, flagTruthy, totalManses } from "./flags";
+import { bishopBlocksBan, excommunicationWait } from "./patronage";
+import { bishopIsSeparate, hundredValue } from "./standing";
 import { historyContent } from "./load";
 import { demoteBy } from "./promotion";
 import type { SeasonAt } from "./scheduler";
@@ -48,9 +50,17 @@ export function canStrip(state: WorldState): boolean {
   return state.peopleHappiness < TABLE.strip.happinessBelow;
 }
 
-/** Rung 2 is open unless the lord is his bishops' patron. */
+/**
+ * Rung 2 is open unless he is already a patron.
+ * Before he holds a county, that is the church's number.
+ * From Count on, it is the bishop's, and a bishop who receives him warmly will not arrange the ban.
+ */
 export function canExcommunicate(state: WorldState): boolean {
-  return flagInt(state, "favor_church") < TABLE.excommunication.favorChurchBelow && !flagTruthy(state, "excommunicated");
+  if (flagTruthy(state, "excommunicated") || bishopBlocksBan(state)) return false;
+  if (bishopIsSeparate(state) && state.history.flags.bishop_tracked === true) {
+    return hundredValue(state, "bishop") < TABLE.excommunication.favorChurchBelow;
+  }
+  return flagInt(state, "favor_church") < TABLE.excommunication.favorChurchBelow;
 }
 
 function setStage(state: WorldState, stage: WorldState["history"]["ladder"]["stage"], turn: number) {
@@ -106,7 +116,11 @@ export function tickLadder(state: WorldState, at: SeasonAt, turn: number): Deliv
         out.lines.push("The lord submitted at the warning; the king stops escalating.");
         return out;
       }
-      if (ladder.since !== null && turn - ladder.since < TABLE.trigger.seasonsAtWarning) return out;
+      const wait =
+        !canStrip(state) && canExcommunicate(state)
+          ? excommunicationWait(state, TABLE.trigger.seasonsAtWarning)
+          : TABLE.trigger.seasonsAtWarning;
+      if (ladder.since !== null && turn - ladder.since < wait) return out;
       if (!ladderThresholdMet(state)) {
         setStage(state, "none", turn);
         return out;

@@ -19,6 +19,9 @@ import glossaryData from "../../data/glossary.json";
  * Frank — word-boundary only (not frankly / frankincense).
  * hides — default skins/stores sense; skip land-measure "hide of land".
  * prior — "prior of" and monastic company; skip "prior season/year/to".
+ * host — the called-out army ("the host", muster/march company). Skip "host a feast".
+ * march — the Spanish or Breton frontier. Skip the month ("in March").
+ * Boso / Odo — the king and the counts. Skip the wine-merchant and the toll-merchant.
  */
 export type GlossaryRule =
   | "default"
@@ -30,7 +33,11 @@ export type GlossaryRule =
   | "land_scrub"
   | "mill_leat"
   | "frank"
-  | "hides_skins";
+  | "hides_skins"
+  | "army_host"
+  | "frontier_march"
+  | "historical_boso"
+  | "historical_odo";
 
 export type GlossaryEntry = {
   id: string;
@@ -215,6 +222,28 @@ function ruleAllows(
       if (/^hide$/i.test(matched) && /\b(hide from|hide the|hide in)\b/i.test(around)) return false;
       if (/^hides$/i.test(matched)) return true;
       return /\b(skin|skins|leather|tannery|stores|ox|cattle|pelt)\b/.test(around);
+    }
+    case "army_host": {
+      if (/\b(play host|host a|host the|hosts a|hosts the|hosted|hospitality|hostess)\b/i.test(around)) return false;
+      if (/^(the|this|that|his|her|a|an|our|their|royal)\s+host$/i.test(matched)) return true;
+      if (/\b(the|this|that|his|her|our|their|royal|emperor's|king's)\s+$/i.test(before)) return true;
+      return /\b(muster|marched|march|army|campaign|dissolv|horse|armed|contingent)\b/i.test(around);
+    }
+    case "frontier_march": {
+      if (/spanish|breton/i.test(matched)) return true;
+      if (/\b(in|last|next|early|late|mid|this)\s+$/i.test(before)) return false;
+      if (/\b(rain|rains|mud|sowing|month|ides)\b/i.test(around)) return false;
+      return /\b(barcelona|girona|goth|saracen|frontier|counties|pyrenees)\b/i.test(around);
+    }
+    case "historical_boso": {
+      if (/\b(wine|carts?|price|merchant|toll|deal|peddl)\b/i.test(around)) return false;
+      if (/count boso|king boso|bosonid/i.test(matched)) return true;
+      return /\b(provence|richard|mantaille|elected|brother|autun|king|dead|dies|dying|vienna|vienne)\b/i.test(around);
+    }
+    case "historical_odo": {
+      if (/\b(wine|carts?|price|merchant|tolls?|deal|peddl|rush)\b/i.test(around)) return false;
+      if (/odo of paris|king odo|count odo/i.test(matched)) return true;
+      return /\b(paris|chartres|rollo|orléans|orleans|cousin|stripped|crown|seine|king)\b/i.test(around);
     }
   }
 }

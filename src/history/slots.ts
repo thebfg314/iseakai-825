@@ -36,6 +36,10 @@ export const SLOT_NAMES = [
   "absolution_fee",
   "absolution_penance",
   "ally_price",
+  "mishap_vassal",
+  "neighbour",
+  "neighbour_seat",
+  "count_of_autun",
 ] as const;
 export type SlotName = (typeof SLOT_NAMES)[number];
 
@@ -90,11 +94,28 @@ export function formatDenarii(n: number): string {
   return `${n} denarii`;
 }
 
-/** Replace every `{slot}` in a script with its amount; unknown names are left as they are. */
+/** Names a script may write: the man a mishap names, the neighbour pressing the lord, the count. */
+export function textSlot(state: WorldState, name: string): string | null {
+  const open = state.history.mishaps?.open;
+  if (name === "mishap_vassal") {
+    const v = open?.vassalId ? state.history.vassals.find((x) => x.id === open.vassalId) : undefined;
+    return v ? `${v.name} of ${v.holding}` : "one of the sworn men";
+  }
+  if (name === "neighbour" || name === "neighbour_seat") {
+    const n = (open?.neighbourId ? state.history.neighbours.find((x) => x.id === open.neighbourId) : undefined) ?? state.history.neighbours[0];
+    if (!n) return name === "neighbour" ? "the lord next door" : "his lands";
+    return name === "neighbour" ? n.name : n.seat;
+  }
+  if (name === "count_of_autun") return `${state.history.realm.countOfAutun}, count of Autun`;
+  return null;
+}
+
+/** Replace every `{slot}` in a script with its amount or its name; unknown names are left as they are. */
 export function fillSlots(state: WorldState, text: string): string {
   return text.replace(/\{([a-z0-9_]+)\}/g, (whole, name: string) => {
     const v = slotValue(state, name);
-    return v === null ? whole : formatDenarii(v);
+    if (v !== null) return formatDenarii(v);
+    return textSlot(state, name) ?? whole;
   });
 }
 

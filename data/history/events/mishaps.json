@@ -1,0 +1,271 @@
+{
+  "arc": "mishaps",
+  "$comment": "The mishap table (mishaps.ts): what befalls a Count, Duke or King whose renown has fallen below the threshold of the rank beneath his. Rolled by the engine, never by the calendar. Every entry can be answered; a decisive answer earns renown back. {mishap_vassal}, {neighbour} and {neighbour_seat} are filled by slots.ts from the open mishap.",
+  "events": [
+    {
+      "id": "M-001",
+      "title": "Rumours at court",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, I had it from a clerk who was at court this winter, and I did not like the way he put it. Your name comes up. Not with anything for it, mind; with a kind of wondering. A man asked him, quite idly, how a lord of your rank came to be so little spoken of, and whether the county would not sit better on a man who was. Nobody asks that idly."
+        }
+      ],
+      "knows": [
+        "The same talk the great men hear when a lord grows dangerous, turned the other way: the court wonders whether he is equal to the rank, not whether he is too big for it.",
+        "The answers: go to court and be seen; give a feast the country will talk of; send gifts to the men who talk. Letting it ride lets the next thing come sooner."
+      ],
+      "hooks": [
+        { "id": "go_be_seen", "trigger": "The lord goes to court himself, to be seen and heard.", "effects": { "away": { "reason": "at court, being seen", "seasons": 1 }, "cost": { "denarii": 60 }, "renown": "small", "flags": { "charles_favor": "+3" }, "record": "The lord went to court and showed himself a man equal to his rank." } },
+        { "id": "hold_a_feast", "trigger": "The lord holds a great feast and open court so the country sees his hall full.", "effects": { "cost": { "denarii": 90 }, "renown": "small", "mood": 3, "record": "The lord held open court and a great feast; the country talked of it." } },
+        { "id": "send_gifts", "trigger": "The lord sends gifts to the men who talk at court.", "effects": { "cost": { "denarii": 80 }, "flags": { "charles_favor": "+2" }, "record": "The lord sent gifts to court to still the talk." } }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "mishaps", "momentum": 40 },
+      "notes": "Low. Unanswered: the talk settles into a judgement (mishaps.ts: standing with the crown and the count down, a little renown)."
+    },
+    {
+      "id": "M-002",
+      "title": "A vassal tests you",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, {mishap_vassal} came to the muster two days late and with four men where he owes nine, and no excuse worth the name. He was watching to see what you would do about it. If the answer is nothing, next time he will not come at all, and the others will have watched him not come."
+        }
+      ],
+      "knows": [
+        "A test, not yet a defiance. Judge him in the hall (a fine, a public word) and the others see the lord still has a hand; pardon him with a gift and he is bound a little; do nothing and he stops coming.",
+        "If he stops coming the next step is his commending himself to a neighbour, and his holding goes with him."
+      ],
+      "hooks": [
+        { "id": "judge_him", "trigger": "The lord summons him to the hall and fines or rebukes him before the others.", "effects": { "renown": "small", "gain": { "denarii": 20 }, "record": "The lord called a sworn man to account for a muster half-answered, before the others." } },
+        { "id": "bind_him", "trigger": "The lord overlooks it openly and binds him with a gift or a kindness.", "effects": { "cost": { "denarii": 40 }, "record": "The lord bound a wavering sworn man with a gift rather than a judgement." } }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "mishaps", "momentum": 40 },
+      "notes": "Low. mishaps.ts moves the named vassal's mood with the hook taken (judged: others steadied, he sours a little; bound: he warms). Unanswered: he does not come at all, and goes to the neighbour with his holding."
+    },
+    {
+      "id": "M-003",
+      "title": "An officer embezzles",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, the tolls from the far bridge have come in light three quarters running and the man who keeps them has a new horse. He has been confident, I think, that nobody would come to count. I can count. It would take me a season away from the rest, and he would know I was coming; or you could simply have him before you and make him answer for the horse."
+        }
+      ],
+      "knows": [
+        "An officer who believes the lord cannot audit him. Aldric can audit (a season of his attention) or the lord can summon the man and make an example.",
+        "Left alone, he takes more, and the others learn that he can."
+      ],
+      "hooks": [
+        { "id": "audit", "trigger": "The lord sets Aldric to audit the officer's accounts.", "effects": { "gain": { "denarii": 60 }, "renown": "small", "record": "The lord had his steward audit an officer who had been skimming the tolls, and recovered what he could." } },
+        { "id": "make_example", "trigger": "The lord summons the officer, strips him of his place and takes back what he can.", "effects": { "gain": { "denarii": 40 }, "renown": "small", "record": "The lord stripped an officer who had been skimming the tolls and put another in his place." } }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "mishaps", "momentum": 40 },
+      "notes": "Low. Unanswered: the chest loses a share each season of the rest of the year (mishaps.ts takes it once, as a tenth)."
+    },
+    {
+      "id": "M-004",
+      "title": "A neighbour encroaches",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "spoken",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, {neighbour} of {neighbour_seat} has put his men on the disputed woodland by the river and his reeve is taking the mill-toll there as if it were his. He says it was always his and he has a charter; he had no charter last year. He has judged that you will not come. If you come with men he will fall back and say it was a misunderstanding; if you go to the count he will have told his story first; if you do nothing it is his."
+        }
+      ],
+      "knows": [
+        "A neighbour taking a disputed mill and woodland because he judges the lord too weak to answer.",
+        "The answers: ride against him with men (he will stand or fall back; the field decides), plead it before the count (slow, costs gifts, and standing with the count tells), or let it go."
+      ],
+      "hooks": [
+        { "id": "ride_against_him", "trigger": "The lord rides against the neighbour's men with his own to take the woodland back.", "effects": { "record": "The lord rode against a neighbour who had taken the river woodland." } },
+        { "id": "plead_at_court", "trigger": "The lord takes the matter to the count's court with gifts.", "effects": { "cost": { "denarii": 80 }, "record": "The lord pleaded his claim to the river woodland before the count." } },
+        { "id": "let_it_go", "trigger": "The lord lets the woodland go rather than quarrel.", "effects": { "record": "The lord let a neighbour keep the river woodland rather than quarrel for it." } }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "mishaps", "momentum": 50 },
+      "notes": "Moderate. ride_against_him raises M-004-B at once (hooks.ts). plead_at_court: mishaps.ts decides by standing with the count (60 or better wins it back, with renown). let_it_go or unanswered: the woodland is his (holding woodland cut, renown down)."
+    },
+    {
+      "id": "M-004-B",
+      "title": "The river woodland",
+      "arc": "realm",
+      "type": "battle",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "battle": {
+        "momentum": 50,
+        "historical": "No such battle: a neighbour's men on a disputed woodland, and the lord's own files come to put them off it.",
+        "participation": ["full command"]
+      },
+      "links": { "arc": "mishaps", "momentum": 50 },
+      "notes": "Raised by M-004's ride_against_him hook. The forces entry neighbour_woodland in battles.json."
+    },
+    {
+      "id": "M-005",
+      "title": "An old claim reopened",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["chaplain", "steward"],
+      "form": "letter",
+      "script": [
+        {
+          "speaker": "chaplain",
+          "text": "My lord, a letter from the abbey. They have found, they say, a charter of the old count's father granting them one of the villas you hold, and they ask you to restore it or to show by what right you keep it. The charter may be real. It may have been found last month. They would not have sent this letter to a lord whose name was what it was three years ago."
+        },
+        {
+          "speaker": "steward",
+          "frame": "after",
+          "text": "It is a claim that has slept forty years, my lord, and it woke because you look weak. You can answer it before the count with your own charters and witnesses, which costs silver and time and wins if your standing with him is what it should be; you can settle with the abbey for a sum; or you can let it go to judgement without you, and then it is theirs."
+        }
+      ],
+      "knows": [
+        "A dormant claim an abbey or the bishop has revived because the lord's weakness makes it worth the trying.",
+        "Answers: defend it before the count (silver, standing with the count decides); settle for a sum (the church is pleased); ignore it and lose the villa if one is held of the count, or a heavy share of the chest otherwise."
+      ],
+      "hooks": [
+        { "id": "defend_it", "trigger": "The lord answers the claim before the count with charters and witnesses.", "effects": { "cost": { "denarii": 100 }, "record": "The lord answered an abbey's revived claim before the count." } },
+        { "id": "settle", "trigger": "The lord settles with the abbey for a sum.", "effects": { "cost": { "denarii": 200 }, "flags": { "favor_church": "+4" }, "record": "The lord settled a revived claim with the abbey for a sum." } }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "mishaps", "momentum": 50 },
+      "notes": "Moderate. defend_it: mishaps.ts decides by standing with the count (55 or better wins, with renown back; below, the villa goes). Unanswered: a benefice villa held of the count goes to the abbey; failing one, a fifth of the chest."
+    },
+    {
+      "id": "M-006",
+      "title": "A vassal renounces you for cause",
+      "arc": "realm",
+      "type": "news",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "envoy",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, {mishap_vassal} has sent a man to say, before witnesses, that you failed to defend him when he was wronged and that under the king's law he is free of his oath. He means to commend himself to {neighbour}. It is lawful if the failure is true, and he has made sure there are men who will say it is. You can make it right with him, if you move now; you can contest it before the count; or you can let him go, and his holding with him."
+        }
+      ],
+      "knows": [
+        "A renunciation for cause: lawful under royal law when a lord has failed to defend his man. He commends himself to a stronger neighbour.",
+        "Answers: make it right (a gift and a promise, and he stays); contest it before the count (standing with the count decides); let him go cleanly. Doing nothing is letting him go, with less grace."
+      ],
+      "hooks": [
+        { "id": "make_it_right", "trigger": "The lord goes to him, makes good the wrong with a gift and a promise, and keeps him.", "effects": { "cost": { "denarii": 120 }, "renown": "small", "record": "The lord made good a wrong to a sworn man who had moved to renounce him, and kept him." } },
+        { "id": "contest_it", "trigger": "The lord contests the renunciation before the count.", "effects": { "cost": { "denarii": 60 }, "record": "The lord contested a sworn man's renunciation before the count." } },
+        { "id": "release_him", "trigger": "The lord releases him from his oath without a quarrel.", "effects": { "record": "The lord released a sworn man who had renounced him, without a quarrel." } }
+      ],
+      "hookWindow": 2,
+      "links": { "arc": "mishaps", "momentum": 50 },
+      "notes": "Moderate. contest_it: standing with the count 60 or better keeps him (renown back); below, he goes. release_him or unanswered: he and his holding go to the neighbour (unanswered costs renown besides)."
+    },
+    {
+      "id": "M-007",
+      "title": "A rival lobbies for your office",
+      "arc": "realm",
+      "type": "summons",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "summons",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, you are summoned to the assembly to answer charges: that the county is ill-kept under you, the levy short, the pleas unheard. The charges were drawn by a man who wants your office and has been buying ears for a year. If you go and answer them well, with gifts in the right hands, you keep it and they will remember you stood. If you send gifts and stay home, you may keep it and they will remember you did not. If you do nothing, he has it."
+        }
+      ],
+      "choices": {
+        "prompt": "Answer the summons to the assembly?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "go_and_defend", "label": "Go and answer the charges in person", "effects": { "away": { "reason": "at the assembly, answering charges", "seasons": 1 }, "cost": { "denarii": 150 }, "renown": "moderate", "flags": { "charles_favor": "+4" }, "record": "Summoned to answer charges brought by a rival for his office, the lord went and answered them." } },
+          { "id": "send_gifts", "label": "Stay home and send gifts", "effects": { "cost": { "denarii": 250 }, "flags": { "charles_favor": "+2" }, "record": "Summoned to answer charges brought by a rival, the lord sent gifts and stayed home." } },
+          { "id": "ignore", "label": "Ignore the summons", "default": true, "effects": { "record": "Summoned to answer charges brought by a rival for his office, the lord did not go." } }
+        ]
+      },
+      "links": { "arc": "mishaps", "momentum": 60 },
+      "notes": "High. ignore (or the deadline): mishaps.ts gives the rival a county, or the rank itself if only one is held. send_gifts keeps the office but earns nothing back."
+    },
+    {
+      "id": "M-008",
+      "title": "An outright attack",
+      "arc": "realm",
+      "type": "battle",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "scene",
+      "deferred": "battle",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, {neighbour}'s men are over the boundary in strength and they are not foraging; they have come for the villa. He will call it a border dispute afterward, whichever way it goes. The men are under arms."
+        }
+      ],
+      "battle": {
+        "momentum": 50,
+        "historical": "No such battle: a neighbour's attack on one of the lord's holdings, dressed as a border dispute.",
+        "participation": ["home defence"]
+      },
+      "links": { "arc": "mishaps", "momentum": 60 },
+      "notes": "High. The forces entry neighbour_attack in battles.json is raised on delivery (home defence). Won: renown back and the neighbour checked. Lost or barred: the holding is his (mishaps.ts)."
+    },
+    {
+      "id": "M-009",
+      "title": "The king reassigns a county",
+      "arc": "realm",
+      "type": "summons",
+      "rolled": true,
+      "fires": { "year": 9999, "season": "spring" },
+      "channel": ["steward"],
+      "form": "letter",
+      "script": [
+        {
+          "speaker": "steward",
+          "text": "My lord, a letter under the king's seal. One of your counties is given to another man, for the better keeping of it, and you are to hand over the fisc and the pleas at Easter. It is not a charge and there is no assembly; it is simply done, as a king does to a man he no longer needs to be careful of. You can go to him and contest it, with gifts and your own account of yourself; or you can hand it over and keep the rest."
+        }
+      ],
+      "choices": {
+        "prompt": "Contest the king's reassignment?",
+        "deadlineSeasons": 1,
+        "options": [
+          { "id": "go_to_court", "label": "Go to the king and contest it", "effects": { "away": { "reason": "at the king's court, contesting the county", "seasons": 1 }, "cost": { "denarii": 200 }, "record": "The king reassigned one of the lord's counties; the lord went to court to contest it." } },
+          { "id": "accept", "label": "Hand it over and keep the rest", "default": true, "effects": { "record": "The king reassigned one of the lord's counties, and the lord handed it over." } }
+        ]
+      },
+      "links": { "arc": "mishaps", "momentum": 70 },
+      "notes": "Severe. go_to_court: standing with the crown 55 or better keeps it (renown back); below, it goes anyway. accept or the deadline: a county goes (the rank itself if only one is held)."
+    }
+  ]
+}

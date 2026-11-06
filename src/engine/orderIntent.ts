@@ -22,6 +22,16 @@ const DEFER_AFTER_HARVEST = /\b(after (?:this |the )?harvest|once (?:the |this )
 const DEFER_SPRING = /\b(next spring|spring sowing|next year's spring)\b/i;
 const DEFER_AUTUMN = /\b(next autumn|autumn sowing|winter sowing)\b/i;
 const DEFER_SEASONS = /\b(?:after|in)\s+(\d+|one|two|three|four)\s+seasons?\b/i;
+/** The lord's word on a match (history/marriage.ts): the steward's `marriage` card. Questions about the matches stay talk. */
+const MARRIAGE_ORDER =
+  /\b(i (?:will|shall|'ll) (?:marry|wed|take|court)|marry|wed|betroth|take (?:her|\w+) (?:to wife|as my wife)|make the match|court (?:the widow|gisla)|(?:ride|go) to (?:the widow|gisla)|(?:send|go) (?:for|to) (?:her|the) (?:father|kin|brothers?))\b/i;
+
+/** The steward's marriage card (history/marriage.ts): the lord plainly chooses a match or goes to court the widow. */
+export function looksLikeMarriageOrder(text: string): boolean {
+  const t = text.trim();
+  if (!t || QUESTION_PREFIX.test(t)) return false;
+  return MARRIAGE_ORDER.test(t) && /\b(hildegard|theoderada|gisla|linda|widow|neighbou?r'?s? daughter|match|wife|bride)\b/i.test(t);
+}
 
 export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean {
   const t = text.trim();
@@ -30,6 +40,7 @@ export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean 
   if (npcId === "smith" && looksLikeBloomeryOrder(t)) return true;
   if (npcId === "chaplain" && looksLikeSponsoredFeastOrder(t)) return true;
   if (npcId === "chaplain" && /\b(alms|open the barn|feed the hungry)\b/i.test(t)) return true;
+  if (npcId === "steward" && looksLikeMarriageOrder(t)) return true;
   if (looksLikeHireOrder(t)) return true;
   // Pure questions stay reports — even if they mention manure or peas.
   if (QUESTION_PREFIX.test(t) && !ORDER_OVERRIDE.test(t)) return false;

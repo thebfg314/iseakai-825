@@ -985,6 +985,53 @@
         "lost": { "renown": "-moderate", "record": "Took the field against the king and lost it." }
       },
       "notes": "Rosters are composed in code from the quest's supporters (Battle_Force_Tables: the king quest battle); the enemy line here is the seed the composition builds on."
+    },
+    {
+      "id": "neighbour_woodland",
+      "event": "M-004-B",
+      "fullCommand": true,
+      "title": "The river woodland",
+      "call": "The neighbour's men hold the river woodland and the mill below it. Your own files are mustered to put them off it; nobody else's.",
+      "premise": "A disputed woodland by the river, and the mill below it, held by a neighbour's men who judged the lord too weak to come. He has come, with his own files and no one else's. The neighbour's reeve has horse and spears enough to make a day of it.",
+      "momentum": 50,
+      "field": { "roughness": 0.5, "terrain": { "woodland": 5, "heavy_brush": 2, "grassland": 3 }, "name": "The river woodland" },
+      "enemy": [
+        { "sheet": "caballarii", "name": "The neighbour's horse" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "The neighbour's spearmen" }
+      ],
+      "rows": {
+        "3": { "allies": [], "slots": 3 },
+        "4": { "allies": [], "slots": 4 },
+        "5": { "allies": [], "slots": 5 }
+      },
+      "results": {
+        "won": { "renown": "moderate", "flags": { "mishap_battle": "won" }, "record": "Rode against a neighbour who had taken the river woodland, and put his men off it." },
+        "held": { "renown": "small", "flags": { "mishap_battle": "held" }, "record": "Rode against a neighbour at the river woodland; neither side could claim it, and the woodland stayed in dispute." },
+        "lost": { "flags": { "mishap_battle": "lost" }, "record": "Rode against a neighbour at the river woodland and was driven off; the woodland was his after that." }
+      },
+      "onRefuse": { "flags": { "mishap_battle": "refused" } },
+      "notes": "Raised by M-004's ride_against_him hook. The lord's own war: no allies at any rank. mishaps.ts reads mishap_battle."
+    },
+    {
+      "id": "neighbour_attack",
+      "event": "M-008",
+      "home": true,
+      "title": "The neighbour's attack",
+      "call": "The neighbour's men are over the boundary in strength, horse and spears, and they have come for the villa. Your men are under arms.",
+      "premise": "A neighbour's men have come over the boundary in strength, horse and spearmen, for one of the lord's villas; he will call it a border dispute afterward. The lord's own men stand before the gate.",
+      "momentum": 50,
+      "field": { "roughness": 0.3 },
+      "enemy": [
+        { "sheet": "caballarii", "name": "The neighbour's horse" },
+        { "sheet": "pedites_fyrd", "count": 2, "name": "The neighbour's spearmen" }
+      ],
+      "results": {
+        "won": { "renown": "moderate", "flags": { "mishap_battle": "won" }, "record": "Threw back a neighbour's attack on the villa, dressed as a border dispute." },
+        "held": { "renown": "small", "flags": { "mishap_battle": "held" }, "record": "Held the gate against a neighbour's attack; he drew off without the villa." },
+        "lost": { "flags": { "mishap_battle": "lost" }, "record": "A neighbour's attack broke the lord's men at the gate; the villa was his after that, and he called it a border dispute." }
+      },
+      "onRefuse": { "flags": { "mishap_battle": "refused" } },
+      "notes": "Raised on M-008's delivery (home defence). mishaps.ts reads mishap_battle."
     }
   ]
 }

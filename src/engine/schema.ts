@@ -508,6 +508,8 @@ export const BattleSessionSchema = z.object({
   broughtUnitIds: z.array(z.string()).default([]),
   /** Men the lord's sworn vassals brought to this field (history/vassals.ts); 0 when none rode. */
   swornMen: z.number().int().nonnegative().default(0),
+  /** Men of his own files as they rode out (the hall's measure of how he equips them). */
+  ownMen: z.number().int().nonnegative().default(0),
   /** Full Command §9.5 Scouting Duel in progress. */
   scouting: z
     .object({
@@ -606,6 +608,14 @@ export const BattleRecordSchema = z.object({
   rounds: z.number().int(),
   renownDelta: z.number(),
   summary: z.string(),
+  /** Heart dealt and taken by the files the lord commanded (the renown formula's two halves). */
+  moraleDealt: z.number().optional(),
+  moraleTaken: z.number().optional(),
+  /** Men of his own he brought, and the manses he held that day: what the hall measures his equipping against. */
+  ownMen: z.number().int().nonnegative().optional(),
+  manses: z.number().int().nonnegative().optional(),
+  /** A captain carried his orders; the day says nothing of his own handling. */
+  captain: z.boolean().optional(),
 });
 export type BattleRecord = z.infer<typeof BattleRecordSchema>;
 
@@ -871,6 +881,13 @@ export const PROPOSAL_TYPES = [
   "justice_verdict",
   "set_stance",
   "steward_office",
+  "household_upkeep",
+  "giving_stance",
+  "vassal_gift",
+  "vassal_occasion",
+  "church_endowment",
+  "church_purchase",
+  "marriage",
 ] as const;
 export type ProposalType = (typeof PROPOSAL_TYPES)[number];
 
@@ -1226,11 +1243,62 @@ export const StewardOfficeProposalSchema = ProposalBase.extend({
   name: z.string().optional(),
 });
 
+/** Household style (upkeep.ts): cut up to 10 points off the rank's household share. The household itself is not optional. */
+export const HouseholdUpkeepProposalSchema = ProposalBase.extend({
+  type: z.literal("household_upkeep"),
+  /** Points below the rank's household share, 0 (as a lord of this rank is expected to keep) through 10. */
+  cut: z.coerce.number().int().min(0).max(10),
+});
+
+/** How openly the hall gives, inside the household bill. */
+export const GivingStanceProposalSchema = ProposalBase.extend({
+  type: z.literal("giving_stance"),
+  level: z.enum(["lean", "customary", "generous"]),
+});
+
+/** A thing given to one sworn man. Negotiation is remembered as a bribe. */
+export const VassalGiftProposalSchema = ProposalBase.extend({
+  type: z.literal("vassal_gift"),
+  vassalId: z.string().min(1),
+  kind: z.enum(["horse", "mail", "sword", "bird", "cup", "cloak", "relic"]),
+  occasion: z.enum(["ordinary", "wedding", "confirm", "funeral", "victory", "birth", "negotiation"]).default("ordinary"),
+});
+
+/** The open wedding, confirmation, funeral, victory, birth, or holy-day distribution. */
+export const VassalOccasionProposalSchema = ProposalBase.extend({
+  type: z.literal("vassal_occasion"),
+  option: z.enum(["snub", "token", "customary", "lavish"]),
+});
+
+export const ChurchEndowmentProposalSchema = ProposalBase.extend({
+  type: z.literal("church_endowment"),
+  kind: z.enum(["repair", "chapel", "monastery", "major_house", "immunity"]),
+});
+
+export const ChurchPurchaseProposalSchema = ProposalBase.extend({
+  type: z.literal("church_purchase"),
+  aim: z.enum(["judgment", "support", "annulment", "absolution"]),
+});
+
+/** Marriage (marriage.ts): the lord's word on one of four matches, or a visit in person to the widow (court). Aldric only. */
+export const MarriageProposalSchema = ProposalBase.extend({
+  type: z.literal("marriage"),
+  archetype: z.enum(["hildegard", "theoderada", "gisla", "linda"]),
+  action: z.enum(["marry", "court"]).default("marry"),
+});
+
 export const InnerMechanicalProposalSchema = z.discriminatedUnion("type", [
   VassalMoodProposalSchema,
   JusticeVerdictProposalSchema,
   SetStanceProposalSchema,
   StewardOfficeProposalSchema,
+  MarriageProposalSchema,
+  HouseholdUpkeepProposalSchema,
+  GivingStanceProposalSchema,
+  VassalGiftProposalSchema,
+  VassalOccasionProposalSchema,
+  ChurchEndowmentProposalSchema,
+  ChurchPurchaseProposalSchema,
   FreeMancipiaProposalSchema,
   RaiseUnitProposalSchema,
   DisbandUnitProposalSchema,
@@ -1309,14 +1377,28 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   JusticeVerdictProposalSchema,
   SetStanceProposalSchema,
   StewardOfficeProposalSchema,
+  HouseholdUpkeepProposalSchema,
+  GivingStanceProposalSchema,
+  VassalGiftProposalSchema,
+  VassalOccasionProposalSchema,
+  ChurchEndowmentProposalSchema,
+  ChurchPurchaseProposalSchema,
+  MarriageProposalSchema,
   DeferProposalSchema,
 ]);
 
 export type AssignLabourProposal = z.infer<typeof AssignLabourProposalSchema>;
+export type MarriageProposal = z.infer<typeof MarriageProposalSchema>;
 export type VassalMoodProposal = z.infer<typeof VassalMoodProposalSchema>;
 export type JusticeVerdictProposal = z.infer<typeof JusticeVerdictProposalSchema>;
 export type SetStanceProposal = z.infer<typeof SetStanceProposalSchema>;
 export type StewardOfficeProposal = z.infer<typeof StewardOfficeProposalSchema>;
+export type HouseholdUpkeepProposal = z.infer<typeof HouseholdUpkeepProposalSchema>;
+export type GivingStanceProposal = z.infer<typeof GivingStanceProposalSchema>;
+export type VassalGiftProposal = z.infer<typeof VassalGiftProposalSchema>;
+export type VassalOccasionProposal = z.infer<typeof VassalOccasionProposalSchema>;
+export type ChurchEndowmentProposal = z.infer<typeof ChurchEndowmentProposalSchema>;
+export type ChurchPurchaseProposal = z.infer<typeof ChurchPurchaseProposalSchema>;
 export type SetStandingOrderProposal = z.infer<typeof SetStandingOrderProposalSchema>;
 export type StartProjectProposal = z.infer<typeof StartProjectProposalSchema>;
 export type AdjustProjectProposal = z.infer<typeof AdjustProjectProposalSchema>;
@@ -1357,6 +1439,13 @@ export type MechanicalProposal =
   | JusticeVerdictProposal
   | SetStanceProposal
   | StewardOfficeProposal
+  | HouseholdUpkeepProposal
+  | GivingStanceProposal
+  | VassalGiftProposal
+  | VassalOccasionProposal
+  | ChurchEndowmentProposal
+  | ChurchPurchaseProposal
+  | MarriageProposal
   | RaiseUnitProposal
   | DisbandUnitProposal
   | CallToArmsProposal

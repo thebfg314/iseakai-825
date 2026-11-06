@@ -13,6 +13,7 @@ import natural from "../../data/history/events/natural.json";
 import ending from "../../data/history/events/ending.json";
 import duties from "../../data/history/events/duties.json";
 import quest from "../../data/history/events/quest.json";
+import mishaps from "../../data/history/events/mishaps.json";
 import flagsFile from "../../data/history/flags.json";
 import realmFile from "../../data/history/calendar/realm.json";
 import featuresFile from "../../data/history/features.json";
@@ -41,7 +42,7 @@ export type HistoryContent = {
   battles: BattleForces[];
 };
 
-const EVENT_FILES: unknown[] = [arc1, arc2, arc3, arc4, arc5, arc6, arc7, arc8, arc9, church, economy, natural, ending, duties, quest];
+const EVENT_FILES: unknown[] = [arc1, arc2, arc3, arc4, arc5, arc6, arc7, arc8, arc9, church, economy, natural, ending, duties, quest, mishaps];
 
 export function seasonIndex(season: string): number {
   const i = (SEASON_ORDER as readonly string[]).indexOf(season);

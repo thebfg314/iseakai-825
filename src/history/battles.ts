@@ -271,9 +271,12 @@ export function composeQuestSector(state: WorldState): { allies: HistoryRosterLi
   const nobles = state.history.quest.nobles;
   const allies: HistoryRosterLine[] = [line("elite_foot", "The lord's household", { lord: true, fixed: true })];
   let betrayerUnits = 0;
+  const m = state.history.marriage;
   for (const n of nobles) {
     if (n.status !== "won" && n.status !== "betrayer") continue;
-    const rows = QUEST_CONTINGENTS[n.motive] ?? QUEST_CONTINGENTS.money;
+    let rows = QUEST_CONTINGENTS[n.motive] ?? QUEST_CONTINGENTS.money;
+    // The lady's brothers (marriage.ts): given what they asked, or asking nothing, her house comes in full.
+    if (n.motive === "marriage" && m?.archetype === "theoderada" && (m.kinPledged || m.kinWant === "none")) rows = [...rows, { sheet: "pedites_fyrd", name: "spearmen" }];
     for (const r of rows) {
       allies.push(line(r.sheet, `${n.name}'s ${r.name}`, { lineId: n.status === "betrayer" ? "betrayer" : undefined, fixed: true }));
       if (n.status === "betrayer") betrayerUnits++;

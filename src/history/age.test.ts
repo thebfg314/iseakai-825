@@ -6,7 +6,6 @@ import { deathChance, markDeath, participationBand, tickAge } from "./age";
 import { endingFallback, endingFacts, endingSystemPrompt, endingUserPrompt } from "./ending";
 import { seasonOrdinal, setHistoryContentForTests } from "./load";
 import { runHistorySeasonPass, type HistoryPassResult } from "./season";
-
 /** Step G: age and death, the life record, the closing page. */
 
 function fresh(): WorldState {
@@ -19,7 +18,7 @@ function clockFor(state: WorldState) {
   const next = (): HistoryPassResult => {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
-    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
     state.meta.turn += 1;

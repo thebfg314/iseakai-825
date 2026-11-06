@@ -1,6 +1,7 @@
 import { createRng, seedFromString } from "../combat/rng";
 import type { WorldState } from "../engine/schema";
 import type { HistoryBeat } from "./deliver";
+import { decayGifts, driftForGiving } from "./gifts";
 import type { SeasonAt } from "./scheduler";
 import type { HistoryState } from "./schema";
 
@@ -22,7 +23,14 @@ export type Vassal = HistoryState["vassals"][number];
 export const CONTENT_AT = 65;
 export const ANGRY_BELOW = 35;
 const FADE_PER_SEASON = 1;
+/** The sworn men's resting mood sits this far under the middle while the lord is married beneath him (marriage.ts). */
+const MARRIED_BENEATH_PENALTY = 6;
 const SEASONS_BEFORE_DEFECTION = 4;
+
+/** Where the moods fade to: the middle, or under it for a lord who married for nothing. Read directly off the state to avoid a cycle with marriage.ts. */
+export function restingMood(state: WorldState): number {
+  return state.history.marriage?.archetype === "linda" ? 50 - MARRIED_BENEATH_PENALTY : 50;
+}
 const DEFECTION_CHANCE = 0.25;
 /** A county's lords bring a tenth of the levy as a file at the lord's side. */
 const GROUP_LEVY_SHARE = 0.1;
@@ -70,6 +78,17 @@ export function averageVassalMood(state: WorldState): number {
   return Math.round(all.reduce((n, v) => n + v.mood, 0) / all.length);
 }
 
+export type VassalGrievance = "undefended" | "heir" | "judged";
+
+export function addGrievance(v: Vassal, kind: VassalGrievance): void {
+  v.grievances ??= [];
+  if (!v.grievances.includes(kind)) v.grievances.push(kind);
+}
+
+export function clearGrievance(v: Vassal, kind: VassalGrievance): void {
+  v.grievances = (v.grievances ?? []).filter((g) => g !== kind);
+}
+
 function touch(v: Vassal, delta: number, why: string, turn: number): void {
   v.mood = clamp(Math.round(v.mood + delta), 0, 100);
   v.lastReason = why;
@@ -92,6 +111,11 @@ export function noteVassalEvent(state: WorldState, kind: VassalEventKind, turn: 
   if (!(state.history.vassals ?? []).length) return null;
   const e = VASSAL_EVENTS[kind];
   const names = moveVassalMood(state, e.delta, e.why, turn, ids);
+  const touched = (state.history.vassals ?? []).filter((v) => !v.group && (!ids.length || ids.includes(v.id)));
+  if (kind === "judged_against") for (const v of touched) addGrievance(v, "judged");
+  if (kind === "refused_call") for (const v of touched) addGrievance(v, "undefended");
+  if (kind === "confirmed_heir") for (const v of touched) clearGrievance(v, "heir");
+  if (kind === "protected" || kind === "victory") for (const v of touched) clearGrievance(v, "undefended");
   if (!names.length) return null;
   const who = ids.length ? names.join(", ") : names.length === 1 ? names[0] : "the sworn men";
   return `${who[0].toUpperCase()}${who.slice(1)}: ${e.why} (${e.delta > 0 ? "+" : ""}${e.delta}).`;
@@ -168,12 +192,15 @@ export function tickVassals(state: WorldState, at: SeasonAt, turn: number): Vass
   const out: VassalTick = { beats: [], lines: [], left: [] };
   const all = state.history.vassals ?? [];
   if (!all.length) return out;
+  decayGifts(state);
+  const rest = restingMood(state);
   for (const v of all) {
-    if (v.mood > 50) v.mood = Math.max(50, v.mood - FADE_PER_SEASON);
-    else if (v.mood < 50) v.mood = Math.min(50, v.mood + FADE_PER_SEASON);
+    if (v.mood > rest) v.mood = Math.max(rest, v.mood - FADE_PER_SEASON);
+    else if (v.mood < rest) v.mood = Math.min(rest, v.mood + FADE_PER_SEASON);
     if (v.mood < ANGRY_BELOW) v.angrySince ??= turn;
     else v.angrySince = null;
   }
+  driftForGiving(state);
   const leaving: Vassal[] = [];
   for (const v of all) {
     if (v.group || v.angrySince === null || turn - v.angrySince < SEASONS_BEFORE_DEFECTION) continue;
@@ -181,33 +208,42 @@ export function tickVassals(state: WorldState, at: SeasonAt, turn: number): Vass
     if (rng.chance(DEFECTION_CHANCE)) leaving.push(v);
   }
   for (const v of leaving) {
-    const i = state.history.vassals.indexOf(v);
-    if (i >= 0) state.history.vassals.splice(i, 1);
-    const villa = state.holdings.findIndex((h, k) => k > 0 && h.name === v.holding && h.tenure === "benefice");
-    let villaName: string | null = null;
-    if (villa > 0) {
-      const h = state.holdings[villa];
-      state.holdings.splice(villa, 1);
-      state.population.households = Math.max(0, state.population.households - h.households);
-      villaName = h.name;
-    }
     const why = v.lastReason ?? "his grievances";
-    state.history.vassalsLost.push({ name: v.name, turn, why });
-    state.history.record.push({
-      year: at.year,
-      season: at.season,
-      text: `${v.name} left the lord's service over ${why}${villaName ? `, taking the villa of ${villaName} with him` : ""}.`,
-      thread: "vassals",
-    });
+    const gone = departVassal(state, v, at, turn, why);
     out.left.push(v.name);
-    out.lines.push(`${v.name} has gone over to another lord with his ${v.men} men${villaName ? ` and the villa of ${villaName}` : ""}.`);
+    out.lines.push(`${v.name} has gone over to another lord with his ${v.men} men${gone.villaName ? ` and the villa of ${gone.villaName}` : ""}.`);
     out.beats.push({
       npcId: "steward",
       eventId: "vassals:left",
-      text: `My lord, ${v.name} has taken his men and gone. He has been sour since ${why}, and he has found a lord who will have him${villaName ? `; ${villaName} goes with him, since he held it of you` : ""}. I have struck him from the books.`,
+      text: `My lord, ${v.name} has taken his men and gone. He has been sour since ${why}, and he has found a lord who will have him${gone.villaName ? `; ${gone.villaName} goes with him, since he held it of you` : ""}. I have struck him from the books.`,
     });
   }
   return out;
+}
+
+/**
+ * A sworn man leaves the lord's service, taking his men and, if he held it of the lord, his villa.
+ * Returns the villa's name if one went with him. `to` names the lord he went to, for the Books.
+ */
+export function departVassal(state: WorldState, v: Vassal, at: SeasonAt, turn: number, why: string, to?: string): { villaName: string | null } {
+  const i = state.history.vassals.indexOf(v);
+  if (i >= 0) state.history.vassals.splice(i, 1);
+  const villa = state.holdings.findIndex((h, k) => k > 0 && h.name === v.holding && h.tenure === "benefice");
+  let villaName: string | null = null;
+  if (villa > 0) {
+    const h = state.holdings[villa];
+    state.holdings.splice(villa, 1);
+    state.population.households = Math.max(0, state.population.households - h.households);
+    villaName = h.name;
+  }
+  state.history.vassalsLost.push({ name: v.name, turn, why });
+  state.history.record.push({
+    year: at.year,
+    season: at.season,
+    text: `${v.name} left the lord's service over ${why}${to ? ` and commended himself to ${to}` : ""}${villaName ? `, taking the villa of ${villaName} with him` : ""}.`,
+    thread: "vassals",
+  });
+  return { villaName };
 }
 
 /** The sworn men for Aldric's HISTORY block: ids, moods and men, who has gone, and when to propose vassal_mood. */

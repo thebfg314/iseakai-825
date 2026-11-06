@@ -62,7 +62,6 @@ import { hudInkLine, hudInkTitle, settingsInkLines } from "./scribeInk";
 import { confirmBanner, playerFacingReason, roleName } from "./ledgerCopy";
 import { ProposalsPanel } from "./ProposalsPanel";
 import { GlossaryProvider, GlossaryText } from "./GlossaryText";
-import { EmptyVillaScreen } from "./emptyVilla";
 import { ShopPanel } from "./ShopPanel";
 import { BattleLab } from "./lab/BattleLab";
 import { BattleScreen } from "./battle/BattleScreen";
@@ -154,7 +153,10 @@ export function App() {
   }, [view?.messages.length, view?.sceneNpcId]);
 
   // The chronicle's last page (03_HISTORY §13): written once, when the lord is dead and no page exists yet.
-  const needsEnding = Boolean(view && !view.state.battle_session && (view.state.history?.dead || view.state.player.dead || view.state.player.captive) && !view.state.history?.ending);
+  const gameOver = Boolean(
+    view && (view.state.history?.dead || view.state.player.dead || view.state.player.captive || view.state.player.maimed || view.state.estateAbandoned),
+  );
+  const needsEnding = Boolean(gameOver && !view?.state.battle_session && !view?.state.history?.ending);
   useEffect(() => {
     if (!needsEnding || busy || !window.api.writeEnding) return;
     void (async () => {
@@ -518,7 +520,7 @@ export function App() {
     );
   }
 
-  if ((view.state.history?.dead || view.state.player.dead || view.state.player.maimed || view.state.player.captive) && !view.state.battle_session) {
+  if ((view.state.history?.dead || view.state.player.dead || view.state.player.maimed || view.state.player.captive || view.state.estateAbandoned) && !view.state.battle_session) {
     const ending = view.state.history?.ending ?? null;
     return (
       <>
@@ -533,13 +535,17 @@ export function App() {
             </div>
           ) : (
             <p className="empty-villa-words">
-              {view.state.history?.dead || view.state.player.dead
-                ? needsEnding
-                  ? "The lord of Fontenay is dead. The household gathers to say what he was…"
-                  : "The lord of Fontenay fell in battle. The villa passes to other hands, and the chronicle of this house ends here."
-                : view.state.player.captive
-                  ? "Taken in battle, and the chest could not meet the ransom. No one came with the rest. The lord of Fontenay stays in his captors' hands; the villa passes to other hands, and the chronicle of this house ends here."
-                  : "Two wounds that never healed. The lord of Fontenay can no longer sit a horse nor hold a court; the villa passes to other hands, and the chronicle of this house ends here."}
+              {needsEnding
+                ? "The household gathers to say what he was, and what the world is now that he is gone…"
+                : view.state.estateAbandoned
+                  ? "The demesne people are gone. The villa stands empty, and the chronicle of this house ends here."
+                  : view.state.player.captive
+                    ? "Taken in battle, and the chest could not meet the ransom. The lord of Fontenay stays in his captors' hands, and the chronicle of this house ends here."
+                    : view.state.history?.dead?.cause === "execution"
+                      ? "The lord of Fontenay was put to death as a traitor. There was no kin to speak for him."
+                      : view.state.player.maimed
+                        ? "Two wounds that never healed. The lord of Fontenay can no longer sit a horse nor hold a court."
+                        : "The lord of Fontenay is dead. The chronicle of this house ends here."}
             </p>
           )}
           <nav className="title-menu">
@@ -557,21 +563,15 @@ export function App() {
     );
   }
 
-  if (view.state.estateAbandoned) {
-    return (
-      <>
-        <EmptyVillaScreen
-          busy={busy}
-          onTitle={() => setScreen("title")}
-          onNewGame={() => void startNew()}
-        />
-        {error && <p className="error">{error}</p>}
-        {settingsModal}
-      </>
-    );
-  }
-
-  const portraitSrc = npcPortrait(view.sceneNpcId, displayEmotion, view.state.merchant.face);
+  const questGuest = view.state.history?.quest?.meeting ?? null;
+  const portraitSrc = npcPortrait(
+    view.sceneNpcId,
+    displayEmotion,
+    view.state.merchant.face,
+    view.state.history?.marriage?.archetype ?? null,
+    view.sceneNpcId === "audience" ? questGuest?.motive : undefined,
+  );
+  const speakerName = view.sceneNpcId === "audience" ? questGuest?.name : npc?.name;
 
   return (
     <GlossaryProvider>
@@ -665,6 +665,17 @@ export function App() {
             >
               Steward · Aldric
             </SceneTab>
+            {questGuest && (
+              <SceneTab
+                id="scene-tab-audience"
+                active={view.sceneNpcId === "audience"}
+                wantsTalk={questGuest.wantsTalk}
+                title={`Speak with ${questGuest.name}`}
+                onClick={() => withBusy(() => window.api.setScene("audience"))}
+              >
+                {questGuest.name}
+              </SceneTab>
+            )}
             <SceneTab
               id="scene-tab-smith"
               active={view.sceneNpcId === "smith"}
@@ -727,7 +738,7 @@ export function App() {
           <div className="talk" id="talk-panel">
             {portraitSrc && (
               <aside className={`portrait ${view.sceneNpcId}`}>
-                <img src={portraitSrc} alt={npc?.name ?? "Speaker"} />
+                <img src={portraitSrc} alt={speakerName ?? "Speaker"} />
               </aside>
             )}
             <div className={view.sceneNpcId === "merchant" && view.merchantAvailable ? "merchant-scene" : "log"} ref={view.sceneNpcId === "merchant" && view.merchantAvailable ? undefined : scroller}>
@@ -1319,6 +1330,8 @@ function composerPlaceholder(view: GameView): string {
     }
     case "merchant":
       return `Speak with ${view.state.merchant.name ?? "the merchant"} of the roads…`;
+    case "audience":
+      return `Speak with ${view.state.history?.quest?.meeting?.name ?? "him"}…`;
     case "quarry_master":
       return "Speak with Colman of the stone…";
     case "carpenter":

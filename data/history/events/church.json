@@ -211,7 +211,7 @@
         {
           "id": "witness_cluny",
           "trigger": "The lord asks to stand witness to the charter, or sends a gift as a benefactor.",
-          "requires": "favor_church >= 3 or tournus_friend or favor_septimania >= 2 or oath_kept_lord",
+          "requires": "favor_church >= 53 or tournus_friend or favor_septimania >= 2 or oath_kept_lord",
           "effects": { "cost": { "denarii": 30 }, "flags": { "cluny_witness": true, "favor_church": "+1" }, "renown": "small", "record": "The lord's name went on the foundation of Cluny." }
         }
       ],

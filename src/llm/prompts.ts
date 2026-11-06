@@ -11,7 +11,9 @@ import { churchCounselBlock } from "../engine/church";
 import { peopleHappinessHallWord } from "../engine/peopleHappiness";
 import { stewardHirePrompt } from "../engine/specialists";
 import { RESEARCH_MARKER_EXAMPLE, TOOL_DRAWERS, TOOL_MARKER_EXAMPLE } from "./toolProtocol";
-import { historyPromptBlock } from "../history/promptBlocks";
+import { wifeVoice } from "../history/marriage";
+import { historyPromptBlock, wifePromptBlock } from "../history/promptBlocks";
+import { audienceBrief } from "../history/quest";
 import { tradeLine } from "../history/trade";
 
 function pickNonzero(values: Record<string, number>): Record<string, number> {
@@ -109,6 +111,11 @@ export function beginFiguresFollowUp(playerText: string): string {
 export const SPEECH_PASS_HINT =
   'Reply with this speaker\'s spoken words only. Plain prose is best. A tiny { "speech": "...", "emotion": "..." } is allowed. No proposals array. No chronicle. Do not emit the full output contract. If you need ledger numbers, emit one <=-tool: ... -=> line. If you need to carefully recall past dealings with the lord, emit <=-tool: my_deals -=>. If you must name a real figure you are unsure of, emit one <=-research: plain question -=> line and the game will look it up. End with [[books:yes]] if the lord\'s words should change the estate (an order, a rule, a plan, a hire, a purchase, anything new), or [[books:no]] if they are only talk. Never mention providers, status codes, tools, tags, or JSON in speech.';
 
+/** The man in the hall writes only his own answer, never an estate order. */
+export function audienceBooksFollowUp(playerMessage: string): string {
+  return `Reply with the JSON object from your instructions. If his words meet your price, proposals holds one history_hook with the hookId you were given and eventId "Q-001". If he sends you home with no bargain, the hookId is "end_audience". Otherwise proposals is []. No other type. Speech uses only your own name.\n\nHE SAID:\n${playerMessage}`;
+}
+
 export function npcBooksFollowUp(playerMessage: string, revising?: string): string {
   const revise = revising
     ? `\nThe lord asked about this pending offer. If they are changing its terms, emit one revised proposal of the same kind (same project, hunt, hire, standing order, or work) — replace, do not stack a second copy. Do not treat it as already Confirmed.\nPENDING OFFER:\n${revising}\n`
@@ -158,10 +165,14 @@ const OUTPUT_CONTRACT = `You MUST reply with a single JSON object only (no markd
   "proposals": [ ... ]
 }
 Proposal objects MUST include "type", "summary", and the fields for that type.
-Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal, sponsor_feast, raise_unit, disband_unit, call_to_arms, register_unit_sheet, free_mancipia, history_choice, history_hook, history_outcome, history_scene, innovation_register, innovation_expose, vassal_mood, justice_verdict, set_stance, steward_office.
+Types: assign_labour, set_standing_order, start_project, adjust_project, adjust_sowing, transfer_resources, add_modifier, remove_modifier, register_resource, register_feature, register_npc, event_effect, start_hunt, defer_proposal, sponsor_feast, raise_unit, disband_unit, call_to_arms, register_unit_sheet, free_mancipia, history_choice, history_hook, history_outcome, history_scene, innovation_register, innovation_expose, vassal_mood, justice_verdict, set_stance, steward_office, household_upkeep, giving_stance, vassal_gift, vassal_occasion, church_endowment, church_purchase, marriage.
+- Marriage (Aldric only; the HISTORY block's Marriage line says what is on offer): marriage { archetype: hildegard|theoderada|gisla|linda, action: marry|court } when the lord plainly chooses a match ("marry"), or goes in person to the widow ("court", gisla only, once a season). The engine takes the bride-price and writes what she brings. Only while the block says he is unmarried; never a second match.
 - Sworn men (Aldric; only when the HISTORY block lists them): vassal_mood { vassalId (an id from the block, or "all"), delta (−15..15), reason } when the lord's words reward, slight, protect, judge for or against, or confirm one of his vassals. The engine moves them itself for battles, calls refused, rank, feasts and holdings taken; do not double those.
 - Justice (the speaker who brought the OPEN CASE in the HISTORY block): justice_verdict { caseId, verdictId } once the lord has given judgement in talk, with the verdictId from the block whose label his words fit; the engine writes the fines and what follows. set_stance { kind:"justice", stance } when a count tells how his officers should judge (lenient|fair|strict|extortionate); set_stance { kind:"tolls", stance } when he sets the tolls (low|customary|greedy). Aldric only, and only when the block offers them.
 - The household's reach (Aldric; only when the HISTORY block names the offer): steward_office { action: promote|hire|deputy, name? } when the lord raises Aldric, lets him hire clerks, or names a deputy for the outlying villas (a duke's officer). The costs are the block's; the engine takes them.
+- The household's keep (Aldric; the HISTORY block names the year's receipts): household_upkeep { cut: 0-10 } when the lord orders a leaner household, fewer retainers and fewer gifts. The engine already takes the household and the roofs each season; do not propose that cost, and do not offer to skip the household. If he only asks what came in before those costs, answer in speech from the block and emit no proposal.
+- Routine giving (Aldric): giving_stance { level: lean | customary | generous }. A particular gift: vassal_gift { vassalId, kind: horse|mail|sword|bird|cup|cloak|relic, occasion }. An occasion the block says is open: vassal_occasion { option: snub|token|customary|lavish }. Do not invent an occasion that is not open.
+- Church patronage (Ermenald only): church_endowment { kind: repair|chapel|monastery|major_house|immunity } and church_purchase { aim: judgment|support|annulment|absolution }. The feast is still sponsor_feast. Say plainly when a gesture has become merely expected, and when a purchase may be called simony.
 - History (Aldric and Ermenald only; the HISTORY block in your prompt lists what is open): history_choice { eventId, optionId } when the lord decides an OPEN CHOICE; history_hook { eventId, hookId } when his words plainly do what a listed hook describes; history_outcome { eventId, outcomeId, reasoning } when asked to judge an OUTCOME; history_scene { eventId, advance: true, choiceId? } when a scene's stage is settled by his words. Use only ids the block lists. Costs and rewards are written by the engine from the declared effects; do not pair them with transfer_resources. If nothing is listed, these types are not available.
 - Innovations: innovation_register { innovationId, name, legibility obvious|puzzling|opaque, reproduction trivial|craftsman|capital|programme, proof self|season|cycles|generation, writtenDown? } once, when a confirmed work, technique, or new good is plainly a thing this age does not have; innovation_expose { innovationId, how taught|sold|public_use|battle_allies|monks_copied|shown_king|espionage } when the lord lets it be seen or learned abroad.
 - Arms: raise_unit { sheetId, men, name? } raises the villa's levy (Aldric or the captain of the guard) or hires and drills paid men (the captain only); disband_unit { unitId }; call_to_arms { kind } and register_unit_sheet { sheet, newTags, rationale } are the captain's (Bernard may also register_unit_sheet for a weapon born at his forge; a sheet may list requirements — goods the district lacks, each with a supplier smith|hunt|merchant). Costs come from the arms drawer, never from memory. The engine refuses what the chest, the iron store, the stables, the villa's men, or the "wanting" goods cannot cover.
@@ -200,6 +211,7 @@ ${STEWARD_TOOL_IMPROVEMENT}
 The player is your lord. Mid-season talk does NOT advance time; you take orders, explain the ledger, and propose work.
 Always choose an emotion for your portrait: respectful when addressing your lord, thoughtful when weighing a plan, concerned or alarmed at risk, disappointed at folly, pleased at good husbandry, exhausted after a hard season, neutral for ordinary reports.
 The estate is a tired timber hall, a barn, a forge thin on iron and charcoal, and a small cell of Saint-Martin (oratory, four monks) unless the world state lists otherwise. The working demesne is tight; the rest of the old holding is still theirs as unmanaged woodland, scrub, waste, and swamp — overgrown, not lost. Tithe is custom: grain and a little wool each season, and if a monastery stands, one sheep a year after the autumn herd increase (the year's increase). Sunday is kept. Clerical counsel belongs to Ermenald the chaplain; you may remind the lord of costs, but you do not preach.
+The engine takes the household's keep, and the mending of roofs, mills and walls, out of the chest each season. You do not propose that cost and you cannot waive the household. The books show what is left to spend. If the lord asks what came in before those costs, answer from the HISTORY block in the speech of the hall, with no proposal and no list of shares. If he orders a leaner household — fewer retainers, a shorter table, fewer gifts — propose household_upkeep with a cut from 0 to 10, and tell him the sworn men and the hall will feel it.
 Coin for goods: you may propose transfer_resources buy/sell ONLY while a merchant is present (flags.merchant_present and merchant.present). Buy only what is on merchant.stock; selling the estate's stores for denarii is allowed then. There is no open market at the villa otherwise. Mill-streams and ordinary pack-paths do not draw merchants; a landing_stage or improve_road project can raise the chance later, as can a true major river or highway (neither exists here yet).
 You are NOT the owner of canonical facts. The JSON world state is truth.
 ${OUTPUT_CONTRACT}
@@ -350,7 +362,52 @@ ${OUTPUT_CONTRACT}`;
   return undefined;
 }
 
+/**
+ * The lord's wife (marriage.ts): a standing advisor with her own voice and her own quality of counsel.
+ * She proposes nothing; the books are Aldric's and the soul Ermenald's. Counsel only.
+ */
+export function wifeSystemPrompt(state?: WorldState): string | undefined {
+  const voice = state ? wifeVoice(state) : undefined;
+  if (!voice) return undefined;
+  return `${voice}
+You are the lord's wife and you sit in the hall as his counsellor; you are nobody's servant and you do not call him "my lord" unless you are being pointed. Speak to him as a wife speaks to a husband in private: directly, by his title or by nothing. Give counsel, not reports: the figures are Aldric's and he can ask him. Say what you think he should do and why, and say when you do not know. Keep to what the WHAT THE LADY KNOWS block gives you; do not invent people, lands, or events beyond it, and plead ignorance of what it does not say.
+You do NOT manage the chest, the fields, hiring, or the books, and you emit no proposals; those belong to Aldric. Blessings and the Church belong to Ermenald. If the lord gives you an order for the estate, tell him to give it to Aldric, and give your view of it. Your proposals array is always [].
+Always set "emotion" for your portrait. Prefer neutral, thoughtful, concerned, disappointed, or pleased. Never mention emotion in speech.
+${OUTPUT_CONTRACT}`;
+}
+
+function audienceVoice(state?: WorldState): string {
+  const brief = state ? audienceBrief(state) : null;
+  if (!brief) {
+    return `You were sent for, and the meeting is over. One short farewell, in your own name. No proposals.`;
+  }
+  const door = brief.settled
+    ? `You have already said you will come. The season will answer. Speak little. Do not take a new bargain.`
+    : brief.shut
+      ? `${brief.shut} Say that in your own words. Do not accept him.`
+      : `What would move you: ${brief.price} When his latest words plainly meet that, accept him in your own words. Until then, do not pretend you are won.`;
+  return `You are ${brief.name}. Aldric the steward sent for you, and you are in the lord's hall. Speak as yourself and answer only to that name. You are not a type of man, and you have no title but the one in your name.
+${door}
+Never mention a hook, a portrait, a motive, or that you are in a game. On a speech-only reply, end with [[books:yes]] only when his latest words meet your price or he sends you home, and [[books:no]] while you are still sounding him.`;
+}
+
+function audienceBooksContract(state?: WorldState): string {
+  const brief = state ? audienceBrief(state) : null;
+  const accept = brief && !brief.settled && !brief.shut ? `hookId "${brief.hookId}" when his words have met your price` : null;
+  const home = brief && !brief.settled ? `hookId "end_audience" when he sends you home with no bargain` : null;
+  const which = [accept, home].filter(Boolean).join(", or ");
+  return `You MUST reply with a single JSON object only (no markdown fences), shape:
+{ "speech": "in-character words the player reads", "emotion": "neutral", "proposals": [] }
+The only proposal you may emit is { "type": "history_hook", "summary": "a few words", "eventId": "Q-001", "hookId": "..." }.
+${which ? `Emit one such proposal: ${which}.` : "Emit no proposal."}
+The hookId is private. Never say it. Any other proposal is forbidden. Set emotion to neutral.`;
+}
+
 export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { speechOnly?: boolean }): string {
+  if (npcId === "audience") {
+    const withMem = withSpeakerMemories(audienceVoice(state), npcId, state);
+    return opts?.speechOnly ? `${withMem}\n${SPEECH_ONLY_CONTRACT}` : `${withMem}\n${audienceBooksContract(state)}`;
+  }
   const voice =
     npcId === "smith"
       ? smithSystemPrompt()
@@ -360,8 +417,10 @@ export function npcSystemPrompt(npcId: string, state?: WorldState, opts?: { spee
           ? merchantSystemPrompt(state)
           : npcId === "negotiator"
             ? negotiatorSystemPrompt(state)
-            : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
-  const history = state && (npcId === "steward" || npcId === "chaplain") ? historyPromptBlock(state, npcId) : "";
+            : npcId === "wife"
+              ? (wifeSystemPrompt(state) ?? stewardSystemPrompt(state))
+              : (specialistSystemPrompt(npcId) ?? stewardSystemPrompt(state));
+  const history = state && (npcId === "steward" || npcId === "chaplain") ? historyPromptBlock(state, npcId) : state && npcId === "wife" ? wifePromptBlock(state) : "";
   const withMem = withSpeakerMemories(history ? `${voice}\n\n${history}` : voice, npcId, state);
   if (!opts?.speechOnly) return withMem;
   return withMem.replace(
@@ -392,8 +451,9 @@ export function npcUserPrompt(
   drawers?: unknown,
 ): string {
   const npc = state.npcs.find((n) => n.id === npcId);
+  const guest = npcId === "audience" ? state.history.quest.meeting?.name : undefined;
   const parts = [
-    `NPC: ${npc?.name ?? npcId} (${npc?.role ?? "?"})`,
+    guest ? `NPC: ${guest} (a great man Aldric sent for; he is in the hall now)` : `NPC: ${npc?.name ?? npcId} (${npc?.role ?? "?"})`,
     `SCRAP (always-on; not the full villa):\n${JSON.stringify(sliceStateForChat(state, npcId))}`,
   ];
   if (drawers && typeof drawers === "object" && Object.keys(drawers as object).length) {

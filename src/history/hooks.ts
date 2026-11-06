@@ -3,23 +3,30 @@ import { applyOfficeAction } from "./administration";
 import { advanceScene, takeChoice, takeHook, takeOutcome, type HistoryBeat } from "./deliver";
 import { applyVerdict, justiceCase, setJusticeStance } from "./justice";
 import { historyContent } from "./load";
+import { applyMarriageAction, marriageBlocked, marry, type MarriageAction, type WifeArchetype } from "./marriage";
+import { afterMishapHook } from "./mishaps";
 import { eventActive, type SeasonAt } from "./scheduler";
 import { JUSTICE_STANCES, type HistorySeason, type JusticeStance } from "./schema";
 import { setTollStance } from "./trade";
+import { giveGift, setGivingLevel, type GiftKind, type GiftOccasion, type GivingLevel } from "./gifts";
+import { resolveOccasion, type OccasionOption } from "./occasions";
+import { endow, purchase, type EndowmentKind, type PurchaseAim } from "./patronage";
+import { setHouseholdLean } from "./upkeep";
+import { afterQuestHook, questHookRefusal } from "./quest";
 import { moveVassalMood } from "./vassals";
 
 export type HistoryProposal = Extract<
   MechanicalProposal,
-  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" | "justice_verdict" | "set_stance" | "steward_office" }
+  { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" | "innovation_register" | "innovation_expose" | "vassal_mood" | "justice_verdict" | "set_stance" | "steward_office" | "household_upkeep" | "giving_stance" | "vassal_gift" | "vassal_occasion" | "church_endowment" | "church_purchase" | "marriage" }
 >;
 
-const RANK_PROPOSALS = new Set(["vassal_mood", "justice_verdict", "set_stance", "steward_office"]);
+const RANK_PROPOSALS = new Set(["vassal_mood", "justice_verdict", "set_stance", "steward_office", "household_upkeep", "giving_stance", "vassal_gift", "vassal_occasion", "church_endowment", "church_purchase", "marriage"]);
 
 export function isHistoryProposal(p: MechanicalProposal): p is HistoryProposal {
   return p.type.startsWith("history_") || p.type.startsWith("innovation_") || RANK_PROPOSALS.has(p.type);
 }
 
-const HISTORY_ACTORS = new Set(["steward", "chaplain", "referee", "player"]);
+const HISTORY_ACTORS = new Set(["steward", "chaplain", "referee", "player", "audience"]);
 
 /** Beats produced by a confirmed scene advance; the controller posts them. */
 export type HistoryApplyResult = ApplyResult & { beats?: HistoryBeat[] };
@@ -42,6 +49,36 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
   if (p.type === "steward_office") {
     const r = applyOfficeAction(state, p.action, state.meta.turn, p.name);
     return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
+  if (p.type === "household_upkeep") {
+    if (actor !== "steward") return fail("npc_not_authorized");
+    const r = setHouseholdLean(state, p.cut, state.meta.turn);
+    return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
+  if (p.type === "giving_stance") {
+    if (actor !== "steward") return fail("npc_not_authorized");
+    const r = setGivingLevel(state, p.level as GivingLevel);
+    return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
+  if (p.type === "vassal_gift") {
+    if (actor !== "steward") return fail("npc_not_authorized");
+    const r = giveGift(state, p.vassalId, p.kind as GiftKind, (p.occasion ?? "ordinary") as GiftOccasion);
+    return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
+  if (p.type === "vassal_occasion") {
+    if (actor !== "steward") return fail("npc_not_authorized");
+    const r = resolveOccasion(state, p.option as OccasionOption);
+    return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
+  if (p.type === "church_endowment" || p.type === "church_purchase") {
+    if (actor !== "chaplain") return fail("npc_not_authorized");
+    const r = p.type === "church_endowment" ? endow(state, p.kind as EndowmentKind) : purchase(state, p.aim as PurchaseAim);
+    return r.ok ? { ok: true, logLine: r.line, state } : fail(r.line);
+  }
+  if (p.type === "marriage") {
+    if (actor !== "steward" && actor !== "player") return fail("npc_not_authorized");
+    const r = applyMarriageAction(state, p.archetype as WifeArchetype, (p.action ?? "marry") as MarriageAction);
+    return r.ok ? { ok: true, logLine: r.line, state, beats: r.beats } : fail(r.line);
   }
   const event = content.byId.get(p.eventId);
   if (!event) return fail(`No such matter as ${p.eventId} is before the hall.`);
@@ -67,9 +104,30 @@ export function applyHistoryProposal(state: WorldState, p: HistoryProposal, acto
     }
     case "history_hook": {
       if (!eventActive(state, event, turn)) return fail(`The moment for ${event.title} has passed.`);
+      if (actor === "audience") {
+        const motive = state.history.quest.meeting?.motive;
+        const allowed = motive != null && event.id === "Q-001" && (p.hookId === `approach_${motive}` || p.hookId === "end_audience");
+        if (!allowed) return fail("That is not his to grant.");
+      }
+      if (event.id === "Q-001") {
+        const blocked = questHookRefusal(state, p.hookId);
+        if (blocked) return fail(blocked);
+      }
+      // The land crisis's second way out is the neighbour's daughter: the hook is the match (marriage.ts).
+      const isMatch = p.hookId === "marry_local";
+      if (isMatch) {
+        const blocked = marriageBlocked(state, "hildegard", "marry");
+        if (blocked) return fail(blocked);
+      }
       const r = takeHook(state, event, p.hookId, now);
       if (!r.ok) return fail(r.reason ?? "It cannot be made so.");
-      return { ok: true, logLine: [p.summary, ...r.lines].filter(Boolean).join(" "), state, beats: r.beats };
+      if (event.id === "Q-001") afterQuestHook(state, p.hookId);
+      const wed = isMatch ? marry(state, "hildegard", { turn }) : null;
+      const wedLines = wed?.ok ? [wed.line] : [];
+      const wedBeats = wed?.ok ? wed.beats : [];
+      // A mishap answered with men: the ride raises its field at once.
+      const after = afterMishapHook(state, event.id, p.hookId, now, turn);
+      return { ok: true, logLine: [p.summary, ...r.lines, ...wedLines, ...after.lines].filter(Boolean).join(" "), state, beats: [...r.beats, ...wedBeats, ...after.beats] };
     }
     case "history_outcome": {
       const scene = state.history.scenes[event.id];

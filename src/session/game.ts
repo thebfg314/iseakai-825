@@ -12,17 +12,19 @@ import {
 } from "../engine/merchantShop";
 import { finishSeasonClock, resolveAgricultureAndProjects } from "../engine/season";
 import { fadeSponsoredFeastJoy, tickPeopleHappinessFromSeason } from "../engine/peopleHappiness";
-import { ARRIVAL_REFUSE_LINE, ABANDONED_GAME_OVER, estateIsAbandoned, markEstateAbandoned, resolvePeopleMovement } from "../engine/peopleMovement";
+import { ARRIVAL_REFUSE_LINE, ABANDONED_GAME_OVER, estateEnded, markEstateAbandoned, resolvePeopleMovement } from "../engine/peopleMovement";
 import { archiveEstateSeason } from "../engine/estateBooks";
 import { diffSeasonLedger, snapshotSeasonLedger, writeLastSeasonDeltas } from "../engine/seasonDeltas";
 import { appendHistory } from "../engine/history";
 import { cloneState, saveWorldState } from "../engine/state";
+import { audienceGreeting } from "../history/quest";
 import { runHistorySeasonPass } from "../history/season";
 import { noteRolledEventsForTrade } from "../history/trade";
 import { markDeath } from "../history/age";
 import { endingFallback, endingSystemPrompt, endingUserPrompt, endingVoice } from "../history/ending";
 import type { HistoryBeat } from "../history/deliver";
 import type { HistoryApplyResult } from "../history/hooks";
+import { recordFlight, resolveDepopulation } from "../history/neighbours";
 import { applyFlagOp } from "../history/flags";
 import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
 import {
@@ -46,6 +48,7 @@ import {
   agreedPlanFollowUp,
   earlierTalkBlock,
   beginFiguresFollowUp,
+  audienceBooksFollowUp,
   npcBooksFollowUp,
   npcFactsFollowUp,
   npcUserPrompt,
@@ -253,7 +256,7 @@ export class GameController {
     }
     ensureGerulfInHousehold(this.state);
     ensureCampaignContent(this.state);
-    if (estateIsAbandoned(this.state)) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return;
     }
@@ -271,8 +274,11 @@ export class GameController {
 
   view(): GameView {
     ensureCampaignContent(this.state);
-    if (estateIsAbandoned(this.state)) markEstateAbandoned(this.state);
+    if (estateEnded(this.state)) markEstateAbandoned(this.state);
     if (this.sceneNpcId === "merchant" && !this.merchantAvailable()) {
+      this.sceneNpcId = "steward";
+    }
+    if (this.sceneNpcId === "audience" && !this.state.history.quest.meeting) {
       this.sceneNpcId = "steward";
     }
     if (this.merchantAvailable()) ensureMerchantVisitShop(this.state);
@@ -280,7 +286,7 @@ export class GameController {
     return {
       state: this.state,
       pending: this.pending.filter((p) => p.status === "pending" || p.status === "withheld"),
-      messages: messagesForScene(this.messages, this.sceneNpcId),
+      messages: messagesForScene(this.messages, this.sceneNpcId, this.sceneNpcId === "audience" ? this.state.history.quest.meeting?.openedAt : undefined),
       sceneNpcId: this.sceneNpcId,
       labour: { pool: labourPool(this.state), remaining: labourRemaining(this.state) },
       smithAvailable: this.smithAvailable(),
@@ -365,6 +371,14 @@ export class GameController {
     if (npcId === "smith" && !this.smithAvailable()) return this.view();
     if (npcId === "chaplain" && !this.chaplainAvailable()) return this.view();
     if (npcId === "merchant" && !this.merchantAvailable()) return this.view();
+    if (npcId === "audience") {
+      const meeting = this.state.history.quest.meeting;
+      if (!meeting) return this.view();
+      this.sceneNpcId = npcId;
+      meeting.wantsTalk = false;
+      this.greetAudience();
+      return this.view();
+    }
     if (specialistById(npcId) && !this.state.npcs.some((n) => n.id === npcId)) return this.view();
     if (!this.state.npcs.some((n) => n.id === npcId) && npcId !== "merchant") return this.view();
     this.sceneNpcId = npcId;
@@ -403,7 +417,26 @@ export class GameController {
   }
 
   npcName(id: string): string {
+    if (id === "audience") return this.state.history.quest.meeting?.name ?? "A guest";
     return this.state.npcs.find((n) => n.id === id)?.name ?? id;
+  }
+
+  /** The man Aldric sent for speaks once, in his own name, when the lord opens the hall. */
+  private greetAudience() {
+    const meeting = this.state.history.quest.meeting;
+    if (!meeting || meeting.greeted) return;
+    const text = audienceGreeting(this.state);
+    if (!text) return;
+    meeting.greeted = true;
+    this.messages.push({
+      id: newId("msg"),
+      role: "npc",
+      npcId: "audience",
+      npcName: meeting.name,
+      text,
+      emotion: "neutral",
+      at: new Date().toISOString(),
+    });
   }
 
   /** Engine-authored first meeting. Once per save (merchants: once per visitor name). */
@@ -423,7 +456,7 @@ export class GameController {
   }
 
   async sendDialogue(npcId: string, playerText: string): Promise<DialogueResult> {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
@@ -431,12 +464,17 @@ export class GameController {
       this.sceneNpcId = "steward";
       return { ...this.view(), error: "The merchant has left the district." };
     }
+    if (npcId === "audience" && !this.state.history.quest.meeting) {
+      this.sceneNpcId = "steward";
+      return { ...this.view(), error: "No one is waiting in the hall." };
+    }
     if (specialistById(npcId) && !this.state.npcs.some((n) => n.id === npcId)) {
       this.sceneNpcId = "steward";
       return { ...this.view(), error: "That craftsman is not of this house." };
     }
     this.sceneNpcId = npcId;
     this.turnSpeech = "";
+    if (npcId === "audience") this.greetAudience();
     this.speakIntroIfNeeded(npcId);
     dismissNewsWantsTalk(this.state, npcId, this.pending);
     this.messages.push({
@@ -462,7 +500,7 @@ export class GameController {
     const system = npcSystemPrompt(npcId, this.state);
     const discussed = this.discussedPending(npcId);
     const extraBits = [
-      earlierTalkForSpeaker(this.messages, npcId, this.npcName(npcId), playerText),
+      earlierTalkForSpeaker(this.messages, npcId, this.npcName(npcId), playerText, npcId === "audience" ? this.state.history.quest.meeting?.openedAt : undefined),
       npcId === "merchant"
         ? "You are visiting only this season. Request the merchant drawer if you need cart stock. Buy only from that stock. Sell any estate resource except denarii."
         : undefined,
@@ -539,7 +577,7 @@ export class GameController {
         }
       }
 
-      if (looksLikeSpokenAgree(playerText)) {
+      if (npcId !== "audience" && looksLikeSpokenAgree(playerText)) {
         const priorTurns = this.messages.filter((m) => m.role === "npc" && m.npcId === npcId).map((m) => m.text);
         const prior = priorTurns.join("\n");
         const holdingId = this.state.holdings[0]?.id ?? "fontenay";
@@ -631,7 +669,7 @@ export class GameController {
           { role: "system", content: system },
           { role: "user", content: booksUser },
           { role: "assistant", content: answer.raw },
-          { role: "user", content: npcBooksFollowUp(playerText, discussed ? compactOfferLine(discussed.proposal) : undefined) },
+          { role: "user", content: npcId === "audience" ? audienceBooksFollowUp(playerText) : npcBooksFollowUp(playerText, discussed ? compactOfferLine(discussed.proposal) : undefined) },
         ];
         let books = await this.callLlm(booksMessages, BOOKS_TOKENS, {
           purpose: "books",
@@ -955,6 +993,10 @@ export class GameController {
     if (npcId === "steward") this.flushHireRecommendations();
     if (npcId === "smith") this.ensureBogOreSpeech(playerText);
     let proposals = dropHuntFeeDuplicates(dropHireFeeDuplicates(parsed.proposals.map(ensureSummary)));
+    if (npcId === "audience") {
+      const motive = this.state.history.quest.meeting?.motive;
+      proposals = proposals.filter((p) => p.type === "history_hook" && p.eventId === "Q-001" && (p.hookId === `approach_${motive}` || p.hookId === "end_audience"));
+    }
     proposals = proposals.map((p) => stampSpeakerTag(npcId, p));
     if (npcId !== "smith") proposals = proposals.filter((p) => !isBloomeryStart(p));
     const askedBloomery = npcId === "smith" && playerAskedBloomery(playerText, this.bloomeryMentioned);
@@ -1246,7 +1288,7 @@ export class GameController {
   }
 
   confirmProposal(id: string): GameView & { error?: string } {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
@@ -1263,7 +1305,7 @@ export class GameController {
   }
 
   confirmAllProposals(): GameView & { error?: string } {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
@@ -1320,7 +1362,7 @@ export class GameController {
   }
 
   confirmMerchantShop(basket: MerchantShopBasket): GameView & { error?: string } {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
@@ -1425,7 +1467,7 @@ export class GameController {
   }
 
   rejectProposal(id: string): GameView {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return this.view();
     }
@@ -1464,7 +1506,7 @@ export class GameController {
   }
 
   cancelForthcomingOrder(id: string): GameView & { error?: string } {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return { ...this.view(), error: ABANDONED_GAME_OVER };
     }
@@ -1602,7 +1644,7 @@ export class GameController {
   }
 
   async advanceSeason(): Promise<SeasonResult> {
-    if (estateIsAbandoned(this.state) || this.state.estateAbandoned) {
+    if (estateEnded(this.state)) {
       markEstateAbandoned(this.state);
       return { ...this.view(), effects: [{ kind: "info", text: ABANDONED_GAME_OVER }] };
     }
@@ -1624,6 +1666,11 @@ export class GameController {
     healPersonalFully(this.state);
     const effects: SeasonEffectLine[] = [];
     effects.push(...tickWounds(this.state, createRng(seedFromString(`wounds:${this.state.meta.year}:${this.state.meta.season}:${this.state.meta.turn}`))));
+    if (this.state.player.dead) {
+      markDeath(this.state, "wound");
+      await this.writeEnding();
+      return { ...this.view(), effects };
+    }
     const lapsing = this.pending.filter((p) => p.status === "pending" || p.status === "withheld");
     this.pending = this.pending.map((p) =>
       p.status === "pending" || p.status === "withheld"
@@ -1723,7 +1770,7 @@ export class GameController {
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       this.postHistoryBeats(history.beats);
-      if (history.died) await this.writeEnding();
+      if (history.died || this.state.history.dead) await this.writeEnding();
       await this.refreshCredits();
       return { ...this.view(), effects };
     } catch (err) {
@@ -1754,7 +1801,7 @@ export class GameController {
       this.sceneNpcId = "steward";
       dismissNewsWantsTalk(this.state, "steward", this.pending);
       this.postHistoryBeats(history.beats);
-      if (history.died) await this.writeEnding();
+      if (history.died || this.state.history.dead) await this.writeEnding();
       await this.refreshCredits();
       return { ...this.view(), effects };
     }
@@ -1844,10 +1891,17 @@ export class GameController {
 
   private resolveHappinessMovement(effects: SeasonEffectLine[]) {
     const movement = resolvePeopleMovement(this.state);
-    if (movement.departureNote) effects.push({ kind: "info", text: movement.departureNote });
+    // From Viscount on, a household that goes, goes somewhere: a named neighbour's lands (history/neighbours.ts).
+    if (movement.departureNote) effects.push({ kind: "info", text: recordFlight(this.state, this.state.meta.turn) });
     if (movement.gameOverNote) {
       effects.push({ kind: "info", text: movement.gameOverNote });
+      markDeath(this.state, "abandoned");
       this.finishPlay("The estate was abandoned. This play is over.");
+    }
+    if (movement.emptied) {
+      const r = resolveDepopulation(this.state, this.state.meta.turn);
+      for (const text of r.lines) effects.push({ kind: "info", text });
+      this.postHistoryBeats(r.beats);
     }
     if (movement.arrivalNote) effects.push({ kind: "info", text: movement.arrivalNote });
     if (
@@ -2146,8 +2200,10 @@ export class GameController {
 }
 
 /** Full store stays on the controller; the view only shows the active scene. */
-export function messagesForScene(messages: ChatMessage[], sceneNpcId: string): ChatMessage[] {
-  return messages.filter((m) => m.npcId === sceneNpcId);
+export function messagesForScene(messages: ChatMessage[], sceneNpcId: string, since?: string): ChatMessage[] {
+  const rows = messages.filter((m) => m.npcId === sceneNpcId);
+  if (!since) return rows;
+  return rows.filter((m) => m.at >= since);
 }
 
 /** This speaker's own recent lines, not the line the lord just sent, and not anyone else's talk. */
@@ -2156,8 +2212,9 @@ function earlierTalkForSpeaker(
   npcId: string,
   npcName: string,
   currentPlayerText: string,
+  since?: string,
 ): string {
-  const lines = messages.filter((m) => m.npcId === npcId && (m.role === "player" || m.role === "npc"));
+  const lines = messages.filter((m) => m.npcId === npcId && (m.role === "player" || m.role === "npc") && (!since || m.at >= since));
   const prior = [...lines];
   const last = prior[prior.length - 1];
   if (last?.role === "player" && last.text === currentPlayerText) prior.pop();

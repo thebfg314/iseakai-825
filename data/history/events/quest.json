@@ -142,20 +142,20 @@
       "script": [
         {
           "speaker": "steward",
-          "text": "Then it is the great men, my lord, and we must count them. Nine who matter, and I can speak with confidence about four or five of them. The king starts with three sworn to him and takes everyone we fail to win, so six of nine is only even, and one of the six will turn on the day. A careful man wants seven. Each is a season's work, and some of them you must go to yourself. Sending a steward to talk about a marriage is an insult."
+          "text": "Then it is the great men, my lord, and we must count them. Nine who matter. I can tell you what I know of some of them, and I will send for them one at a time. You will speak to each man yourself. The king starts with three sworn to him and takes everyone we fail to win, so six of nine is only even, and one of the six will turn on the day. A careful man wants seven. Each man who hears you costs a season, and the answer comes back with the season."
         },
         {
           "speaker": "chaplain",
-          "text": "The bishops and abbots are mine to speak to, my lord. And when it comes to the crown itself, remember that the bishops make a king. The great men elect him; the Church anoints him. There are three ways to have them do it, and only one of them does not cost you the Church for the rest of your life."
+          "text": "The bishops and abbots I know better than the stewards do, my lord. When Aldric has sent for one of them, ask me what he is listening for. And when it comes to the crown itself, remember that the bishops make a king. The great men elect him; the Church anoints him. There are three ways to have them do it, and only one of them does not cost you the Church for the rest of your life."
         },
         {
           "speaker": "steward",
           "when": "quest_attempt >= 1",
-          "text": "And it is harder this time, my lord. Nobody weds a daughter to a man who tried and submitted. Nobody fears the alternative when you are the alternative. God evidently did not favour you the first time. What is left is grievance, money, land, office and men who want a protector: a coalition of malcontents, against a king who has had years to prepare."
+          "text": "And it is harder this time, my lord. Nobody weds a daughter to a man who tried and submitted. Nobody fears what comes next when you are the thing they feared. God evidently did not favour you the first time. What is left is men the king has wronged, men who will take silver, men who want estates or a great place, and men who want a protector: a coalition of malcontents, against a king who has had years to prepare."
         }
       ],
       "knows": [
-        "Envoys: Ermenald to bishops and abbots; Aldric to other stewards; the lord in person to anyone whose price is marriage or respect; a craftsman where the price is a mill or an engine.",
+        "Aldric sends for them one at a time, and the lord speaks to each man in the hall. Aldric can say what he knows of a man's price; he does not know every man. Ermenald knows the churchmen better. A craftsman is still the one to ask where the price is a mill or an engine.",
         "Each named ally brings his own followers: nine conversations become forty or fifty men at the assembly."
       ],
       "hooks": [
@@ -163,17 +163,29 @@
         { "id": "approach_money", "trigger": "An approach, with silver, to the lord whose price is money.", "effects": { "cost": { "denarii": "{ally_price}" }, "record": "Paid silver to the lord whose price is money." } },
         { "id": "approach_land", "trigger": "A promise of estates to the lord whose price is land.", "effects": { "record": "Promised estates to the lord whose price is land." } },
         { "id": "approach_office", "trigger": "Ermenald offers an office or a bishopric after the victory.", "effects": { "record": "Offered an office after the victory." } },
-        { "id": "approach_marriage", "trigger": "The lord goes in person to offer a marriage into his house.", "requires": "quest_attempt == 0", "effects": { "record": "Offered a marriage into the lord's house." } },
+        { "id": "approach_marriage", "trigger": "The lord goes in person to offer a marriage into his house (or, married into a great house already, to call on his wife's brothers).", "requires": "(quest_attempt == 0 and not married) or wife == 'theoderada'", "effects": { "record": "Offered a marriage into the lord's house." } },
+        { "id": "kin_office", "trigger": "The lord promises his wife's kin a son placed in an office after the victory.", "requires": "wife == 'theoderada'", "effects": { "record": "Promised his wife's house a son in office after the victory." } },
+        { "id": "kin_guarantee", "trigger": "The lord guarantees his wife's brother his lands and standing, whatever comes.", "requires": "wife == 'theoderada'", "effects": { "record": "Guaranteed his wife's brother his lands and standing." } },
         { "id": "approach_debt", "trigger": "An approach to the lord who owes the player for old kindnesses.", "effects": { "record": "Called in sixty years of small kindnesses." } },
         { "id": "approach_fear", "trigger": "Ermenald reassures the churchman who fears the king more than he fears the lord.", "requires": "quest_attempt == 0", "effects": { "record": "Reassured the churchman who fears the alternative." } },
         { "id": "approach_protection", "trigger": "The lord goes in person to the count who wants a man who will fight.", "effects": { "record": "Pitched himself as the protector who will actually fight." } },
-        { "id": "approach_divine", "trigger": "Ermenald speaks to the churchman who looks for the appearance of blessing.", "requires": "quest_attempt == 0", "effects": { "record": "Showed the signs of divine favour to the churchman who looks for them." } },
-        { "id": "pay_again", "trigger": "The king has outbid the lord for the man whose price is money; the lord pays again.", "requires": "quest_money_outbid", "effects": { "cost": { "denarii": "{ally_price}" }, "record": "Outbid the king for the lord whose price is money." } },
+        { "id": "approach_divine", "trigger": "The churchman who looks for a sign of blessing accepts the lord.", "requires": "quest_attempt == 0", "effects": { "record": "Showed the signs of blessing to the churchman who looks for them." } },
+        { "id": "arrange_grievance", "trigger": "The lord asks Aldric to send for the man the king wronged.", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_money", "trigger": "The lord asks Aldric to send for the man whose price is silver.", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_land", "trigger": "The lord asks Aldric to send for the man who wants estates.", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_office", "trigger": "The lord asks Aldric to send for the man who wants a great place after the victory.", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_marriage", "trigger": "The lord asks Aldric to send for the man whose price is a match.", "requires": "(quest_attempt == 0 and not married) or wife == 'theoderada'", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_debt", "trigger": "The lord asks Aldric to send for the man who remembers an old kindness.", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_fear", "trigger": "The lord asks Aldric to send for the churchman who fears what the king may do.", "requires": "quest_attempt == 0", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_protection", "trigger": "The lord asks Aldric to send for the man who wants a fighter.", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "arrange_divine", "trigger": "The lord asks Aldric to send for the churchman who looks for a sign of blessing.", "requires": "quest_attempt == 0", "effects": { "record": "Aldric was asked to send for one of the great men." } },
+        { "id": "end_audience", "trigger": "The lord sends the man in the hall home with no bargain.", "effects": { "record": "The man in the hall was sent home with no bargain." } },
+        { "id": "pay_again", "trigger": "The king has outbid the lord for the man whose price is silver; the lord pays again.", "requires": "quest_money_outbid", "effects": { "cost": { "denarii": "{ally_price}" }, "record": "Outbid the king for the man whose price is silver." } },
         { "id": "call_the_assembly", "trigger": "The lord declares: it is time, call the great men and march.", "requires": "allies >= 4", "effects": { "record": "The lord called his supporters to arms against the king." } }
       ],
       "hookWindow": 400,
       "links": { "arc": "quest", "momentum": 50 },
-      "notes": "Gathering. quest.ts resolves each approach the season after it is taken (an approach costs a season) and makes one of the won allies the betrayer. call_the_assembly moves to the battle."
+      "notes": "Gathering. Aldric's arrange_* hooks put one man in the hall; the lord speaks to him; his acceptance is approach_*. quest.ts resolves each approach the season after it is taken (an approach costs a season) and makes one of the won allies the betrayer. call_the_assembly moves to the battle."
     },
     {
       "id": "Q-002",

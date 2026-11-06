@@ -108,7 +108,7 @@ describe("history layer in the game controller", () => {
     expect(card?.proposal.type).toBe("history_choice");
     expect(game.state.history.flags.count_opinion).toBeUndefined();
     game.confirmProposal(card!.id);
-    expect(game.state.history.flags.count_opinion).toBe(1);
+    expect(game.state.history.flags.count_opinion).toBe(51);
     expect(game.state.history.chosen["825-01"]).toBe("answer");
     expect(game.state.history.openChoices).toHaveLength(0);
   });

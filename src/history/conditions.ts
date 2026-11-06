@@ -1,4 +1,5 @@
 import type { FlagValue } from "./schema";
+import { isBandFlag, isHundredFlag, STANDING_NEUTRAL } from "./standing";
 
 /**
  * Condition grammar for history events (03_HISTORY.md §6.1).
@@ -194,6 +195,8 @@ export function parseCondition(src: string): Ast {
 function resolve(ctx: ConditionContext, name: string): FlagValue | undefined {
   if (name in ctx.flags) return ctx.flags[name];
   if (name in ctx.vars) return ctx.vars[name];
+  if (isHundredFlag(name)) return STANDING_NEUTRAL;
+  if (isBandFlag(name)) return 0;
   return undefined;
 }
 

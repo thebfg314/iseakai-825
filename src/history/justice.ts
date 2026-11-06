@@ -6,6 +6,7 @@ import type { WorldState } from "../engine/schema";
 import type { HistoryBeat } from "./deliver";
 import { rollRenownBand } from "./effects";
 import { applyFlagOp } from "./flags";
+import { noteCourtHeld } from "./office";
 import type { SeasonAt } from "./scheduler";
 import { JusticeFileSchema, type HistoryState, type JusticeCase, type JusticeFile, type JusticeStance, type JusticeTable, type JusticeVerdict } from "./schema";
 import { shockTrade } from "./trade";
@@ -151,6 +152,7 @@ export function applyVerdict(state: WorldState, caseId: string, verdictId: strin
   const v = c.verdicts.find((x) => x.id === verdictId);
   if (!v) return { ok: false, reason: `The judgement must be one of: ${c.verdicts.map((x) => x.id).join(", ")}.`, lines: [] };
   const lines = applyVerdictEffects(state, c, v, at, turn, `justice:${caseId}:${verdictId}`);
+  if (!opts?.byDefault) noteCourtHeld(state);
   j.verdicts.push({ caseId: c.id, title: c.title, verdictId: v.id, label: v.label, turn });
   if (j.verdicts.length > KEEP_VERDICTS) j.verdicts.splice(0, j.verdicts.length - KEEP_VERDICTS);
   j.open = null;
@@ -216,6 +218,8 @@ function lapseCase(state: WorldState, at: SeasonAt, turn: number, out: JusticeTi
     j.open = null;
     return;
   }
+  // A court not held counts against the office (office.ts).
+  state.history.office.lapsedCases += 1;
   const refuse = c.verdicts.find((v) => v.id === "refuse");
   if (refuse) {
     const r = applyVerdict(state, c.id, refuse.id, at, turn, { byDefault: true });

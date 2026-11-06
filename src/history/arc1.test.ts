@@ -22,7 +22,7 @@ function clockFor(state: WorldState) {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
     if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
-    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
     state.meta.turn += 1;
@@ -331,10 +331,12 @@ describe("Arc 1 content", () => {
     expect(state.history.realm.countOfAutun).toBe("Warin");
     clock.to(840, "spring"); // 840-P1 told
     hook(state, "840-P1", "predict_quiet", "chaplain");
+    const churchBefore = Number(state.history.flags.favor_church ?? 50);
     const summer840 = clock.next();
     expect(summer840.fired).toEqual(["840-01"]);
     expect(texts(summer840).some((t) => t.includes("The bishop had the clergy ready"))).toBe(true);
-    expect(state.history.flags.bishop_trust).toBe(2);
+    expect(state.history.flags.bishop_trust).toBeUndefined();
+    expect(Number(state.history.flags.favor_church)).toBe(churchBefore + 2);
     const autumn840 = clock.next();
     expect(autumn840.fired).toContain("840-02");
     expect(autumn840.beats.some((b) => b.npcId === "chaplain")).toBe(true);

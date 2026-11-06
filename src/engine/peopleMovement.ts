@@ -54,6 +54,8 @@ export type PeopleMovementResult = {
   departureNote?: string;
   abandoned?: boolean;
   gameOverNote?: string;
+  /** The villas stand empty but the play goes on (a lord with rank; the caller decides what that costs). */
+  emptied?: boolean;
 };
 
 export function arrivalChance(streak: number): number {
@@ -73,6 +75,20 @@ export function workingAgeHeads(state: WorldState): number {
 /** No households, or no working-age people left to work the villa. */
 export function estateIsAbandoned(state: WorldState): boolean {
   return state.population.households <= 0 || workingAgeHeads(state) <= 0;
+}
+
+/**
+ * Whether an empty villa ends the play. For a minor noble it does: there is nothing else.
+ * A viscount falls back to minor noble with what remains; a count or above goes on, poorer,
+ * and the ending, if it comes, comes politically (history/mishaps.ts).
+ */
+export function depopulationEnds(state: WorldState): boolean {
+  return (state.player.rankLevel ?? 1) < 2;
+}
+
+/** The play is over for want of people: marked already, or empty with no rank to fall back on. */
+export function estateEnded(state: WorldState): boolean {
+  return Boolean(state.estateAbandoned) || (estateIsAbandoned(state) && depopulationEnds(state));
 }
 
 export function markEstateAbandoned(state: WorldState): boolean {
@@ -146,7 +162,10 @@ function abandonedResult(extra: PeopleMovementResult = {}): PeopleMovementResult
  * Does not queue Confirm itself — the session layer does that.
  */
 export function resolvePeopleMovement(state: WorldState, rng: () => number = Math.random): PeopleMovementResult {
-  if (state.estateAbandoned || estateIsAbandoned(state)) {
+  const ends = depopulationEnds(state);
+  if (state.estateAbandoned) return abandonedResult();
+  if (estateIsAbandoned(state)) {
+    if (!ends) return { emptied: true };
     markEstateAbandoned(state);
     return abandonedResult();
   }
@@ -156,7 +175,9 @@ export function resolvePeopleMovement(state: WorldState, rng: () => number = Mat
     const delta = departureDelta(state);
     if (delta) {
       applyPopulationDelta(state, delta);
-      if (markEstateAbandoned(state)) {
+      if (estateIsAbandoned(state)) {
+        if (!ends) return { departureNote: DEPARTURE_SEASON_NOTE, emptied: true };
+        markEstateAbandoned(state);
         return abandonedResult({ departureNote: DEPARTURE_SEASON_NOTE });
       }
       return { departureNote: DEPARTURE_SEASON_NOTE };

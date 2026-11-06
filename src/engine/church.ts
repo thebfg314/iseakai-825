@@ -3,6 +3,7 @@ import { consumeGrain, GRAIN_CROPS, grainOnHand, type GrainCrop } from "./grain"
 import { appendNpcMemory, stampMemory } from "./memory";
 import { applyPeopleHappinessDelta } from "./peopleHappiness";
 import { newId, round1 } from "./util";
+import { applyDevotionChurch } from "../history/patronage";
 import { noteVassalEvent } from "../history/vassals";
 
 /**
@@ -282,10 +283,11 @@ export function applySponsoredFeast(
   // The sworn men sit at the lord's table too (a grand feast counts double).
   const sworn = noteVassalEvent(state, "feast", state.meta.turn);
   if (sworn && proposal.tier === "grand") noteVassalEvent(state, "feast", state.meta.turn);
+  const churchNote = applyDevotionChurch(state, proposal.tier);
 
   const name = hallFeastName(state, proposal.feastName);
   const scale = proposal.tier === "grand" ? "A grand feast" : "A plain feast";
-  const logLine = `${scale} for ${name}: ${paid.paid}. ${heartLine(grant, nominal)}${sworn ? " The sworn men were at the board." : ""}`;
+  const logLine = `${scale} for ${name}: ${paid.paid}. ${heartLine(grant, nominal)}${sworn ? " The sworn men were at the board." : ""}${churchNote}`;
   return { ok: true, logLine, state };
 }
 

@@ -22,6 +22,11 @@ function harvestCrop(state: WorldState, crop: "wheat" | "rye" | "barley" | "oats
   let acres = 0;
   for (const h of state.holdings) acres += h.sown[crop];
   if (acres <= 0) return null;
+  // No hands, no harvest: an emptied villa's standing crop rots where it grew (a lord with rank plays on past that point).
+  if (state.population.adult_men + state.population.adult_women + state.population.youths <= 0) {
+    for (const h of state.holdings) h.sown[crop] = 0;
+    return `The ${crop} on ${acres} acres rotted standing; there was nobody to reap it.`;
+  }
   const spoilage = yieldMultiplier(state, crop) * peopleEffortFactor(state);
   const base = YIELD_MID[crop] * acres;
   const amount = round1(resourceOutputBonus(state, crop, base * spoilage));

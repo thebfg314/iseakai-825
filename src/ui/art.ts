@@ -19,6 +19,16 @@ import vassalContent from "../../art assets/UI/happvass.png";
 import vassalSteady from "../../art assets/UI/neutvass.png";
 import vassalAngry from "../../art assets/UI/madvass.png";
 
+import questGrievance from "../../art assets/NPC Images/king quest/Grievance.png";
+import questMoney from "../../art assets/NPC Images/king quest/Money.png";
+import questLand from "../../art assets/NPC Images/king quest/Land.png";
+import questOffice from "../../art assets/NPC Images/king quest/Office.png";
+import questMarriage from "../../art assets/NPC Images/king quest/Marriage.png";
+import questDebt from "../../art assets/NPC Images/king quest/Debt Owed.png";
+import questFear from "../../art assets/NPC Images/king quest/Fear of Alternative.png";
+import questProtection from "../../art assets/NPC Images/king quest/Protection.png";
+import questDivine from "../../art assets/NPC Images/king quest/Divine Favour.png";
+
 import aldricNeutral from "../../art assets/NPC Images/Aldrec Steward/Aldric neutral nobg.png";
 import aldricRespectful from "../../art assets/NPC Images/Aldrec Steward/Aldrec respectful nobg.png";
 import aldricConcerned from "../../art assets/NPC Images/Aldrec Steward/Aldric  concerned nobg.png";
@@ -100,6 +110,11 @@ import eberhardConcerned from "../../art assets/NPC Images/Eberhard Captain/Eber
 import eberhardDispleased from "../../art assets/NPC Images/Eberhard Captain/Eberhard Displeased.png";
 import eberhardHappy from "../../art assets/NPC Images/Eberhard Captain/Eberhard Happy.png";
 import eberhardThoughtful from "../../art assets/NPC Images/Eberhard Captain/Eberhard Thoughtful .png";
+
+import wifeGisla from "../../art assets/NPC Images/Wife/Gisla.png";
+import wifeHildegard from "../../art assets/NPC Images/Wife/Hildegard.png";
+import wifeLinda from "../../art assets/NPC Images/Wife/Linda.png";
+import wifeTheoderada from "../../art assets/NPC Images/Wife/Theoderada.png";
 
 import gero from "../../art assets/NPC Images/Merchants/Gero.png";
 import odo from "../../art assets/NPC Images/Merchants/Odo.png";
@@ -255,6 +270,27 @@ const EBERHARD: Record<SparsePose, string> = {
   thoughtful: eberhardThoughtful,
 };
 
+/** The lord's wife (history/marriage.ts): one portrait per match, whatever her mood. */
+const WIFE_FACES: Record<string, string> = {
+  hildegard: wifeHildegard,
+  theoderada: wifeTheoderada,
+  gisla: wifeGisla,
+  linda: wifeLinda,
+};
+
+/** Portrait file per internal motive. The speaker is never labelled with these words. */
+const QUEST_AUDIENCE: Record<string, string> = {
+  grievance: questGrievance,
+  money: questMoney,
+  land: questLand,
+  office: questOffice,
+  marriage: questMarriage,
+  debt: questDebt,
+  fear: questFear,
+  protection: questProtection,
+  divine: questDivine,
+};
+
 const MERCHANT_FACES: Record<number, string> = {
   1: gero,
   2: odo,
@@ -276,8 +312,10 @@ export function aldricPortrait(emotion: AldricEmotion | undefined): string {
   return ALDRIC[emotion] ?? aldricFallback;
 }
 
-export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, face?: number): string | undefined {
+export function npcPortrait(npcId: string, emotion: AldricEmotion | undefined, face?: number, wife?: string | null, audienceMotive?: string | null): string | undefined {
+  if (npcId === "audience") return audienceMotive ? QUEST_AUDIENCE[audienceMotive] : undefined;
   if (npcId === "steward") return aldricPortrait(emotion);
+  if (npcId === "wife") return wife ? WIFE_FACES[wife] : undefined;
   if (npcId === "smith") return sparsePortrait(BERNARD, emotion);
   if (npcId === "chaplain") return sparsePortrait(ERMENALD, emotion);
   if (npcId === "quarry_master") return sparsePortrait(COLMAN, emotion);

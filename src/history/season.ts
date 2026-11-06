@@ -3,15 +3,21 @@ import { tickAdministration } from "./administration";
 import { tickAge } from "./age";
 import { forcesForEvent, openHistoricalBattle } from "./battles";
 import { deliverEvent, expireDeadlines, markInterimBattle, type HistoryBeat } from "./deliver";
+import { tickRenownDecay } from "./decay";
 import { tickDiffusion } from "./diffusion";
+import { tickMishaps } from "./mishaps";
+import { tickOffice } from "./office";
 import { tickDuties } from "./duties";
+import { tickExecution } from "./execution";
 import { justiceCase, tickJustice } from "./justice";
 import { tickLadder } from "./ladder";
 import { tickLand } from "./land";
+import { tickMarriage } from "./marriage";
 import { tickQuest } from "./quest";
 import { historyContent } from "./load";
 import { tickHungerDebuffs, tickPrices } from "./prices";
 import { tickPromotion } from "./promotion";
+import { trackBishop } from "./standing";
 import { tickRealm } from "./realm";
 import { tickRevenue } from "./revenue";
 import { tickRelics } from "./relics";
@@ -20,6 +26,8 @@ import { dueEvents, type SeasonAt } from "./scheduler";
 import { applySupplyLoss, runSupplyCheck } from "./supply";
 import { tickTrade } from "./trade";
 import { tickTributes } from "./tributes";
+import { tickUpkeep } from "./upkeep";
+import { tickOccasions } from "./occasions";
 import { tickVassals } from "./vassals";
 import { tickVikings } from "./vikings";
 import { tickWeather } from "./weather";
@@ -48,7 +56,7 @@ export type HistoryPassResult = {
  * random roll; `incoming` is the season about to begin and `turn` its turn number.
  * State is mutated (flags, fired, deadlines); the caller posts the beats.
  */
-export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn: number): HistoryPassResult {
+export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn: number, opts?: { coverUpkeep?: boolean }): HistoryPassResult {
   const out: HistoryPassResult = { beats: [], refereeLines: [], effects: [], suppressOther: false, forcedWeatherId: null, forcedSeverity: 1, fired: [], died: false };
   if (state.history.dead) return out;
   const content = historyContent();
@@ -64,6 +72,11 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const expired = expireDeadlines(state, incoming, turn);
   out.beats.push(...expired.beats);
   out.effects.push(...expired.lines);
+
+  // The marriage: the hall's remarks, her family's quarrels, a stepson's claim on the dower.
+  const marriage = tickMarriage(state, incoming, turn);
+  out.beats.push(...marriage.beats);
+  out.effects.push(...marriage.lines);
 
   const land = tickLand(state, incoming, turn);
   out.beats.push(...land.beats);
@@ -168,6 +181,7 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   if (ladder.beats.length || quest.beats.length) out.suppressOther = true;
   // Rank: the generic summons when renown has earned a step and no scripted window spoke for it.
   const promotion = tickPromotion(state, incoming, turn);
+  trackBishop(state);
   out.beats.push(...promotion.beats);
   out.effects.push(...promotion.lines);
   if (promotion.promoted) {
@@ -178,6 +192,9 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const vassals = tickVassals(state, incoming, turn);
   out.beats.push(...vassals.beats);
   out.effects.push(...vassals.lines);
+  const occasions = tickOccasions(state, incoming, turn);
+  out.beats.push(...occasions.beats);
+  out.effects.push(...occasions.lines);
   // Justice: feuds and the missi come due, the stance pays its year, and one case may come before the hall.
   const justice = tickJustice(state, incoming, turn, { quiet: sequence.length === 0 && !duties.duty && !promotion.promoted && !ladder.beats.length && !quest.beats.length });
   out.beats.push(...justice.beats);
@@ -191,13 +208,46 @@ export function runHistorySeasonPass(state: WorldState, incoming: SeasonAt, turn
   const revenue = tickRevenue(state, incoming, turn);
   out.beats.push(...revenue.beats);
   out.effects.push(...revenue.lines);
-  // Aldric's reach: the household's pay, what the furthest villas lose, and his complaint when the strain changes.
+  // Aldric's reach: the clerks' pay, what the furthest villas lose, and his complaint when the strain changes.
   const admin = tickAdministration(state, incoming, turn);
   out.beats.push(...admin.beats);
   out.effects.push(...admin.lines);
+  // The household and the roofs, a quarter of the year, after the office has paid in.
+  // coverUpkeep is for calendar tests that fast-forward without a harvest: the quarter is met, the chest is the script's.
+  const upkeep = tickUpkeep(state, incoming, turn, { covered: opts?.coverUpkeep });
+  out.beats.push(...upkeep.beats);
+  out.effects.push(...upkeep.lines);
+  // A failing estate bleeds renown: obligations unmet, people hungry (decay.ts).
+  const decay = tickRenownDecay(state, incoming, turn);
+  out.beats.push(...decay.beats);
+  out.effects.push(...decay.lines);
+  // The viscount's office, held at the count's pleasure: warnings, then dismissal (office.ts).
+  const office = tickOffice(state, incoming, turn);
+  out.beats.push(...office.beats);
+  out.effects.push(...office.lines);
+  if (office.dismissed) {
+    out.suppressOther = true;
+    out.refereeLines.push("History: the count dismissed the lord from the office of viscount this season start; Aldric has said what went and what stays. Do not retell it.");
+  }
+  // The mishap table: a Count or above whose name has fallen below the rank beneath his (mishaps.ts).
+  const mishaps = tickMishaps(state, incoming, turn);
+  out.beats.push(...mishaps.beats);
+  out.effects.push(...mishaps.lines);
+  out.refereeLines.push(...mishaps.refereeLines);
+  if (mishaps.opened) out.suppressOther = true;
   const diffusion = tickDiffusion(state, incoming, turn);
   out.beats.push(...diffusion.beats);
   out.effects.push(...diffusion.lines);
+
+  // A failed rising: mercy, unless an aggravating factor makes it the block (execution.ts).
+  const execution = tickExecution(state, incoming, turn);
+  out.beats.push(...execution.beats);
+  out.effects.push(...execution.lines);
+  if (execution.died) {
+    out.died = true;
+    out.suppressOther = true;
+    out.refereeLines.push("History: the lord was put to death as a traitor at the turn of this season. The chronicle's last page is written separately.");
+  }
 
   // Last: the old man's season. 911-F1 above still fires in the autumn he dies.
   const age = tickAge(state, incoming, turn);

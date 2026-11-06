@@ -38,6 +38,7 @@ import {
   sowingRotationLine,
 } from "./ledgerCopy";
 import { GlossaryText } from "./GlossaryText";
+import { incomeSentence } from "../history/upkeep";
 
 export function BooksPanel({
   view,
@@ -88,6 +89,7 @@ export function BooksPanel({
           <EstateTab
             pager={pager}
             historyLength={historyLength}
+            incomeNote={pager.viewingCurrent ? incomeSentence(view.state) : null}
             onBack={() => setEstateOffset((o) => stepEstateOffset(o, historyLength, true))}
             onForward={() => setEstateOffset((o) => stepEstateOffset(o, historyLength, false))}
           />
@@ -113,11 +115,13 @@ export function BooksPanel({
 function EstateTab({
   pager,
   historyLength,
+  incomeNote,
   onBack,
   onForward,
 }: {
   pager: ReturnType<typeof estatePagerView>;
   historyLength: number;
+  incomeNote: string | null;
   onBack: () => void;
   onForward: () => void;
 }) {
@@ -146,7 +150,7 @@ function EstateTab({
         <GlossaryText text={pager.hint} />
       </p>
       {pager.source ? (
-        <EstateBody source={pager.source} />
+        <EstateBody source={pager.source} incomeNote={incomeNote} />
       ) : historyLength === 0 ? null : (
         <p className="muted">
           <GlossaryText text={pager.hint} />
@@ -156,7 +160,7 @@ function EstateTab({
   );
 }
 
-function EstateBody({ source: s }: { source: EstateLedgerSource }) {
+function EstateBody({ source: s, incomeNote }: { source: EstateLedgerSource; incomeNote: string | null }) {
   const holding = s.holdings[0];
   const deltas = s.last_season_deltas ?? {};
   const d = (id: string) => deltas[id];
@@ -183,6 +187,11 @@ function EstateBody({ source: s }: { source: EstateLedgerSource }) {
 
       <h3>Chest and people</h3>
       <Row k="Denarii" v={formatLedgerNumber(s.resources.denarii)} delta={d("denarii")} />
+      {incomeNote && (
+        <p className="ledger-note">
+          <GlossaryText text={incomeNote} />
+        </p>
+      )}
       <Row k="Manses" v={String(s.population.households)} delta={d("households")} />
       <p className="ledger-note">
         <GlossaryText text={peopleSentence(s.population)} />
@@ -377,7 +386,7 @@ function HoldingsTab({ book }: { book: HoldingsBook }) {
             <p className="muted">The office has not yet paid its first quarter.</p>
           )}
           <p className="ledger-note">
-            <GlossaryText text={`About ${formatLedgerNumber(book.revenue.yearly)} d a year at the present trade.`} />
+            <GlossaryText text={`The office brings about ${formatLedgerNumber(book.revenue.yearly)} d a year at the present trade. What is free to spend, once the household and the roofs are kept, is on the estate page.`} />
           </p>
 
           <h3>Levy</h3>
@@ -389,6 +398,17 @@ function HoldingsTab({ book }: { book: HoldingsBook }) {
         <>
           <h3>Officers</h3>
           {book.officers.map((line, i) => (
+            <p key={i} className="ledger-note">
+              <GlossaryText text={line} />
+            </p>
+          ))}
+        </>
+      )}
+
+      {book.household.length > 0 && (
+        <>
+          <h3>The lady of the hall</h3>
+          {book.household.map((line, i) => (
             <p key={i} className="ledger-note">
               <GlossaryText text={line} />
             </p>

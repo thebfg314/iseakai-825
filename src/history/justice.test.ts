@@ -172,7 +172,7 @@ describe("judging", () => {
 
     openCase(state, justiceCase("J-V12")!, "villa", 4);
     applyVerdict(state, "J-V12", "forbid", atFor(4), 4);
-    expect(flagInt(state, "favor_church")).toBe(2);
+    expect(flagInt(state, "favor_church")).toBe(52);
 
     openCase(state, justiceCase("J-V01")!, "villa", 5);
     applyVerdict(state, "J-V01", "refuse", atFor(5), 5);
@@ -263,7 +263,7 @@ describe("the stance", () => {
     const before = state.peopleHappiness;
     tickJustice(state, { year: 836, season: "spring" }, 45, { quiet: false });
     expect(state.peopleHappiness).toBe(before + 2);
-    expect(flagInt(state, "favor_church")).toBe(1);
+    expect(flagInt(state, "favor_church")).toBe(51);
     // Only once a year.
     tickJustice(state, { year: 836, season: "summer" }, 46, { quiet: false });
     expect(state.peopleHappiness).toBe(before + 2);

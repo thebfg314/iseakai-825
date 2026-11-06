@@ -105,6 +105,17 @@ const MERCHANT_FACE_FILES = [
   [8, "Wichard.png"],
 ] as const;
 
+describe("king-quest audience portraits", () => {
+  it("uses the portrait file and not the file name as a speaker", () => {
+    expect(npcPortrait("audience", "neutral", undefined, null, "grievance")).toMatch(/Grievance\.png/);
+    expect(npcPortrait("audience", "pleased", undefined, null, "debt")).toMatch(/Debt Owed\.png/);
+    expect(npcPortrait("audience", "neutral", undefined, null, "fear")).toMatch(/Fear of Alternative\.png/);
+    expect(npcPortrait("audience", "neutral", undefined, null, "divine")).toMatch(/Divine Favour\.png/);
+    expect(npcPortrait("audience", "neutral", undefined, null, "protection")).toMatch(/Protection\.png/);
+    expect(npcPortrait("audience", "neutral")).toBeUndefined();
+  });
+});
+
 describe("merchant portraits", () => {
   it.each(MERCHANT_FACE_FILES)("face %s resolves to %s", (face, file) => {
     expect(npcPortrait("merchant", "neutral", face)).toContain(file);

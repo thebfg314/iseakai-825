@@ -380,6 +380,11 @@ export const FlagDefSchema = z.object({
   type: z.enum(["bool", "int", "enum"]),
   values: z.array(z.string()).optional(),
   meaning: z.string().min(1),
+  /**
+   * Relationship scale (standing.ts). "hundred" is 0–100, neutral 50.
+   * "band" is the five-point reception: enemy, cold, neutral, warm, ally.
+   */
+  scale: z.enum(["hundred", "band"]).optional(),
   /** "engine": a background system writes it, not event data; the lint does not demand an event setter. */
   setBy: z.enum(["events", "engine"]).default("events"),
 });
@@ -559,6 +564,11 @@ export type HistoryFeatures = z.infer<typeof FeaturesSchema>;
 
 export const HistoryStateSchema = z.object({
   flags: z.record(z.string(), FlagValueSchema).default({}),
+  /**
+   * 1 once relationship flags are on the 0–100 / five-point scales.
+   * A save that omits it still has the old small counters; loadWorldState lifts them.
+   */
+  standingV: z.number().int().default(1),
   fired: z.record(z.string(), z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), turn: z.number().int() })).default({}),
   dropped: z.array(z.string()).default([]),
   chosen: z.record(z.string(), z.string()).default({}),
@@ -633,6 +643,105 @@ export const HistoryStateSchema = z.object({
     .default({}),
   /** The Duke track: opportunities Richard has taken because the lord did not (richard.ts). */
   richard: z.object({ taken: z.array(z.string()).default([]) }).default({}),
+  /** Renown bleeding away from a failing estate (decay.ts), and the verdict on how the lord fails in the field. */
+  decay: z
+    .object({
+      /** Turn the men under arms last went unpaid (military.ts). */
+      armsUnpaidTurn: z.number().int().nullable().default(null),
+      /** Turn a household last slipped away (game.ts / neighbours.ts). */
+      flightTurn: z.number().int().nullable().default(null),
+      /** First turn of the current run of seasons losing renown; null when nothing is bleeding. */
+      sinceTurn: z.number().int().nullable().default(null),
+      /** Renown lost to failure in all, for the Books. */
+      lost: z.number().nonnegative().default(0),
+      /** Turn the lord's own villas stood empty (Count and above; not an ending). */
+      emptiedTurn: z.number().int().nullable().default(null),
+      /** What the hall says of him as a captain: nothing, that he cannot lead, or that he did not equip his men. */
+      verdict: z.enum(["none", "cannot_lead", "ill_equipped"]).default("none"),
+      verdictTurn: z.number().int().nullable().default(null),
+    })
+    .default({}),
+  /** The viscount's office, held at the count's pleasure (office.ts): the warnings before a dismissal. */
+  office: z
+    .object({
+      stage: z.enum(["none", "heard", "sharp"]).default("none"),
+      since: z.number().int().nullable().default(null),
+      /** Musters the lord did not answer since the office was given. */
+      refusedMusters: z.number().int().nonnegative().default(0),
+      /** Cases that went unjudged since the office was given. */
+      lapsedCases: z.number().int().nonnegative().default(0),
+      /** Households on the lord's villas when the office was given. */
+      householdsAtGrant: z.number().int().nullable().default(null),
+      /** Why the count is displeased, last time it was checked. */
+      cause: z.string().nullable().default(null),
+      dismissals: z.number().int().nonnegative().default(0),
+    })
+    .default({}),
+  /** The mishap table (mishaps.ts): what happens to a man holding a rank well above his standing. */
+  mishaps: z
+    .object({
+      open: z
+        .object({
+          id: z.string(),
+          turn: z.number().int(),
+          severity: z.enum(["low", "moderate", "high", "severe"]),
+          vassalId: z.string().nullable().default(null),
+          neighbourId: z.string().nullable().default(null),
+          holdingId: z.string().nullable().default(null),
+          /** A battle was raised for it and is still to be fought. */
+          battleOpen: z.boolean().default(false),
+        })
+        .nullable()
+        .default(null),
+      lastTurn: z.number().int().nullable().default(null),
+      lastId: z.string().nullable().default(null),
+      faced: z.number().int().nonnegative().default(0),
+      answered: z.number().int().nonnegative().default(0),
+    })
+    .default({}),
+  /** The lords next door (neighbours.ts): where departing households go, and who presses a weak lord. */
+  neighbours: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        seat: z.string(),
+        /** Households of the lord's that have gone to him. */
+        taken: z.number().int().nonnegative().default(0),
+        /** Land or works he has taken from the lord. */
+        encroached: z.array(z.string()).default([]),
+        /** The lord married his daughter (marriage.ts): he does not press, and he takes nobody in. */
+        kin: z.boolean().default(false),
+      }),
+    )
+    .default([]),
+  /** The lord's marriage (marriage.ts): one of four matches, and the wife as a standing advisor. */
+  marriage: z
+    .object({
+      archetype: z.enum(["hildegard", "theoderada", "gisla", "linda"]).nullable().default(null),
+      /** Her given name (the neighbour's daughter draws from a pool; the others are fixed). */
+      name: z.string().nullable().default(null),
+      /** Turn and year of the wedding. */
+      since: z.number().int().nullable().default(null),
+      year: z.number().int().nullable().default(null),
+      /** The lord's rank when the match was made: what she brought scaled with it. */
+      tier: z.number().int().min(1).max(3).nullable().default(null),
+      /** Her people: the house and its head. Hildegard's father is a neighbour (by id). */
+      kin: z.object({ house: z.string(), head: z.string(), neighbourId: z.string().nullable().default(null), enemy: z.string().nullable().default(null) }).nullable().default(null),
+      /** Gisla's dower villa (held outright) and whether her first husband's children have a claim on it. */
+      dower: z.object({ holdingId: z.string(), stepchildren: z.boolean(), claims: z.number().int().nonnegative().default(0) }).nullable().default(null),
+      /** The widow's suit: visits paid in person, the season of the last one, and her answer. */
+      suit: z.object({ visits: z.number().int().nonnegative().default(0), lastTurn: z.number().int().nullable().default(null), consented: z.boolean().default(false) }).default({}),
+      /** Names already given to a neighbour's daughter in this save, so a later match is not named the same. */
+      usedNames: z.array(z.string()).default([]),
+      /** The king quest: what Theoderada's kin asked for, and whether the lord gave it. */
+      kinWant: z.enum(["none", "office", "guarantee"]).nullable().default(null),
+      kinPledged: z.boolean().default(false),
+      /** Turn of the last remark on a match beneath him, and of her family's last quarrel at his door. */
+      lastRemarkTurn: z.number().int().nullable().default(null),
+      lastQuarrelTurn: z.number().int().nullable().default(null),
+    })
+    .default({}),
   ladder: z
     .object({
       stage: z.enum(["none", "warning", "stripped", "excommunicated", "attempt", "quest"]).default("none"),
@@ -647,6 +756,21 @@ export const HistoryStateSchema = z.object({
         .array(z.object({ motive: z.string(), name: z.string(), status: z.enum(["unknown", "won", "refused", "hedging", "betrayer"]) }))
         .default([]),
       phase: z.enum(["none", "gathering", "battle", "election", "crowned", "submitted", "failed"]).default("none"),
+      /**
+       * The man Aldric has sent for. The lord speaks to him in the hall.
+       * Cleared when he is sent home, or once the season has answered a bargain.
+       */
+      meeting: z
+        .object({
+          motive: z.string(),
+          name: z.string(),
+          settled: z.boolean().default(false),
+          wantsTalk: z.boolean().default(true),
+          greeted: z.boolean().default(false),
+          openedAt: z.string(),
+        })
+        .nullable()
+        .default(null),
       /** Turn the last approach was resolved (one a season). */
       lastApproachTurn: z.number().int().nullable().default(null),
       /** Turn the phase last changed. */
@@ -740,11 +864,48 @@ export const HistoryStateSchema = z.object({
         angrySince: z.number().int().nullable().default(null),
         /** The last thing that moved him, for the household's lines and the icon's tooltip. */
         lastReason: z.string().nullable().default(null),
+        /** What sort of gift lands with him. Assigned when he is sworn. */
+        bent: z.enum(["fighter", "devout", "hunter", "court"]).default("court"),
+        /** Gifts whose warmth has not yet faded. `left` is the mood still owing to that gift. */
+        gifts: z
+          .array(
+            z.object({
+              kind: z.string(),
+              turn: z.number().int(),
+              left: z.number().nonnegative(),
+              perSeason: z.number().nonnegative(),
+              bribe: z.boolean().default(false),
+            }),
+          )
+          .default([]),
+        /** Grievances a gift cannot buy past: undefended, a son unconfirmed, judged against him. */
+        grievances: z.array(z.enum(["undefended", "heir", "judged"])).default([]),
+        /** A public snub. Later gifts do not move him until he is honoured in the open. */
+        snubbed: z.boolean().default(false),
       }),
     )
     .default([]),
   /** Sworn men who left the lord's service (vassals.ts), for the record and the prompt. */
   vassalsLost: z.array(z.object({ name: z.string(), turn: z.number().int(), why: z.string() })).default([]),
+  /**
+   * A wedding, a confirmation, a funeral, a victory, a birth, or a holy-day distribution.
+   * Silence lets it pass; a snub is a choice the lord states.
+   */
+  occasions: z
+    .object({
+      open: z
+        .object({
+          id: z.string(),
+          kind: z.enum(["wedding", "confirm", "funeral", "victory", "birth", "holy"]),
+          vassalId: z.string().nullable(),
+          turn: z.number().int(),
+        })
+        .nullable()
+        .default(null),
+      /** `year-season` of the holy day already put before the hall, so Christmas and Easter come once each. */
+      holyKey: z.string().nullable().default(null),
+    })
+    .default({}),
   /** Trade health (rank design 'Trade health'; 03_HISTORY §11.8a): one hidden number for the home region. */
   trade: z
     .object({
@@ -817,9 +978,58 @@ export const HistoryStateSchema = z.object({
       leaked: z.number().nonnegative().default(0),
     })
     .default({}),
+  /**
+   * Household upkeep and the keeping of the works (upkeep.ts). Taken from the chest each season.
+   * The books show what is left; the gross is Aldric's to say if the lord asks.
+   */
+  upkeep: z
+    .object({
+      /** Points cut from the rank's household share (0–10). The household itself cannot be skipped. */
+      lean: z.number().int().min(0).max(10).default(0),
+      /** How openly the hall gives, inside the household bill. Lean spends less; generous spends more. */
+      giving: z.enum(["lean", "customary", "generous"]).default("customary"),
+      /** Consecutive seasons the keeping of the works went short. */
+      neglect: z.number().int().nonnegative().default(0),
+      /** Consecutive seasons that keeping was paid in full, toward mending what has started to fail. */
+      mended: z.number().int().nonnegative().default(0),
+      paidTurn: z.number().int().nullable().default(null),
+      /** Works that have started to fail. They still stand until a later season finishes one. */
+      worn: z
+        .array(z.object({ holdingId: z.string(), feature: z.string(), stage: z.number().int().min(1).max(2).default(1) }))
+        .default([]),
+      last: z
+        .object({
+          turn: z.number().int(),
+          grossYear: z.number(),
+          householdYear: z.number(),
+          maintenanceYear: z.number(),
+          householdPaid: z.number(),
+          maintenancePaid: z.number(),
+          /** The quarter owed this season (the paid figures above are measured against these). */
+          householdDue: z.number().optional(),
+          maintenanceDue: z.number().optional(),
+          netYear: z.number(),
+        })
+        .nullable()
+        .default(null),
+    })
+    .default({}),
   record: z.array(z.object({ year: z.number().int(), season: z.enum(SEASON_ORDER), text: z.string(), thread: z.string() })).default([]),
   away: z.object({ reason: z.string(), untilTurn: z.number().int() }).nullable().default(null),
-  dead: z.object({ cause: z.enum(["old_age", "battle", "illness", "wound", "captivity"]), year: z.number().int() }).nullable().default(null),
+  /**
+   * A ransom the chest could not meet (battle.ts). Not a game over: raising it by
+   * taxation belongs to the economy, which is not built. The debt stands.
+   */
+  ransom: z.object({ owed: z.number().nonnegative(), turn: z.number().int() }).nullable().default(null),
+  /** Mercy after a failed rising (execution.ts): how many times he has been spared. */
+  mercy: z
+    .object({
+      pardons: z.number().int().nonnegative().default(0),
+      /** Judgements already given, so a standing flag is not tried again every season. */
+      judged: z.array(z.string()).default([]),
+    })
+    .default({}),
+  dead: z.object({ cause: z.enum(["old_age", "battle", "illness", "wound", "captivity", "execution", "abandoned"]), year: z.number().int() }).nullable().default(null),
   /** The closing screen (03_HISTORY §13): the death and the life, written once. */
   ending: z.object({ death: z.string(), summary: z.string(), voice: z.string(), byModel: z.boolean().default(false) }).nullable().default(null),
 });

@@ -583,13 +583,13 @@ describe("History battle flow (03_HISTORY §9, Battle Force Tables)", () => {
 
   it("turning back clears the call and takes the penalty; barring the hall loses the stores", () => {
     const s = called("830-B1");
-    s.history.flags.count_opinion = 0;
+    s.history.flags.count_opinion = 50;
     s.player.renown = 50;
     const renown = s.player.renown;
     const text = refuseCall(s, deps());
     expect(text).toMatch(/^You turn back/);
     expect(s.battle_call).toBeNull();
-    expect(s.history.flags.count_opinion).toBe(-2);
+    expect(s.history.flags.count_opinion).toBe(48);
     expect(s.player.renown).toBeLessThan(renown);
     expect(s.flags.active_threat).toBe(false); // not a raid
 

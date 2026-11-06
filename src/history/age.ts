@@ -47,10 +47,19 @@ export function tickAge(state: WorldState, at: SeasonAt, turn: number): { died: 
   return { died: true, line: `The lord of Fontenay died of old age in ${at.season} ${at.year}, aged ${bodyAge(state, at.year)}.` };
 }
 
-/** An earlier death (battle, wound, captivity) closes the chronicle the same way. */
+const DEATH_WORD: Record<NonNullable<WorldState["history"]["dead"]>["cause"], string> = {
+  old_age: "died in his bed",
+  battle: "fell in battle",
+  illness: "died of a sickness",
+  wound: "died of a maiming wound",
+  captivity: "died in his captors' hands",
+  execution: "was put to death as a traitor",
+  abandoned: "outlived his people, and the villa stood empty",
+};
+
+/** An earlier ending (battle, wound, captivity, execution, an empty villa) closes the chronicle the same way. */
 export function markDeath(state: WorldState, cause: NonNullable<WorldState["history"]["dead"]>["cause"], year = state.meta.year): void {
   if (state.history.dead) return;
   state.history.dead = { cause, year };
-  const how = cause === "battle" ? "fell in battle" : cause === "captivity" ? "died in his captors' hands" : cause === "wound" ? "died of his wounds" : "died of a sickness";
-  state.history.record.push({ year, season: state.meta.season as SeasonAt["season"], text: `The lord ${how}, aged ${bodyAge(state, year)}.`, thread: "ending" });
+  state.history.record.push({ year, season: state.meta.season as SeasonAt["season"], text: `The lord ${DEATH_WORD[cause]}, aged ${bodyAge(state, year)}.`, thread: "ending" });
 }

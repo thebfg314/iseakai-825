@@ -286,6 +286,8 @@ export function applyProposal(
     proposal.type === "defer_proposal" ? innerProposalOfDefer(proposal) ?? proposal : proposal;
   // The dated calendar's own cards (03_HISTORY §6.3) carry their own actor rules.
   if (isHistoryProposal(proposal)) return applyHistoryProposal(state, proposal, actor);
+  // The lord's wife (marriage.ts) counsels; she keeps no books and gives no orders to them.
+  if (actor === "wife") return fail(state, "The lady gives counsel; the books are Aldric's.", "The lady gives counsel; the books are Aldric's.");
   if (actor === "smith") {
     const blocked = smithAllowed(state, authProposal);
     if (blocked) return fail(state, blocked, blocked);

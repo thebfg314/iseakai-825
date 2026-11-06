@@ -139,7 +139,7 @@ describe("the villa's walls (design review, item 8)", () => {
 });
 
 describe("ransom and grief (design review, items 9 and 10)", () => {
-  it("a ransom the chest cannot meet leaves the lord a captive and ends the chronicle", () => {
+  it("a ransom the chest cannot meet is written down, and he comes home; the taxation that would end it is not built", () => {
     const s = fresh();
     s.player.renown = 100;
     s.resources.denarii = 1000;
@@ -149,11 +149,13 @@ describe("ransom and grief (design review, items 9 and 10)", () => {
     const poor = fresh();
     poor.player.renown = 100;
     poor.resources.denarii = 5;
-    expect(settleRansom(poor)).toMatch(/remains in their hands/);
-    expect(poor.player.captive).toBe(true);
-    expect(poor.resources.denarii).toBe(5); // nothing is taken; the chest is not what buys him back
+    expect(settleRansom(poor)).toMatch(/stands owing/);
+    expect(poor.player.captive).toBe(false);
+    expect(poor.player.dead).toBe(false);
+    expect(poor.history.ransom?.owed).toBeGreaterThan(0);
+    expect(poor.resources.denarii).toBe(0);
     raiseCallDirect(poor, "summons", 1);
-    expect(acceptCall(poor, silent).started).toBe(false);
+    expect(acceptCall(poor, silent).started).toBe(true);
   });
 
   it("each levy man who does not come home costs the people 3, but grief alone stops at 20", () => {

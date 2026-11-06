@@ -11,42 +11,62 @@
     {
       "id": "missus",
       "title": "missus",
-      "aliases": ["missus"],
+      "aliases": [
+        "missus",
+        "missi dominici",
+        "missi"
+      ],
       "rule": "default",
       "definition": "A missus (from missus dominicus, \"envoy of the lord\") was a royal inspector Charlemagne and his heirs sent out to check that local counts and bishops were ruling fairly and collecting what the crown was owed. Think FBI / federal inspector general, not \"Mrs.\"\n\nIf a missus turns up in the books or in gossip, someone important is looking at your neighborhood."
     },
     {
       "id": "manses",
       "title": "Manses",
-      "aliases": ["manses", "mansus", "manse"],
+      "aliases": [
+        "manses",
+        "mansus",
+        "manse"
+      ],
       "rule": "default",
       "definition": "A mansus (plural often written manses in estate lists) was a peasant farmstead unit — house, garden, and the strips of land that fed one household. Rough modern sense: \"households on the tax roll,\" not mansions.\n\nWhen the books say how many manses you have, they're counting productive families, not bedrooms."
     },
     {
       "id": "modii",
       "title": "modii / modius",
-      "aliases": ["modii", "modius"],
+      "aliases": [
+        "modii",
+        "modius"
+      ],
       "rule": "default",
       "definition": "A modius (plural modii) is a dry measure for grain. The classical Roman modius was about 8.7 liters — roughly 2 US dry gallons, or a bit under a peck (a peck is 8 dry quarts). Picture a sturdy bucket of wheat, not a truckload.\n\nExact medieval sizes wandered by region, but in the game it's your grain \"bushel-ish\" unit on the ledger."
     },
     {
       "id": "denarii",
       "title": "denarii / denarius",
-      "aliases": ["denarii", "denarius"],
+      "aliases": [
+        "denarii",
+        "denarius",
+        "solidi",
+        "solidus"
+      ],
       "rule": "default",
       "definition": "The denarius (plural denarii) is the silver penny of the Frankish world. Charlemagne's reform (c. 793–794) struck about 240 of them from a pound of silver (~1.7 g of silver each). Accounting still used the old trio: 12 denarii = 1 solidus (shilling of account), 20 solidi = 1 pound — the ancestor of Britain's £sd system.\n\nIn game terms: your cash. A handful of denarii is grocery money; hundreds are serious."
     },
     {
       "id": "demesne",
       "title": "demesne",
-      "aliases": ["demesne"],
+      "aliases": [
+        "demesne"
+      ],
       "rule": "default",
       "definition": "Demesne (say \"di-MAIN\") is the land the lord keeps for his own working — not rented out to free tenants. Modern hook: the company's owned factories vs franchisees; or a ranch's \"home place\" vs leased pastures.\n\nLabour, seed, and harvest on the demesne hit your chest and stores directly."
     },
     {
       "id": "pagus",
       "title": "pagus",
-      "aliases": ["pagus"],
+      "aliases": [
+        "pagus"
+      ],
       "rule": "default",
       "definition": "A pagus was a rural district — bigger than a village, smaller than a whole kingdom. \"Pagus of Autun\" is like saying \"Autun County.\"\n\nIt tells you whose orbit Fontenay sits in for law, markets, and trouble."
     },
@@ -57,162 +77,240 @@
         "cell of Saint-Martin",
         "Saint-Martin's cell",
         "Saint-Martins cell",
-        "Saint Martin's cell"
+        "Saint Martin's cell",
+        "Saint-Martin",
+        "Saint Martin",
+        "Martin of Tours"
       ],
       "rule": "default",
-      "definition": "Fontenay's little monastic house under Saint Martin's patronage — a few brothers, a timber oratory, and a claim on local tithes and prayers, under a larger abbey's shadow."
+      "definition": "Fontenay's little monastic house under Saint Martin's patronage — a few brothers, a timber oratory, and a claim on local tithes and prayers, under a larger abbey's shadow.\n\nMartin of Tours is the soldier-saint who cut his cloak for a beggar. His day is Martinmas, 11 November, and this house is his."
     },
     {
       "id": "cell",
       "title": "cell",
-      "aliases": ["cells", "cell"],
+      "aliases": [
+        "cells",
+        "cell"
+      ],
       "rule": "monastic_cell",
       "definition": "Here cell means a small monastic house (Latin cella), not a prison cell. Tiny community of monks or nuns under a larger abbey's shadow — a religious \"branch office\" with a chapel, a few brothers, and claims on local tithes and prayers."
     },
     {
       "id": "pannage",
       "title": "pannage / mast",
-      "aliases": ["pannage", "mast year", "mast"],
+      "aliases": [
+        "pannage",
+        "mast year",
+        "mast"
+      ],
       "rule": "default",
       "definition": "Pannage is turning pigs into the woods in autumn to fatten on fallen nuts. Mast is that nut fall. A good mast year is a bumper crop of woodland calories.\n\nModern hook: free-range finishing on seasonal forage."
     },
     {
       "id": "bloomery",
       "title": "bloomery",
-      "aliases": ["bloom iron", "bloomeries", "bloomery", "bog ore", "bog iron"],
+      "aliases": [
+        "bloom iron",
+        "bloomeries",
+        "bloomery",
+        "bog ore",
+        "bog iron"
+      ],
       "rule": "default",
       "definition": "A bloomery is a small clay shaft and bellows. It burns charcoal and bog ore — rusty mud from wet ground — into a spongy lump of iron called a bloom. Not a modern blast furnace.\n\nBloom iron is that rough product. A season's firing yields only a few pounds."
     },
     {
       "id": "mill_leat",
       "title": "mill leat",
-      "aliases": ["mill leat", "mill-leat", "leat"],
+      "aliases": [
+        "mill leat",
+        "mill-leat",
+        "leat",
+        "mill-race",
+        "mill race",
+        "millrace"
+      ],
       "rule": "mill_leat",
       "definition": "A leat is a dug channel that leads river flow to a mill wheel.\n\nModern hook: millrace / dedicated water channel."
     },
     {
       "id": "two_field",
       "title": "two-field",
-      "aliases": ["two-field rotation", "two field rotation", "two-field"],
+      "aliases": [
+        "two-field rotation",
+        "two field rotation",
+        "two-field"
+      ],
       "rule": "default",
       "definition": "Half the arable sown, half fallow each year, then swap.\n\nEarly medieval soil rest before wider three-field use."
     },
     {
       "id": "three_field",
       "title": "three-field",
-      "aliases": ["three-field rotation", "three field rotation", "three-field", "three-phase rotation"],
+      "aliases": [
+        "three-field rotation",
+        "three field rotation",
+        "three-field",
+        "three-phase rotation"
+      ],
       "rule": "default",
       "definition": "The ploughland in three: winter seed, spring seed, and a rest. More of the arable is under crop than in two-field tillage."
     },
     {
       "id": "villa",
       "title": "villa",
-      "aliases": ["villa"],
+      "aliases": [
+        "villa"
+      ],
       "rule": "default",
       "definition": "Carolingian estate center (hall, stores, lands), not a vacation villa.\n\nFontenay is a working manor hub."
     },
     {
       "id": "waste",
       "title": "overgrown waste",
-      "aliases": ["overgrown waste", "waste"],
+      "aliases": [
+        "overgrown waste",
+        "waste"
+      ],
       "rule": "land_waste",
       "definition": "Uncultivated marginal ground, not garbage.\n\nIn the land labels, waste is the tired edge of the holding that can be improved back to meadow or tillage."
     },
     {
       "id": "scrub",
       "title": "overgrown scrub",
-      "aliases": ["overgrown scrub", "scrub"],
+      "aliases": [
+        "overgrown scrub",
+        "scrub"
+      ],
       "rule": "land_scrub",
       "definition": "Brush that can be cleared to arable.\n\nIn the land labels, scrub is overgrown cover waiting on labour, not a cleaning verb. Clearing it does not spend the iron or stone in the stores."
     },
     {
       "id": "marling",
       "title": "marling",
-      "aliases": ["marling", "marl"],
+      "aliases": [
+        "marling",
+        "marl"
+      ],
       "rule": "default",
       "definition": "Spreading chalky/clay-lime earth to improve soil; like liming a field."
     },
     {
       "id": "reeve",
       "title": "village reeve",
-      "aliases": ["village reeve", "reeve"],
+      "aliases": [
+        "village reeve",
+        "reeve"
+      ],
       "rule": "default",
       "definition": "Village headman / peasant go-between. On this estate that is Otto — he speaks for the hides and who is shirking."
     },
     {
       "id": "oratory",
       "title": "timber oratory",
-      "aliases": ["timber oratory", "oratory"],
+      "aliases": [
+        "timber oratory",
+        "oratory"
+      ],
       "rule": "default",
       "definition": "Small prayer house/chapel, not a speech. Timber means wooden — Fontenay's oratory is a modest timber chapel, not a stone church."
     },
     {
       "id": "feast_days",
       "title": "feast days",
-      "aliases": ["feast days", "feast day"],
+      "aliases": [
+        "feast days",
+        "feast day"
+      ],
       "rule": "default",
       "definition": "Church holy days when ordinary field work stops."
     },
     {
       "id": "francia",
       "title": "Francia",
-      "aliases": ["Francia"],
+      "aliases": [
+        "Francia"
+      ],
       "rule": "default",
       "definition": "Frankish realm under the Carolingians; not the modern French Republic."
     },
     {
       "id": "carolingian",
       "title": "Carolingian",
-      "aliases": ["Carolingians", "Carolingian"],
+      "aliases": [
+        "Carolingians",
+        "Carolingian"
+      ],
       "rule": "default",
       "definition": "Of Charlemagne's dynasty/era (late 700s–900s)."
     },
     {
       "id": "louis_the_pious",
       "title": "Louis the Pious",
-      "aliases": ["Louis the Pious"],
+      "aliases": [
+        "Louis the Pious"
+      ],
       "rule": "default",
       "definition": "Charlemagne's son; emperor in 825 (814–840)."
     },
     {
       "id": "alemannic",
       "title": "Alemannic",
-      "aliases": ["Alemannic", "Alemannia"],
+      "aliases": [
+        "Alemannic",
+        "Alemannia"
+      ],
       "rule": "default",
       "definition": "From Alemannia / later Swabia region."
     },
     {
       "id": "lombard",
       "title": "Lombard",
-      "aliases": ["Lombards", "Lombardy", "Lombard"],
+      "aliases": [
+        "Lombards",
+        "Lombardy",
+        "Lombard"
+      ],
       "rule": "default",
       "definition": "From Lombardy / north Italian Lombard world."
     },
     {
       "id": "frank",
       "title": "Frank / Frankish",
-      "aliases": ["Frankish", "Franks", "Frank"],
+      "aliases": [
+        "Frankish",
+        "Franks",
+        "Frank"
+      ],
       "rule": "frank",
       "definition": "Frankish people / identity in the Carolingian world."
     },
     {
       "id": "tithe",
       "title": "tithe",
-      "aliases": ["tithes", "tithe"],
+      "aliases": [
+        "tithes",
+        "tithe"
+      ],
       "rule": "default",
       "definition": "Church share (~tenth) of produce; a standing religious claim on the estate's grain and a little wool."
     },
     {
       "id": "renders",
       "title": "renders",
-      "aliases": ["renders"],
+      "aliases": [
+        "renders"
+      ],
       "rule": "default",
       "definition": "Obligations owed upward to a higher lord / public power; overlord taxes, not a cooking verb."
     },
     {
       "id": "standing_order",
       "title": "standing order",
-      "aliases": ["standing orders", "standing order"],
+      "aliases": [
+        "standing orders",
+        "standing order"
+      ],
       "rule": "default",
       "definition": "Ongoing written estate rule (not bank autopay).\n\nConfirm is what writes one into the customs book; speech alone does not."
     },
@@ -232,37 +330,2022 @@
     {
       "id": "hunt",
       "title": "hunt",
-      "aliases": ["mid-hunt", "mid hunt", "a hunt", "the hunt", "that hunt", "hunt for", "hunt"],
+      "aliases": [
+        "mid-hunt",
+        "mid hunt",
+        "a hunt",
+        "the hunt",
+        "that hunt",
+        "hunt for",
+        "hunt"
+      ],
       "rule": "hunt_gerulf",
       "definition": "Here a hunt is Gerulf taking a purse and walking the roads for goods the carts will not bring — not a deer drive. The purse is the dear end of the market price. An easy road costs a little more, a fair road more than that, and a hard road most of all. Iron is an easy road unless he names a harder one. The coin leaves the chest when you Confirm."
     },
     {
       "id": "hides",
       "title": "hides",
-      "aliases": ["hides", "hide"],
+      "aliases": [
+        "hides",
+        "hide"
+      ],
       "rule": "hides_skins",
       "definition": "Animal skins in the stores — leather-to-be — not the old English land-measure \"hide,\" unless the sentence is clearly about land.\n\nA few hides on the ledger are a tannery's raw stock, not a count of acres."
     },
     {
       "id": "muster",
       "title": "muster",
-      "aliases": ["muster"],
+      "aliases": [
+        "muster"
+      ],
       "rule": "default",
       "definition": "Call-up of men for local military or guard duty."
     },
     {
       "id": "prior",
       "title": "prior",
-      "aliases": ["prior"],
+      "aliases": [
+        "prior"
+      ],
       "rule": "monastic_prior",
       "definition": "Head of the small monastic house. At Fontenay that is Ermenald, prior of Saint-Martin's cell.\n\n\"Prior season\" and \"prior to\" stay ordinary English."
     },
     {
       "id": "hall",
       "title": "the hall",
-      "aliases": ["the hall", "timber hall", "manor hall", "stone hall", "halls", "hall"],
+      "aliases": [
+        "the hall",
+        "timber hall",
+        "manor hall",
+        "stone hall",
+        "halls",
+        "hall"
+      ],
       "rule": "manor_hall",
       "definition": "Seat of household authority — the timber hall at Fontenay — not a corridor."
+    },
+    {
+      "id": "benefice",
+      "title": "benefice",
+      "aliases": [
+        "benefices",
+        "benefice"
+      ],
+      "rule": "default",
+      "definition": "Land held from a lord for service, not owned outright. Fontenay starts as one: the man who granted it, or his heir, can take it back.\n\nBuying it, a royal charter, a marriage into local kin, or a precaria are the ways out."
+    },
+    {
+      "id": "precaria",
+      "title": "precaria",
+      "aliases": [
+        "precaria"
+      ],
+      "rule": "default",
+      "definition": "Church land granted back to a layman for his life, for a rent. The word means something asked for: you petition, the church grants.\n\nYou stay a layman. You do not take vows. When the host is called you ride in the bishop's contingent, not a count's."
+    },
+    {
+      "id": "nona",
+      "title": "the nona",
+      "aliases": [
+        "the nona",
+        "nona"
+      ],
+      "rule": "default",
+      "definition": "A ninth of the produce, paid on top of the tithe, for holding church land. The king's law expects it of laymen on church estates.\n\nOn a precaria it is the dearer of the two rents. The other is a small fixed sum in coin."
+    },
+    {
+      "id": "allod",
+      "title": "allod",
+      "aliases": [
+        "allods",
+        "allod"
+      ],
+      "rule": "default",
+      "definition": "Land held outright, with no lord above it. The opposite of a benefice.\n\nA wife's allods are fields her family owns free and clear. A count thinks twice before seizing from a man whose kin hold that kind of land."
+    },
+    {
+      "id": "fisc",
+      "title": "fisc",
+      "aliases": [
+        "royal fisc",
+        "the fisc",
+        "fisc"
+      ],
+      "rule": "default",
+      "definition": "Land and income that belong to an office, not to the man who holds the office. The king's fisc is the crown's estates. A county's fisc is the count's official villas and dues.\n\nLose the office and the fisc stays with the next man. What you keep is your patrimony."
+    },
+    {
+      "id": "patrimony",
+      "title": "patrimony",
+      "aliases": [
+        "patrimony"
+      ],
+      "rule": "default",
+      "definition": "What is yours rather than the office's: the villas and manses you would still hold if the county were taken away."
+    },
+    {
+      "id": "servile",
+      "title": "servile",
+      "aliases": [
+        "servile manses",
+        "servile"
+      ],
+      "rule": "default",
+      "definition": "Unfree peasant households on the mansus roll. They owe heavier work than the free manses, and they have holdings of their own.\n\nNot an insult, and not the same as mancipia, who are people the lord holds in his own stores."
+    },
+    {
+      "id": "mancipia",
+      "title": "mancipia",
+      "aliases": [
+        "mancipium",
+        "mancipia",
+        "the unfree",
+        "unfree"
+      ],
+      "rule": "default",
+      "definition": "Unfree people the lord holds in person — captives or bought — counted as souls. They work the demesne, eat his grain, and do not stand in the levy. The free tenants resent a crowd of them.\n\nThey can be bought, sold, or freed. Freeing them before witnesses is manumission."
+    },
+    {
+      "id": "manumission",
+      "title": "manumission",
+      "aliases": [
+        "manumission",
+        "manumit",
+        "manumitted"
+      ],
+      "rule": "default",
+      "definition": "Freeing the lord's mancipia before witnesses. The church calls it a pious act. The free households take heart from it."
+    },
+    {
+      "id": "bride_price",
+      "title": "bride-price",
+      "aliases": [
+        "bride-price",
+        "bride price"
+      ],
+      "rule": "default",
+      "definition": "What the groom's side pays the bride's kin to make the match. In this hall it may be coin, or cattle and sheep at the market price.\n\nNot a dowry. A dowry would come from her family. Not a dower, which is land a widow holds from a dead husband."
+    },
+    {
+      "id": "dower",
+      "title": "dower",
+      "aliases": [
+        "dower"
+      ],
+      "rule": "default",
+      "definition": "Land a widow holds from her dead husband's estate, in her own right. Her sons by that husband may still claim it.\n\nGisla's villa is a dower. It is not a bride-price and not a dowry."
+    },
+    {
+      "id": "vassal",
+      "title": "vassal",
+      "aliases": [
+        "sworn men",
+        "sworn man",
+        "vassals",
+        "vassal"
+      ],
+      "rule": "default",
+      "definition": "A man who has sworn to hold of a lord and to fight for him. You start with none.\n\nThe law quoted in 830 is a real one: a vassal may leave a lord who flees and leaves his men exposed. Bernard's kin will still call it desertion."
+    },
+    {
+      "id": "commend",
+      "title": "commendation",
+      "aliases": [
+        "commendation",
+        "commended",
+        "commend"
+      ],
+      "rule": "default",
+      "definition": "To put yourself in a lord's hands as his man. \"You are commended to the emperor\" means he is your lord directly, not that he praised you.\n\nThe land you then hold of him is a benefice, unless the charter says otherwise."
+    },
+    {
+      "id": "charter",
+      "title": "charter",
+      "aliases": [
+        "royal charter",
+        "charters",
+        "charter"
+      ],
+      "rule": "default",
+      "definition": "A sealed writing that records a grant: a villa, a right, a confirmation. Speech does not do this work. The seal does.\n\nA royal charter is the strong kind. A count who seizes the land afterward has to answer to the king."
+    },
+    {
+      "id": "writ",
+      "title": "writ",
+      "aliases": [
+        "writ"
+      ],
+      "rule": "default",
+      "definition": "A written order from a count's officers or a higher court, telling someone to enforce what the record already says.\n\nWhen Aldric says a writ is coming, he means they are about to act on the assessment, not that someone is composing literature."
+    },
+    {
+      "id": "host",
+      "title": "the host",
+      "aliases": [
+        "royal host",
+        "the host",
+        "this host",
+        "host"
+      ],
+      "rule": "army_host",
+      "definition": "The army called out for a campaign. Every man who owes service is to come with horse, shield, arms, and food.\n\nNot a feast, and not a host in the sense of a man entertaining guests."
+    },
+    {
+      "id": "levy",
+      "title": "levy",
+      "aliases": [
+        "levies",
+        "bridge levy",
+        "levy"
+      ],
+      "rule": "default",
+      "definition": "The men a lord can call off his lands, or the payment asked instead of those men. The Paris levy and the bridge levy are payments. The villa's levy is its own free men under arms.\n\nMancipia do not stand in it."
+    },
+    {
+      "id": "pleas",
+      "title": "pleas",
+      "aliases": [
+        "lesser pleas",
+        "pleas"
+      ],
+      "rule": "default",
+      "definition": "Cases heard in a lord's court. The fines are income.\n\nLesser pleas are the small ones — a boundary, a pig, a blow at a feast. A viscount hears those for the count and keeps a share. The great pleas stay with the count."
+    },
+    {
+      "id": "viscount",
+      "title": "viscount",
+      "aliases": [
+        "viscounts",
+        "viscount"
+      ],
+      "rule": "default",
+      "definition": "The count's deputy over a district. Above a villa lord, below a count.\n\nHe holds the count's court for the lesser pleas and takes the deputy's share of the fines."
+    },
+    {
+      "id": "marquis",
+      "title": "marquis",
+      "aliases": [
+        "marquis"
+      ],
+      "rule": "default",
+      "definition": "The man who holds a march, a frontier command. He outranks a count.\n\nRichard becomes Marquis of Burgundy when his counties are joined into one great march. After that, a count in his country has to go through him."
+    },
+    {
+      "id": "march",
+      "title": "the March",
+      "aliases": [
+        "Spanish March",
+        "Breton march",
+        "the March"
+      ],
+      "rule": "frontier_march",
+      "definition": "A frontier district, military as much as it is a county. The Spanish March is the counties around Barcelona and Girona, facing Córdoba. The Breton march faces Brittany.\n\n\"The March\" in the early news is the Spanish one. The month of March is an ordinary month."
+    },
+    {
+      "id": "chancery",
+      "title": "chancery",
+      "aliases": [
+        "chancery"
+      ],
+      "rule": "default",
+      "definition": "The writing-office of a king or emperor. The clerks there draw charters, keep the lists of who holds what, and put names on summonses.\n\nIf the chancery has your name, the grant is real. If it does not, you have a story and no seal."
+    },
+    {
+      "id": "chamberlain",
+      "title": "chamberlain",
+      "aliases": [
+        "chamberlain"
+      ],
+      "rule": "default",
+      "definition": "Keeper of the royal chamber, and in practice the man who stands between everyone else and the emperor. Bernard of Septimania is made one in 829. For a while he is the second man in the empire."
+    },
+    {
+      "id": "oath_helpers",
+      "title": "oath-helpers",
+      "aliases": [
+        "oath-helpers",
+        "oath helpers"
+      ],
+      "rule": "default",
+      "definition": "Neighbours who swear beside an accused man. If he can find them, the court takes his oath as proof and he goes clear.\n\nThis is how a Carolingian court often decides, when nobody saw the thing and both sides shout."
+    },
+    {
+      "id": "composition",
+      "title": "wound-price",
+      "aliases": [
+        "composition for the wound",
+        "wound-price",
+        "wound price",
+        "compositions",
+        "composition"
+      ],
+      "rule": "default",
+      "definition": "The set payment that settles a wound, so the kin do not take up a feud. Part goes to the wounded man. Often a fine goes to the lord as well.\n\nThink a legal settlement with a customary number on it, not an essay and not a musical work."
+    },
+    {
+      "id": "palisade",
+      "title": "palisade",
+      "aliases": [
+        "palisade"
+      ],
+      "rule": "default",
+      "definition": "A wall of upright timbers around a hall or a villa. The cheapest serious defense, and a thing neighbours can see from the road.\n\nIt will not stop an army. It will stop a raid that hoped for an open yard."
+    },
+    {
+      "id": "relic",
+      "title": "relic",
+      "aliases": [
+        "relics",
+        "relic"
+      ],
+      "rule": "default",
+      "definition": "A saint's bone, cloth, or other remains, kept in a church and believed to work. Pilgrims come, and they leave gifts.\n\nA relic in the gift list is a sacred object, not a keepsake. Holding a famous one also tells thieves where to look."
+    },
+    {
+      "id": "capitulary",
+      "title": "capitulary",
+      "aliases": [
+        "capitularies",
+        "capitulary"
+      ],
+      "rule": "default",
+      "definition": "A royal ordinance, set out chapter by chapter. The rule against buying grain cheap in a hungry year and selling it dear is one of them.\n\nThink a statute from the palace, not a chapter of a book you chose to read."
+    },
+    {
+      "id": "the_ban",
+      "title": "the ban",
+      "aliases": [
+        "pronounced the ban",
+        "the ban",
+        "excommunicated",
+        "excommunication"
+      ],
+      "rule": "default",
+      "definition": "The Church cutting a man off. No Mass for him, no confession, no Christian burial, and his sworn men released from their oaths.\n\nIn this kingdom it is a political weapon as often as a spiritual one. You keep the lands and they stop answering, until the ban is lifted — by silver, by land, by a pilgrimage, or by public penance."
+    },
+    {
+      "id": "layman",
+      "title": "layman",
+      "aliases": [
+        "lay lord",
+        "laymen",
+        "layman"
+      ],
+      "rule": "default",
+      "definition": "Not in holy orders. A layman may hold church land, marry, fight, and judge. A monk or a priest may not do all of those.\n\nA precaria does not make you clergy. Ermenald is careful about that."
+    },
+    {
+      "id": "coulter",
+      "title": "coulter",
+      "aliases": [
+        "coulters",
+        "coulter",
+        "ploughshare",
+        "plowshare",
+        "plough share",
+        "plow share"
+      ],
+      "rule": "default",
+      "definition": "The coulter is the iron knife on a plough that cuts the ground ahead of the share. The share is the iron that then lifts and turns the soil.\n\nBernard prices them in pounds of iron and days at the hearth. A heavy plough's full iron — share, coulter, and fittings — is a serious piece of the store."
+    },
+    {
+      "id": "gambeson",
+      "title": "gambeson",
+      "aliases": [
+        "gambison",
+        "gambeson"
+      ],
+      "rule": "default",
+      "definition": "A padded coat worn as armor, or under mail. The levy's usual protection. The armory sheets spell it gambison.\n\nIt will turn a weak blow. It will not turn a horseman's."
+    },
+    {
+      "id": "anointed",
+      "title": "the Lord's anointed",
+      "aliases": [
+        "Lord's anointed",
+        "the Lord's anointed",
+        "anointed"
+      ],
+      "rule": "default",
+      "definition": "A king or emperor set apart by holy oil at his crowning. Ermenald's objection to deposing Louis is that men who swore to the anointed are not free to unmake him.\n\nNot a compliment. A claim about what God has already done."
+    },
+    {
+      "id": "rogation",
+      "title": "Rogation days",
+      "aliases": [
+        "Rogation days",
+        "the Rogation",
+        "Rogation",
+        "the Litanies",
+        "Litanies"
+      ],
+      "rule": "default",
+      "definition": "The three days before Ascension, which is the Thursday forty days after Easter. The parish walks the fields behind the cross, singing the Litanies — the long sung prayers — over the crops.\n\nThe bishop expects the lord to walk with his people. In 840 the sun goes dark in the middle of them."
+    },
+    {
+      "id": "candlemas",
+      "title": "Candlemas",
+      "aliases": [
+        "Candlemas"
+      ],
+      "rule": "default",
+      "definition": "2 February, the feast of the Purification, when candles are blessed. In field-talk it is the end of deep winter.\n\n\"Rain since Candlemas\" means the wet has lasted since the start of February, and the winter wheat is in trouble."
+    },
+    {
+      "id": "martinmas",
+      "title": "Martinmas",
+      "aliases": [
+        "Martinmas"
+      ],
+      "rule": "default",
+      "definition": "11 November, Saint Martin's day, and the end of the farming year. Dues are reckoned, pigs are killed, and a host is told to be home before it.\n\nThe cell at Fontenay is his house. See also the cell of Saint-Martin."
+    },
+    {
+      "id": "lady_day",
+      "title": "Lady Day",
+      "aliases": [
+        "Lady Day"
+      ],
+      "rule": "default",
+      "definition": "25 March, the Annunciation, a quarter-day for rents and stores.\n\n\"Grain enough to Lady Day\" means the households can eat until late March and no further. The spring sowing is a separate problem."
+    },
+    {
+      "id": "michaelmas",
+      "title": "Michaelmas",
+      "aliases": [
+        "Michaelmas"
+      ],
+      "rule": "default",
+      "definition": "29 September, Saint Michael's feast. Harvest is in. Markets and rents are reckoned from it.\n\n\"Dearer than at Michaelmas\" means the price has climbed since the autumn fair."
+    },
+    {
+      "id": "saint_john",
+      "title": "feast of Saint John",
+      "aliases": [
+        "feast of Saint John",
+        "Saint John's"
+      ],
+      "rule": "default",
+      "definition": "24 June, the Nativity of Saint John the Baptist. Midsummer.\n\nA muster \"before the feast of Saint John\" is to be on the road before then, with the year's campaign in front of it."
+    },
+    {
+      "id": "northmen",
+      "title": "Northmen",
+      "aliases": [
+        "Northmen's",
+        "Northman",
+        "Northmen",
+        "Vikings",
+        "Viking"
+      ],
+      "rule": "default",
+      "definition": "Raiders out of the north in ships, the people later called Vikings. They come up the rivers, winter in camps, and burn abbeys while the Franks are busy fighting each other.\n\nIn this century they are not yet Normans with a duchy. Rollo, on the Seine, is how that starts."
+    },
+    {
+      "id": "bretons",
+      "title": "Bretons",
+      "aliases": [
+        "Bretons",
+        "Breton"
+      ],
+      "rule": "default",
+      "definition": "The people of Brittany, the peninsula in the west. They speak their own language and deal with the Frankish king as neighbours when they are strong, whatever the Franks write down.\n\nNominoe, Erispoe, and Salomon are their rulers in this age. A Breton muster is the host called against them."
+    },
+    {
+      "id": "saracens",
+      "title": "Saracens",
+      "aliases": [
+        "Saracens of Córdoba",
+        "Saracens of Cordoba",
+        "Saracens",
+        "Saracen"
+      ],
+      "rule": "default",
+      "definition": "The Franks' word for the Muslim armies and raiders they actually meet. In the 820s that is the emirate of Córdoba, called in over the Pyrenees by Aizo. Later a band holds Fraxinetum on the Provençal coast.\n\nNot one nation. The name is theirs for the enemy from the south."
+    },
+    {
+      "id": "gascons",
+      "title": "Gascons",
+      "aliases": [
+        "Gascons",
+        "Gascon"
+      ],
+      "rule": "default",
+      "definition": "The people of Gascony, south of Aquitaine toward the mountains. When the kings quarrel they rise for Pippin's son and push north toward the Loire."
+    },
+    {
+      "id": "goths",
+      "title": "Goths",
+      "aliases": [
+        "Gothia",
+        "Goths",
+        "Goth"
+      ],
+      "rule": "default",
+      "definition": "Here, the Gothic people of Septimania and the Spanish March: Christians who had lived under Visigothic, then Muslim, then Frankish rule. Aizo is one of them.\n\nGothia in these reports is that southern country. It is not a tale about the fall of Rome."
+    },
+    {
+      "id": "hungarians",
+      "title": "Hungarians",
+      "aliases": [
+        "Hungarians",
+        "Hungarian"
+      ],
+      "rule": "default",
+      "definition": "The Magyar horsemen who raid out of the east into Italy, Bavaria, and Burgundy at the end of this century. The Franks cannot catch them, and in 907 they destroy a Bavarian army at Pressburg.\n\nNot the later kingdom of Hungary. A steppe people, new to this map."
+    },
+    {
+      "id": "bulgars",
+      "title": "Bulgars",
+      "aliases": [
+        "Bulgars",
+        "Bulgar"
+      ],
+      "rule": "default",
+      "definition": "A steppe kingdom on the lower Danube. News of them is distant trouble on the emperor's eastern edge, cited when the court wants to say God is displeased."
+    },
+    {
+      "id": "welfs",
+      "title": "Welfs",
+      "aliases": [
+        "Welfs",
+        "Welf"
+      ],
+      "rule": "default",
+      "definition": "The family of Empress Judith, Charles the Bald's mother. Lothair's party treats them as the rival interest at court.\n\nA Welf is not a Carolingian. That is the point of the insult."
+    },
+    {
+      "id": "frankish_kingdoms",
+      "title": "West Franks",
+      "aliases": [
+        "East Frankish",
+        "West Frankish",
+        "East Franks",
+        "West Franks"
+      ],
+      "rule": "default",
+      "definition": "After the Treaty of Verdun in 843 the empire is cut in three. The West Franks are Charles the Bald's kingdom, roughly the land that becomes France, and Burgundy answers to it. The East Franks are Louis the German's, roughly the land that becomes Germany.\n\nThe middle strip is Lotharingia, Lothair's, and it is fought over for the rest of the century."
+    },
+    {
+      "id": "lotharingia",
+      "title": "Lotharingia",
+      "aliases": [
+        "Lotharingia"
+      ],
+      "rule": "default",
+      "definition": "The middle kingdom, from the Low Countries down toward Italy, named for Lothair. Burgundy is not inside it, but the Saône becomes a border with it, and wars over it spill west.\n\nWhen Lothair II dies with no lawful son, his uncles come from both sides at once."
+    },
+    {
+      "id": "charlemagne",
+      "title": "Charlemagne",
+      "aliases": [
+        "Charles the Great",
+        "Charlemagne"
+      ],
+      "rule": "default",
+      "definition": "Louis the Pious's father. He died in 814, eleven years before 825. The empire, the silver penny, the missi, and the shape of the counties are his.\n\nEveryone in 825 is still living inside what he built. Einhard wrote his life."
+    },
+    {
+      "id": "judith",
+      "title": "Judith",
+      "aliases": [
+        "Empress Judith",
+        "Judith"
+      ],
+      "rule": "default",
+      "definition": "Second wife of Louis the Pious, and mother of Charles the Bald — the boy the early news calls young Charles. She is a Welf, and Lothair's party hates her circle.\n\nThe rumor that she and Bernard of Septimania are lovers is a weapon in 830. When the sons take the emperor, she is shut in a convent at Poitiers."
+    },
+    {
+      "id": "charles_bald",
+      "title": "Charles the Bald",
+      "aliases": [
+        "Charles the Bald"
+      ],
+      "rule": "default",
+      "definition": "Youngest son of Louis the Pious, by Judith. A child in 825. From 840 he is king of the West Franks, and Burgundy's king for most of this story. Crowned emperor in 875, and dead in 877.\n\nBald is a nickname. The hall also calls him young Charles while his father lives, and King Charles after. Later kings are Charles the Fat and Charles the Simple — not this man."
+    },
+    {
+      "id": "louis_german",
+      "title": "Louis the German",
+      "aliases": [
+        "Louis of Bavaria",
+        "Louis the German"
+      ],
+      "rule": "default",
+      "definition": "Son of Louis the Pious and king in the east. The hall calls him Louis of Bavaria. He is the brother Charles and Lothair spend their lives bargaining with.\n\nNot a later duke of Bavaria, and not the young king who wins at Saucourt. That is Louis III. His own son is Charles the Fat."
+    },
+    {
+      "id": "lothair",
+      "title": "Lothair",
+      "aliases": [
+        "Lothair the younger",
+        "Lothair II",
+        "King Lothair",
+        "Lothair"
+      ],
+      "rule": "default",
+      "definition": "Eldest son of Louis the Pious. Emperor after him, and king of the middle. In the 830s and 840s \"Lothair\" means him: the Field of Lies, the war of the brothers, Verdun.\n\nLothair II, called the younger, is his son, king of Lotharingia. He dies in 869 with no lawful heir, and his uncles divide what he had."
+    },
+    {
+      "id": "pippin",
+      "title": "Pippin",
+      "aliases": [
+        "Pippin of Aquitaine",
+        "King Pippin",
+        "young Pippin",
+        "Pippin II",
+        "Pippin"
+      ],
+      "rule": "default",
+      "definition": "Two kings of Aquitaine, father and son. Pippin I, son of Louis the Pious, is \"our king\" at the start: Burgundy lies in his share. He dies at Poitiers in 838.\n\nPippin II is his son. The Aquitanian lords proclaim him against Charles. He spends decades fighting for Aquitaine and, at the end, rides with the Northmen. \"Young Pippin\" is the son."
+    },
+    {
+      "id": "louis_stammerer",
+      "title": "Louis the Stammerer",
+      "aliases": [
+        "Louis the Stammerer"
+      ],
+      "rule": "default",
+      "definition": "Son of Charles the Bald. King of the West Franks for about a year and a half after his father, 877 to 879.\n\nHis sons are Louis III and Carloman. The boy born after him is Charles the Simple."
+    },
+    {
+      "id": "louis_iii",
+      "title": "Louis III",
+      "aliases": [
+        "Young King Louis",
+        "Louis III"
+      ],
+      "rule": "default",
+      "definition": "Son of Louis the Stammerer, and young king of the West Franks with his brother Carloman. The slaughter of the Northmen at Saucourt in 881 is his. He is dead the next year.\n\nNot Louis the Pious, and not Louis of Bavaria. When the song is about Saucourt, this is the Louis."
+    },
+    {
+      "id": "louis_ii",
+      "title": "Louis II",
+      "aliases": [
+        "Emperor Louis II",
+        "Louis II"
+      ],
+      "rule": "default",
+      "definition": "Son of Lothair, and emperor in Italy from 855 until 875. When the news says the emperor in Italy in those years, it is him.\n\nNot Louis the Pious, and not any later Louis II of France. Ermengard, who holds Vienne against Richard, is his daughter."
+    },
+    {
+      "id": "carloman",
+      "title": "Carloman",
+      "aliases": [
+        "Carloman"
+      ],
+      "rule": "default",
+      "definition": "In the years after 879, the son of Louis the Stammerer. He shares the West Frankish crown with Louis III, then holds it alone after Saucourt, and dies in 884.\n\nThe name belongs to other Carolingian cousins too. Unless the sentence says otherwise, the hall means this one."
+    },
+    {
+      "id": "charles_fat",
+      "title": "Charles the Fat",
+      "aliases": [
+        "Charles the Fat"
+      ],
+      "rule": "default",
+      "definition": "Son of Louis the German. King of Italy, then emperor, then invited to be king of the West Franks as well, so for a few years one man holds Charlemagne's empire again. Deposed in 887. He dies the next year.\n\nFat is the nickname. He is not Charles the Bald, his cousin, and not Charles the Simple, who is a child while this Charles reigns."
+    },
+    {
+      "id": "charles_simple",
+      "title": "Charles the Simple",
+      "aliases": [
+        "Charles the Simple"
+      ],
+      "rule": "default",
+      "definition": "Son of Louis the Stammerer, born after his father died. The great men crown him against King Odo while Odo is drawn away south, and he is sole king of the West Franks after Odo dies in 898.\n\nSimple means straightforward, or guileless. It is a nickname, not a diagnosis. He is nineteen when the kingdom comes to him without another battle."
+    },
+    {
+      "id": "odo",
+      "title": "Odo",
+      "aliases": [
+        "Odo of Paris",
+        "Count Odo of Paris",
+        "King Odo",
+        "Count Odo",
+        "Odo"
+      ],
+      "rule": "historical_odo",
+      "definition": "Two counts, and neither of them is the merchant who haggles over tolls.\n\nIn 830, Count Odo is Bernard of Septimania's cousin, count of Orléans. He is killed in the western fighting in 834. The Odo who matters later is Robert the Strong's son: count of Paris, defender of the city against the Northmen, and king of the West Franks from 888 until Charles the Simple's party outlasts him."
+    },
+    {
+      "id": "boso",
+      "title": "Boso",
+      "aliases": [
+        "Bosonids",
+        "Bosonid",
+        "Count Boso",
+        "Boso"
+      ],
+      "rule": "historical_boso",
+      "definition": "Richard the Justiciar's brother. Count, then the man elected king at Mantaille in 879, over Provence and a claim on Burgundy. He spends the rest of his life losing that kingdom and dies in 887. Ermengard holds Vienne for him.\n\nThe Bosonids are his and Richard's family. A wine-merchant named Boso is not him."
+    },
+    {
+      "id": "bernard_counts",
+      "title": "Bernard of Septimania",
+      "aliases": [
+        "Bernard Plantapilosa",
+        "Bernard of Gothia",
+        "Bernard le Veau",
+        "Bernard of Italy",
+        "Bernard of Septimania",
+        "Lord Bernard",
+        "Duke Bernard",
+        "Count Bernard"
+      ],
+      "rule": "default",
+      "definition": "Not the smith. Bernard of Septimania, son of William of Toulouse, is count of Autun and Barcelona in 825 — the patron who gave you Fontenay. Accused with the empress, stripped, restored, and executed in 844.\n\nHis son Bernard Plantapilosa (\"Hairy-Foot\") comes back as count of Autun later. Bernard of Gothia and Bernard le Veau (\"the Calf\") are later, lesser counts who also hold Autun for a short while. An older Bernard, of Italy, was Charlemagne's nephew, blinded long before this story. The smith Bernard is none of these men."
+    },
+    {
+      "id": "thierry",
+      "title": "Thierry",
+      "aliases": [
+        "Count Thierry of Autun",
+        "Thierry of Autun",
+        "Count Thierry",
+        "Thierry"
+      ],
+      "rule": "default",
+      "definition": "Count of Autun at the opening, and Bernard of Septimania's brother. He dies in 826. The county then passes to Bernard, who is already far away in Barcelona."
+    },
+    {
+      "id": "adalard",
+      "title": "Adalard",
+      "aliases": [
+        "Count Adalard",
+        "Adalard"
+      ],
+      "rule": "default",
+      "definition": "The count set over Autun in 830, after Bernard flees to Barcelona. He is the new men's man.\n\nHis officers hold the old assessment of Fontenay — six thousand five hundred denarii — and will call the villa forfeit if they can. A sickness takes him in 837 unless someone stops it."
+    },
+    {
+      "id": "warin",
+      "title": "Warin",
+      "aliases": [
+        "Count Warin",
+        "Warin"
+      ],
+      "rule": "default",
+      "definition": "Count of Autun after Adalard, and the man who holds Chalon for the emperor in 834. A soldier of the emperor's party, not a courtier.\n\nHis son Isembard follows him in the county."
+    },
+    {
+      "id": "isembard",
+      "title": "Isembard",
+      "aliases": [
+        "Isembard"
+      ],
+      "rule": "default",
+      "definition": "Warin's son. Count of Autun after his father, until the county starts changing hands every few years."
+    },
+    {
+      "id": "robert_strong",
+      "title": "Robert the Strong",
+      "aliases": [
+        "Robert the Strong",
+        "Count Robert",
+        "Robert"
+      ],
+      "rule": "default",
+      "definition": "Count on the Loire, and for a time count of Autun. The best soldier the West Franks have against the Northmen. Killed at Brissarthe in 866, when he took off his helmet in the heat and the men he had trapped in a church broke out.\n\nHis sons are Odo, later king, and Robert. The royal house that eventually replaces the Carolingians comes from them."
+    },
+    {
+      "id": "richard",
+      "title": "Richard the Justiciar",
+      "aliases": [
+        "Richard the Justiciar",
+        "Marquis of Burgundy",
+        "Count Richard",
+        "Richard"
+      ],
+      "rule": "default",
+      "definition": "Boso's brother. Count of Autun from 880, then Marquis of Burgundy when his counties are joined into one march: Autun, Auxerre, Nevers, Avallon, Sens, and a hand on Troyes, Chalon, and Beaune.\n\nHe is the neighbour who ends up above everyone else in this country. The duchy of Burgundy, as later ages know it, is his work."
+    },
+    {
+      "id": "girart",
+      "title": "Girart of Vienne",
+      "aliases": [
+        "Count Girart of Vienne",
+        "Girart of Vienne",
+        "Count Girart",
+        "Girart"
+      ],
+      "rule": "default",
+      "definition": "Count of Vienne, and for years the power on the Rhône that Burgundy's counts have to reckon with. He holds the city; kings come to him or against him.\n\nNot a kinsman of Fontenay. A great man one river away."
+    },
+    {
+      "id": "hugh_tours",
+      "title": "Hugh of Tours",
+      "aliases": [
+        "Hugh of Tours"
+      ],
+      "rule": "default",
+      "definition": "One of the two counts sent to relieve Barcelona in 827. He and Matfrid of Orléans came so slowly that the Saracens had already gone home. The assembly at Aachen disgraced them for it."
+    },
+    {
+      "id": "matfrid",
+      "title": "Matfrid",
+      "aliases": [
+        "Matfrid of Orléans",
+        "Count Matfrid",
+        "Matfrid"
+      ],
+      "rule": "default",
+      "definition": "Count of Orléans, disgraced with Hugh of Tours for the late relief of Barcelona. He stays Lothair's man afterward.\n\nJonas of Orléans had written a book of advice for laymen and addressed it to him, before the disgrace."
+    },
+    {
+      "id": "berengar_toulouse",
+      "title": "Berengar of Toulouse",
+      "aliases": [
+        "Count Berengar of Toulouse",
+        "Berengar of Toulouse",
+        "Count Berengar"
+      ],
+      "rule": "default",
+      "definition": "Count of Toulouse. When Bernard of Septimania is stripped, Berengar receives his southern lands. He dies on the road to the assembly at Crémieu, which is why Bernard gets Toulouse back.\n\nA sworn man of your own named Berengar is not this count."
+    },
+    {
+      "id": "agobard",
+      "title": "Agobard",
+      "aliases": [
+        "Archbishop Agobard of Lyon",
+        "Agobard of Lyon",
+        "Archbishop Agobard",
+        "Agobard"
+      ],
+      "rule": "default",
+      "definition": "Archbishop of Lyon, and so the superior of the bishop of Autun. A writer and a reformer, and Lothair's man. Deposed in 835 for siding with him, and fled to Italy.\n\nWhen Ermenald says \"our own bishop's superior,\" he means Agobard."
+    },
+    {
+      "id": "hincmar",
+      "title": "Hincmar",
+      "aliases": [
+        "Archbishop Hincmar",
+        "Hincmar"
+      ],
+      "rule": "default",
+      "definition": "Archbishop of Reims through Charles the Bald's reign. He crowns kings, writes the rules the church is supposed to live by, and quarrels with Lyon over Gottschalk.\n\nIf a letter from Reims arrives with a doctrine in it, this is usually the hand."
+    },
+    {
+      "id": "jonas",
+      "title": "Jonas of Orléans",
+      "aliases": [
+        "Bishop Jonas of Orléans",
+        "Jonas of Orléans",
+        "Bishop Jonas",
+        "Jonas"
+      ],
+      "rule": "default",
+      "definition": "Bishop of Orléans, and the leading mind of the reform councils of 829. He wrote a book of advice on Christian living for laymen.\n\nThe copies Ermenald has of those councils come from Jonas's circle at Paris."
+    },
+    {
+      "id": "ebbo",
+      "title": "Ebbo",
+      "aliases": [
+        "Archbishop Ebbo of Reims",
+        "Ebbo of Reims",
+        "Archbishop Ebbo",
+        "Ebbo"
+      ],
+      "rule": "default",
+      "definition": "Archbishop of Reims. He leads the bishops who put Louis the Pious to public penance. At Thionville in 835 he has to stand up and admit the emperor never did what they charged, and then they depose him."
+    },
+    {
+      "id": "modoin",
+      "title": "Modoin",
+      "aliases": [
+        "Bishop Modoin",
+        "Modoin"
+      ],
+      "rule": "default",
+      "definition": "Bishop of Autun in 825. A learned man, once a poet at Charlemagne's court, who signs his verse \"Naso\" after Ovid.\n\nHe is Ermenald's bishop. What is done on Sundays, he hears about."
+    },
+    {
+      "id": "gunhard",
+      "title": "Gunhard",
+      "aliases": [
+        "Bishop Gunhard",
+        "Gunhard"
+      ],
+      "rule": "default",
+      "definition": "Bishop of Nantes. Killed when the Northmen take the city. The news is one of the first times the rivers feel close."
+    },
+    {
+      "id": "geran",
+      "title": "Géran",
+      "aliases": [
+        "Bishop Géran of Auxerre",
+        "Géran of Auxerre",
+        "Bishop Géran",
+        "Geran of Auxerre",
+        "Bishop Geran",
+        "Géran",
+        "Geran"
+      ],
+      "rule": "default",
+      "definition": "Bishop of Auxerre. He rides with Count Richard against the Northmen who burned the abbey at Bèze, and helps cut them off near Saint-Florentin.\n\nA bishop with a contingent, not only a pen."
+    },
+    {
+      "id": "gozlin",
+      "title": "Gozlin",
+      "aliases": [
+        "Bishop Gozlin",
+        "Gozlin"
+      ],
+      "rule": "default",
+      "definition": "Bishop of Paris. He holds the city through the great Northmen's siege. A churchman conducting a defense, which this century has learned to expect."
+    },
+    {
+      "id": "gaucelm",
+      "title": "Gaucelm",
+      "aliases": [
+        "Gaucelm"
+      ],
+      "rule": "default",
+      "definition": "Brother of Bernard of Septimania, and a count in the south. At Chalon in 834, when Lothair takes the city, he is beheaded.\n\nThe lord of Fontenay can be on that wall. If he is, this death is one of the things he might prevent."
+    },
+    {
+      "id": "gerberga",
+      "title": "Gerberga",
+      "aliases": [
+        "Gerberga"
+      ],
+      "rule": "default",
+      "definition": "Sister of Bernard and Gaucelm, and a nun. When Chalon falls in 834 she is drowned in the Saône as a witch.\n\nThe same siege. The same choice, if the lord is there."
+    },
+    {
+      "id": "dhuoda",
+      "title": "Dhuoda",
+      "aliases": [
+        "Dhuoda"
+      ],
+      "rule": "default",
+      "definition": "Wife of Bernard of Septimania. She writes a handbook for their son William, a boy sent to the king's court as a pledge, because she expects never to see him again.\n\nIt is a mother's instruction: how to pray, how to serve a lord, how to be a man worth something. Ermenald knows it."
+    },
+    {
+      "id": "aizo",
+      "title": "Aizo",
+      "aliases": [
+        "Aizo"
+      ],
+      "rule": "default",
+      "definition": "A Goth, once a hostage at the emperor's court. In 826 he rises in the Spanish March against Bernard, calls in the Saracens of Córdoba, and sets the south on fire.\n\nThe army sent to relieve Barcelona comes too late. That lateness ruins Hugh of Tours and Matfrid."
+    },
+    {
+      "id": "william_toulouse",
+      "title": "William of Toulouse",
+      "aliases": [
+        "Count William of Toulouse",
+        "William of Toulouse"
+      ],
+      "rule": "default",
+      "definition": "Bernard of Septimania's father. He fought the Saracens under Charlemagne, then became a monk at Gellone, the abbey he founded, and died there.\n\nAlready a famous name in 825. His sons are Thierry, Bernard, Gaucelm, and a daughter, Gerberga."
+    },
+    {
+      "id": "william_aquitaine",
+      "title": "William of Aquitaine",
+      "aliases": [
+        "Duke William of Aquitaine",
+        "William of Aquitaine"
+      ],
+      "rule": "default",
+      "definition": "Duke in the early 900s, of the same blood as Bernard's line. In 910 he founds the abbey of Cluny, in the Mâconnais, and gives it away entirely — not to a bishop, not to his heirs, not to the king. The monks elect their own abbot and answer to Rome.\n\nNot William of Toulouse. That man has been dead for a century."
+    },
+    {
+      "id": "gellone",
+      "title": "Gellone",
+      "aliases": [
+        "Gellone"
+      ],
+      "rule": "default",
+      "definition": "The abbey William of Toulouse founded in the south, and where he died a monk. Later ages call it Saint-Guilhem. In this century it is still his name on the place."
+    },
+    {
+      "id": "nominoe",
+      "title": "Nominoe",
+      "aliases": [
+        "Nominoë",
+        "Nominoe"
+      ],
+      "rule": "default",
+      "definition": "Breton leader who breaks Charles the Bald's host at Ballon and makes Brittany a kingdom in fact, whatever the Franks' charters say."
+    },
+    {
+      "id": "erispoe",
+      "title": "Erispoe",
+      "aliases": [
+        "King Erispoe",
+        "Erispoe"
+      ],
+      "rule": "default",
+      "definition": "Nominoe's son. King of the Bretons. He beats Charles the Bald at Jengland and is received as king, not as a rebel to be hanged."
+    },
+    {
+      "id": "salomon",
+      "title": "Salomon",
+      "aliases": [
+        "Salomon of Brittany",
+        "Salomon"
+      ],
+      "rule": "default",
+      "definition": "King of Brittany after Erispoe. He deals with the Franks as an equal and takes what a king takes.\n\nNot Salamon the merchant. The names are one letter apart, and the men are not alike."
+    },
+    {
+      "id": "rollo",
+      "title": "Rollo",
+      "aliases": [
+        "Rollo"
+      ],
+      "rule": "default",
+      "definition": "A Northman chieftain on the Seine. In these decades he is a fleet and a raid, reaching as far as Chartres. At the end of the age Charles the Simple settles him at Rouen.\n\nThat settlement is the beginning of Normandy. He is not a duke yet."
+    },
+    {
+      "id": "alan_great",
+      "title": "Alan the Great",
+      "aliases": [
+        "Alan the Great"
+      ],
+      "rule": "default",
+      "definition": "A Breton leader late in the century, holding Brittany together after Salomon. The Franks still have to treat that country as a power, not a county."
+    },
+    {
+      "id": "nithard",
+      "title": "Nithard",
+      "aliases": [
+        "Count Nithard",
+        "Nithard"
+      ],
+      "rule": "default",
+      "definition": "Grandson of Charlemagne through a daughter, and a soldier. He writes the history of the war between Louis's sons, and he does not spare his own side.\n\nNot Einhard. Einhard wrote the grandfather's life. Nithard writes the ruin of what the grandfather built."
+    },
+    {
+      "id": "einhard",
+      "title": "Einhard",
+      "aliases": [
+        "Einhard's",
+        "Einhard"
+      ],
+      "rule": "default",
+      "definition": "Courtier of Charlemagne, a small man, who wrote the Life of Charlemagne. The book is what the hall means when his name comes up.\n\nNot Nithard, who is Charlemagne's grandson and writes the next generation's war."
+    },
+    {
+      "id": "eriugena",
+      "title": "John Scottus Eriugena",
+      "aliases": [
+        "John Scottus Eriugena",
+        "John Scottus",
+        "Eriugena",
+        "Scottus"
+      ],
+      "rule": "default",
+      "definition": "An Irish scholar at Charles the Bald's court. He reads Greek, which almost nobody here can, and he thinks thoughts the bishops are not sure are safe.\n\nScottus means the Irishman. It is not a family name."
+    },
+    {
+      "id": "gottschalk",
+      "title": "Gottschalk",
+      "aliases": [
+        "Gottschalk"
+      ],
+      "rule": "default",
+      "definition": "A monk who teaches that God has already settled who is saved and who is damned, and that a life cannot change the list. He is condemned, flogged, and shut in a monastery. The bishops go on writing against him anyway.\n\nHincmar on one side, the church of Lyon on the other. Ermenald will say, quietly, that the question is not a stupid one."
+    },
+    {
+      "id": "lupus",
+      "title": "Lupus of Ferrières",
+      "aliases": [
+        "Lupus of Ferrières",
+        "Lupus"
+      ],
+      "rule": "default",
+      "definition": "Abbot of Ferrières and a famous letter-writer. One of the learned men whose books and requests move between courts in these decades.\n\nThe name is the man. The disease came to be called the same thing much later."
+    },
+    {
+      "id": "ranulf",
+      "title": "Ranulf",
+      "aliases": [
+        "Ranulf of Poitou",
+        "Count Ranulf of Poitou",
+        "Count Ranulf",
+        "Ranulf"
+      ],
+      "rule": "default",
+      "definition": "Count of Poitou. At Brissarthe in 866 he takes an arrow in the fight where Robert the Strong is killed, and dies of it."
+    },
+    {
+      "id": "lambert",
+      "title": "Lambert of Nantes",
+      "aliases": [
+        "Lambert of Nantes",
+        "Lambert"
+      ],
+      "rule": "default",
+      "definition": "Lothair's man in the west, count around Nantes. In 834 he and Matfrid cut up an imperial army near the Breton border. Count Odo of Orléans dies in that fight."
+    },
+    {
+      "id": "herbert",
+      "title": "Herbert",
+      "aliases": [
+        "Herbert"
+      ],
+      "rule": "default",
+      "definition": "Brother of Bernard of Septimania. When the sons take the emperor in 830, Herbert is blinded.\n\nThe hall remembers it. Men who stay with a losing emperor are told they may lose their eyes, as Herbert did."
+    },
+    {
+      "id": "ermengard",
+      "title": "Ermengard",
+      "aliases": [
+        "countess Ermengard",
+        "Ermengard"
+      ],
+      "rule": "default",
+      "definition": "Boso's wife, and daughter of the emperor Louis II. When Richard sits down before Vienne, she is the one holding the city.\n\nA countess conducting a defense, not a name in a genealogy only."
+    },
+    {
+      "id": "pope_gregory",
+      "title": "Pope Gregory",
+      "aliases": [
+        "Pope Gregory"
+      ],
+      "rule": "default",
+      "definition": "Gregory IV. Lothair brings him to the Field of Lies in 833. He crosses to the emperor's camp to make peace, and the desertion happens around him.\n\nNot a later Gregory. This one is the pope of that summer."
+    },
+    {
+      "id": "rudolph",
+      "title": "Rudolph",
+      "aliases": [
+        "Rudolph"
+      ],
+      "rule": "default",
+      "definition": "King of Upper Burgundy, from the Jura, after the Carolingians fail on that side of the Saône. A different Burgundy from Richard's.\n\nHis kingdom is the mountain country and the lake of Geneva, not Autun."
+    },
+    {
+      "id": "fontenay",
+      "title": "Fontenay",
+      "aliases": [
+        "Fontenay"
+      ],
+      "rule": "default",
+      "definition": "Your villa, in the wooded hills of the Morvan, in the pagus of Autun. A timber hall, a thin forge, and a small cell of Saint-Martin.\n\nNot Fontenoy. Fontenoy is a battlefield in 841, where Franks killed Franks. The names are one letter apart."
+    },
+    {
+      "id": "fontenoy",
+      "title": "Fontenoy",
+      "aliases": [
+        "Fontenoy"
+      ],
+      "rule": "default",
+      "definition": "The battle of 25 June 841, in Puisaye. Charles the Bald and Louis the German defeat Lothair. It is the great slaughter of the brothers' war, Franks killing Franks.\n\nNot Fontenay. Fontenay is your villa, a day's concerns away from this field and a different place."
+    },
+    {
+      "id": "field_of_lies",
+      "title": "the Field of Lies",
+      "aliases": [
+        "the Field of Lies",
+        "Field of Lies"
+      ],
+      "rule": "default",
+      "definition": "A field near Colmar, in Alsace, at the end of June 833. Louis the Pious's army deserts to his sons without a battle. He tells the last men around him to go, so that nobody will lose life or limb for his sake, and then he walks across himself.\n\nThe name is what his party called it: the oaths broke there. Pope Gregory is in the camp. Count Adalard is among those who cross."
+    },
+    {
+      "id": "verdun",
+      "title": "Treaty of Verdun",
+      "aliases": [
+        "Treaty of Verdun",
+        "Verdun"
+      ],
+      "rule": "default",
+      "definition": "The treaty of 843 that cuts the empire in three. Lothair keeps the middle and the imperial title. Louis the German keeps the east. Charles the Bald keeps the west, and Burgundy with it.\n\nThe Saône becomes a border. \"Verdun\" in this chronicle means that bargain, not a tour of the city."
+    },
+    {
+      "id": "pitres",
+      "title": "Pîtres",
+      "aliases": [
+        "Edict of Pîtres",
+        "Edict of Pitres",
+        "Pîtres",
+        "Pitres"
+      ],
+      "rule": "default",
+      "definition": "A palace on the Seine. In 864 Charles the Bald holds a great assembly there. The edict deals with coin, with arms, and with the Northmen. Pippin II is dealt with in the same season.\n\nWhen the hall says Pîtres, it means that assembly and that law."
+    },
+    {
+      "id": "autun",
+      "title": "Autun",
+      "aliases": [
+        "Autun"
+      ],
+      "rule": "default",
+      "definition": "The county town, and Fontenay's capital. Roman walls, a bishop, and the count's officers. The pagus of Autun is the district the villa sits in.\n\nWhoever is \"count of Autun\" is the lord immediately above a man who holds Fontenay as a benefice. The name changes often. The city does not."
+    },
+    {
+      "id": "morvan",
+      "title": "the Morvan",
+      "aliases": [
+        "the Morvan",
+        "Morvan"
+      ],
+      "rule": "default",
+      "definition": "The wooded hill country Fontenay sits in, west of Autun. Poor roads, thin soil, good cover.\n\nDeserters, outlaws, and men who do not want to be followed use it. So does anyone driving pigs to the mast."
+    },
+    {
+      "id": "burgundy",
+      "title": "Burgundy",
+      "aliases": [
+        "Burgundy"
+      ],
+      "rule": "default",
+      "definition": "The country between the Saône and the hills of the Morvan: Autun, Chalon, Auxerre, Mâcon, Beaune, and their neighbours. In 825 it is counties. By the early 900s Richard has made it one march.\n\nNot the wine label, and not Upper Burgundy. Upper Burgundy is Rudolph's kingdom, across the river and into the Jura."
+    },
+    {
+      "id": "aquitaine",
+      "title": "Aquitaine",
+      "aliases": [
+        "Aquitanians",
+        "Aquitanian",
+        "Aquitaine"
+      ],
+      "rule": "default",
+      "definition": "The large kingdom south-west of Burgundy. At the start it is Pippin's, and Burgundy is inside his share, so \"our king\" means the king in Aquitaine.\n\nAfter Pippin dies, Charles and Pippin II fight over it for decades. The Aquitanian lords do not like being given a boy from the north."
+    },
+    {
+      "id": "septimania",
+      "title": "Septimania",
+      "aliases": [
+        "Septimania"
+      ],
+      "rule": "default",
+      "definition": "The coastal south, from Narbonne toward the Spanish March. Mediterranean, Gothic, and a long way from Fontenay. Bernard of Septimania takes his name from it.\n\nBarcelona is the next country beyond, over the mountains."
+    },
+    {
+      "id": "neustria",
+      "title": "Neustria",
+      "aliases": [
+        "Neustria"
+      ],
+      "rule": "default",
+      "definition": "The old Frankish heartland between the Seine and the Loire: Paris, Orléans, Tours, Le Mans. West of Burgundy.\n\nThe boy Charles is given this country at Quierzy. It is also where the Northmen on the rivers do their worst."
+    },
+    {
+      "id": "provence",
+      "title": "Provence",
+      "aliases": [
+        "Provence"
+      ],
+      "rule": "default",
+      "definition": "The Rhône south of Lyon: Vienne, Valence, Arles, Marseille, and the coast. Boso's kingship shrinks to scraps of it. Later, Saracens at Fraxinetum raid inland from that shore."
+    },
+    {
+      "id": "brittany",
+      "title": "Brittany",
+      "aliases": [
+        "Brittany"
+      ],
+      "rule": "default",
+      "definition": "The peninsula in the far west. Breton kings rule it in fact — Nominoe, then Erispoe, then Salomon — and the Frankish host is called against them often enough that the road west is a known misery."
+    },
+    {
+      "id": "upper_burgundy",
+      "title": "Upper Burgundy",
+      "aliases": [
+        "Upper Burgundy"
+      ],
+      "rule": "default",
+      "definition": "The Jura, Geneva, and the Alpine side, beyond the Saône. Rudolph's kingdom. Not Richard's Burgundy, and not the county of Autun.\n\nA letter from Upper Burgundy has crossed a border, even when both are called Burgundy."
+    },
+    {
+      "id": "alsace",
+      "title": "Alsace",
+      "aliases": [
+        "Alsace"
+      ],
+      "rule": "default",
+      "definition": "The Rhine valley between the West Franks and the East. The Field of Lies is here, near Colmar. Part of it is in the little kingdom given to the boy Charles in 829, which is one reason his brothers are angry."
+    },
+    {
+      "id": "bavaria",
+      "title": "Bavaria",
+      "aliases": [
+        "Bavaria"
+      ],
+      "rule": "default",
+      "definition": "Louis the German's base, east of the Rhine. \"Louis of Bavaria\" means him.\n\nWhen he is stripped \"of everything but Bavaria,\" that is the insult: one duchy, and the rest of the east taken off him."
+    },
+    {
+      "id": "frisia",
+      "title": "Frisia",
+      "aliases": [
+        "Frisia"
+      ],
+      "rule": "default",
+      "definition": "The North Sea coast between the Rhine mouths and the Danish border. Flat, rich, and open to ships.\n\nPart of what Louis the Pious gives the boy Charles. Also one of the first places the Northmen treat as theirs."
+    },
+    {
+      "id": "rhaetia",
+      "title": "Rhaetia",
+      "aliases": [
+        "Rhaetia",
+        "Raetia"
+      ],
+      "rule": "default",
+      "definition": "The Alpine province east of Upper Burgundy, roughly the country of Chur and the upper Rhine. In 829 it is included in the little kingdom given to the boy Charles.\n\nMountain country. News from it is news from the edge."
+    },
+    {
+      "id": "maine",
+      "title": "Maine",
+      "aliases": [
+        "Le Mans",
+        "Maine"
+      ],
+      "rule": "default",
+      "definition": "The county of Le Mans, between the Seine country and Anjou. Given to Charles at Quierzy, with the lands between Seine and Loire.\n\nThe Northmen burn Le Mans before Brissarthe. Robert catches them after that burning."
+    },
+    {
+      "id": "anjou",
+      "title": "Anjou",
+      "aliases": [
+        "Angers",
+        "Anjou"
+      ],
+      "rule": "default",
+      "definition": "The county of Angers, on the Loire downstream of Orléans. Brissarthe, where Robert the Strong dies, is here.\n\nA great-house marriage may name the count of Anjou. That family is rising while the Carolingians thin out."
+    },
+    {
+      "id": "poitou",
+      "title": "Poitou",
+      "aliases": [
+        "Poitiers",
+        "Poitou"
+      ],
+      "rule": "default",
+      "definition": "The county of Poitiers, on the road from the Loire to Aquitaine. Ranulf is its count. In 830 the empress is shut in a convent here.\n\nPippin of Aquitaine dies at Poitiers in 838."
+    },
+    {
+      "id": "auvergne",
+      "title": "Auvergne",
+      "aliases": [
+        "Auvergne"
+      ],
+      "rule": "default",
+      "definition": "The high country west of Lyon and north of the southern march. Old country of Bernard's wider kin.\n\nBetween Burgundy and Aquitaine, and its own place. Men from there are not men of the Morvan."
+    },
+    {
+      "id": "saone",
+      "title": "the Saône",
+      "aliases": [
+        "the Saône",
+        "the Saone",
+        "Saône",
+        "Saone"
+      ],
+      "rule": "default",
+      "definition": "The great river east of Autun. Chalon and Mâcon sit on it. After Verdun it is a border: the East Frankish world begins on the far bank.\n\nGerberga is drowned in it when Chalon falls. Richard's later wars run along it."
+    },
+    {
+      "id": "loire",
+      "title": "the Loire",
+      "aliases": [
+        "the Loire",
+        "Loire"
+      ],
+      "rule": "default",
+      "definition": "The great river west of Burgundy. Orléans, Tours, and Nantes stand on it. Nevers is where it passes nearest the Morvan.\n\nNorthmen winter on it. Aquitaine's wars come up it. Robert the Strong's work is this river."
+    },
+    {
+      "id": "seine",
+      "title": "the Seine",
+      "aliases": [
+        "the Seine",
+        "Seine"
+      ],
+      "rule": "default",
+      "definition": "The river of Paris and Rouen. Northmen sail it to the city. The country between the Seine and the Loire is the land the boy Charles is given to make him a king in more than name."
+    },
+    {
+      "id": "rhine",
+      "title": "the Rhine",
+      "aliases": [
+        "the Rhine",
+        "Rhine"
+      ],
+      "rule": "default",
+      "definition": "The river of the east: Worms, Ingelheim, the road into Bavaria and Saxony. Louis the Pious dies on an island in it, near Ingelheim, in June 840."
+    },
+    {
+      "id": "rhone",
+      "title": "the Rhône",
+      "aliases": [
+        "the Rhône",
+        "the Rhone",
+        "Rhône",
+        "Rhone"
+      ],
+      "rule": "default",
+      "definition": "The river of Lyon, Vienne, Valence, Arles, and the road south to the sea. Provence is this valley.\n\nGirart holds Vienne on it. Boso's kingdom is this water. Richard has to come south to it to finish that kingdom."
+    },
+    {
+      "id": "yonne",
+      "title": "the Yonne",
+      "aliases": [
+        "the Yonne",
+        "Yonne"
+      ],
+      "rule": "default",
+      "definition": "The river north out of the Morvan, through Auxerre and on toward Sens and the Seine. Burgundy's road to Paris.\n\nVézelay and Auxerre are this country. So is trouble coming down from the north."
+    },
+    {
+      "id": "aachen",
+      "title": "Aachen",
+      "aliases": [
+        "Aachen"
+      ],
+      "rule": "default",
+      "definition": "Charlemagne's palace city, still the empire's ceremonial capital under Louis. Assemblies here disgrace counts, restore emperors, and rewrite who holds a county.\n\nA long way from Fontenay. A decision taken there arrives as a letter, and then as a writ."
+    },
+    {
+      "id": "barcelona",
+      "title": "Barcelona",
+      "aliases": [
+        "Barcelona"
+      ],
+      "rule": "default",
+      "definition": "Chief city of the Spanish March, on the Mediterranean, facing Córdoba. Bernard is count here as well as of Autun.\n\nWeeks away. When he \"flees to Barcelona\" he has left Burgundy. When Saracens burn the country around it, the relief army is Hugh's and Matfrid's, and it is late."
+    },
+    {
+      "id": "girona",
+      "title": "Girona",
+      "aliases": [
+        "Girona"
+      ],
+      "rule": "default",
+      "definition": "A city of the Spanish March, north of Barcelona. In 827 the Saracens burn the country around Barcelona and then come on to here."
+    },
+    {
+      "id": "narbonne",
+      "title": "Narbonne",
+      "aliases": [
+        "Narbonne"
+      ],
+      "rule": "default",
+      "definition": "Chief city of Septimania, on the Mediterranean. The bishop here is deposed with Agobard for siding with Lothair.\n\nBernard's southern world. Not a place the Morvan sees, except in letters."
+    },
+    {
+      "id": "orleans",
+      "title": "Orléans",
+      "aliases": [
+        "Orléans",
+        "Orleans"
+      ],
+      "rule": "default",
+      "definition": "City on the Loire, and a royal mustering place. Matfrid's county, then Odo's, and a city men are ruined for.\n\nOn the road between Paris and Aquitaine. Armies \"near Orléans\" are armies that can still turn toward Burgundy."
+    },
+    {
+      "id": "tours",
+      "title": "Tours",
+      "aliases": [
+        "Tours"
+      ],
+      "rule": "default",
+      "definition": "City on the Loire, and the great abbey of Saint Martin. Pilgrimage and politics. Fontenay's own cell is under that saint.\n\nHugh of Tours is a count of this age. The saint of the abbey has been dead for centuries."
+    },
+    {
+      "id": "toulouse",
+      "title": "Toulouse",
+      "aliases": [
+        "Toulouse"
+      ],
+      "rule": "default",
+      "definition": "The great city of the south-west, between Aquitaine and Septimania. William, Bernard's father, was its count. Berengar holds it when Bernard is stripped, and loses it by dying on the road."
+    },
+    {
+      "id": "lyon",
+      "title": "Lyon",
+      "aliases": [
+        "Lyon"
+      ],
+      "rule": "default",
+      "definition": "Archbishopric on the Rhône, and Agobard's church. The bishop of Autun answers upward to here.\n\nCrémieu, where Bernard is restored, is nearby. Lyon is the southern door of Burgundy."
+    },
+    {
+      "id": "vienne",
+      "title": "Vienne",
+      "aliases": [
+        "Vienne"
+      ],
+      "rule": "default",
+      "definition": "City on the Rhône south of Lyon, with strong walls. Girart's, and later Boso's. Richard sits down before it, and Ermengard holds it.\n\nThe siege of Vienne is the long end of Boso's kingship, not a raid."
+    },
+    {
+      "id": "chalon",
+      "title": "Chalon",
+      "aliases": [
+        "Chalon-sur-Saône",
+        "Chalon-sur-Saone",
+        "Chalon"
+      ],
+      "rule": "default",
+      "definition": "The river city of the Saône, next county to Autun. Lothair takes it in 834. Warin had held it. Gaucelm is beheaded there, and Gerberga drowned.\n\nFrom 864 it strikes coin. The mint, if you ever hold it, is this city's."
+    },
+    {
+      "id": "auxerre",
+      "title": "Auxerre",
+      "aliases": [
+        "Auxerre"
+      ],
+      "rule": "default",
+      "definition": "North of the Morvan, on the Yonne. A bishop's city — Géran's — and a count's family. A great-house marriage may be into the house of Auxerre, whose enemies are the counts of Nevers."
+    },
+    {
+      "id": "sens",
+      "title": "Sens",
+      "aliases": [
+        "Sens"
+      ],
+      "rule": "default",
+      "definition": "Down the Yonne toward Paris. An archbishopric, and later one of the counties Richard joins into his march.\n\nThe road from Burgundy to the Seine runs this way."
+    },
+    {
+      "id": "macon",
+      "title": "Mâcon",
+      "aliases": [
+        "the Mâconnais",
+        "Mâconnais",
+        "Maconnais",
+        "Mâcon",
+        "Macon"
+      ],
+      "rule": "default",
+      "definition": "On the Saône south of Chalon. Cluny is in the Mâconnais, the country around this city, about seventy-five miles from Fontenay.\n\nClose enough that a new abbey there is local news, not foreign news."
+    },
+    {
+      "id": "cluny",
+      "title": "Cluny",
+      "aliases": [
+        "Cluny"
+      ],
+      "rule": "default",
+      "definition": "Abbey founded in 910 by Duke William of Aquitaine, in the Mâconnais. He gives it to no lord but Rome. The monks elect their own abbot, and his family may not take it back.\n\nErmenald has not heard of a gift like that. It is near."
+    },
+    {
+      "id": "reims",
+      "title": "Reims",
+      "aliases": [
+        "Reims"
+      ],
+      "rule": "default",
+      "definition": "The city where Frankish kings are crowned, east of Paris. Ebbo's archbishopric, and then Hincmar's.\n\nA letter from Reims is a letter from the man who writes the church's part in king-making."
+    },
+    {
+      "id": "compiegne",
+      "title": "Compiègne",
+      "aliases": [
+        "Compiègne",
+        "Compiegne"
+      ],
+      "rule": "default",
+      "definition": "A palace north of Paris. In 830 this is where the news comes from that the emperor has been taken by his sons.\n\nA palace name in a letter means an assembly or a coup, not a visit."
+    },
+    {
+      "id": "soissons",
+      "title": "Soissons",
+      "aliases": [
+        "Saint-Médard",
+        "Saint-Medard",
+        "Soissons"
+      ],
+      "rule": "default",
+      "definition": "North of Paris. Louis the Pious does public penance here, at the abbey of Saint-Médard, with Ebbo leading the bishops. He is held at that abbey afterward.\n\nPenance, in this case, means they have tried to unmake a king without a battle."
+    },
+    {
+      "id": "saint_denis",
+      "title": "Saint-Denis",
+      "aliases": [
+        "Saint-Denis",
+        "Saint Denis"
+      ],
+      "rule": "default",
+      "definition": "The abbey just north of Paris where Frankish kings are buried and crowned. Louis is restored and girded with his sword again here in 834. Louis III dies here.\n\nA ceremony at Saint-Denis is the kingdom admitting, in public, who the king is."
+    },
+    {
+      "id": "prum",
+      "title": "Prüm",
+      "aliases": [
+        "Prüm",
+        "Prum"
+      ],
+      "rule": "default",
+      "definition": "A royal abbey in the Eifel, east of the Meuse. The boy Charles is held here while his father is a prisoner. Royal children are kept in abbeys. Prüm is one of those houses."
+    },
+    {
+      "id": "quierzy",
+      "title": "Quierzy",
+      "aliases": [
+        "Quierzy"
+      ],
+      "rule": "default",
+      "definition": "A palace on the Oise. In 838 Louis the Pious girds the fifteen-year-old Charles with a sword here and gives him Maine and the lands between the Seine and the Loire.\n\nThat gift is Charles's kingdom in the shell. It is also why Louis of Bavaria is furious."
+    },
+    {
+      "id": "thionville",
+      "title": "Thionville",
+      "aliases": [
+        "Thionville"
+      ],
+      "rule": "default",
+      "definition": "A palace on the Moselle. In February 835, before forty bishops, Ebbo admits the emperor never committed the crimes charged against him, and is deposed. The emperor is crowned again at Metz the same month."
+    },
+    {
+      "id": "metz",
+      "title": "Metz",
+      "aliases": [
+        "Metz"
+      ],
+      "rule": "default",
+      "definition": "City on the Moselle. Louis the Pious is crowned again in the cathedral here at the end of February 835, after the penance is undone.\n\nLater it is a center of Lotharingia. Charles the Bald is crowned there when he grabs the middle kingdom."
+    },
+    {
+      "id": "worms",
+      "title": "Worms",
+      "aliases": [
+        "Worms"
+      ],
+      "rule": "default",
+      "definition": "A palace city on the Rhine. In 829 Louis gives the boy Charles a kingdom here, and the brothers' grievance starts in earnest. The division he asks Lothair to keep, on his deathbed, is the one made at Worms."
+    },
+    {
+      "id": "nijmegen",
+      "title": "Nijmegen",
+      "aliases": [
+        "Nijmegen"
+      ],
+      "rule": "default",
+      "definition": "A palace on the Waal, in the north of the empire. Assemblies here are imperial business, far from Autun, and the letters still bind."
+    },
+    {
+      "id": "ingelheim",
+      "title": "Ingelheim",
+      "aliases": [
+        "Ingelheim"
+      ],
+      "rule": "default",
+      "definition": "A palace on the Rhine. Louis the Pious dies nearby, on an island in the river, on 20 June 840. He had gone east to drive Louis of Bavaria back, and the journey killed him."
+    },
+    {
+      "id": "strasbourg",
+      "title": "Strasbourg",
+      "aliases": [
+        "Strasbourg"
+      ],
+      "rule": "default",
+      "definition": "City on the Rhine. In 842 Charles the Bald and Louis the German swear their alliance here in the soldiers' own languages, before they face Lothair. The oaths are famous because someone wrote the spoken tongues down.\n\nNithard is that someone."
+    },
+    {
+      "id": "attigny",
+      "title": "Attigny",
+      "aliases": [
+        "Attigny"
+      ],
+      "rule": "default",
+      "definition": "A palace on the Aisne, a usual place for kings to meet when they are not quite ready to fight. Truces name it as the next appointment."
+    },
+    {
+      "id": "coulaines",
+      "title": "Coulaines",
+      "aliases": [
+        "Coulaines"
+      ],
+      "rule": "default",
+      "definition": "Near Le Mans. Charles the Bald makes a bargain here with his own great men in the hungry 840s: he needs them, and they know it, and the writing says so."
+    },
+    {
+      "id": "meerssen",
+      "title": "Meerssen",
+      "aliases": [
+        "Meerssen"
+      ],
+      "rule": "default",
+      "definition": "A palace in the middle kingdom. The meetings here redraw Lotharingia after Lothair's line fails. \"Meerssen\" in the news means another partition, not a town to visit."
+    },
+    {
+      "id": "cremieu",
+      "title": "Crémieu",
+      "aliases": [
+        "Crémieu",
+        "Cremieu"
+      ],
+      "rule": "default",
+      "definition": "Near Lyon. Louis the Pious holds an assembly here and Bernard of Septimania is restored — Septimania, Barcelona, and Toulouse, because Berengar has died on the road.\n\nA lesson the hall repeats: standing in the right place at the right time."
+    },
+    {
+      "id": "mantaille",
+      "title": "Mantaille",
+      "aliases": [
+        "Mantaille"
+      ],
+      "rule": "default",
+      "definition": "An assembly in the Viennois, near Vienne. In 879 Boso has himself elected king here. The election is the start of his kingdom and of Richard's war against it."
+    },
+    {
+      "id": "ballons",
+      "title": "Ballon",
+      "aliases": [
+        "Ballon"
+      ],
+      "rule": "default",
+      "definition": "A field in Brittany. In 845 Nominoe defeats Charles the Bald's host here. After this, Brittany is not a rebel county. It is a problem with a king."
+    },
+    {
+      "id": "jengland",
+      "title": "Jengland",
+      "aliases": [
+        "Jengland"
+      ],
+      "rule": "default",
+      "definition": "A field on the Breton border. In 851 Erispoe defeats Charles the Bald here and is received as king of the Bretons."
+    },
+    {
+      "id": "brissarthe",
+      "title": "Brissarthe",
+      "aliases": [
+        "Brissarthe"
+      ],
+      "rule": "default",
+      "definition": "A place in Anjou. In 866 Robert the Strong pens a band of Northmen and Bretons in a stone church here, after they burned Le Mans. It is blazing hot. He takes off his helmet and his mail. They break out and kill him. Ranulf of Poitou dies of a wound from the same fight."
+    },
+    {
+      "id": "saucourt",
+      "title": "Saucourt",
+      "aliases": [
+        "Saucourt"
+      ],
+      "rule": "default",
+      "definition": "Saucourt-en-Vimeu, near the sea in the north. In 881 the young king Louis III catches a great band of Northmen here and kills them in the open. The Franks across the Rhine sing about it.\n\nProof they can be beaten. They are back within the year. Louis is dead the next summer."
+    },
+    {
+      "id": "andernach",
+      "title": "Andernach",
+      "aliases": [
+        "Andernach"
+      ],
+      "rule": "default",
+      "definition": "A field by the Rhine. In 876 the East Franks defeat Charles the Bald here, when he tries to take his dead brother's kingdom. He is an old emperor by then, and he loses."
+    },
+    {
+      "id": "pressburg",
+      "title": "Pressburg",
+      "aliases": [
+        "Pressburg"
+      ],
+      "rule": "default",
+      "definition": "A city on the Danube, later called Bratislava. In 907 the Hungarians destroy a Bavarian army here.\n\nThe East Frankish march does not hold. That is the news, when it comes."
+    },
+    {
+      "id": "fraxinetum",
+      "title": "Fraxinetum",
+      "aliases": [
+        "Fraxinetum"
+      ],
+      "rule": "default",
+      "definition": "A Saracen stronghold on the Provençal coast, in the hills above the sea. From it, raiders hit the Alpine roads and the inland country through the late years of this century.\n\nNot Córdoba's army. A fort of raiders who stayed."
+    },
+    {
+      "id": "colmar",
+      "title": "Colmar",
+      "aliases": [
+        "Colmar"
+      ],
+      "rule": "default",
+      "definition": "A town in Alsace. The Field of Lies, where Louis the Pious's army deserted in June 833, is beside it."
+    },
+    {
+      "id": "trier",
+      "title": "Trier",
+      "aliases": [
+        "Trier"
+      ],
+      "rule": "default",
+      "definition": "An old Roman city on the Moselle. When Pippin of Aquitaine is deposed, he is sent here as a prisoner. He slips his guards on the road."
+    },
+    {
+      "id": "nantes",
+      "title": "Nantes",
+      "aliases": [
+        "Nantes"
+      ],
+      "rule": "default",
+      "definition": "City at the mouth of the Loire. Bishop Gunhard is killed when the Northmen take it. Lambert's country is this coast.\n\nA port. What happens here comes up the river."
+    },
+    {
+      "id": "chartres",
+      "title": "Chartres",
+      "aliases": [
+        "Chartres"
+      ],
+      "rule": "default",
+      "definition": "A city south-west of Paris. Rollo's raids reach it. That is how near the Seine Northmen have come to the middle of the kingdom."
+    },
+    {
+      "id": "rouen",
+      "title": "Rouen",
+      "aliases": [
+        "Rouen"
+      ],
+      "rule": "default",
+      "definition": "City on the lower Seine. The Northmen use it, and at the end of this age it is where Rollo is settled. Normandy begins as this city's country, not as a name on a map yet."
+    },
+    {
+      "id": "tournus",
+      "title": "Tournus",
+      "aliases": [
+        "Saint Philibert",
+        "Tournus"
+      ],
+      "rule": "default",
+      "definition": "Abbey town on the Saône. The monks of Saint Philibert, driven off the coast by the Northmen, settle here.\n\nA Burgundian house with a refugee saint. The coast is no longer safe for a famous abbey."
+    },
+    {
+      "id": "vezelay",
+      "title": "Vézelay",
+      "aliases": [
+        "Vézelay",
+        "Vezelay"
+      ],
+      "rule": "default",
+      "definition": "An abbey in the north of the Morvan, on the road toward Auxerre. Neighbour country to Fontenay, not a distant shrine yet. Later ages will make it a pilgrimage. Now it is a house in the hills."
+    },
+    {
+      "id": "avallon",
+      "title": "Avallon",
+      "aliases": [
+        "Avallon"
+      ],
+      "rule": "default",
+      "definition": "A town north of the Morvan. Later one of the counties Richard joins to his march. In the early game it is a name on the edge of the pagus, not a possession."
+    },
+    {
+      "id": "dijon",
+      "title": "Dijon",
+      "aliases": [
+        "Dijon"
+      ],
+      "rule": "default",
+      "definition": "North of Beaune, toward the Saône plain. The abbey of Bèze is up this way. Richard's world, once he has it, includes this country."
+    },
+    {
+      "id": "beze",
+      "title": "Bèze",
+      "aliases": [
+        "Bèze",
+        "Beze"
+      ],
+      "rule": "default",
+      "definition": "An abbey near Dijon. A band of Northmen sacks it and carries off the treasure. Richard and Bishop Géran catch that band in the open near Saint-Florentin, laden so they cannot run."
+    },
+    {
+      "id": "saint_florentin",
+      "title": "Saint-Florentin",
+      "aliases": [
+        "Saint-Florentin",
+        "Saint Florentin"
+      ],
+      "rule": "default",
+      "definition": "A place in the plain north of Auxerre. Richard and Bishop Géran destroy the Northmen who burned Bèze here, and cut off their road to the river.\n\nThe first band to come into Burgundy and not leave."
+    },
+    {
+      "id": "nevers",
+      "title": "Nevers",
+      "aliases": [
+        "Nevers"
+      ],
+      "rule": "default",
+      "definition": "On the Loire, west of the Morvan. A county. The house of Auxerre counts its lords as enemies, which matters if you marry that way.\n\nLater one of Richard's counties."
+    },
+    {
+      "id": "beaune",
+      "title": "Beaune",
+      "aliases": [
+        "Beaune"
+      ],
+      "rule": "default",
+      "definition": "Between Autun and the Saône. Wine country already. Later under Richard's hand, with Chalon."
+    },
+    {
+      "id": "tonnerre",
+      "title": "Tonnerre",
+      "aliases": [
+        "Tonnerre"
+      ],
+      "rule": "default",
+      "definition": "A county town north of the Auxois, on the way from the Morvan toward Troyes. Named with Montbard when the news is drawing a line across northern Burgundy."
+    },
+    {
+      "id": "montbard",
+      "title": "Montbard",
+      "aliases": [
+        "Montbard"
+      ],
+      "rule": "default",
+      "definition": "A fortress town on a rock in the Auxois, north of the Morvan. Paired with Tonnerre in the reports. A strong place, not a city."
+    },
+    {
+      "id": "troyes",
+      "title": "Troyes",
+      "aliases": [
+        "Troyes"
+      ],
+      "rule": "default",
+      "definition": "City of the plains east of Sens, on the road to the Champagne country. Later Richard has a hand on it. It is the north-eastern edge of his march, not of the Morvan."
+    },
+    {
+      "id": "blois",
+      "title": "Blois",
+      "aliases": [
+        "Blois"
+      ],
+      "rule": "default",
+      "definition": "A county on the Loire, downstream of Orléans. Its count dies in 834 in the same western battle as Odo of Orléans."
+    },
+    {
+      "id": "laon",
+      "title": "Laon",
+      "aliases": [
+        "Laon"
+      ],
+      "rule": "default",
+      "definition": "A fortress city on a ridge north of Paris. Later a Carolingian holdout. In this century it is a strong place kings use, not yet the last capital."
+    },
+    {
+      "id": "senlis",
+      "title": "Senlis",
+      "aliases": [
+        "Senlis"
+      ],
+      "rule": "default",
+      "definition": "A town north of Paris, used for meetings when the king is in the Île-de-France. A palace-country name, like Compiègne and Attigny."
+    },
+    {
+      "id": "valence",
+      "title": "Valence",
+      "aliases": [
+        "Valence"
+      ],
+      "rule": "default",
+      "definition": "On the Rhône south of Vienne, on the road into Provence. Boso's kingdom runs through here when he still has a kingdom."
+    },
+    {
+      "id": "arles",
+      "title": "Arles",
+      "aliases": [
+        "Arles"
+      ],
+      "rule": "default",
+      "definition": "Old Roman city of Provence, near the mouth of the Rhône. With Marseille, it is what \"the coast\" means when the news is southern."
+    },
+    {
+      "id": "marseille",
+      "title": "Marseille",
+      "aliases": [
+        "Marseille"
+      ],
+      "rule": "default",
+      "definition": "The port of Provence. Far from Fontenay. Named when a grant or a raid runs all the way to the sea."
+    },
+    {
+      "id": "geneva",
+      "title": "Geneva",
+      "aliases": [
+        "Geneva"
+      ],
+      "rule": "default",
+      "definition": "At the lake, where the Rhône leaves the Alps. The far end of the grant that runs \"to Provence, Lyon, and Geneva.\" Upper Burgundy's country, Rudolph's more than Richard's."
+    },
+    {
+      "id": "jura",
+      "title": "the Jura",
+      "aliases": [
+        "the Jura",
+        "Jura"
+      ],
+      "rule": "default",
+      "definition": "The mountain country east of the Saône. Upper Burgundy. Rudolph comes from here.\n\nNot the Morvan. Higher, colder, and on the other side of the border after Verdun."
+    },
+    {
+      "id": "ferrieres",
+      "title": "Ferrières",
+      "aliases": [
+        "Ferrières",
+        "Ferrieres"
+      ],
+      "rule": "default",
+      "definition": "Abbey east of Orléans, where Lupus is abbot. A learned house. Letters from Ferrières are scholarly letters, and they travel."
+    },
+    {
+      "id": "rhineland",
+      "title": "the Rhineland",
+      "aliases": [
+        "the Rhineland",
+        "Rhineland"
+      ],
+      "rule": "default",
+      "definition": "The Rhine cities and palaces together — Worms, Mainz, Ingelheim, and the road east. \"The emperor has gone to the Rhineland\" means he is at one of those halls, not in Burgundy."
     }
   ]
 }

@@ -5,6 +5,7 @@ import { unitSheet } from "../combat/registry";
 import { rankTitle } from "../combat/renown";
 import { capacity, holdingsRun, overloadTier, overloadWord, stewardTitle, upkeepPerSeason } from "../history/administration";
 import { fairnessWord, justiceCase, justiceTable, stanceApplies } from "../history/justice";
+import { marriageBookLines } from "../history/marriage";
 import { eligibleRank } from "../history/promotion";
 import { seasonRevenue } from "../history/revenue";
 import { vassalMoodWord } from "../history/vassals";
@@ -55,6 +56,8 @@ export type HoldingsBook = {
   counties: { name: string; since: string; fisc: string; fiscManses: number; levy: number; yearly: string }[];
   revenue: { last: { tolls: number; market: number; justice: number; fisc: number; mint: number; deputy: number; fines: number; officers: number; net: number } | null; yearly: number };
   officers: string[];
+  /** The lord's marriage (history/marriage.ts): who she is and what came with her. Empty while unmarried. */
+  household: string[];
   levy: number;
   mint: number;
   royalFisc: { yearly: number; host: string } | null;
@@ -156,6 +159,7 @@ export function holdingsBook(state: WorldState): HoldingsBook {
     counties,
     revenue: { last: rank.lastRevenue, yearly: season.net * 4 },
     officers,
+    household: marriageBookLines(state),
     levy: rank.counties.reduce((n, c) => n + c.levy, 0),
     mint: rank.mint,
     royalFisc: rank.royalFisc ? { yearly: rank.royalFisc.yearly, host: `${rank.royalFisc.host.min}–${rank.royalFisc.host.max} men when the host is called` } : null,

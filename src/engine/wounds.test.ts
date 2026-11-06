@@ -98,6 +98,26 @@ describe("wounds in battle (design review)", () => {
     expect(s.battle!.log.some((e) => /commands from behind it/.test(e.text))).toBe(true);
   });
 
+  it("a crushed leg holds the gate and can send a captain, and will not bear a hard ride", () => {
+    const s = fresh();
+    const leg = wound(true);
+    leg.narrativeFlags.push("maiming", "lame");
+    s.player.wounds.push(leg);
+    s.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Spears", veteran: false, strength: 20, raisedTurn: 1 });
+    raiseCallDirect(s, "summons", 2);
+    const ride = acceptCall(s, silent);
+    expect(ride.started).toBe(false);
+    expect(ride.text).toMatch(/will not bear a hard ride/);
+    raiseCallDirect(s, "summons", 2);
+    s.battle_call!.mode = "captain";
+    expect(acceptCall(s, silent).started).toBe(true);
+    const gate = fresh();
+    gate.player.wounds.push(leg);
+    gate.military.units.push({ id: "u1", sheetId: "pedites_fyrd", name: "Spears", veteran: false, strength: 20, raisedTurn: 1 });
+    raiseCallDirect(gate, "bandits", 2);
+    expect(acceptCall(gate, silent).started).toBe(true);
+  });
+
   it("with two open wounds the lord can neither ride nor rule until the season turns", () => {
     const s = fresh();
     s.player.wounds.push(wound(), wound());
@@ -108,7 +128,7 @@ describe("wounds in battle (design review)", () => {
 });
 
 describe("wounds between seasons", () => {
-  it("heal 30% after the first season, 15% after the second, then set for life; two set wounds maim the lord", () => {
+  it("heal 30% after the first season, 15% after the second; what is left is a maiming, and it can kill", () => {
     let healedFirst = 0;
     let healedSecond = 0;
     let permanent = 0;
@@ -135,9 +155,43 @@ describe("wounds between seasons", () => {
 
     const s = fresh();
     s.player.wounds.push(wound(true), wound(true));
-    const lines = tickWounds(s, createRng(1));
-    expect(s.player.maimed).toBe(true);
-    expect(lines.some((l) => /can no longer sit a horse/.test(l.text))).toBe(true);
+    tickWounds(s, createRng(1));
+    expect(s.player.maimed).toBe(false);
+    expect(s.player.dead).toBe(false);
+  });
+
+  it("a wound that sets is a maiming: death inside the band, and a survivor is marked and gains renown", async () => {
+    const { MAIMING_DEATH, MAIMING_RENOWN, maimingDeathChance, resolveMaiming, woundCraft } = await import("./wounds");
+    const rng = createRng(1);
+    expect(maimingDeathChance(false, false, { ...rng, float: () => 0 })).toBe(MAIMING_DEATH.first[0]);
+    expect(maimingDeathChance(false, false, { ...rng, float: () => 1 })).toBe(MAIMING_DEATH.first[1]);
+    expect(maimingDeathChance(false, true, { ...rng, float: () => 0 })).toBe(MAIMING_DEATH.prepared[0]);
+    expect(maimingDeathChance(true, false, { ...rng, float: () => 1 })).toBe(MAIMING_DEATH.second[1]);
+
+    const dies = fresh();
+    dies.player.renown = 40;
+    const fatal = wound();
+    fatal.seasonsHeld = 1;
+    dies.player.wounds.push(fatal);
+    // Heal roll fails; the death roll succeeds.
+    let call = 0;
+    const killing = { float: () => 0, int: () => 0, chance: () => { call += 1; return call > 1; } };
+    const line = tickWounds(dies, killing as unknown as ReturnType<typeof createRng>);
+    expect(dies.player.dead).toBe(true);
+    expect(line.some((l) => /dead of it/.test(l.text))).toBe(true);
+    expect(fatal.narrativeFlags).toContain("maiming");
+
+    const lives = fresh();
+    lives.player.renown = 40;
+    const kept = wound();
+    const lived = resolveMaiming(lives, kept, { float: () => 0, int: () => 1, chance: () => false } as unknown as ReturnType<typeof createRng>);
+    expect(lives.player.dead).toBe(false);
+    expect(lives.player.renown).toBe(40 + MAIMING_RENOWN);
+    expect(kept.narrativeFlags).toContain("lame");
+    expect(lived).toMatch(/will not ride hard/);
+    expect(woundCraft(lives)).toBe(false);
+    lives.known_techniques.push({ id: "clean_wound", name: "Clean wound practice", discoveredTurn: 1 });
+    expect(woundCraft(lives)).toBe(true);
   });
 
   it("the season resolution heals the lord fully and ticks his wounds", async () => {

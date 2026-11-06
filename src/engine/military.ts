@@ -344,6 +344,7 @@ export function tickMilitary(state: WorldState): SeasonEffectLine[] {
     } else {
       const paid = state.resources.denarii;
       state.resources.denarii = 0;
+      state.history.decay.armsUnpaidTurn = state.meta.turn;
       for (const u of state.military.units) {
         const spec = raiseSpecFor(u.sheetId);
         if (!spec || spec.upkeepPerMan === 0) continue;

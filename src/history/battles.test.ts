@@ -212,12 +212,12 @@ describe("raising and refusing the call", () => {
   it("turning back costs the count's opinion and renown and writes a record line; the hall barred loses the stores", () => {
     const s = fresh();
     s.player.renown = 50;
-    s.history.flags.count_opinion = 3;
+    s.history.flags.count_opinion = 53;
     s.history.away = { reason: "x", untilTurn: 99 };
     openHistoricalBattle(s, event("830-B1"), at(830, "spring"), 21);
     const lines = refuseHistoricalBattle(s, s.battle_call!);
     expect(lines.length).toBeGreaterThan(0);
-    expect(s.history.flags.count_opinion).toBe(1);
+    expect(s.history.flags.count_opinion).toBe(51);
     expect(s.player.renown).toBeLessThan(50);
     expect(s.history.record.at(-1)?.text).toContain("Turned back from");
     expect(s.history.away).toBeNull();

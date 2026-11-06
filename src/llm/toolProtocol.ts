@@ -318,6 +318,9 @@ export function baselineDrawersFor(npcId: string): ToolDrawer[] {
       return ["arms", "projects"];
     case "merchant":
       return ["merchant", "chest"];
+    case "wife":
+      // Counsel, not books: the widow asks after the barns, the rest see the chest and the land in outline.
+      return ["land", "chest"];
     default:
       return ["projects"];
   }

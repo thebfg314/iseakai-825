@@ -43,8 +43,10 @@ export function tradeHealth(state: WorldState): number {
   return state.history?.trade?.health ?? TRADE_BASELINE;
 }
 
+/** Works that have started to fail no longer draw the roads or keep a watch. */
 function allFeatures(state: WorldState): string[] {
-  return state.holdings.flatMap((h) => h.features);
+  const worn = new Set((state.history?.upkeep?.worn ?? []).filter((w) => w.stage >= 1).map((w) => `${w.holdingId}:${w.feature}`));
+  return state.holdings.flatMap((h) => h.features.filter((f) => !worn.has(`${h.id}:${f}`)));
 }
 
 /** The lord's own works that draw trade, from the features standing on his villas (cumulative, mostly permanent). */

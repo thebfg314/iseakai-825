@@ -6,7 +6,6 @@ import { lintHistoryStructure } from "./lint";
 import { historyContent } from "./load";
 import { historyPromptBlock } from "./promptBlocks";
 import { runHistorySeasonPass, type HistoryPassResult } from "./season";
-
 /** Arc 2 against the shipped content: oaths of 840, Fontenoy, Verdun, Toulouse, Bernard's end. */
 
 function fresh(): WorldState {
@@ -21,7 +20,7 @@ function clockFor(state: WorldState) {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
     if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
-    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
     state.meta.turn += 1;

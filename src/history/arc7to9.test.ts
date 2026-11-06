@@ -6,7 +6,6 @@ import { lintHistory, lintHistoryStructure } from "./lint";
 import { historyContent } from "./load";
 import { dukeOpportunities, dukeTrackScore } from "./richard";
 import { runHistorySeasonPass, type HistoryPassResult } from "./season";
-
 /** Step E: Arcs 7–9 (878-K1 … 911-F1), Richard as rival, the open throne, minting, Saracens and Magyars, the Church and scholars. */
 
 function fresh(): WorldState {
@@ -21,7 +20,7 @@ function clockFor(state: WorldState) {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
     if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
-    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
     state.meta.turn += 1;
@@ -212,7 +211,7 @@ describe("Arcs 7–9 content", () => {
     expect(state.modifiers.some((m) => m.kind === "permanent" && m.source.includes("Fraxinetum"))).toBe(true);
     clock.to(895, "spring");
     state.resources.denarii = 50;
-    const favor = Number(state.history.flags.favor_church ?? 0);
+    const favor = Number(state.history.flags.favor_church ?? 50);
     expect(hook(state, "887-S1", "ransom_contribution").ok).toBe(true);
     expect(state.resources.denarii).toBe(30);
     expect(state.history.flags.favor_church).toBe(favor + 1);
@@ -239,7 +238,7 @@ describe("Arcs 7–9 content", () => {
     delete state.history.flags.tournus_friend;
     delete state.history.flags.oath_kept_lord;
     expect(hook(state, "910-E1", "witness_cluny", "chaplain").ok).toBe(false);
-    state.history.flags.favor_church = 3;
+    state.history.flags.favor_church = 53;
     state.resources.denarii = 100;
     expect(hook(state, "910-E1", "witness_cluny", "chaplain").ok).toBe(true);
     expect(state.history.flags.cluny_witness).toBe(true);

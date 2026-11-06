@@ -88,14 +88,17 @@ function viewOf(): GameView {
 
 describe("glossary dictionary", () => {
   it("keeps every signed-off term and omits mill-forge tech explainers", () => {
-    expect(GLOSSARY_ENTRIES.map((e) => e.id).sort()).toEqual([...REQUIRED_IDS].sort());
+    const ids = GLOSSARY_ENTRIES.map((e) => e.id);
+    expect(ids).toEqual(expect.arrayContaining([...REQUIRED_IDS]));
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.length).toBeGreaterThan(REQUIRED_IDS.length);
     expect(GLOSSARY_OMIT).toEqual(
       expect.arrayContaining(["fulling mill", "trip-hammer", "forge mill", "mill-forge"]),
     );
-    for (const id of REQUIRED_IDS) {
-      const entry = glossaryEntry(id);
-      expect(entry?.definition.length).toBeGreaterThan(20);
-      expect(entry?.title.length).toBeGreaterThan(2);
+    for (const entry of GLOSSARY_ENTRIES) {
+      expect(entry.definition.length).toBeGreaterThan(20);
+      expect(entry.title.length).toBeGreaterThan(2);
+      expect(entry.aliases.length).toBeGreaterThan(0);
     }
     const blob = GLOSSARY_ENTRIES.map((e) => `${e.title} ${e.definition}`).join("\n");
     expect(blob).not.toMatch(/fulling mill|trip-hammer|forge mill|mill-forge/i);
@@ -107,7 +110,7 @@ describe("glossary linker", () => {
     const hits = findGlossaryHits(
       "The Pagus of Autun sent a Missus. Forty MODII and twenty Denarii. The MANSES (one mansus) sit on the demesne.",
     );
-    expect(hits.map((h) => h.id)).toEqual(["pagus", "missus", "modii", "denarii", "manses", "manses", "demesne"]);
+    expect(hits.map((h) => h.id)).toEqual(["pagus", "autun", "missus", "modii", "denarii", "manses", "manses", "demesne"]);
     expect(ids("cell of Saint-Martin and the timber oratory")).toEqual(["cell_saint_martin", "oratory"]);
     expect(ids("Louis the Pious held Francia in the Carolingian age")).toEqual([
       "louis_the_pious",
@@ -164,6 +167,32 @@ describe("glossary linker", () => {
     expect(ids("a loud Frank who did you a favor")).toContain("frank");
     expect(ids("Frankly I prefer frankincense")).toEqual([]);
     expect(ids("the master of the house")).not.toContain("pannage");
+  });
+
+  it("links the new chronicle words and does not confuse namesakes", () => {
+    expect(ids("The king's missi have sat on the lord's court")).toContain("missus");
+    expect(ids("held as a benefice, or as a precaria for the nona")).toEqual(
+      expect.arrayContaining(["benefice", "precaria", "nona"]),
+    );
+    expect(ids("You are commended to the emperor")).toContain("commend");
+    expect(ids("The host musters.")).toContain("host");
+    expect(ids("We will host a feast for the neighbours")).not.toContain("host");
+    expect(ids("the southern counties nearer the March")).toContain("march");
+    expect(ids("rain since the first of March")).not.toContain("march");
+    expect(ids("Fontenay is not Fontenoy")).toEqual(expect.arrayContaining(["fontenay", "fontenoy"]));
+    expect(ids("Lord Bernard has fled to Barcelona")).toContain("bernard_counts");
+    expect(ids(HOUSEHOLD_INTROS.smith)).not.toContain("bernard_counts");
+    expect(ids("Boso is dead, my lord, down in Provence")).toContain("boso");
+    expect(ids("Boso. Burgundy on my breath. Wine on the carts. Let's make a game of the price.")).not.toContain("boso");
+    expect(ids("King Odo is dead and Richard has made his peace")).toEqual(
+      expect.arrayContaining(["odo", "richard"]),
+    );
+    expect(ids("Odo. Every toll named, every price slow. Rush me and the deal gets worse.")).not.toContain("odo");
+    expect(ids("his cousin Odo stripped of Orléans")).toContain("odo");
+    expect(ids("Charles the Bald and Louis of Bavaria")).toEqual(
+      expect.arrayContaining(["charles_bald", "louis_german"]),
+    );
+    expect(ids("Pippin II rides with the Northmen")).toEqual(expect.arrayContaining(["pippin", "northmen"]));
   });
 
   it("links household and merchant intros and engine holding lines stay safe to scan", () => {

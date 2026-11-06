@@ -19,6 +19,7 @@ import { quoteRaise } from "../engine/military";
 import { officeCost } from "../history/administration";
 import { justiceCase } from "../history/justice";
 import { historyContent } from "../history/load";
+import { matchOffers } from "../history/marriage";
 
 export const BOOKS_TITLE = "The books";
 
@@ -148,6 +149,7 @@ const ROLE_NAMES: Record<string, string> = {
   monk: "monk",
   novice: "novice",
   bishop: "bishop",
+  wife: "lady",
 };
 
 const PROPOSAL_TYPE_NAMES: Record<string, string> = {
@@ -182,6 +184,13 @@ const PROPOSAL_TYPE_NAMES: Record<string, string> = {
   justice_verdict: "The lord's judgement",
   set_stance: "How the county is governed",
   steward_office: "The household's officers",
+  marriage: "A match",
+  household_upkeep: "The household",
+  giving_stance: "The giving",
+  vassal_gift: "A gift",
+  vassal_occasion: "An occasion",
+  church_endowment: "An endowment",
+  church_purchase: "A purchase from the church",
 };
 
 const UNIT_SINGULAR: Record<string, string> = {
@@ -588,7 +597,7 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
     case "history_hook":
     case "history_outcome":
     case "history_scene":
-      return historyCardBlurb(p);
+      return historyCardBlurb(p, state);
     case "innovation_register":
       return `Note ${p.name} as a new thing of this house, so the chronicle may follow where it spreads.`;
     case "innovation_expose":
@@ -619,11 +628,58 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       if (p.action === "hire") return `Let ${steward} take on clerks under him${price}.`;
       return `Name ${p.name?.trim() || "a deputy"} over the outlying villas${price}.`;
     }
+    case "household_upkeep": {
+      const word = ["none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][p.cut] ?? String(p.cut);
+      if (p.cut <= 0) return "Keep the household as a lord of this rank is expected to keep it: the open table, the gifts, and the full retinue.";
+      return `Keep the household ${word} ${p.cut === 1 ? "part" : "parts"} in a hundred leaner: fewer retainers, a shorter table, fewer gifts. The sworn men and the people of the hall will feel the want of it.`;
+    }
+    case "giving_stance": {
+      if (p.level === "lean") return "Give leanly. The household costs a little less, and the sworn men cool, slowly.";
+      if (p.level === "generous") return "Give generously. Five parts in a hundred of the year's receipts, and the sworn men warm, slowly.";
+      return "Give as custom expects. The sworn men neither warm nor cool from the ordinary gifts.";
+    }
+    case "vassal_gift": {
+      const who = (state?.history?.vassals ?? []).find((v) => v.id === p.vassalId)?.name ?? "a sworn man";
+      const thing = { horse: "a good horse", mail: "a mail shirt", sword: "a sword", bird: "a hunting bird", cup: "a silver cup", cloak: "a fur-lined cloak", relic: "a relic" }[p.kind];
+      const where = p.occasion && p.occasion !== "ordinary" ? ` at a ${p.occasion}` : "";
+      return `Give ${who} ${thing}${where}.`;
+    }
+    case "vassal_occasion": {
+      if (p.option === "snub") return "Give nothing, in public. He will not forget it, and neither will the others.";
+      if (p.option === "token") return "Send a token. He will know the hall could have done more.";
+      if (p.option === "lavish") return "Spend lavishly. He will talk, and the others will expect the same.";
+      return "Do what custom requires. That is not a gift. It is the absence of an insult.";
+    }
+    case "church_endowment":
+      return `Endow the church: ${p.kind.replaceAll("_", " ")}. At a higher rank the same gift may be only what is expected.`;
+    case "church_purchase":
+      return `Pay the church for ${p.aim}. It may be said afterwards that he bought what should not be sold.`;
+    case "marriage": {
+      if (p.action === "court") return "Ride to the widow Gisla and speak for yourself. She chooses; nobody is paid for her.";
+      if (!state) return `Marry: ${p.archetype}.`;
+      const offer = matchOffers(state).find((o) => o.archetype === p.archetype);
+      if (!offer) return `Marry: ${p.archetype}.`;
+      const price = offer.price > 0 ? ` A bride-price of ${offer.price} d, in coin or in kind.` : "";
+      return `Marry ${offer.name}, ${offer.who}. She brings ${offer.brings}.${price}`;
+    }
   }
 }
 
 /** The Confirm card for a calendar decision names the matter and the course in the hall's words. */
-function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" }>): string {
+function questAudienceCard(state: WorldState | undefined, hookId: string): string | null {
+  const nobles = state?.history?.quest?.nobles ?? [];
+  const meeting = state?.history?.quest?.meeting;
+  if (hookId === "end_audience") return meeting ? `Send ${meeting.name} home.` : "Send the man in the hall home.";
+  const arranging = hookId.startsWith("arrange_");
+  const approaching = hookId.startsWith("approach_");
+  if (!arranging && !approaching) return null;
+  const motive = hookId.slice(arranging ? "arrange_".length : "approach_".length);
+  const name = nobles.find((n) => n.motive === motive)?.name;
+  if (!name) return arranging ? "Send for him, and hear him in the hall." : "He has heard what the lord offers.";
+  return arranging ? `Send for ${name}, and hear him in the hall.` : `${name} has heard what the lord offers.`;
+}
+
+function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice" | "history_hook" | "history_outcome" | "history_scene" }>, state?: WorldState): string {
   const event = historyContent().byId.get(p.eventId);
   const title = event?.title ?? "the matter before the hall";
   const stageOptions = event?.stages.flatMap((s) => [...(s.choices?.options ?? []), ...(s.outcomes?.options ?? [])]) ?? [];
@@ -633,6 +689,8 @@ function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice
     case "history_choice":
       return `On ${title}: ${labelOf(p.optionId)}.`;
     case "history_hook": {
+      const named = questAudienceCard(state, p.hookId);
+      if (named) return named;
       const hook = [...(event?.hooks ?? []), ...(event?.stages.flatMap((s) => s.hooks) ?? [])].find((h) => h.id === p.hookId);
       return `On ${title}: ${hook?.trigger ?? humanizeKey(p.hookId)}.`;
     }
@@ -643,7 +701,7 @@ function historyCardBlurb(p: Extract<MechanicalProposal, { type: "history_choice
   }
 }
 
-const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b|\bvassal_mood\b|\bjustice_verdict\b|\bset_stance\b|\bsteward_office\b/i;
+const ENGINE_KEY = /\b(?:proj|mod|prop|so|tech|fo|unit|drill)-[a-z0-9]+|\bnpc_not_authorized\b|\bcustomCosts\b|\bREJECT\b|\bJSON\b|\bAPI\b|\bschema\b|\bassign_labour\b|\bstart_project\b|\bevent_effect\b|\badjust_sowing\b|\btransfer_resources\b|\badd_modifier\b|\bregister_npc\b|\bregister_resource\b|\bregister_feature\b|\bset_standing_order\b|\bsettle_households\b|\bdefer_proposal\b|\bschedule_order\b|\braise_unit\b|\bdisband_unit\b|\bcall_to_arms\b|\bregister_unit_sheet\b|\bfree_mancipia\b|\bsponsor_feast\b|\bvassal_mood\b|\bjustice_verdict\b|\bset_stance\b|\bsteward_office\b|\bhousehold_upkeep\b|\bgiving_stance\b|\bvassal_gift\b|\bvassal_occasion\b|\bchurch_endowment\b|\bchurch_purchase\b/i;
 const SNAKE_KEY = /\b[a-z]+(?:_[a-z0-9]+)+\b/;
 
 export function looksLikeEngineKey(text: string): boolean {

@@ -5,9 +5,11 @@ import type { Holding, WorldState } from "../engine/schema";
 import type { HistoryBeat } from "./deliver";
 import { flagTruthy } from "./flags";
 import { historyContent, seasonOrdinal } from "./load";
+import { noteOfficeGranted } from "./office";
 import { rankStep, ranksTable, thresholdFor } from "./ranks";
 import type { SeasonAt } from "./scheduler";
 import type { PromoteEffect, VillaTemplate } from "./schema";
+import { trackBishop } from "./standing";
 import { noteVassalEvent } from "./vassals";
 
 /**
@@ -158,6 +160,7 @@ export function grantCounty(state: WorldState, name: string, turn: number, rank 
   state.history.rank.counties.push({ name, since: turn, fiscManses: t.fiscManses, fiscVillas: t.fiscVillas, levy: t.levy, yearly: { ...t.yearly } });
   if (name === "Autun") {
     state.history.flags.holds_autun = true;
+    trackBishop(state);
     const seat = seatOf(state);
     const stone = ranksTable().autun.seatFeature;
     if (seat && !seat.features.includes(stone)) seat.features.push(stone);
@@ -180,7 +183,23 @@ function addVassals(state: WorldState, upTo: number, patron: string, turn: numbe
     const freeVillas = ranksTable().villaNames.filter((n) => !usedHoldings.has(n) && !state.holdings.some((h) => h.name === n));
     const holding = freeVillas.length ? rng.pick(freeVillas) : `a manse near ${seatOf(state)?.name ?? "the hall"}`;
     usedHoldings.add(holding);
-    state.history.vassals.push({ id: `vassal_${slugify(name)}_${turn}_${i}`, name, holding, men: rng.int(2, 5), mood: 50, since: turn, group: false, grantedBy: patron, angrySince: null, lastReason: null });
+    const bents = ["fighter", "devout", "hunter", "court"] as const;
+    state.history.vassals.push({
+      id: `vassal_${slugify(name)}_${turn}_${i}`,
+      name,
+      holding,
+      men: rng.int(2, 5),
+      mood: 50,
+      since: turn,
+      group: false,
+      grantedBy: patron,
+      angrySince: null,
+      lastReason: null,
+      bent: bents[rng.int(0, bents.length - 1)],
+      gifts: [],
+      grievances: [],
+      snubbed: false,
+    });
     names.push(name);
   }
   return names;
@@ -190,7 +209,21 @@ function addVassalGroups(state: WorldState, turn: number): void {
   for (const c of state.history.rank.counties) {
     const id = `county_${slugify(c.name)}`;
     if (state.history.vassals.some((v) => v.id === id)) continue;
-    state.history.vassals.push({ id, name: `The lords of ${c.name}`, holding: c.name, men: c.levy, mood: 50, since: turn, group: true, angrySince: null, lastReason: null });
+    state.history.vassals.push({
+      id,
+      name: `The lords of ${c.name}`,
+      holding: c.name,
+      men: c.levy,
+      mood: 50,
+      since: turn,
+      group: true,
+      angrySince: null,
+      lastReason: null,
+      bent: "court",
+      gifts: [],
+      grievances: [],
+      snubbed: false,
+    });
   }
 }
 
@@ -264,6 +297,7 @@ export function promoteTo(state: WorldState, target: number, opts: { patron: str
       if (names.length) said.push(`${names.length} men have sworn to us for their holdings: ${names.join(", ")}.`);
     }
     if (r >= 4) addVassalGroups(state, opts.turn);
+    if (r === 2) noteOfficeGranted(state);
     const title = rankTitle(r as Rank);
     state.history.rank.patron = opts.patron;
     state.history.rank.promotedTurn = opts.turn;

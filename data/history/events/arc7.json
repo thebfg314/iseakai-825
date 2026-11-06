@@ -199,8 +199,9 @@
         },
         {
           "id": "marry_local",
-          "trigger": "The lord agrees to marry into a local family to secure the villa.",
-          "effects": { "cost": { "denarii": 30 }, "land": { "tenure": "benefice", "marriedLocal": true }, "flags": { "married_local": true }, "record": "The lord married into a local family and kept the villa." }
+          "trigger": "The lord agrees to marry the neighbour's daughter (Aldric's match 'hildegard') to secure the villa; the engine makes the match and takes the bride-price.",
+          "requires": "not married",
+          "effects": { "land": { "tenure": "benefice", "marriedLocal": true }, "flags": { "married_local": true }, "record": "The lord married into a local family and kept the villa." }
         },
         {
           "id": "church_fixed",

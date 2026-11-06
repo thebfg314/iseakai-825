@@ -6,7 +6,6 @@ import { lintHistoryStructure } from "./lint";
 import { historyContent, setHistoryContentForTests } from "./load";
 import { historyPromptBlock } from "./promptBlocks";
 import { runHistorySeasonPass } from "./season";
-
 const TEST_EVENTS = [
   {
     id: "826-01",
@@ -150,7 +149,7 @@ function seasonsFrom(state: WorldState) {
       const i = order.indexOf(state.meta.season);
       const incoming = i === 3 ? { year: state.meta.year + 1, season: order[0] } : { year: state.meta.year, season: order[i + 1] };
       if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
-      const result = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+      const result = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
       state.meta.year = incoming.year;
       state.meta.season = incoming.season;
       state.meta.turn += 1;
@@ -220,7 +219,7 @@ describe("history scheduler and delivery", () => {
     expect(r.ok).toBe(true);
     expect(state.resources.denarii).toBe(denarii - 10);
     expect(state.history.flags.count_gift_826).toBe(true);
-    expect(state.history.flags.count_opinion).toBe(1);
+    expect(state.history.flags.count_opinion).toBe(51);
     const again = applyProposal(state, { type: "history_hook", summary: "Again", eventId: "826-01", hookId: "gift_to_count" }, "steward");
     expect(again.ok).toBe(false);
     const autumn = clock.next();
@@ -244,7 +243,7 @@ describe("history scheduler and delivery", () => {
     const renown = state.player.renown;
     const r = applyProposal(state, { type: "history_choice", summary: "Send men", eventId: "827-01", optionId: "send" }, "chaplain");
     expect(r.ok).toBe(true);
-    expect(state.history.flags.favor_church).toBe(2);
+    expect(state.history.flags.favor_church).toBe(52);
     expect(state.player.renown).toBeGreaterThanOrEqual(renown + 5);
     expect(state.history.record.at(-1)?.text).toBe("At Easter 827 the lord chose to send men.");
     expect(state.history.openChoices).toHaveLength(0);

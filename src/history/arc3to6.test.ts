@@ -25,7 +25,7 @@ function clockFor(state: WorldState) {
     const i = ORDER.indexOf(state.meta.season);
     const incoming = i === 3 ? { year: state.meta.year + 1, season: ORDER[0] } : { year: state.meta.year, season: ORDER[i + 1] };
     if (state.battle_call?.kind === "history") state.battle_call = null; // The clock stands in for the hall: a history call left open is answered before the season turns.
-    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1);
+    const r = runHistorySeasonPass(state, incoming, state.meta.turn + 1, { coverUpkeep: true });
     state.meta.year = incoming.year;
     state.meta.season = incoming.season;
     state.meta.turn += 1;
@@ -372,7 +372,7 @@ describe("Arcs 3–6 content", () => {
     ca.next();
     const spring = ca.next();
     expect(spring.fired).toContain("859-C1");
-    expect(a.history.flags.charles_favor).toBe(2);
+    expect(a.history.flags.charles_favor).toBe(52);
     expect(spring.beats.some((b) => b.text.includes("right side of that list"))).toBe(true);
 
     const b = fresh();
@@ -381,8 +381,8 @@ describe("Arcs 3–6 content", () => {
     expect(choose(b, "858-C2", "louis").ok).toBe(true);
     cb.next();
     cb.next();
-    expect(b.history.flags.charles_disfavor).toBe(2);
-    expect(b.history.flags.count_opinion).toBe(-2);
+    expect(b.history.flags.charles_disfavor).toBe(48);
+    expect(b.history.flags.count_opinion).toBe(48);
   });
 
   it("866: Robert's campaign is optional, his death changes the count, and the tribute fills its amounts and lends", () => {
@@ -391,7 +391,7 @@ describe("Arcs 3–6 content", () => {
     const state = fresh();
     const clock = clockFor(state);
     clock.to(830, "autumn");
-    hook(state, "830-L1", "marry_local"); // keeps the manses and stays sworn to the count, so Robert's optional summons reaches him
+    hook(state, "830-L1", "marry_local"); // keeps the manses and stays sworn to the count, so Robert's optional summons reaches him; the match brings two free manses (marriage.ts)
     clock.to(866, "spring");
     const summer = clock.next();
     expect(summer.fired).toContain("866-V1");
@@ -404,17 +404,17 @@ describe("Arcs 3–6 content", () => {
     expect(autumn.beats.some((b) => b.text.includes("Count Robert the Strong holds the county no longer"))).toBe(true);
     const text = autumn.beats.map((b) => b.text).join("\n");
     expect(text).toContain("by what you are worth: 120 denarii (10 solidi).");
-    expect(text).toContain("That is 58 denarii from our people altogether.");
+    expect(text).toContain("That is 72 denarii (6 solidi) from our people altogether.");
     expect(choose(state, "E-866", "loan").ok).toBe(true);
-    expect(state.resources.denarii).toBe(400 - 178);
+    expect(state.resources.denarii).toBe(400 - 192);
     expect(state.history.flags.tribute_866).toBe("paid");
     clock.next();
     clock.next();
     clock.next();
     const coinBefore = state.resources.denarii;
     const back = clock.next();
-    expect(state.resources.denarii).toBe(coinBefore + 73);
-    expect(back.beats.some((b) => b.text.includes("with the increase: 73 denarii"))).toBe(true);
+    expect(state.resources.denarii).toBe(coinBefore + 90);
+    expect(back.beats.some((b) => b.text.includes("with the increase: 90 denarii"))).toBe(true);
   });
 
   it("877: Quierzy, the king's death announced by the event, and the second ransom in the same winter", () => {
