@@ -66,7 +66,7 @@ import { ShopPanel } from "./ShopPanel";
 import { BattleLab } from "./lab/BattleLab";
 import { BattleScreen } from "./battle/BattleScreen";
 import { TutorialOverlay } from "./TutorialOverlay";
-import type { TutorialState } from "../engine/tutorial";
+import { tutorialPendingCount, type TutorialState } from "../engine/tutorial";
 
 type Screen = "title" | "game" | "lab";
 
@@ -458,6 +458,9 @@ export function App() {
       onVolume={async (patch) => {
         setSettings((await window.api.setSettings(patch)) as AppSettings);
       }}
+      onPlayLog={async (on) => {
+        setSettings((await window.api.setSettings({ playLogEnabled: on })) as AppSettings);
+      }}
       onRaiseCall={
         screen === "game" && view && !view.state.battle_session
           ? (kind) => {
@@ -838,7 +841,7 @@ export function App() {
         watch={{
           sceneNpcId: view.sceneNpcId,
           messages: view.messages,
-          pendingCount: view.pending.length,
+          pendingCount: tutorialPendingCount(view.pending),
           turn: view.state.meta.turn,
           busy,
         }}
@@ -1103,6 +1106,7 @@ function SettingsModal({
   onSave,
   onLoadModels,
   onVolume,
+  onPlayLog,
   onRaiseCall,
   fullCommandGranted,
   onGrantFullCommand,
@@ -1114,6 +1118,7 @@ function SettingsModal({
   onSave: (s: AppSettings) => Promise<void>;
   onLoadModels: () => Promise<void>;
   onVolume: (patch: { masterVolume?: number; musicVolume?: number }) => Promise<void>;
+  onPlayLog: (on: boolean) => Promise<void>;
   /** Testing hook: raise a call to arms in the running game. */
   onRaiseCall?: (kind: "summons" | "raid" | "bandits") => void;
   /** Testing hook until the Command Claim narrative exists. */
@@ -1125,6 +1130,7 @@ function SettingsModal({
   const [masterVolume, setMasterVolume] = useState(settings.masterVolume);
   const [musicVolume, setMusicVolume] = useState(settings.musicVolume);
   const [searchApiKey, setSearchApiKey] = useState(settings.searchApiKey ?? "");
+  const [playLogEnabled, setPlayLogEnabled] = useState(settings.playLogEnabled !== false);
   const [catalogProvider, setCatalogProvider] = useState<LlmProvider | null>(null);
   const [listing, setListing] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -1161,7 +1167,7 @@ function SettingsModal({
   }
 
   function snapshot(): AppSettings {
-    return { provider, providers, masterVolume, musicVolume, searchApiKey };
+    return { provider, providers, masterVolume, musicVolume, searchApiKey, playLogEnabled };
   }
 
   return (
@@ -1185,10 +1191,23 @@ function SettingsModal({
           </select>
         </label>
         <p className="settings-help">{meta.help}</p>
+        <label className="lab-check">
+          <input
+            type="checkbox"
+            checked={playLogEnabled}
+            onChange={(e) => {
+              const on = e.target.checked;
+              setPlayLogEnabled(on);
+              void onPlayLog(on);
+            }}
+          />
+          Write a play log
+        </label>
         <p className="settings-help">
-          When a play ends — you quit, start a new estate, or load another save — the game writes a text file of the
-          hidden machinery: the model’s reasoning, the system pack, tool calls, proposals, and refusals. Look in the
-          play-logs folder next to the save. A new play does not delete the older files.
+          While this is on, each play writes a text file beside the save: the model’s reasoning, what it was told, its
+          reply, tool calls, proposals, and what the books then did. Files stay in the play-logs folder so one play can
+          be set beside another. Turn it off and the file already being written is sealed. Turn it on again and the rest
+          of this play starts a new file. The next play follows the switch.
         </p>
         <div className="settings-ink" title={hudInkTitle({ ...ink, provider })}>
           {settingsInkLines({ ...ink, provider }, provider).map((line) => (

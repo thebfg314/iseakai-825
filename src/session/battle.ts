@@ -636,6 +636,10 @@ export async function dayEndChoice(state: WorldState, deps: BattleDeps, choice: 
 // Fighting
 // ---------------------------------------------------------------------------
 
+/** Reasoning counts against this budget. A short paragraph still has to finish. */
+const BATTLE_PROSE_TOKENS = 1200;
+const BATTLE_AFTERMATH_TOKENS = 1600;
+
 async function narrate(deps: BattleDeps, user: string, maxTokens: number, fallback: string): Promise<string> {
   try {
     const raw = await deps.chat([{ role: "system", content: BATTLE_NARRATOR_SYSTEM }, { role: "user", content: user }], maxTokens);
@@ -660,7 +664,7 @@ function mineStanding(battle: BattleState): { standing: number; broken: number }
 async function presentCard(state: WorldState, deps: BattleDeps, card: Vignette, bridgeUser: string | null, fallback: string): Promise<void> {
   const battle = state.battle!;
   const session = state.battle_session!;
-  const bridge = bridgeUser ? await narrate(deps, bridgeUser, 400, fallback) : fallback;
+  const bridge = bridgeUser ? await narrate(deps, bridgeUser, BATTLE_PROSE_TOKENS, fallback) : fallback;
   session.drawn.push(card.id);
   session.lastDrawRound = battle.round;
   session.lastNarratedSeq = battle.log.length;
@@ -723,7 +727,7 @@ export async function battleContinue(state: WorldState, deps: BattleDeps): Promi
       session.routCardDone = true;
       const f = battle.player.pendingFate;
       const fallback = `Your file breaks around you. The pursuit is close and the ground ${f.escaped > 0.5 ? "open enough to run" : "closing fast"}. Run with the rest, or turn and stand over the banner.`;
-      const prose = await narrate(deps, routCardUserPrompt(battle, f), 400, fallback);
+      const prose = await narrate(deps, routCardUserPrompt(battle, f), BATTLE_PROSE_TOKENS, fallback);
       session.pendingRout = { ...f, narration: prose };
       session.lastNarratedSeq = battle.log.length;
       note(session, "bridge", prose, battle.round);
@@ -775,7 +779,7 @@ async function commandContinue(state: WorldState, deps: BattleDeps): Promise<str
       session.tier === "full_command"
         ? `${session.premise} The whole host waits on your word.`
         : `${session.premise} Your own men stand under your banner in the line; the marshal's orders come down to you.`;
-    const scene = await narrate(deps, battleSceneUserPrompt(state, battle, session.premise), 450, fallback);
+    const scene = await narrate(deps, battleSceneUserPrompt(state, battle, session.premise), BATTLE_PROSE_TOKENS, fallback);
     note(session, "scene", scene, battle.round);
     if (session.tier === "sub_command") await issueObjective(state, deps);
     return undefined;
@@ -1026,7 +1030,7 @@ async function enterAftermath(state: WorldState, deps: BattleDeps): Promise<stri
   const summary = summarizeBattle(battle, { turningPointAward: session.cardRenown, objectiveBonus: session.objectiveBonus });
   const facts = applyLedger(state, deps, summary);
   const fallback = `${facts.join(" ")} ${battle.outcome === "victory" ? "The field is yours." : battle.outcome === "defeat" ? "The field is lost." : "Neither side can claim the field."}`;
-  const text = await narrate(deps, aftermathUserPrompt(state, battle, facts, battle.player.newWounds.length), 700, fallback);
+  const text = await narrate(deps, aftermathUserPrompt(state, battle, facts, battle.player.newWounds.length), BATTLE_AFTERMATH_TOKENS, fallback);
   const { prose, wounds } = splitAftermath(text);
   // Wound flavour from the narrator, engine placeholders otherwise.
   battle.player.newWounds.forEach((w, i) => {

@@ -12,7 +12,7 @@ import { HAPPINESS_MOOD_PER_ADD, peopleEffortFactor } from "../engine/peopleHapp
 import type { RolledEvent } from "../engine/events";
 import type { SeasonEffectLine } from "../engine/schema";
 import { MERCHANT_INTROS } from "../engine/intros";
-import { ordinaryHuntPurse } from "../engine/hunts";
+import { huntOverageDenarii, ordinaryHuntPurse, resolveHunts } from "../engine/hunts";
 import { parseLlmResponse } from "../llm/parse";
 import { defaultAppSettings } from "../llm/settings";
 import { GameController } from "./game";
@@ -836,6 +836,77 @@ describe("Gerulf hunt via Confirm", () => {
     expect(game.state.projects.find((p) => p.hunt)?.hunt?.reportSpeech).toMatch(/I have it, my lord/i);
     expect(game.state.custom_resources.some((c) => c.id === "pepper" && c.amount > 0)).toBe(true);
     expect(game.state.npcs.find((n) => n.id === "negotiator")?.location).toBe("fontenay");
+  });
+
+  it("asks before paying a dearer price, and buys only on Confirm", () => {
+    const game = tempGame();
+    game.state.resources.denarii = 2000;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "I will go.", proposals: [] }));
+    game.ingestParsedDialogue("negotiator", parsed, "Find me 20 iron.");
+    const start = game.pending.find((p) => p.status === "pending");
+    if (!start || start.proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    const quote = start.proposal.quotedDenarii;
+    const amount = start.proposal.amount;
+    expect(game.confirmProposal(start.id).error).toBeUndefined();
+    const afterEscrow = game.state.resources.denarii;
+    const ironBefore = game.state.resources.iron;
+    const duration = game.state.projects.find((p) => p.hunt)?.hunt?.durationSeasons ?? 1;
+    vi.spyOn(Math, "random").mockReturnValue(0.8);
+    for (let i = 0; i < duration; i++) resolveHunts(game.state);
+    vi.restoreAllMocks();
+    expect(game.state.resources.denarii).toBe(afterEscrow);
+    expect(game.state.resources.iron).toBe(ironBefore);
+    game.openHuntPriceAsks();
+    const card = game.pending.find((p) => p.status === "pending" && p.proposal.type === "pay_hunt_overage");
+    expect(card?.proposal).toMatchObject({ type: "pay_hunt_overage", denarii: huntOverageDenarii(quote) });
+    expect(game.confirmProposal(card!.id).error).toBeUndefined();
+    expect(game.state.resources.denarii).toBe(afterEscrow - huntOverageDenarii(quote));
+    expect(game.state.resources.iron).toBe(ironBefore + amount);
+  });
+
+  it("returns the purse and no iron when the dearer price is refused", () => {
+    const game = tempGame();
+    game.state.resources.denarii = 2000;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "I will go.", proposals: [] }));
+    game.ingestParsedDialogue("negotiator", parsed, "Find me 20 iron.");
+    const start = game.pending.find((p) => p.status === "pending");
+    if (!start || start.proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(game.confirmProposal(start.id).error).toBeUndefined();
+    const ironBefore = game.state.resources.iron;
+    const duration = game.state.projects.find((p) => p.hunt)?.hunt?.durationSeasons ?? 1;
+    vi.spyOn(Math, "random").mockReturnValue(0.8);
+    for (let i = 0; i < duration; i++) resolveHunts(game.state);
+    vi.restoreAllMocks();
+    game.openHuntPriceAsks();
+    const card = game.pending.find((p) => p.status === "pending" && p.proposal.type === "pay_hunt_overage");
+    game.rejectProposal(card!.id);
+    expect(game.state.resources.denarii).toBe(2000);
+    expect(game.state.resources.iron).toBe(ironBefore);
+    expect(game.state.projects.find((p) => p.status === "active" && p.hunt)).toBeUndefined();
+    expect(game.messages.some((m) => /left the iron/.test(m.text) && /purse is home/.test(m.text))).toBe(true);
+  });
+
+  it("keeps the dearer price waiting when the chest cannot cover it", () => {
+    const game = tempGame();
+    game.state.resources.denarii = 2000;
+    const parsed = parseLlmResponse(JSON.stringify({ speech: "I will go.", proposals: [] }));
+    game.ingestParsedDialogue("negotiator", parsed, "Find me 20 iron.");
+    const start = game.pending.find((p) => p.status === "pending");
+    if (!start || start.proposal.type !== "start_hunt") throw new Error("expected start_hunt");
+    expect(game.confirmProposal(start.id).error).toBeUndefined();
+    const ironBefore = game.state.resources.iron;
+    const duration = game.state.projects.find((p) => p.hunt)?.hunt?.durationSeasons ?? 1;
+    vi.spyOn(Math, "random").mockReturnValue(0.8);
+    for (let i = 0; i < duration; i++) resolveHunts(game.state);
+    vi.restoreAllMocks();
+    game.state.resources.denarii = 0;
+    game.openHuntPriceAsks();
+    const card = game.pending.find((p) => p.status === "pending" && p.proposal.type === "pay_hunt_overage");
+    const refused = game.confirmProposal(card!.id);
+    expect(refused.error).toMatch(/cannot spare another/i);
+    expect(game.pending.some((p) => p.id === card!.id && p.status === "pending")).toBe(true);
+    expect(game.state.resources.denarii).toBe(0);
+    expect(game.state.resources.iron).toBe(ironBefore);
   });
 
   it("buys iron on Confirm: the purse leaves, and the return puts iron in the stores", () => {

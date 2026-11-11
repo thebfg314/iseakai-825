@@ -44,6 +44,7 @@ const api = {
     masterVolume?: number;
     musicVolume?: number;
     searchApiKey?: string;
+    playLogEnabled?: boolean;
   }) => ipcRenderer.invoke("settings:set", patch),
   listModels: () => ipcRenderer.invoke("settings:listModels"),
   getLlmMeter: () => ipcRenderer.invoke("llm:getMeter"),

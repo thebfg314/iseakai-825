@@ -135,7 +135,7 @@ describe("sponsored feast", () => {
     expect(grand.resources.denarii).toBe(138 - 30);
     expect(grand.resources.beeswax).toBe(1);
     expect(grand.resources.wine).toBe(0);
-    expect(grand.resources.rye).toBe(8 - 2);
+    expect(grand.resources.rye).toBe(14 - 2);
     expect(fadeSponsoredFeastJoy(grand)).toBe(4);
     expect(grand.peopleHappiness).toBe(54);
   });
@@ -212,7 +212,7 @@ describe("church neglect", () => {
     expect(lines.some((t) => /Tithe: 1 lb wool to the cell/.test(t))).toBe(true);
     expect(state.church.neglect).toEqual([]);
     expect(state.church.letters).toEqual([]);
-    expect(state.resources.rye).toBe(1.5);
+    expect(state.resources.rye).toBe(7.5);
   });
 
   it("counts a withheld tithe only when the stores could pay", () => {
@@ -226,7 +226,7 @@ describe("church neglect", () => {
     expect(lines.some((t) => /grain tithe was not rendered/i.test(t))).toBe(true);
     expect(state.church.neglect.map((s) => s.kind)).toEqual(["tithe"]);
     expect(state.peopleHappiness).toBe(48);
-    expect(state.resources.rye).toBe(3);
+    expect(state.resources.rye).toBe(9);
 
     const thin = boot((s) => {
       s.resources.wheat = 0;
@@ -340,7 +340,7 @@ describe("cell alms in hunger", () => {
     );
     expect(refused.ok).toBe(false);
     expect(refused.reason).toMatch(/not hungry/i);
-    expect(quiet.resources.rye).toBe(8);
+    expect(quiet.resources.rye).toBe(14);
 
     const state = boot((s) => {
       s.flags.hunger = true;
@@ -360,7 +360,7 @@ describe("cell alms in hunger", () => {
     expect(gift.ok).toBe(true);
     expect(gift.logLine).toMatch(/not gladly/i);
     expect(gift.logLine).not.toMatch(JARGON);
-    expect(state.resources.rye).toBe(8 + CELL_ALMS_MODEST);
+    expect(state.resources.rye).toBe(14 + CELL_ALMS_MODEST);
     expect(state.church.almsTurn).toBe(state.meta.turn);
     expect(state.npcs.find((n) => n.id === "chaplain")!.memories.some((m) => /remember/i.test(m.summary))).toBe(true);
 
@@ -378,7 +378,7 @@ describe("cell alms in hunger", () => {
     );
     expect(again.ok).toBe(false);
     expect(again.reason).toMatch(/once/i);
-    expect(state.resources.rye).toBe(8 + CELL_ALMS_MODEST);
+    expect(state.resources.rye).toBe(14 + CELL_ALMS_MODEST);
 
     state.meta.turn += 8;
     const later = applyProposal(
@@ -394,7 +394,7 @@ describe("cell alms in hunger", () => {
       "chaplain",
     );
     expect(later.ok).toBe(true);
-    expect(state.resources.rye).toBe(8 + CELL_ALMS_MODEST + CELL_ALMS_SMALL);
+    expect(state.resources.rye).toBe(14 + CELL_ALMS_MODEST + CELL_ALMS_SMALL);
   });
 
   it("gives nothing when the dearth is across the pagus", () => {
@@ -416,7 +416,7 @@ describe("cell alms in hunger", () => {
     );
     expect(r.ok).toBe(false);
     expect(r.reason).toMatch(/pagus/i);
-    expect(state.resources.rye).toBe(8);
+    expect(state.resources.rye).toBe(14);
     expect(state.church.almsTurn).toBeNull();
   });
 });

@@ -33,6 +33,18 @@ export function looksLikeMarriageOrder(text: string): boolean {
   return MARRIAGE_ORDER.test(t) && /\b(hildegard|theoderada|gisla|linda|widow|neighbou?r'?s? daughter|match|wife|bride)\b/i.test(t);
 }
 
+/**
+ * A question, a challenge, or a "yes" that goes on to another matter.
+ * It must not open a new work, even when the speech pass tags the turn as books.
+ */
+export function looksLikeBareQuestion(text: string): boolean {
+  const t = text.trim();
+  if (!t || looksLikeMechanicalOrder(t)) return false;
+  if (QUESTION_PREFIX.test(t)) return true;
+  if (/^(did|didn't|do|don't|is|isn't|are|aren't|was|wasn't|were|have|haven't|has|hasn't|can|could|would|should|surely)\b/i.test(t)) return true;
+  return /\?\s*$/.test(t);
+}
+
 export function looksLikeMechanicalOrder(text: string, npcId?: string): boolean {
   const t = text.trim();
   if (!t) return false;

@@ -69,9 +69,15 @@ function roleLabel(role: string): string {
  * finish() seals it. It never deletes other files in the folder.
  */
 export class PlayLog {
-  readonly filePath: string;
+  filePath: string;
   readonly directory: string;
+  private enabled: boolean;
   private closed = false;
+  /** True once a file exists on disk. Turning logging off can still seal that file. */
+  private fileStarted = false;
+  /** This file was sealed because logging was switched off, so switching it on may open another. */
+  private sealedBySwitch = false;
+  private resumeNote = "";
   private calls = 0;
   private notes = 0;
 
@@ -80,13 +86,44 @@ export class PlayLog {
     private readonly heading: { year: number; season: string; turn: number; provider: string; model: string },
     private readonly secrets: string[] = [],
     private readonly startedAt = new Date(),
+    enabled = true,
   ) {
+    this.enabled = enabled;
     this.directory = playLogsDirectory(saveDir);
     this.filePath = path.join(this.directory, `play-${stamp(this.startedAt)}-${newId("play")}.txt`);
   }
 
+  /**
+   * Settings switch. Off seals a file already started and then writes nothing.
+   * On again in the same play opens a new file for whatever happens next.
+   * A play that already ended stays ended.
+   */
+  setEnabled(on: boolean) {
+    if (on === this.enabled) return;
+    if (!on) {
+      if (!this.closed && this.fileStarted) {
+        this.finish("Play logging was turned off. The play itself goes on.", "Logging stopped");
+        this.sealedBySwitch = true;
+      }
+      this.enabled = false;
+      return;
+    }
+    this.enabled = true;
+    if (this.closed && this.sealedBySwitch) {
+      this.closed = false;
+      this.fileStarted = false;
+      this.sealedBySwitch = false;
+      this.calls = 0;
+      this.notes = 0;
+      this.resumeNote = "Play logging was turned back on. Lines below are the rest of this play. The earlier file was sealed when logging was turned off.";
+      this.filePath = path.join(this.directory, `play-${stamp(new Date())}-${newId("play")}.txt`);
+    }
+  }
+
   private ensure() {
+    if (!this.enabled || this.closed) return;
     fs.mkdirSync(this.directory, { recursive: true });
+    this.fileStarted = true;
     if (fs.existsSync(this.filePath)) return;
     const h = this.heading;
     const header = [
@@ -94,7 +131,9 @@ export class PlayLog {
       "",
       "This file is for you, out of character. The hall never shows these words.",
       "It keeps what the game sent the model, what the model reasoned, the raw reply,",
-      "tool calls, proposals, and refusals.",
+      "tool calls, proposals, refusals, and what the books then did.",
+      "Set one play's file beside another's to see how the model is behaving.",
+      ...(this.resumeNote ? ["", this.resumeNote] : []),
       "",
       `Started: ${this.startedAt.toISOString()}`,
       `Estate: year ${h.year}, ${h.season}, turn ${h.turn}`,
@@ -109,12 +148,13 @@ export class PlayLog {
   }
 
   private append(block: string) {
-    if (this.closed) return;
+    if (this.closed || !this.enabled) return;
     this.ensure();
     fs.appendFileSync(this.filePath, redact(block, this.secrets), "utf8");
   }
 
   recordModel(call: PlayLogModelCall) {
+    if (!this.enabled || this.closed) return;
     this.calls += 1;
     const systems = call.messages.filter((m) => m.role === "system");
     const rest = call.messages.filter((m) => m.role !== "system");
@@ -162,6 +202,7 @@ export class PlayLog {
   }
 
   note(title: string, body: string) {
+    if (!this.enabled || this.closed) return;
     this.notes += 1;
     this.append(
       [
@@ -175,14 +216,18 @@ export class PlayLog {
     );
   }
 
-  /** Seal this play. A second call does nothing. Other files in the folder stay. */
-  finish(reason: string): string {
-    if (this.closed) return this.filePath;
+  /** Seal this play. A second call does nothing. Other files in the folder stay. Logging off and never started writes no file. */
+  finish(reason: string, heading = "Play ended"): string {
+    if (this.closed) return this.fileStarted ? this.filePath : "";
+    if (!this.enabled && !this.fileStarted) {
+      this.closed = true;
+      return "";
+    }
     if (this.calls === 0 && this.notes === 0) this.ensure();
     this.append(
       [
         "================================================================================",
-        "Play ended",
+        heading,
         `When: ${new Date().toISOString()}`,
         reason.trim() || "The play ended.",
         `Model calls written: ${this.calls}`,

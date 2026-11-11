@@ -30,6 +30,7 @@ import { CHURCH_FEATURES, FORGE_FEATURES } from "../engine/projectCatalog";
 import {
   labourPool,
   labourRemaining,
+  pendingAssignLabourForNewProject,
   resolveActiveProject,
 } from "../engine/labour";
 import { newId, nextSeason } from "../engine/util";
@@ -81,7 +82,7 @@ import {
 } from "../llm/providerErrors";
 import { introAlreadySpoken, introSpeechFor, markIntroSpoken } from "../engine/intros";
 import { recordConfirmedTransaction } from "../engine/memory";
-import { augmentOrderProposals, cannotFulfillReason, inferOrderProposals, looksLikeMechanicalOrder } from "../engine/orderIntent";
+import { augmentOrderProposals, cannotFulfillReason, inferOrderProposals, looksLikeBareQuestion, looksLikeMechanicalOrder } from "../engine/orderIntent";
 import { cancelForthcomingOrder as cancelStoredForthcoming } from "../engine/forthcoming";
 import { fieldRotation, sownCapacity } from "../engine/agriculture";
 import {
@@ -94,6 +95,9 @@ import {
   looksLikeHuntOrder,
   NEGOTIATOR_ID,
   normalizeHuntProposal,
+  declineHuntOverage,
+  huntPriceProposals,
+  lapseUnconfirmedHuntPrices,
   pendingHuntReports,
   quoteHunt,
   resolveHuntDifficulty,
@@ -129,12 +133,13 @@ import {
   isBloomeryStart,
   playerAskedBloomery,
 } from "../engine/bloomery";
-import { asksBeginAmount, prepareSameSeasonUse, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
+import { asksBeginAmount, prepareSameSeasonUse, projectStoreBill, speechDelaysWorkForShortage, withBeginShortfalls } from "../engine/projectBegin";
 import {
   claimsBooksWrote,
   looksLikeSpokenAgree,
   pricedWorkFromTalk,
   samePricedOffer,
+  spokenStoreFigures,
   unconfirmedWorkSpeech,
 } from "../engine/spokenWork";
 import { undoPaidProjectResult } from "../engine/projectResult";
@@ -247,6 +252,8 @@ export class GameController {
         model: settings.providers[settings.provider]?.model ?? "",
       },
       [...Object.values(settings.providers).map((p) => p.apiKey), settings.searchApiKey ?? ""],
+      new Date(),
+      settings.playLogEnabled !== false,
     );
     this.meter.setProvider(settings.provider);
     if (opts?.resetUsage) this.meter.reset();
@@ -414,6 +421,13 @@ export class GameController {
   log(actor: string, kind: "APPLY" | "REJECT" | "EVENT" | "CHAT" | "SEASON", summary: string) {
     const line = appendHistory(this.saveDir, this.state, actor, kind, summary);
     this.historyTail.push(line);
+    this.playLog.note(`Ledger · ${kind} · ${actor}`, summary);
+  }
+
+  /** Settings switch. Off seals a file already started. The next play follows the switch. */
+  setPlayLogEnabled(on: boolean) {
+    this.settings.playLogEnabled = on;
+    this.playLog.setEnabled(on);
   }
 
   npcName(id: string): string {
@@ -579,7 +593,7 @@ export class GameController {
 
       if (npcId !== "audience" && looksLikeSpokenAgree(playerText)) {
         const priorTurns = this.messages.filter((m) => m.role === "npc" && m.npcId === npcId).map((m) => m.text);
-        const prior = priorTurns.join("\n");
+        const prior = [...priorTurns].reverse().find((t) => t.trim() && !/let me check the records/i.test(t)) ?? "";
         const holdingId = this.state.holdings[0]?.id ?? "fontenay";
         const priced = pricedWorkFromTalk(`${prior}\n${answer.speech}`, holdingId);
         if (priced || claimsBooksWrote(answer.speech)) {
@@ -623,7 +637,10 @@ export class GameController {
       const booksFetched = [...new Set<ToolDrawer>([...fetched, ...baselineDrawersFor(npcId)])];
       const booksDrawers = withResearch(collectDrawers(this.state, booksFetched, npcId), researchPack);
 
-      const order = sureOrder || answer.books === true;
+      const chatter =
+        looksLikeBareQuestion(playerText) ||
+        (/^(yes|aye)\b/i.test(playerText.trim()) && !looksLikeSpokenAgree(playerText));
+      const order = sureOrder || (answer.books === true && !chatter);
       if (answer.books != null) {
         this.playLog.note(
           "Books tag",
@@ -636,6 +653,8 @@ export class GameController {
       if (!order) {
         if (!speechDelaysWorkForShortage(answer.speech) && !asksBeginAmount(playerText)) {
           this.pushNpcSpeech(npcId, answer);
+          const note = this.revisePendingFigure(npcId, playerText);
+          if (note) this.ledgerNote(note, npcId);
           if (npcId === "smith" && playerAskedBloomery(playerText, this.bloomeryMentioned)) {
             this.ingestParsedDialogue(npcId, { proposals: [], parseErrors: [] }, playerText);
           }
@@ -1343,7 +1362,14 @@ export class GameController {
         credited = step.credited;
       }
       const beforeIds = new Set(this.state.projects.map((p) => p.id));
-      const result = this.applyOnePending(next);
+      const handsWaiting =
+        next.proposal.type === "start_project" &&
+        pendingAssignLabourForNewProject(
+          this.pending,
+          next.proposal.id ?? next.id,
+          [next.proposal.id, next.proposal.projectKey, next.proposal.name].filter((alias): alias is string => Boolean(alias)),
+        );
+      const result = this.applyOnePending(next, handsWaiting ? { skipLabourFill: true } : undefined);
       if (!result.ok && credited.length) {
         for (const project of credited) undoPaidProjectResult(this.state, project);
       }
@@ -1399,12 +1425,59 @@ export class GameController {
     return result.ok ? this.view() : { ...this.view(), error: playerFacingReason(result.reason ?? logLine) };
   }
 
-  private applyOnePending(item: PendingProposal): { ok: boolean; error?: string } {
+  /** The lord named a figure the card should keep, such as "40 lb of iron would suffice". */
+  private revisePendingFigure(npcId: string, playerText: string): string | null {
+    const figures = spokenStoreFigures(playerText);
+    if (!figures) return null;
+    const starts = this.pending.filter(
+      (p) => p.status === "pending" && p.npcId === npcId && p.proposal.type === "start_project",
+    );
+    if (!starts.length) return null;
+    const mentioned = starts.filter((p) => {
+      if (p.proposal.type !== "start_project") return false;
+      const hay = `${p.proposal.projectKey} ${p.proposal.name ?? ""} ${p.proposal.summary}`.toLowerCase();
+      if (/\bmill\b/.test(playerText) && /mill/.test(hay)) return true;
+      if (/\bplough|plow\b/.test(playerText) && /plough|plow/.test(hay)) return true;
+      if (/\bchapel|oratory\b/.test(playerText) && /chapel|oratory/.test(hay)) return true;
+      return false;
+    });
+    const target = mentioned.at(-1) ?? (starts.length === 1 ? starts[0] : undefined);
+    if (!target || target.proposal.type !== "start_project") return null;
+    const bill = projectStoreBill(target.proposal);
+    target.proposal = {
+      ...target.proposal,
+      customCosts: {
+        labourDays: bill.labourDays,
+        lumber: figures.lumber ?? bill.lumber,
+        iron: figures.iron ?? bill.iron,
+        stone: figures.stone ?? bill.stone,
+        ...((figures.charcoal != null || bill.charcoal > 0) ? { charcoal: figures.charcoal ?? bill.charcoal } : {}),
+      },
+    };
+    const parts: string[] = [];
+    if (figures.iron != null) parts.push(`${figures.iron} lb of iron`);
+    if (figures.lumber != null) parts.push(`${figures.lumber} cart-load${figures.lumber === 1 ? "" : "s"} of timber`);
+    if (figures.stone != null) parts.push(`${figures.stone} cart-load${figures.stone === 1 ? "" : "s"} of stone`);
+    if (figures.charcoal != null) parts.push(`${figures.charcoal} cart-load${figures.charcoal === 1 ? "" : "s"} of charcoal`);
+    const name = target.proposal.name ?? target.proposal.summary;
+    return `The card for ${name} now takes ${parts.join(" and ")}. Confirm writes that figure.`;
+  }
+
+  private applyOnePending(item: PendingProposal, options?: { skipLabourFill?: boolean }): { ok: boolean; error?: string } {
     if (item.status !== "pending") return { ok: false };
     const beforeIds = new Set(this.state.projects.map((p) => p.id));
     const beforeNpc = cloneState(this.state);
-    const result = applyProposal(this.state, item.proposal, item.npcId);
+    const result = applyProposal(this.state, item.proposal, item.npcId, options);
     this.state = result.state;
+    if (!result.ok && item.proposal.type === "pay_hunt_overage") {
+      item.status = "pending";
+      item.rejectReason = undefined;
+      const logLine = result.reason ?? result.logLine;
+      this.log(item.npcId, "REJECT", logLine);
+      this.ledgerNote(`It cannot be made so. ${playerFacingReason(logLine)}`, item.npcId);
+      if (this.askedAboutId === item.id) this.askedAboutId = null;
+      return { ok: false, error: playerFacingReason(logLine) };
+    }
     item.status = result.ok ? "applied" : "rejected";
     item.rejectReason = result.reason;
     if (!result.ok) {
@@ -1491,6 +1564,9 @@ export class GameController {
           dep.rejectReason = line;
         }
         this.ledgerNote(line, item.npcId);
+      } else if (item.proposal.type === "pay_hunt_overage") {
+        const declined = declineHuntOverage(this.state, item.proposal.projectId, false);
+        this.ledgerNote(declined.logLine || "You declined the dearer price. Gerulf left the goods.", item.npcId);
       } else {
         this.ledgerNote(
           item.proposal.type === "settle_households"
@@ -1678,6 +1754,12 @@ export class GameController {
         : p,
     );
     this.askedAboutId = null;
+    for (const line of lapseUnconfirmedHuntPrices(
+      this.state,
+      lapsing.map((p) => p.proposal),
+    )) {
+      effects.push({ kind: "info", text: line });
+    }
     for (const npcId of new Set(lapsing.map((p) => p.npcId))) {
       releaseConfirmWantsTalk(this.state, npcId, this.pending);
     }
@@ -1971,6 +2053,17 @@ export class GameController {
     }
   }
 
+  /** Put a card on the table for each dearer find Gerulf has not yet been told to buy. */
+  openHuntPriceAsks(): void {
+    for (const card of huntPriceProposals(this.state)) {
+      const already = this.pending.some(
+        (p) => p.status === "pending" && p.proposal.type === "pay_hunt_overage" && p.proposal.projectId === card.projectId,
+      );
+      if (already) continue;
+      this.queueProposal(NEGOTIATOR_ID, card);
+    }
+  }
+
   private speakHuntReturns() {
     for (const report of pendingHuntReports(this.state)) {
       this.npcEmotions[NEGOTIATOR_ID] = report.emotion;
@@ -1984,6 +2077,7 @@ export class GameController {
         at: new Date().toISOString(),
       });
     }
+    this.openHuntPriceAsks();
   }
 
   private applyEventStub(ev: RolledEvent, effects: SeasonEffectLine[], label: string) {

@@ -38,7 +38,8 @@ export type TutorialSide = "below" | "above" | "right" | "left";
  * - sent: the lord spoke a line after arriving at this step.
  * - answered: the named speaker has spoken since the lord arrived at this step.
  * - reply: the lord spoke after arriving, and the named speaker answered.
- * - confirmed: the table of proposals is clear (confirmed, denied, or nothing was proposed).
+ * - confirmed: every card the lord can still confirm or deny is gone (one at a time or all at once).
+ *   A withheld follow-on is not counted. Nothing proposed also moves on.
  * - season: the season advanced; the tutorial is finished.
  */
 export type TutorialAdvance =
@@ -315,6 +316,39 @@ export type TutorialEntry = {
   messageCount: number;
   turn: number;
 };
+
+/**
+ * How far a scene's talk had got while a step that is not waiting on that talk was open.
+ * The next talk step reads from here, so a conversation held before the box caught up still counts.
+ */
+export type TalkFloor = { scene: string; count: number };
+
+/** Cards still waiting on Confirm. A withheld follow-on cannot be confirmed or denied, so it must not stall the box. */
+export function tutorialPendingCount(pending: readonly { status: string }[]): number {
+  return pending.filter((p) => p.status === "pending").length;
+}
+
+export function tutorialStepListens(step: TutorialStep, sceneNpcId: string): boolean {
+  const rule = step.advance;
+  if (!rule || (rule.kind !== "sent" && rule.kind !== "answered" && rule.kind !== "reply")) return false;
+  return rule.npcId === sceneNpcId;
+}
+
+/** Use the earlier mark when this scene already moved on while a previous step was showing. */
+export function applyTalkFloor(entry: TutorialEntry, floor: TalkFloor | null): TutorialEntry {
+  if (!floor || floor.scene !== entry.messageScene || floor.count >= entry.messageCount) return entry;
+  return { ...entry, messageCount: floor.count };
+}
+
+/**
+ * Remember the scene's length when a step that is not listening for its talk opens there.
+ * Leave the mark where it is while further lines arrive, so the next talk step can see them.
+ */
+export function nextTalkFloor(current: TalkFloor | null, step: TutorialStep, watch: TutorialWatch): TalkFloor | null {
+  if (tutorialStepListens(step, watch.sceneNpcId)) return current;
+  if (current?.scene === watch.sceneNpcId) return current;
+  return { scene: watch.sceneNpcId, count: watch.messages.length };
+}
 
 export type TutorialWatch = {
   sceneNpcId: string;

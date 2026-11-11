@@ -304,6 +304,10 @@ export const ProjectSchema = z.object({
       reportSpeech: z.string().optional(),
       reportEmotion: z.string().optional(),
       reported: z.boolean().optional(),
+      /** He found the goods dearer than the quote and is home, unpaid, until the lord confirms. */
+      awaitingPrice: z.boolean().optional(),
+      /** Extra denarii above the escrow, unpaid until Confirm. */
+      overageDenarii: z.number().optional(),
     })
     .optional(),
   /**
@@ -863,6 +867,7 @@ export const PROPOSAL_TYPES = [
   "register_npc",
   "event_effect",
   "start_hunt",
+  "pay_hunt_overage",
   "settle_households",
   "defer_proposal",
   "raise_unit",
@@ -1129,6 +1134,13 @@ export const StartHuntProposalSchema = ProposalBase.extend({
   customNotes: z.string().optional(),
 });
 
+/** The lord's word on a dearer price Gerulf found. The engine writes this card; the hall does not. */
+export const PayHuntOverageProposalSchema = ProposalBase.extend({
+  type: z.literal("pay_hunt_overage"),
+  projectId: z.string(),
+  denarii: z.coerce.number().positive(),
+});
+
 /** Raise a unit from the villa's men (levy) or hire and drill professionals (Phase 4). */
 export const RaiseUnitProposalSchema = ProposalBase.extend({
   type: z.literal("raise_unit"),
@@ -1365,6 +1377,7 @@ export const MechanicalProposalSchema = z.discriminatedUnion("type", [
   RegisterNpcProposalSchema,
   EventEffectProposalSchema,
   StartHuntProposalSchema,
+  PayHuntOverageProposalSchema,
   SettleHouseholdsProposalSchema,
   SponsorFeastProposalSchema,
   HistoryChoiceProposalSchema,
@@ -1411,6 +1424,7 @@ export type RegisterFeatureProposal = z.infer<typeof RegisterFeatureProposalSche
 export type RegisterNpcProposal = z.infer<typeof RegisterNpcProposalSchema>;
 export type EventEffectProposal = z.infer<typeof EventEffectProposalSchema>;
 export type StartHuntProposal = z.infer<typeof StartHuntProposalSchema>;
+export type PayHuntOverageProposal = z.infer<typeof PayHuntOverageProposalSchema>;
 export type SettleHouseholdsProposal = z.infer<typeof SettleHouseholdsProposalSchema>;
 export type SponsorFeastProposal = z.infer<typeof SponsorFeastProposalSchema>;
 export type InnerMechanicalProposal = z.infer<typeof InnerMechanicalProposalSchema>;
@@ -1463,6 +1477,7 @@ export type MechanicalProposal =
   | RegisterNpcProposal
   | EventEffectProposal
   | StartHuntProposal
+  | PayHuntOverageProposal
   | SettleHouseholdsProposal
   | SponsorFeastProposal
   | DeferProposal;

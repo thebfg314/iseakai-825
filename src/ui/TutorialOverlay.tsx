@@ -7,13 +7,17 @@ import {
   isLastTutorialStep,
   nextTutorialState,
   tutorialAwaitingReply,
+  applyTalkFloor,
+  nextTalkFloor,
   tutorialEntryFrom,
   tutorialEntryUpdate,
   tutorialNextHint as nextHint,
   tutorialProgressLabel,
   tutorialStep,
+  tutorialStepListens,
   tutorialStepSatisfied,
   tutorialWaitingNote,
+  type TalkFloor,
   type TutorialEntry,
   type TutorialSide,
   type TutorialState,
@@ -188,6 +192,7 @@ function TutorialStepBox({
   const step: TutorialStep = tutorialStep(tutorial.step);
   const stepKey = `${tutorial.status}:${tutorial.step}`;
   const entryRef = useRef<{ key: string; entry: TutorialEntry } | null>(null);
+  const talkFloor = useRef<TalkFloor | null>(null);
   const [, bump] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<TutorialBoxPlacement | null>(null);
@@ -200,19 +205,25 @@ function TutorialStepBox({
 
   // Arrive at the step, then watch the game for the moment that moves it on.
   // A step the game has already satisfied on arrival passes straight through.
+  // Talk that happened while an earlier step was still up (confirming cards one at a time)
+  // is counted from the mark taken when that scene was opened, not from this step's arrival.
   useEffect(() => {
+    const listens = tutorialStepListens(step, watch.sceneNpcId);
     let entry: TutorialEntry;
     if (!entryRef.current || entryRef.current.key !== stepKey) {
       entry = tutorialEntryFrom(watch);
+      if (listens) entry = applyTalkFloor(entry, talkFloor.current);
       entryRef.current = { key: stepKey, entry };
       bump((n) => n + 1);
     } else {
       entry = tutorialEntryUpdate(entryRef.current.entry, watch);
+      if (listens && entry !== entryRef.current.entry) entry = applyTalkFloor(entry, talkFloor.current);
       if (entry !== entryRef.current.entry) {
         entryRef.current = { key: stepKey, entry };
         bump((n) => n + 1);
       }
     }
+    talkFloor.current = nextTalkFloor(talkFloor.current, step, watch);
     if (tutorialStepSatisfied(step, entry, watch)) onChange(nextTutorialState(tutorial, step));
     // Only the facts the rules read; the step object is derived from stepKey.
     // eslint-disable-next-line react-hooks/exhaustive-deps

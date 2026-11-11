@@ -41,8 +41,14 @@ export function looksLikeSpokenAgree(text: string): boolean {
   const t = text.trim().toLowerCase().replace(/[.!?]+$/g, "").trim();
   if (!t || t.length > 80) return false;
   if (/^(how|what|why|who|where|when|tell me)\b/.test(t)) return false;
+  // "Yes" to hearing a case is not "yes" to a price spoken seasons ago.
+  if (/^(yes|aye)\b/.test(t)) {
+    const rest = t.replace(/^(yes|aye)\b/, "").replace(/^[,.\s]+/, "").trim();
+    if (!rest) return true;
+    return /^(do it|do so|please|my lord|confirm|that|so)\b/.test(rest);
+  }
   if (
-    /^(yes|aye|agreed|agree|approved|approve|do it|do so|make them|make it so|go ahead|proceed|so ordered|very well|that will do|please do|let us do it|let's do it)\b/.test(
+    /^(agreed|agree|approved|approve|do it|do so|make them|make it so|go ahead|proceed|so ordered|very well|that will do|please do|let us do it|let's do it)\b/.test(
       t,
     )
   ) {
@@ -129,6 +135,32 @@ function joinBits(parts: string[]): string {
   if (parts.length <= 1) return parts[0] ?? "";
   if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+export type SpokenStoreFigures = {
+  iron?: number;
+  lumber?: number;
+  stone?: number;
+  charcoal?: number;
+};
+
+/** A figure the lord is holding the hall to: "40 lb of iron", "20 cart-loads of stone". */
+export function spokenStoreFigures(text: string): SpokenStoreFigures | null {
+  const figures: SpokenStoreFigures = {};
+  const iron = text.match(new RegExp(`\\b(${COUNT})\\s+(?:lb|lbs|pounds?)\\s+of\\s+iron\\b`, "i"));
+  const ironN = iron ? parseCount(iron[1] ?? "") : null;
+  if (ironN) figures.iron = ironN;
+  const loadRe = new RegExp(`\\b(${COUNT})\\s+cart-loads?\\s+of\\s+(charcoal|timber|wood|lumber|stone)\\b`, "gi");
+  let load: RegExpExecArray | null;
+  while ((load = loadRe.exec(text))) {
+    const n = parseCount(load[1] ?? "");
+    const kind = (load[2] ?? "").toLowerCase();
+    if (n == null || n <= 0) continue;
+    if (kind === "charcoal" && figures.charcoal == null) figures.charcoal = n;
+    if ((kind === "timber" || kind === "wood" || kind === "lumber") && figures.lumber == null) figures.lumber = n;
+    if (kind === "stone" && figures.stone == null) figures.stone = n;
+  }
+  return figures.iron != null || figures.lumber != null || figures.stone != null || figures.charcoal != null ? figures : null;
 }
 
 export type PricedWork = Extract<MechanicalProposal, { type: "start_project" }>;

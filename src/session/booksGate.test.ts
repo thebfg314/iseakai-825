@@ -138,9 +138,12 @@ describe("agreeing to a spoken plan", () => {
       "Draw up the cards.",
       "Set that down in the books, Aldric.",
       "Let us do it.",
+      "Yes.",
+      "Yes, do it.",
     ]) {
       expect(looksLikeSpokenAgree(line), line).toBe(true);
     }
+    expect(looksLikeSpokenAgree("yes lets go and see what each side has to say.")).toBe(false);
     for (const line of ["How would coppicing work?", "What do the projects cost?", "Tell me of the weather."]) {
       expect(looksLikeSpokenAgree(line), line).toBe(false);
     }
@@ -169,6 +172,44 @@ describe("agreeing to a spoken plan", () => {
     const pending = game.pending.filter((p) => p.status === "pending");
     expect(pending).toHaveLength(2);
     expect(pending[0].proposal).toMatchObject({ type: "start_project", projectKey: "coppice_wood_edge" });
+  });
+
+  it("does not turn a yes to hearing a case into plough ironwork from older talk", async () => {
+    const game = tempGame();
+    llmChatMock.mockResolvedValueOnce(
+      "The mill wants 40 lb of iron and 20 cart-loads of stone. The plough is already in the barn. [[books:no]]",
+    );
+    await game.sendDialogue("steward", "What would a mill cost, and what of the plough?");
+    llmChatMock.mockResolvedValueOnce(
+      "My lord, I have brought both households to the hall door. Ask what you will. [[books:yes]]",
+    );
+    await game.sendDialogue("steward", "yes lets go and see what each side has to say.");
+    expect(game.pending.filter((p) => p.status === "pending")).toHaveLength(0);
+    expect(game.state.projects).toEqual([]);
+  });
+
+  it("keeps a spoken iron figure on the pending mill instead of opening another work", async () => {
+    const game = tempGame();
+    game.queueProposal("steward", {
+      type: "start_project",
+      summary: "Begin the flour mill at Fontenay",
+      projectKey: "flour_mill",
+      holdingId: "fontenay",
+      finishesThisSeason: true,
+    });
+    llmChatMock.mockResolvedValueOnce(
+      "My lord, I have set down a plainer mill at 40 lb. [[books:yes]]",
+    );
+    await game.sendDialogue("steward", "did we not say that 40 lbs of iron would suffice?");
+    const pending = game.pending.filter((p) => p.status === "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].proposal).toMatchObject({
+      type: "start_project",
+      projectKey: "flour_mill",
+      customCosts: { iron: 40 },
+    });
+    expect(game.messages.some((m) => /now takes 40 lb of iron/.test(m.text))).toBe(true);
+    expect(llmChatMock).toHaveBeenCalledTimes(1);
   });
 
   it("a bare 'yes' after greeting talk the model marks [[books:no]] stays one call", async () => {

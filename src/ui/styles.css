@@ -484,7 +484,8 @@ button.active { background: #5c3d1e; border-color: var(--accent); }
 .modal input, .modal select {
   font: inherit; padding: 0.4rem; background: #15130f; color: var(--ink); border: 1px solid var(--line);
 }
-.modal input[type="range"] {
+.modal input[type="range"],
+.modal input[type="checkbox"] {
   padding: 0;
   accent-color: var(--accent);
 }

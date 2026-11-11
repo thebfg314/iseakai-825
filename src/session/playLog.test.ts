@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { WorldStateSchema } from "../engine/schema";
 import * as llm from "../llm";
-import { defaultAppSettings } from "../llm/settings";
+import { defaultAppSettings, mergeSettings, normalizeSettings } from "../llm/settings";
 import { GameController } from "./game";
 
 const KEY = "sk-secret-play-log-key";
@@ -81,5 +81,53 @@ describe("a finished play keeps a machinery file", () => {
     const names = fs.readdirSync(path.join(dir, "play-logs")).filter((name) => name.endsWith(".txt"));
     expect(names).toHaveLength(2);
     expect(names.every((name) => name.startsWith("play-"))).toBe(true);
+  });
+
+  it("writes what the books did beside the model's reasoning", () => {
+    const dir = tempDir();
+    const game = gameIn(dir);
+    game.log("engine", "SEASON", "Now summer 825");
+    const file = game.finishPlay("The player quit.");
+    const text = fs.readFileSync(file, "utf8");
+    expect(text).toContain("Ledger · SEASON · engine");
+    expect(text).toContain("Now summer 825");
+    expect(text).toContain("The player quit.");
+  });
+
+  it("writes nothing when play logging is off, and a switch seals then opens a new file", () => {
+    const dir = tempDir();
+    const settings = defaultAppSettings();
+    settings.playLogEnabled = false;
+    const quiet = new GameController(WorldStateSchema.parse(structuredClone(startingEstate)), dir, settings);
+    quiet.log("engine", "EVENT", "MUST-NOT-APPEAR");
+    expect(quiet.finishPlay("The player quit.")).toBe("");
+    expect(fs.existsSync(path.join(dir, "play-logs"))).toBe(false);
+
+    const game = gameIn(dir);
+    game.log("steward", "APPLY", "The barn was raised.");
+    const first = game.playLog.filePath;
+    game.setPlayLogEnabled(false);
+    const sealed = fs.readFileSync(first, "utf8");
+    expect(sealed).toContain("The barn was raised.");
+    expect(sealed).toContain("Logging stopped");
+    expect(sealed).toContain("Play logging was turned off.");
+    game.log("engine", "EVENT", "MUST-NOT-APPEAR");
+    expect(fs.readFileSync(first, "utf8")).toBe(sealed);
+
+    game.setPlayLogEnabled(true);
+    game.log("engine", "SEASON", "Logging resumed.");
+    const second = game.finishPlay("The player quit.");
+    expect(second).not.toBe(first);
+    expect(fs.readFileSync(first, "utf8")).toBe(sealed);
+    const resumed = fs.readFileSync(second, "utf8");
+    expect(resumed).toContain("turned back on");
+    expect(resumed).toContain("Logging resumed.");
+    expect(resumed).not.toContain("The barn was raised.");
+
+    expect(normalizeSettings({}).playLogEnabled).toBe(true);
+    expect(normalizeSettings({ playLogEnabled: false }).playLogEnabled).toBe(false);
+    const off = mergeSettings(defaultAppSettings(), { playLogEnabled: false });
+    expect(off.playLogEnabled).toBe(false);
+    expect(mergeSettings(off, {}).playLogEnabled).toBe(false);
   });
 });

@@ -648,7 +648,11 @@ export function huntFulfillReason(state: WorldState, playerText: string, chosen?
   if (!looksLikeHuntOrder(playerText) && !extractHuntRequest(playerText)) return null;
   const redirect = huntRedirectReason(playerText);
   if (redirect) return redirect;
-  if (activeHunt(state)) {
+  const open = activeHunt(state);
+  if (open?.hunt?.awaitingPrice) {
+    return `I am home with the ${open.hunt.goods} unbought. Confirm the dearer price, or refuse it, before I take another road.`;
+  }
+  if (open) {
     return "I am already on the road with your brief. I will not turn back for a new one.";
   }
   const req = extractHuntRequest(playerText);
@@ -668,7 +672,7 @@ export function huntFulfillReason(state: WorldState, playerText: string, chosen?
 }
 
 export function negotiatorAllowed(state: WorldState, p: MechanicalProposal): string | null {
-  if (p.type === "start_hunt") return null;
+  if (p.type === "start_hunt" || p.type === "pay_hunt_overage") return null;
   if (p.type === "adjust_project") {
     const proj = resolveActiveProject(state, p.projectId, p.summary);
     if (proj?.hunt || proj?.tag === "hunt") return null;
@@ -805,7 +809,12 @@ function rollOutcome(): HuntOutcome {
   return "mishap";
 }
 
-function outcomeSpeech(outcome: HuntOutcome, hunt: NonNullable<WorldState["projects"][0]["hunt"]>, extra?: string): {
+function outcomeSpeech(
+  outcome: HuntOutcome,
+  hunt: NonNullable<WorldState["projects"][0]["hunt"]>,
+  extra?: string,
+  brought?: number,
+): {
   text: string;
   emotion: AldricEmotion;
 } {
@@ -818,12 +827,12 @@ function outcomeSpeech(outcome: HuntOutcome, hunt: NonNullable<WorldState["proje
     case "partial":
       return {
         emotion: "concerned",
-        text: `Part of what you asked, not the whole. I brought some ${hunt.goods}, and what is left of the purse. Tolls, or a rumour that was only half true.${extra ?? ""}`,
+        text: `Part of what you asked, not the whole. I brought ${brought ?? "some"} ${hunt.goods}, and what is left of the purse. Tolls, or a rumour that was only half true.${extra ?? ""}`,
       };
     case "over_budget":
       return {
         emotion: "thoughtful",
-        text: `I have the ${hunt.goods} — but inland it cost more than I quoted. ${extra ?? "The chest made up the difference."} No deal works if the numbers are not right.`,
+        text: `I found the ${hunt.goods}, my lord — ${hunt.amount} of them. Inland the price is higher than I quoted. ${extra ?? "I have not paid the difference."} Confirm, and I buy. Refuse, and I leave the goods and bring the purse home.`,
       };
     case "rumor":
       return {
@@ -844,11 +853,91 @@ function closeHunt(state: WorldState, proj: WorldState["projects"][number]) {
   bringGerulfHome(state);
 }
 
-/** Advance Gerulf hunts one season. Completes with engine-owned success, partial, extra cost, or failure. */
+export function huntOverageDenarii(quotedDenarii: number): number {
+  return Math.max(4, Math.ceil(quotedDenarii * 0.25));
+}
+
+/** Cards for dearer finds that are still unpaid. The hall does not write these. */
+export function huntPriceProposals(state: WorldState): Extract<MechanicalProposal, { type: "pay_hunt_overage" }>[] {
+  const out: Extract<MechanicalProposal, { type: "pay_hunt_overage" }>[] = [];
+  for (const proj of state.projects) {
+    const hunt = proj.hunt;
+    if (proj.status !== "active" || !hunt?.awaitingPrice || !(hunt.overageDenarii && hunt.overageDenarii > 0)) continue;
+    const extra = hunt.overageDenarii;
+    out.push({
+      type: "pay_hunt_overage",
+      projectId: proj.id,
+      denarii: extra,
+      requiresConfirm: true,
+      summary: `Pay another ${extra} denarii so Gerulf may buy ${hunt.amount} ${hunt.goods}. He has not paid. Refuse, and he leaves the goods and brings the purse home.`,
+    });
+  }
+  return out;
+}
+
+/** Confirm spends the extra and brings the goods home. A short chest buys nothing. */
+export function acceptHuntOverage(
+  state: WorldState,
+  projectId: string,
+): { ok: true; logLine: string } | { ok: false; reason: string; logLine: string } {
+  const proj = state.projects.find((p) => p.id === projectId && p.status === "active" && p.hunt?.awaitingPrice);
+  const hunt = proj?.hunt;
+  const extra = hunt?.overageDenarii ?? 0;
+  if (!proj || !hunt || extra <= 0) {
+    const reason = "That price is no longer waiting on your word.";
+    return { ok: false, reason, logLine: reason };
+  }
+  if (state.resources.denarii < extra) {
+    const reason = `The chest cannot spare another ${extra} denarii. Gerulf has not paid, and the ${hunt.goods} are not in the stores.`;
+    return { ok: false, reason, logLine: reason };
+  }
+  state.resources.denarii = round1(state.resources.denarii - extra);
+  creditGoods(state, hunt, hunt.amount);
+  hunt.awaitingPrice = false;
+  closeHunt(state, proj);
+  return { ok: true, logLine: `Gerulf paid another ${extra} denarii and brought home ${hunt.amount} ${hunt.goods}.` };
+}
+
+/**
+ * He does not buy. The purse he carried comes home in full.
+ * `tellLater` leaves the speech for the next time his report is read.
+ */
+export function declineHuntOverage(state: WorldState, projectId: string, tellLater = false): { ok: true; logLine: string } {
+  const proj = state.projects.find((p) => p.id === projectId && p.status === "active" && p.hunt?.awaitingPrice);
+  const hunt = proj?.hunt;
+  if (!proj || !hunt) return { ok: true, logLine: "" };
+  const back = refund(state, hunt.escrowedDenarii);
+  hunt.awaitingPrice = false;
+  const logLine = `You did not confirm the dearer price, so Gerulf left the ${hunt.goods}. The purse is home: ${back} denarii.`;
+  hunt.reportSpeech = logLine;
+  hunt.reportEmotion = "disappointed";
+  hunt.reported = !tellLater;
+  closeHunt(state, proj);
+  return { ok: true, logLine };
+}
+
+/** A season that lapses an unpaid dearer price is a refusal: no goods, purse home. */
+export function lapseUnconfirmedHuntPrices(state: WorldState, proposals: { type: string; projectId?: string }[]): string[] {
+  const lines: string[] = [];
+  for (const proposal of proposals) {
+    if (proposal.type !== "pay_hunt_overage" || !proposal.projectId) continue;
+    const result = declineHuntOverage(state, proposal.projectId, true);
+    if (result.logLine) lines.push(result.logLine);
+  }
+  return lines;
+}
+
+/** Advance Gerulf hunts one season. A dearer price waits for the lord; it does not spend the chest. */
 export function resolveHunts(state: WorldState): string[] {
   const lines: string[] = [];
   for (const proj of state.projects.filter((p) => p.status === "active" && p.hunt)) {
     const hunt = proj.hunt!;
+    if (hunt.awaitingPrice) {
+      lines.push(
+        `Gerulf is home with the ${hunt.goods} still unbought. He waits on your word before paying another ${hunt.overageDenarii ?? 0} denarii.`,
+      );
+      continue;
+    }
     hunt.seasonsElapsed += 1;
     const left = hunt.durationSeasons - hunt.seasonsElapsed;
     if (left > 0) {
@@ -861,21 +950,18 @@ export function resolveHunts(state: WorldState): string[] {
 
     let outcome = rollOutcome();
     if (outcome === "over_budget") {
-      const extra = Math.max(4, Math.ceil(hunt.quotedDenarii * 0.25));
-      if (state.resources.denarii >= extra) {
-        state.resources.denarii = round1(state.resources.denarii - extra);
-        creditGoods(state, hunt, hunt.amount);
-        const speech = outcomeSpeech("over_budget", hunt, `Another ${extra} denarii left the chest.`);
-        hunt.reportSpeech = speech.text;
-        hunt.reportEmotion = speech.emotion;
-        hunt.reported = false;
-        closeHunt(state, proj);
-        lines.push(
-          `Gerulf returned with ${hunt.amount} ${hunt.goods}, but the inland price ran ${extra} denarii over the quote.`,
-        );
-        continue;
-      }
-      outcome = "partial";
+      const extra = huntOverageDenarii(hunt.quotedDenarii);
+      hunt.awaitingPrice = true;
+      hunt.overageDenarii = extra;
+      const speech = outcomeSpeech("over_budget", hunt, `It wants another ${extra} denarii, and I have not paid.`);
+      hunt.reportSpeech = speech.text;
+      hunt.reportEmotion = speech.emotion;
+      hunt.reported = false;
+      bringGerulfHome(state);
+      lines.push(
+        `Gerulf found ${hunt.amount} ${hunt.goods}, but the inland price is ${extra} denarii over the quote. He has not paid, and the goods are not in the stores.`,
+      );
+      continue;
     }
 
     if (outcome === "success") {
@@ -893,12 +979,12 @@ export function resolveHunts(state: WorldState): string[] {
       const got = Math.max(1, Math.floor(hunt.amount / 2)) || 1;
       const back = refund(state, hunt.escrowedDenarii * 0.35);
       creditGoods(state, hunt, Math.min(got, hunt.amount));
-      const speech = outcomeSpeech("partial", hunt, back ? ` ${back} denarii came home.` : "");
+      const speech = outcomeSpeech("partial", hunt, back ? ` ${back} denarii came home.` : "", got);
       hunt.reportSpeech = speech.text;
       hunt.reportEmotion = speech.emotion;
       hunt.reported = false;
       closeHunt(state, proj);
-      lines.push(`Gerulf returned with a partial find of ${hunt.goods}. ${back} denarii recovered.`);
+      lines.push(`Gerulf returned with a partial find of ${got} ${hunt.goods}. ${back} denarii recovered.`);
       continue;
     }
 

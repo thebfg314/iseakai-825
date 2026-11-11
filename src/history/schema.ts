@@ -979,8 +979,9 @@ export const HistoryStateSchema = z.object({
     })
     .default({}),
   /**
-   * Household upkeep and the keeping of the works (upkeep.ts). Taken from the chest each season.
-   * The books show what is left; the gross is Aldric's to say if the lord asks.
+   * Household upkeep and the keeping of the works (upkeep.ts).
+   * Most of it is grain, stores, and the tenants' days. The chest pays only what the estate cannot make.
+   * The Viking tributes are not this bill: those are silver, and payment in kind is not accepted.
    */
   upkeep: z
     .object({
@@ -988,8 +989,10 @@ export const HistoryStateSchema = z.object({
       lean: z.number().int().min(0).max(10).default(0),
       /** How openly the hall gives, inside the household bill. Lean spends less; generous spends more. */
       giving: z.enum(["lean", "customary", "generous"]).default("customary"),
-      /** Consecutive seasons the keeping of the works went short. */
+      /** Consecutive seasons the keeping of the works went short of days. */
       neglect: z.number().int().nonnegative().default(0),
+      /** Consecutive seasons the chest could not buy what the estate does not make. An inconvenience, not a crisis. */
+      coinShort: z.number().int().nonnegative().default(0),
       /** Consecutive seasons that keeping was paid in full, toward mending what has started to fail. */
       mended: z.number().int().nonnegative().default(0),
       paidTurn: z.number().int().nullable().default(null),
@@ -1008,6 +1011,9 @@ export const HistoryStateSchema = z.object({
           /** The quarter owed this season (the paid figures above are measured against these). */
           householdDue: z.number().optional(),
           maintenanceDue: z.number().optional(),
+          /** The chest's small share, and what it actually paid. A shortfall here is not an unpaid household. */
+          coinDue: z.number().optional(),
+          coinPaid: z.number().optional(),
           netYear: z.number(),
         })
         .nullable()

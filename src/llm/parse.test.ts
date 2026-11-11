@@ -52,6 +52,31 @@ describe("parseLlmResponse", () => {
     expect(parsed.proposals[0]).toMatchObject({ type: "adjust_sowing", springBarleyShare: 0.9 });
   });
 
+  it("treats a season loss written as decrease, lose, or loss as a consumption", () => {
+    for (const direction of ["decrease", "lose", "loss"]) {
+      const parsed = parseProposal({
+        type: "event_effect",
+        eventId: "w-mould",
+        summary: "Mould in the rye",
+        resource: "rye",
+        amount: 8,
+        direction,
+      });
+      expect(parsed.error, direction).toBeUndefined();
+      expect(parsed.proposal).toMatchObject({ direction: "consume", amount: 8, resource: "rye" });
+    }
+    const gain = parseProposal({
+      type: "event_effect",
+      eventId: "w-mast",
+      summary: "The herd grows",
+      resource: "pigs",
+      amount: 2,
+      direction: "increase",
+    });
+    expect(gain.error).toBeUndefined();
+    expect(gain.proposal).toMatchObject({ direction: "gain", amount: 2 });
+  });
+
   it("coerces give → consume and missing type from resource fields", () => {
     const parsed = parseProposal({
       summary: "Grain to the cell",
@@ -309,6 +334,17 @@ describe("parseLlmResponse never shows JSON to the player", () => {
     expect(parsed.response.speech).toBe(HOLD_AT_ONCE_APOLOGY);
     expect(parsed.proposals).toEqual([]);
     expect(playerFacingNpcSpeech("<=-tool: grain")).toBe(HOLD_AT_ONCE_APOLOGY);
+  });
+
+  it("refuses a dearer hunt price written by the hall", () => {
+    const parsed = parseProposal({
+      type: "pay_hunt_overage",
+      summary: "Pay another 20 denarii",
+      projectId: "proj-1",
+      denarii: 20,
+    });
+    expect(parsed.proposal).toBeUndefined();
+    expect(parsed.error).toMatch(/confirmed by the lord/);
   });
 
   it("coerces a Gerulf hunt into start_hunt", () => {

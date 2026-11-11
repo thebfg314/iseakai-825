@@ -156,6 +156,44 @@ describe("hands stay on the work they named", () => {
   });
 });
 
+describe("a clearing whose hands are named in the same pack", () => {
+  it("keeps those hands, and names the acres the days cover", () => {
+    const session = game();
+    const before = labourRemaining(session.state);
+    session.queueProposal("steward", {
+      type: "start_project",
+      id: "clear_scrub_fontenay_1",
+      summary: "Clear four acres of scrub",
+      projectKey: "clear_scrub",
+      holdingId: "fontenay",
+      customCosts: { labourDays: 140, lumber: 0, iron: 0, stone: 0 },
+      finishesThisSeason: true,
+    });
+    session.queueProposal("steward", {
+      type: "assign_labour",
+      summary: "Put 140 days of the men's work on the scrub clearing",
+      projectId: "clear_scrub_fontenay_1",
+      men: 140,
+      women: 0,
+      youths: 0,
+    });
+    const result = session.confirmAllProposals();
+    expect(result.error).toBeUndefined();
+    const clearing = session.state.projects.find((p) => p.key === "clear_scrub")!;
+    expect(clearing.name).toBe("Clear scrub to arable (4 acres)");
+    expect(clearing.labourDaysRequired).toBe(140);
+    expect(session.state.labour.assigned.find((a) => a.projectId === clearing.id)).toMatchObject({
+      men: 140,
+      women: 0,
+      youths: 0,
+    });
+    const left = labourRemaining(session.state);
+    expect(left.women).toBe(before.women);
+    expect(left.youths).toBe(before.youths);
+    expect(session.messages.map((m) => m.text).join(" ")).not.toMatch(/women's work|youths' work/);
+  });
+});
+
 describe("days of work in the books", () => {
   it("writes 60, 25, and 27 as days of work", () => {
     const state = boot();

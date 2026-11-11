@@ -197,6 +197,7 @@ ipcMain.handle("settings:set", (_e, patch: SettingsPatch) => {
   persistSettings(next);
   if (controller) {
     controller.settings = next;
+    controller.setPlayLogEnabled(next.playLogEnabled);
     controller.meter.setProvider(next.provider);
   }
   return next;

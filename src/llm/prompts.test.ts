@@ -370,7 +370,7 @@ describe("signed-off NPC personalities", () => {
     const pack = sliceStateForSeason(state, { rye: -2, sown_barley: 1.8 });
     expect(pack.deltas).toEqual({ rye: -2, sown_barley: 1.8 });
     expect(pack.totals.denarii).toBe(138);
-    expect(pack.totals.grain.rye).toBe(8);
+    expect(pack.totals.grain.rye).toBe(14);
     expect(pack.totals.the_people).toBe("settled");
     expect(pack.totals).not.toHaveProperty("market");
     const glad = boot();

@@ -65,6 +65,11 @@ export type AppSettings = {
   musicVolume: number;
   /** Tavily key for the NPCs' hidden research tool. Empty disables searching; the game still runs. */
   searchApiKey: string;
+  /**
+   * When true, each play writes a text file of the model's reasoning and what the books did.
+   * False writes nothing. A play already underway is sealed when this turns off.
+   */
+  playLogEnabled: boolean;
 };
 
 export const SEARCH_KEY_ENV = "TAVILY_API_KEY";

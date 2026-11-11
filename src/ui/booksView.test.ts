@@ -135,7 +135,7 @@ describe("holdings page", () => {
     expect(html).toContain("renown earns the summons"); // the empty line, with "villa" wrapped by the glossary
     expect(html).not.toContain("Public revenue");
     const lordEstate = renderToStaticMarkup(createElement(BooksPanel, { view: viewOf(fresh), initialTab: "estate" }));
-    expect(lordEstate).toContain("About 368 d a year is free to spend");
+    expect(lordEstate).toContain("The chest owes about 24 d a year");
     expect(lordEstate).not.toContain("525 d");
     expect(lordEstate).not.toMatch(JARGON);
     expect(html).not.toMatch(JARGON);

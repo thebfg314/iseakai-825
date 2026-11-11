@@ -1,6 +1,7 @@
 import { createRng, seedFromString } from "../combat/rng";
+import { labourDaysFromAssignment, labourRemaining } from "../engine/labour";
 import { applyPeopleHappinessDelta } from "../engine/peopleHappiness";
-import type { WorldState } from "../engine/schema";
+import type { CanonicalResource, WorldState } from "../engine/schema";
 import { GRAIN_CROPS, type GrainCrop } from "../engine/grain";
 import { round1 } from "../engine/util";
 import type { HistoryBeat } from "./deliver";
@@ -12,27 +13,44 @@ import { moveVassalMood } from "./vassals";
 /**
  * Household upkeep and the keeping of the works.
  *
- * A lord's receipts are not his to spend. The household (retainers, horses, the table,
- * clothing, the gifts expected of his rank) and the keeping of halls, walls, mills,
- * bridges and granaries come off first, a quarter of the year's figure each season.
- * The books show what is left. The gross is Aldric's to say, in the speech of the hall,
- * if the lord asks.
+ * A lord's receipts are the yield of his land, not a purse. The household and the
+ * keeping of halls, walls, mills, bridges and granaries still come off first, a
+ * quarter of the year's figure each season, but that quarter is paid the way an
+ * estate pays: from the stores, from the tenants' days, and only then from coin.
+ *
+ * In kind is the bulk — grain, the table, cloth, and fuel. Labour is most of the
+ * mending at a villa or a viscount's seat. Coin is what the estate cannot make:
+ * iron, salt, a millstone, a specialist's tool. That share grows with rank, because
+ * a great household buys what one estate's barns cannot feed.
+ *
+ * A short chest is an inconvenience. The forge and the tools go wanting, and a mill
+ * is patched badly. An empty granary is the crisis, and it is the famine the season
+ * already knows. Days that were all spent elsewhere leave the roofs unkept, and the
+ * works fail slowly. The Viking tributes are not this bill. Those ask for silver.
  *
  * The shares below are of a typical year's receipts at that rank. Keeping the works
- * then scales with what actually stands: fewer roofs than the rank's usual grant costs
- * less, and mills, walls, markets and fortifications the lord has added cost more.
- * The household cannot be skipped. He may keep it leaner by as many as ten points of
- * that share; the sworn men and the people of the hall feel the want of gifts.
- *
- * If the chest cannot cover the works, they fail slowly. The first short season is
- * only a warning. The next, a wooden wall fights as a fence, a mill grinds coarse,
- * a granary lets in the damp. A later season can bring one of them down.
+ * then scales with what actually stands. The household cannot be skipped. He may
+ * keep it leaner by as many as ten points of that share; the sworn men feel it.
  */
 
 /** Share of gross receipts the household takes, by rank (minor noble through king). */
 export const HOUSEHOLD_RATE = [0.25, 0.35, 0.45, 0.55, 0.6] as const;
 /** Share the works take at a typical set of roofs for that rank. */
 export const MAINTENANCE_RATE = [0.05, 0.06, 0.08, 0.1, 0.12] as const;
+/**
+ * Of the season's whole keep (household + works), the share that must be coin.
+ * The rest is stores and the tenants' days. A villa lord's coin is the small end.
+ */
+export const COIN_SHARE = [0.15, 0.25, 0.45, 0.6, 0.7] as const;
+/**
+ * Of that same keep, the share taken as days. At a villa or a viscount's seat this
+ * is most of the mending. A count and above buy more of their keeping.
+ */
+export const LABOUR_SHARE = [0.12, 0.12, 0.08, 0.05, 0.04] as const;
+/** A tenant's day, reckoned at a denarius. The days and the coin share use the same scale. */
+export const DAY_DENARII = 1;
+/** Assignment that reserves the season's mending so other works cannot spend those days. */
+export const MAINTENANCE_LABOUR_ID = "household-keeping";
 /**
  * Weight of the works a promotion actually leaves standing: a hall and a barn on each
  * villa, and from viscount the seat's palisade. The maintenance share assumes this.
@@ -122,6 +140,11 @@ export type UpkeepBill = {
   netSeason: number;
   householdSeason: number;
   maintenanceSeason: number;
+  /** Season quarter split across stores, days, and the chest. They sum to the two seasons above. */
+  kindSeason: number;
+  labourSeason: number;
+  labourDays: number;
+  coinSeason: number;
 };
 
 export type UpkeepTick = { lines: string[]; beats: HistoryBeat[] };
@@ -157,18 +180,37 @@ export function billFor(grossYear: number, rank: number, scale = 1, lean = 0): U
   const householdYear = Math.round(gross * householdRate);
   const maintenanceYear = Math.round(gross * maintenanceRate);
   const netYear = gross - householdYear - maintenanceYear;
-  return {
-    grossYear: gross,
-    householdRate,
-    maintenanceRate,
-    scale,
-    householdYear,
-    maintenanceYear,
-    netYear,
-    netSeason: Math.round(netYear / 4),
-    householdSeason: Math.round(householdYear / 4),
-    maintenanceSeason: Math.round(maintenanceYear / 4),
-  };
+  return withShares(
+    {
+      grossYear: gross,
+      householdRate,
+      maintenanceRate,
+      scale,
+      householdYear,
+      maintenanceYear,
+      netYear,
+      netSeason: Math.round(netYear / 4),
+      householdSeason: Math.round(householdYear / 4),
+      maintenanceSeason: Math.round(maintenanceYear / 4),
+      kindSeason: 0,
+      labourSeason: 0,
+      labourDays: 0,
+      coinSeason: 0,
+    },
+    r,
+  );
+}
+
+/** Split a season's keep into stores, days, and coin. Kind is whatever the other two do not take. */
+export function withShares(bill: UpkeepBill, rank: number): UpkeepBill {
+  const r = Math.max(1, Math.min(5, Math.round(rank))) - 1;
+  const total = Math.max(0, bill.householdSeason + bill.maintenanceSeason);
+  let coin = Math.round(total * COIN_SHARE[r]);
+  let labour = Math.round(total * LABOUR_SHARE[r]);
+  if (coin + labour > total) labour = Math.max(0, total - coin);
+  const kind = Math.max(0, total - coin - labour);
+  const labourDays = labour <= 0 ? 0 : Math.max(1, Math.round(labour / DAY_DENARII));
+  return { ...bill, coinSeason: coin, labourSeason: labour, labourDays, kindSeason: kind };
 }
 
 /** What this year costs, and what it leaves, at the receipts and the roofs as they stand. */
@@ -176,7 +218,8 @@ export function assessUpkeep(state: WorldState): UpkeepBill {
   const land = state.history.land.yearlyIncome ?? 0;
   const office = seasonRevenue(state).net * 4;
   const lean = state.history.upkeep?.lean ?? 0;
-  return applyGiving(billFor(land + office, rankOf(state), structureScale(state), lean), givingLevel(state));
+  const rank = rankOf(state);
+  return withShares(applyGiving(billFor(land + office, rank, structureScale(state), lean), givingLevel(state)), rank);
 }
 
 export function isWorn(state: WorldState, holdingId: string, feature: string): boolean {
@@ -278,7 +321,7 @@ function collapseOne(state: WorldState, at: SeasonAt): string | null {
     text: `The ${word} at ${villa} failed for want of keeping.`,
     thread: "upkeep",
   });
-  return `My lord, the ${word} at ${villa} has come down. We had let the keeping of it go, and this season finished what the carpenters were not paid to prevent.${extra}`;
+  return `My lord, the ${word} at ${villa} has come down. We had let the keeping of it go, and this season finished what the tenants' days were not there to prevent.${extra}`;
 }
 
 function loyaltyDrift(lean: number): number {
@@ -321,15 +364,122 @@ export function setHouseholdLean(state: WorldState, cut: number, turn: number): 
   };
 }
 
-/** What the estate page calls his income: what a year leaves, not what it brings in. */
+const FOOD_GOODS: CanonicalResource[] = ["wheat", "rye", "barley", "oats", "cheese", "honey", "wine"];
+const STORE_GOODS: CanonicalResource[] = ["wool", "linen", "softwood", "hardwood", "charcoal"];
+const MEAT: { id: CanonicalResource; keep: number }[] = [
+  { id: "poultry", keep: 0 },
+  { id: "pigs", keep: 1 },
+  { id: "sheep", keep: 2 },
+];
+
+function unitPrice(state: WorldState, id: CanonicalResource): number {
+  const min = state.market[id]?.min;
+  return min && min > 0 ? min : 1;
+}
+
+function takeGood(
+  state: WorldState,
+  id: CanonicalResource,
+  valueNeed: number,
+  opts?: { whole?: boolean; keep?: number; cap?: number },
+): number {
+  if (valueNeed <= 0.05) return 0;
+  const price = unitPrice(state, id);
+  const have = state.resources[id] ?? 0;
+  const keep = opts?.keep ?? 0;
+  const available = opts?.whole ? Math.max(0, Math.floor(have - keep)) : Math.max(0, have - keep);
+  if (available <= 0) return 0;
+  const capped = opts?.cap != null ? Math.min(available, opts.cap) : available;
+  const amount = opts?.whole
+    ? Math.min(capped, Math.floor(valueNeed / price))
+    : Math.min(capped, round1(valueNeed / price));
+  if (amount <= 0) return 0;
+  state.resources[id] = round1(have - amount);
+  return round1(amount * price);
+}
+
+/** Draw the hall's keep from what the estate already has. Grain first; a breeding herd is left standing. */
+function drawKind(state: WorldState, due: number): number {
+  let left = due;
+  const foodCap = round1(due * 0.8);
+  let foodTaken = 0;
+  for (const id of FOOD_GOODS) {
+    if (foodTaken >= foodCap - 0.05) break;
+    const got = takeGood(state, id, Math.min(left, round1(foodCap - foodTaken)));
+    foodTaken = round1(foodTaken + got);
+    left = round1(left - got);
+  }
+  for (const id of STORE_GOODS) {
+    const got = takeGood(state, id, left, { cap: 2 });
+    left = round1(left - got);
+  }
+  for (const id of FOOD_GOODS) {
+    const got = takeGood(state, id, left);
+    left = round1(left - got);
+  }
+  for (const meat of MEAT) {
+    if (left < unitPrice(state, meat.id)) break;
+    const got = takeGood(state, meat.id, left, { whole: true, keep: meat.keep, cap: 1 });
+    left = round1(left - got);
+    if (got > 0) break;
+  }
+  return round1(Math.max(0, due - left));
+}
+
+/** Reserve mending days from what this season has not already given to a work. Returns days covered. */
+function reserveMaintenanceDays(state: WorldState, days: number): number {
+  state.labour.assigned = state.labour.assigned.filter((a) => a.projectId !== MAINTENANCE_LABOUR_ID);
+  if (days <= 0) return 0;
+  const rem = labourRemaining(state);
+  let left = days;
+  const men = Math.min(rem.men, left);
+  left -= men;
+  const women = Math.min(rem.women, left);
+  left -= women;
+  const youths = left > 0 ? Math.min(rem.youths, Math.ceil(left / 0.4)) : 0;
+  const covered = labourDaysFromAssignment("mixed", men, women, youths);
+  if (men > 0 || women > 0 || youths > 0) {
+    state.labour.assigned.push({ projectId: MAINTENANCE_LABOUR_ID, men, women, youths });
+  }
+  return round1(Math.min(days, covered));
+}
+
+/**
+ * A short chest wears the bought things slowly. It does not bring a roof down.
+ * The second season, a mill grinds coarse. From the third, the forge spends a pound it could not replace.
+ */
+function coinInconvenience(state: WorldState, seasonsShort: number, labourAlsoShort: boolean): string | null {
+  if (seasonsShort < 2) return null;
+  const bits: string[] = [];
+  const mill = state.holdings.some((h) => h.features.some((f) => FLOUR_MILLS.has(f)));
+  if (mill && !labourAlsoShort) {
+    const lost = spoil(state, ["wheat", "rye"], MILL_WASTE / 2);
+    if (lost > 0) bits.push(`the mill was patched with what we had and grinds coarse; ${lost} modii were lost in the stones`);
+  } else if (mill) {
+    bits.push("the mill cannot be repaired properly without what we buy");
+  }
+  const forge = state.holdings.some((h) => h.features.includes("forge"));
+  if (forge && seasonsShort >= 3 && state.resources.iron >= 1) {
+    state.resources.iron = round1(state.resources.iron - 1);
+    bits.push("the forge used a pound of iron, and none was bought to replace it");
+  } else if (forge && seasonsShort >= 2) {
+    bits.push("the forge is short of what it does not make");
+  }
+  if (!bits.length) bits.push("tools will wear until the chest can buy what we do not make");
+  return bits.join("; ");
+}
+
+/** What the estate page calls his income: the chest's small share, not the whole keep. */
 export function incomeSentence(state: WorldState): string {
   const b = assessUpkeep(state);
   const u = state.history.upkeep;
-  let text = `About ${b.netYear} d a year is free to spend, near ${b.netSeason} d a season, once the household is kept and the roofs are mended.`;
+  const yearCoin = b.coinSeason * 4;
+  let text = `The household is kept from the stores and the tenants' days. The chest owes about ${yearCoin} d a year, near ${b.coinSeason} d a season, for iron, salt, and what the estate cannot make.`;
   if (u.lean > 0) text += " The household is kept leaner than the rank expects.";
   if (u.giving === "lean") text += " The giving is lean.";
   if (u.giving === "generous") text += " The giving is generous.";
   if (u.neglect > 0 || u.worn.length > 0) text += " Some of the works are being let go.";
+  if (u.coinShort > 0) text += " The chest has been short of what must be bought.";
   return text;
 }
 
@@ -343,10 +493,13 @@ export function upkeepLine(state: WorldState): string {
       ? ` The keeping of the works is behind${u.worn.length ? ` (${listWorks(state, u.worn.map((w) => ({ ...w, kind: WORK_KIND[w.feature] ?? "fort" })))})` : ""}. Speak of it if he asks, and do not pretend they are sound.`
       : "";
   return [
-    `Receipts this year are about ${b.grossYear} d before the hall is kept.`,
-    `The household takes ${b.householdYear} d — retainers, horses, the table, clothing, and the gifts a lord is expected to give${lean} — and the roofs, mills and walls take ${b.maintenanceYear} d.`,
-    `About ${b.netYear} d is free, near ${b.netSeason} d a season. The books show only what is free.`,
-    `If the lord asks what came in before the household and the roofs, say that larger figure in the speech of the hall, not as a list of shares.`,
+    `Receipts this year are about ${b.grossYear} d before the hall is kept. That figure is the yield of the land, not coin in the chest.`,
+    `The household's keep is ${b.householdYear} d and the roofs, mills and walls are ${b.maintenanceYear} d${lean}.`,
+    `Each season that quarter is paid in three ways: about ${b.kindSeason} d from the stores (grain, the table, cloth, and fuel), ${b.labourDays} days of the tenants' work on the roofs, and ${b.coinSeason} d from the chest for iron, salt, and what the estate cannot make.`,
+    `A short chest is an inconvenience: the forge runs short, tools wear, a mill is mended poorly. Say it that way. It is not a crisis and it does not go unpaid as a household.`,
+    `An empty granary is the crisis. Days already given to other work leave the roofs unkept, and the works then fail slowly.`,
+    `The Viking tributes, when they come, are silver. Grain and labour do not pay them. Do not offer to.`,
+    `If the lord asks what came in before the household and the roofs, say the larger figure in the speech of the hall, not as a list of shares.`,
     `The household cannot be skipped. A leaner hall, fewer retainers and fewer gifts, may come down by as many as ${LEAN_MAX} points of the household's share: propose household_upkeep {cut: 0-${LEAN_MAX}} for Confirm. The sworn men and the people of the hall feel the want of it, a little at once for each point and again each season if the cut is deep.`,
     `Routine giving is a standing, not a purse each time: propose giving_stance { level: lean | customary | generous }. Lean trims five percent off the household bill and the sworn men cool. Generous adds five percent of the year's receipts and they warm.`,
     behind,
@@ -356,8 +509,9 @@ export function upkeepLine(state: WorldState): string {
 }
 
 /**
- * Take the season's quarter. The household is paid first and cannot be waived.
- * What the works do not get, they start to lose — after a season of warning.
+ * Take the season's quarter. Stores first, then the tenants' days, then the chest's small share.
+ * What the days do not cover, the works start to lose — after a season of warning.
+ * A short chest does not do that. It leaves the bought things wanting.
  * `collapseRoll` in [0, 1) forces the later failure (tests); omitted, the season seeds it.
  */
 export function tickUpkeep(state: WorldState, at: SeasonAt, turn: number, opts?: { collapseRoll?: number; covered?: boolean }): UpkeepTick {
@@ -375,14 +529,15 @@ export function tickUpkeep(state: WorldState, at: SeasonAt, turn: number, opts?:
     out.lines.push("The household is kept lean; the sworn men feel the want of gifts.");
   }
 
-  const pay = (due: number) => {
-    if (opts?.covered) return due;
-    const paid = Math.min(state.resources.denarii, due);
-    state.resources.denarii = Math.round(state.resources.denarii - paid);
-    return paid;
-  };
-  const householdPaid = pay(bill.householdSeason);
-  const maintenancePaid = pay(bill.maintenanceSeason);
+  const covered = opts?.covered === true;
+  const coinPaid = covered ? bill.coinSeason : Math.min(state.resources.denarii, bill.coinSeason);
+  if (!covered) state.resources.denarii = Math.round(state.resources.denarii - coinPaid);
+  const kindPaid = covered || bill.kindSeason <= 0 ? bill.kindSeason : drawKind(state, bill.kindSeason);
+  const daysPaid = covered || bill.labourDays <= 0 ? bill.labourDays : reserveMaintenanceDays(state, bill.labourDays);
+  const labourValuePaid = Math.min(bill.labourSeason, Math.round(daysPaid * DAY_DENARII));
+  // The household obligation is the stores. The works obligation is the days. Coin is recorded and is not either.
+  const householdPaid = kindPaid;
+  const maintenancePaid = labourValuePaid;
   u.last = {
     turn,
     grossYear: bill.grossYear,
@@ -390,29 +545,55 @@ export function tickUpkeep(state: WorldState, at: SeasonAt, turn: number, opts?:
     maintenanceYear: bill.maintenanceYear,
     householdPaid,
     maintenancePaid,
-    householdDue: bill.householdSeason,
-    maintenanceDue: bill.maintenanceSeason,
+    householdDue: bill.kindSeason,
+    maintenanceDue: bill.labourSeason,
+    coinDue: bill.coinSeason,
+    coinPaid,
     netYear: bill.netYear,
   };
   if (bill.householdSeason === 0 && bill.maintenanceSeason === 0) return out;
 
-  const householdShort = householdPaid < bill.householdSeason;
-  const maintenanceShort = maintenancePaid < bill.maintenanceSeason;
-  const householdBit = householdShort ? `The household took ${householdPaid} d of ${bill.householdSeason} d owed` : `The household took ${householdPaid} d`;
-  const worksBit = maintenanceShort ? `the roofs and works ${maintenancePaid} d of ${bill.maintenanceSeason} d owed` : `the roofs and works ${maintenancePaid} d`;
-  out.lines.push(`${householdBit}; ${worksBit}.`);
+  const householdShort = householdPaid + 0.05 < bill.kindSeason;
+  const maintenanceShort = daysPaid + 0.05 < bill.labourDays;
+  const coinShort = coinPaid + 0.05 < bill.coinSeason;
+  const kindBit = householdShort
+    ? `the stores covered ${householdPaid} d of ${bill.kindSeason} d of the hall's keep`
+    : `the stores covered ${householdPaid} d of the hall's keep`;
+  const daysBit = maintenanceShort
+    ? `the tenants gave ${daysPaid} of ${bill.labourDays} days to the roofs`
+    : `the tenants gave ${daysPaid} days to the roofs`;
+  const coinBit = coinShort ? `the chest paid ${coinPaid} d of ${bill.coinSeason} d` : `the chest paid ${coinPaid} d`;
+  out.lines.push(`The household took its keep from the stores: ${kindBit}; ${daysBit}; ${coinBit}.`);
 
   if (householdShort) {
     applyPeopleHappinessDelta(state, -2);
     out.beats.push({
       npcId: "steward",
       eventId: `upkeep:household:${turn}`,
-      text: "My lord, the chest could not meet the household in full. I paid what was there. The rest of the hall went short, and I will not pretend that was a choice — their keep is not a thing we skip.",
+      text: "My lord, the granary and the stores could not feed the hall in full. I set out what there was. The rest of the household went short, and I will not pretend that was a choice — their keep is not a thing we skip.",
     });
+  }
+
+  if (coinShort) {
+    u.coinShort += 1;
+    const wear = coinInconvenience(state, u.coinShort, maintenanceShort);
+    out.beats.push({
+      npcId: "steward",
+      eventId: `upkeep:coin:${turn}`,
+      text: wear
+        ? `My lord, the chest could not buy what we do not make. ${wear.charAt(0).toUpperCase()}${wear.slice(1)}. The hall is fed from the stores. This is an inconvenience, not a crisis.`
+        : "My lord, the chest could not buy what we do not make — iron, salt, a millstone, a specialist's tool. Those wait. The hall is fed from the stores. This is an inconvenience, not a crisis.",
+    });
+  } else {
+    u.coinShort = 0;
   }
 
   if (!maintenanceShort) {
     u.neglect = 0;
+    if (u.worn.length && coinShort) {
+      u.mended = 0;
+      return out;
+    }
     if (u.worn.length) {
       u.mended += 1;
       if (u.mended >= MEND_SEASONS) {
@@ -439,7 +620,7 @@ export function tickUpkeep(state: WorldState, at: SeasonAt, turn: number, opts?:
     out.beats.push({
       npcId: "steward",
       eventId: `upkeep:warn:${turn}`,
-      text: `My lord, the household is fed — that I will not let slip — but the keeping of the works was short. I am saying so before anything fails: ${subject} ${singular ? "wants" : "want"} looking at. Nothing is lost yet. If the chest can spare the carpenters next season, it stays a warning.`,
+      text: `My lord, the household is fed — that I will not let slip — but the tenants' days were already spoken for. I am saying so before anything fails: ${subject} ${singular ? "wants" : "want"} looking at. Nothing is lost yet. If next season can spare the days, it stays a warning.`,
     });
     return out;
   }

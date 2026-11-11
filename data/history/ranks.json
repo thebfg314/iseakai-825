@@ -1,5 +1,5 @@
 {
-  "notes": "Rank progression (Isekai 825 Rank Progression — Holdings and Powers.md, 'Hard numbers by rank'). Each step is what the promotion GRANTS on top of what the lord already holds: the villas, their people and stores, the chest, the men, the vassals, the office. Villas are real holdings farmed by the engine; the fisc and the office revenue are one aggregate block per county. Amounts per villa are the doc's totals minus Fontenay's start, split across the villas granted.",
+  "notes": "Rank progression (Isekai 825 Rank Progression — Holdings and Powers.md, 'Hard numbers by rank'). Each step is what the promotion GRANTS on top of what the lord already holds: the villas, their people and stores, the chest, the men, the vassals, the office. Villas are real holdings farmed by the engine; the fisc and the office revenue are one aggregate block per county. Amounts per villa are the doc's totals minus Fontenay's start, split across the villas granted. The viscount villa's wheat and rye are higher than that split: the two barns have to feed the enlarged household through to the next summer harvest when the lord's own granary is empty.",
   "thresholds": [1, 100, 500, 1000, 2000],
   "summons": {
     "minSeasons": 2,
@@ -32,7 +32,7 @@
         "manses": { "free": 7, "servile": 4, "vacant": 1 },
         "land": { "fertile_arable": 34, "meadow": 8, "vineyard": 2, "orchard": 1, "woodland": 40, "scrub": 30, "waste": 30, "swamp": 12 },
         "people": { "men": 12, "women": 13, "youths": 9 },
-        "stores": { "wheat": 5, "rye": 8, "barley": 4, "oats": 3, "cattle": 5, "sheep": 14, "pigs": 4, "horses": 2, "wine": 1, "cheese": 4, "honey": 2, "wool": 6, "linen": 2, "softwood": 2, "hardwood": 1, "charcoal": 1, "iron": 25, "salt": 4, "stone": 1, "hides": 2, "beeswax": 1, "trade_goods": 1 },
+        "stores": { "wheat": 22, "rye": 52, "barley": 4, "oats": 3, "cattle": 5, "sheep": 14, "pigs": 4, "horses": 2, "wine": 1, "cheese": 4, "honey": 2, "wool": 6, "linen": 2, "softwood": 2, "hardwood": 1, "charcoal": 1, "iron": 25, "salt": 4, "stone": 1, "hides": 2, "beeswax": 1, "trade_goods": 1 },
         "features": ["manor_hall", "barn"]
       },
       "chest": 600,

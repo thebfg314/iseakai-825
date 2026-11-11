@@ -55,6 +55,20 @@ function wood(state: WorldState): number {
 }
 
 describe("same-season gather then use", () => {
+  it("spends the earlier yield and leaves the barn when the barn could already pay", () => {
+    const state = estate();
+    state.resources.softwood = 3;
+    const session = game(state);
+    session.queueProposal("steward", coppice(8));
+    session.queueProposal("steward", shed(10));
+    const result = session.confirmAllProposals();
+    expect(result.error).toBeUndefined();
+    expect(session.pending.map((p) => p.status)).toEqual(["applied", "applied"]);
+    expect(session.state.projects.find((p) => p.key === "coppice")!.resultPaid).toBe(true);
+    expect(session.state.projects.find((p) => p.key === "timber_shed")!.materials.lumber).toBe(2);
+    expect(wood(session.state)).toBe(3);
+  });
+
   it("spends timber named by an earlier work that finishes this season, even from an empty barn", () => {
     const session = game(estate());
     session.queueProposal("steward", coppice(8));

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
+import { GRAIN_CROPS } from "../engine/grain";
 import { WorldStateSchema, type WorldState } from "../engine/schema";
+import { resolveAgricultureAndProjects } from "../engine/season";
 import { applyEffects } from "./effects";
 import { setHistoryContentForTests } from "./load";
 import { demoteBy, eligibilityNote, eligibleRank, grantVillas, promoteTo, rankLine } from "./promotion";
@@ -92,6 +94,35 @@ describe("eligibility and the generic summons", () => {
     expect(s.history.rank.eligibleSince).toBeNull();
     clock.next();
     expect(s.player.rankLevel).toBe(2);
+  });
+
+  it("an empty barn still reaches the new wheat, whichever season the viscountcy arrives", () => {
+    setHistoryContentForTests({ events: [], features: { promotions: false, historicalBattles: false } });
+    for (const season of ORDER) {
+      const s = fresh();
+      s.meta.season = season;
+      s.player.renown = 150;
+      for (const id of GRAIN_CROPS) s.resources[id] = 0;
+      s.holdings[0].sown = { wheat: 0, rye: 0, barley: 0, oats: 0 };
+      promoteTo(s, 2, { patron: "the count of Autun", turn: s.meta.turn });
+      runHistorySeasonPass(s, { year: s.meta.year, season }, s.meta.turn);
+      let hungry = false;
+      let cut = false;
+      for (let n = 0; n < 6 && !cut; n++) {
+        const leaving = s.meta.season;
+        const i = ORDER.indexOf(leaving);
+        const incoming = i === 3 ? { year: s.meta.year + 1, season: ORDER[0] } : { year: s.meta.year, season: ORDER[i + 1] };
+        const lines = resolveAgricultureAndProjects(s).map((l) => l.text);
+        if (s.flags.hunger) hungry = true;
+        if (leaving === "summer") cut = lines.some((t) => /Harvested .+ wheat/.test(t));
+        runHistorySeasonPass(s, incoming, s.meta.turn + 1);
+        s.meta.year = incoming.year;
+        s.meta.season = incoming.season;
+        s.meta.turn += 1;
+      }
+      expect(hungry, season).toBe(false);
+      expect(cut, season).toBe(true);
+    }
   });
 
   it("a sworn king's man is raised by the king; the summons waits while the lord is away or on the ladder", () => {

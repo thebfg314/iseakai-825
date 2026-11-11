@@ -98,7 +98,6 @@ export function sameSeasonYieldPlan(
   use: { name: string; finishes: boolean },
 ): { credit: SeasonWork[]; block?: string } {
   const base = shortfall(have, bill);
-  if (!anyShort(base)) return { credit: [] };
 
   const waiting = earlier.find((work) => !work.finishes && touches(work.result, base));
   if (waiting) return { credit: [], block: notDoneThisSeasonLine(waiting.name) };
@@ -108,6 +107,15 @@ export function sameSeasonYieldPlan(
   }
 
   if (!use.finishes) return { credit: [] };
+
+  const suppliesBill = (work: SeasonWork) =>
+    (["lumber", "iron", "stone", "charcoal", "denarii"] as const).some((key) => bill[key] > 0.001 && supplies(work.result, key));
+
+  // The barn can already pay, but an earlier work in this pack was gathered for this cost.
+  // Put that yield in the stores first so the cost takes it and leaves the barn alone.
+  if (!anyShort(base)) {
+    return { credit: earlier.filter((work) => work.finishes && suppliesBill(work)) };
+  }
 
   const sim: StorePurse = { ...have };
   const credit: SeasonWork[] = [];

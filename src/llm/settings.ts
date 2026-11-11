@@ -22,6 +22,7 @@ export function defaultAppSettings(): AppSettings {
     masterVolume: 1,
     musicVolume: 0.55,
     searchApiKey: "",
+    playLogEnabled: true,
   };
 }
 
@@ -79,6 +80,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     masterVolume: clampVolume(o.masterVolume, 1),
     musicVolume: clampVolume(o.musicVolume, 0.55),
     searchApiKey: typeof o.searchApiKey === "string" ? o.searchApiKey : "",
+    playLogEnabled: o.playLogEnabled !== false,
   });
 }
 
@@ -101,5 +103,6 @@ export function mergeSettings(current: AppSettings, patch: SettingsPatch): AppSe
     masterVolume: patch.masterVolume ?? current.masterVolume,
     musicVolume: patch.musicVolume ?? current.musicVolume,
     searchApiKey: patch.searchApiKey ?? current.searchApiKey ?? "",
+    playLogEnabled: patch.playLogEnabled ?? current.playLogEnabled,
   };
 }

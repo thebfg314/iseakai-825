@@ -141,10 +141,22 @@ const DIRECTION_ALIASES: Record<string, "buy" | "sell" | "consume" | "gain"> = {
   alms: "consume",
   spend: "consume",
   pay: "consume",
+  decrease: "consume",
+  decreased: "consume",
+  lose: "consume",
+  loss: "consume",
+  lost: "consume",
+  spoil: "consume",
+  spoiled: "consume",
+  take: "consume",
+  took: "consume",
+  remove: "consume",
   grant: "gain",
   receive: "gain",
   gain: "gain",
   add: "gain",
+  increase: "gain",
+  increased: "gain",
 };
 
 function normKey(s: string): string {
@@ -410,6 +422,9 @@ export function coerceProposalInput(raw: unknown): unknown {
 
 export function parseProposal(raw: unknown): { proposal?: MechanicalProposal; error?: string } {
   const coerced = coerceProposalInput(raw);
+  if (coerced && typeof coerced === "object" && (coerced as { type?: string }).type === "pay_hunt_overage") {
+    return { error: "A dearer hunt price is confirmed by the lord, not written by the hall." };
+  }
   const parsed = MechanicalProposalSchema.safeParse(coerced);
   if (parsed.success) return { proposal: parsed.data };
   return { error: parsed.error.issues.map((i) => `${i.path.join(".") || "proposal"}: ${i.message}`).join("; ") };

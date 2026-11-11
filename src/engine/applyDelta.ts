@@ -5,7 +5,7 @@ import {
   type MechanicalProposal,
   type WorldState,
 } from "./schema";
-import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, lookupProject } from "./projectCatalog";
+import { CHURCH_FEATURES, CHURCH_PROJECT_KEYS, FORGE_FEATURES, FORGE_PROJECT_KEYS, catalogUnits, lookupProject } from "./projectCatalog";
 import { autoAssignLeftoverToProject, labourCalledSentence, labourPool, labourRemaining, resolveActiveProject } from "./labour";
 import { applyMultiplyAdd, modifiersFor } from "./modifiers";
 import { syncTradeFromFeatures } from "./merchant";
@@ -13,7 +13,7 @@ import { applyMerchantTransferLine } from "./merchantShop";
 import { consumeGrain, grainOnHand } from "./grain";
 import { applyMoodModifierToHappiness, applyPeopleHappinessDelta, HAPPINESS_ALMS, looksLikeAlms } from "./peopleHappiness";
 import { applySettleHouseholds } from "./peopleMovement";
-import { isNegotiatorId, negotiatorAllowed, startHunt } from "./hunts";
+import { acceptHuntOverage, isNegotiatorId, negotiatorAllowed, startHunt } from "./hunts";
 import {
   hireSummary,
   isEstateSmithNpc,
@@ -281,6 +281,7 @@ export function applyProposal(
   state: WorldState,
   proposal: MechanicalProposal,
   actor: string,
+  options?: { skipLabourFill?: boolean },
 ): ApplyResult {
   const authProposal =
     proposal.type === "defer_proposal" ? innerProposalOfDefer(proposal) ?? proposal : proposal;
@@ -357,7 +358,7 @@ export function applyProposal(
       if (actor === "smith" && !lookupProject(proposal.projectKey) && proposal.customCosts) {
         proposal.tag = "forge";
       }
-      return startProject(state, proposal);
+      return startProject(state, proposal, options);
     case "adjust_project":
       return adjustProject(state, proposal);
     case "adjust_sowing":
@@ -381,6 +382,14 @@ export function applyProposal(
       return eventEffect(state, proposal, actor);
     case "start_hunt": {
       const r = startHunt(state, proposal);
+      if (!r.ok) return fail(state, r.reason, r.logLine);
+      return ok(state, r.logLine);
+    }
+    case "pay_hunt_overage": {
+      if (!isNegotiatorId(actor)) {
+        return fail(state, "Only Gerulf settles a price he found on the road.", "Only Gerulf settles a price he found on the road.");
+      }
+      const r = acceptHuntOverage(state, proposal.projectId);
       if (!r.ok) return fail(state, r.reason, r.logLine);
       return ok(state, r.logLine);
     }
@@ -458,9 +467,18 @@ function setStandingOrder(
   return ok(state, displeasure.length ? `${base} ${displeasure.join(" ")}` : base);
 }
 
+function landWorkTitle(catalog: NonNullable<ReturnType<typeof lookupProject>>, labourDays: number, given?: string): string {
+  const acres = (catalog.completesToLand?.acres ?? 1) * catalogUnits(catalog, labourDays);
+  if (!catalog.completesToLand || acres === 1) return given?.trim() || catalog.name;
+  const titled = catalog.name.includes("(1 acre)") ? catalog.name.replace("(1 acre)", `(${acres} acres)`) : `${catalog.name} (${acres} acres)`;
+  if (!given?.trim() || given.trim() === catalog.name) return titled;
+  return given.trim();
+}
+
 function startProject(
   state: WorldState,
   p: Extract<MechanicalProposal, { type: "start_project" }>,
+  options?: { skipLabourFill?: boolean },
 ): ApplyResult {
   const holding = (p.holdingId ? state.holdings.find((h) => h.id === p.holdingId) : undefined) ?? state.holdings[0];
   if (!holding) return fail(state, "Unknown holding.", p.summary);
@@ -497,10 +515,11 @@ function startProject(
 
   const id = newId("proj");
   const result = startProjectResult(p);
+  const workName = catalog ? landWorkTitle(catalog, labourDays, p.name) : p.name ?? workDisplayName(p.projectKey);
   state.projects.push({
     id,
     key: catalog?.key ?? p.projectKey,
-    name: p.name ?? catalog?.name ?? workDisplayName(p.projectKey),
+    name: workName,
     holdingId: holding.id,
     labourDaysRequired: labourDays,
     labourDaysDone: 0,
@@ -528,9 +547,9 @@ function startProject(
       : {}),
   });
   stampProjectStart(state, state.projects[state.projects.length - 1]);
-  const name = p.name ?? catalog?.name ?? workDisplayName(p.projectKey);
+  const name = workName;
   const solo = personal && startIsSoloSmithing(p);
-  const fill = solo ? null : autoAssignLeftoverToProject(state, id);
+  const fill = solo || options?.skipLabourFill ? null : autoAssignLeftoverToProject(state, id);
   const clayNote = clay > 0 ? " The clay for the shaft will be dug with the work." : "";
   const coinNote = denarii > 0 ? ` ${amountWord(denarii)} denarii leave the chest.` : "";
   const gainNote = result.length ? ` ${resultPayLine(result)}` : "";

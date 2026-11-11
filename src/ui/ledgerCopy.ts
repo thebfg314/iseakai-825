@@ -654,6 +654,10 @@ export function proposalBlurb(p: PendingProposal["proposal"] | MechanicalProposa
       return `Endow the church: ${p.kind.replaceAll("_", " ")}. At a higher rank the same gift may be only what is expected.`;
     case "church_purchase":
       return `Pay the church for ${p.aim}. It may be said afterwards that he bought what should not be sold.`;
+    case "pay_hunt_overage":
+      return p.summary && p.summary !== p.type
+        ? p.summary
+        : `Pay another ${formatLedgerNumber(p.denarii)} denarii so Gerulf may buy what he found. He has not paid. Refuse, and he leaves the goods and brings the purse home.`;
     case "marriage": {
       if (p.action === "court") return "Ride to the widow Gisla and speak for yourself. She chooses; nobody is paid for her.";
       if (!state) return `Marry: ${p.archetype}.`;

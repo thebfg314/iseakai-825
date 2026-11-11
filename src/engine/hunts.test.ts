@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import startingEstate from "../../data/starting-estate.json";
 import { applyProposal } from "./applyDelta";
-import { GERULF_NOTES, GERULF_ROAD_LOCATION, HUNT_DIFFICULTY_MULTIPLIER, NEGOTIATOR_ID, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntProposal, huntProposalForAsk, inferHuntProposals, looksLikeHuntOrder, normalizeHuntProposal, ordinaryHuntPurse, parseHuntDifficulty, quoteHunt, resolveHuntDifficulty, resolveHunts, resolveRoadSeasons, roadSeasonWords, seasonsAskedByLord, seasonsNamedInText, startHunt, withComputedHuntPrice } from "./hunts";
+import { GERULF_NOTES, GERULF_ROAD_LOCATION, HUNT_DIFFICULTY_MULTIPLIER, NEGOTIATOR_ID, acceptHuntOverage, declineHuntOverage, ensureGerulfInHousehold, extractHuntRequest, huntFulfillReason, huntOverageDenarii, huntPriceProposals, huntProposal, huntProposalForAsk, inferHuntProposals, lapseUnconfirmedHuntPrices, looksLikeHuntOrder, normalizeHuntProposal, ordinaryHuntPurse, parseHuntDifficulty, quoteHunt, resolveHuntDifficulty, resolveHunts, resolveRoadSeasons, roadSeasonWords, seasonsAskedByLord, seasonsNamedInText, startHunt, withComputedHuntPrice } from "./hunts";
 import { WorldStateSchema, type WorldState } from "./schema";
 import { resolveAgricultureAndProjects } from "./season";
 
@@ -156,6 +156,74 @@ describe("Gerulf the negotiator", () => {
     expect(pepper?.amount).toBe(1);
     expect(state.npcs.find((n) => n.id === NEGOTIATOR_ID)?.location).toBe("fontenay");
     expect(state.projects.find((p) => p.hunt)?.hunt?.reportSpeech).toMatch(/I have it, my lord/i);
+  });
+
+  it("names how much a partial hunt brought home", () => {
+    const state = boot();
+    const before = state.resources.iron;
+    const brief = quoteHunt(state, { goods: "iron", resource: "iron", amount: 20 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
+    expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
+    vi.spyOn(Math, "random").mockReturnValue(0.6);
+    let lines: string[] = [];
+    for (let i = 0; i < brief.durationSeasons; i++) lines = resolveHunts(state);
+    vi.restoreAllMocks();
+    expect(lines.join(" ")).toMatch(/partial find of 10 iron/);
+    expect(state.resources.iron).toBe(before + 10);
+    expect(state.projects.find((p) => p.hunt)?.hunt?.reportSpeech).toMatch(/I brought 10 iron/);
+  });
+
+  it("holds a dearer find unpaid until the lord confirms", () => {
+    const state = boot();
+    const before = state.resources.iron;
+    const brief = quoteHunt(state, { goods: "iron", resource: "iron", amount: 20 });
+    state.resources.denarii = brief.quotedDenarii * 3;
+    const chest = state.resources.denarii;
+    expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
+    vi.spyOn(Math, "random").mockReturnValue(0.8);
+    let lines: string[] = [];
+    for (let i = 0; i < brief.durationSeasons; i++) lines = resolveHunts(state);
+    vi.restoreAllMocks();
+    const extra = huntOverageDenarii(brief.quotedDenarii);
+    expect(lines.join(" ")).toMatch(/has not paid/);
+    expect(state.resources.denarii).toBe(chest - brief.quotedDenarii);
+    expect(state.resources.iron).toBe(before);
+    const hunt = state.projects.find((p) => p.hunt);
+    expect(hunt?.status).toBe("active");
+    expect(hunt?.hunt?.awaitingPrice).toBe(true);
+    expect(huntPriceProposals(state)).toHaveLength(1);
+    expect(huntPriceProposals(state)[0]).toMatchObject({ type: "pay_hunt_overage", denarii: extra });
+
+    resolveHunts(state);
+    expect(state.resources.denarii).toBe(chest - brief.quotedDenarii);
+    expect(state.resources.iron).toBe(before);
+
+    const short = acceptHuntOverage(state, hunt!.id);
+    expect(short.ok).toBe(true);
+    expect(state.resources.denarii).toBe(chest - brief.quotedDenarii - extra);
+    expect(state.resources.iron).toBe(before + 20);
+    expect(state.projects.find((p) => p.hunt)?.status).toBe("completed");
+  });
+
+  it("leaves the goods and returns the whole purse when the dearer price is refused", () => {
+    const state = boot();
+    const before = state.resources.iron;
+    const brief = quoteHunt(state, { goods: "iron", resource: "iron", amount: 20 });
+    state.resources.denarii = Math.max(state.resources.denarii, brief.quotedDenarii);
+    const chest = state.resources.denarii;
+    expect(startHunt(state, huntProposal(brief)).ok).toBe(true);
+    vi.spyOn(Math, "random").mockReturnValue(0.8);
+    for (let i = 0; i < brief.durationSeasons; i++) resolveHunts(state);
+    vi.restoreAllMocks();
+    const hunt = state.projects.find((p) => p.hunt);
+    const cards = huntPriceProposals(state);
+    const declined = lapseUnconfirmedHuntPrices(state, cards);
+    expect(declined.join(" ")).toMatch(/left the iron/);
+    expect(declined.join(" ")).toMatch(new RegExp(`${brief.quotedDenarii}`));
+    expect(declineHuntOverage(state, hunt!.id).logLine).toBe("");
+    expect(state.resources.denarii).toBe(chest);
+    expect(state.resources.iron).toBe(before);
+    expect(state.projects.find((p) => p.hunt)?.status).toBe("completed");
   });
 
   it("returns coin and no goods on a false rumour", () => {

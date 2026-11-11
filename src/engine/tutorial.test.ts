@@ -17,14 +17,18 @@ import {
   TUTORIAL_STEPS,
   isLastTutorialStep,
   nextTutorialState,
+  applyTalkFloor,
+  nextTalkFloor,
   tutorialAwaitingReply,
   tutorialEntryFrom,
   tutorialEntryUpdate,
   tutorialNextHint,
+  tutorialPendingCount,
   tutorialProgressLabel,
   tutorialStep,
   tutorialStepSatisfied,
   tutorialWaitingNote,
+  type TalkFloor,
   type TutorialWatch,
 } from "./tutorial";
 
@@ -127,6 +131,45 @@ describe("the opening tutorial script", () => {
     // Confirmed Bernard's work while already back with Aldric: the step passes on arrival.
     const alreadyThere = tutorialEntryFrom(watch({ sceneNpcId: "steward" }));
     expect(tutorialStepSatisfied(tab, alreadyThere, watch({ sceneNpcId: "steward" }))).toBe(true);
+  });
+
+  it("confirming cards one at a time does not move the box until that response is finished, and a stuck card does not hold it", () => {
+    const approve = TUTORIAL_STEPS.find((s) => s.id === "aldric-approve")!;
+    const waiting = tutorialEntryFrom(watch({ pendingCount: 2 }));
+    expect(tutorialStepSatisfied(approve, waiting, watch({ pendingCount: 2 }))).toBe(false);
+    expect(tutorialStepSatisfied(approve, waiting, watch({ pendingCount: 1 }))).toBe(false);
+    expect(tutorialStepSatisfied(approve, waiting, watch({ pendingCount: 0 }))).toBe(true);
+    // A withheld follow-on is not a card the lord can confirm or deny.
+    expect(tutorialPendingCount([{ status: "pending" }, { status: "withheld" }, { status: "applied" }])).toBe(1);
+    expect(tutorialPendingCount([{ status: "withheld" }])).toBe(0);
+  });
+
+  it("talk held while an earlier step was up still counts when the box catches up", () => {
+    const approve = TUTORIAL_STEPS.find((s) => s.id === "aldric-approve")!;
+    const bernard = TUTORIAL_STEPS.find((s) => s.id === "bernard-line")!;
+    // The approve step is up. Opening Bernard marks how far his tab had got (a hello only).
+    let floor: TalkFloor | null = null;
+    const onAldric = watch({ sceneNpcId: "steward", messages: [npc("steward"), player(), npc("steward")], pendingCount: 2 });
+    floor = nextTalkFloor(floor, approve, onAldric);
+    const hello = watch({ sceneNpcId: "smith", messages: [npc("smith")], pendingCount: 2 });
+    floor = nextTalkFloor(floor, approve, hello);
+    expect(floor).toEqual({ scene: "smith", count: 1 });
+    // The lord speaks and Bernard answers before the last card is confirmed. The mark stays put.
+    const talked = watch({
+      sceneNpcId: "smith",
+      messages: [npc("smith"), player(), npc("smith")],
+      pendingCount: 1,
+    });
+    floor = nextTalkFloor(floor, approve, talked);
+    expect(floor).toEqual({ scene: "smith", count: 1 });
+
+    const arrived = tutorialEntryFrom(talked);
+    const entry = applyTalkFloor(arrived, floor);
+    expect(tutorialStepSatisfied(bernard, arrived, talked)).toBe(false);
+    expect(tutorialStepSatisfied(bernard, entry, talked)).toBe(true);
+    expect(nextTutorialState({ status: "active", step: TUTORIAL_STEPS.findIndex((s) => s.id === "bernard-line") }, bernard).step).toBe(
+      TUTORIAL_STEPS.findIndex((s) => s.id === "bernard-approve"),
+    );
   });
 
   it("an approve step moves on when the table is clear — confirmed, denied, or nothing proposed", () => {
